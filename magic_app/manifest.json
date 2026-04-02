@@ -1,0 +1,20 @@
+{
+  "name": "Герой Сказки",
+  "short_name": "Сказка",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#1a2a6c",
+  "theme_color": "#ff4081",
+  "icons": [
+    {
+      "src": "avatar.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "avatar.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
