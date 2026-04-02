@@ -7,176 +7,185 @@
     <link rel="icon" href="avatar.png" type="image/png">
     <link rel="manifest" href="manifest.json">
     <style>
-        body { margin: 0; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); background-size: 400% 400%; animation: gradientBG 15s ease infinite; font-family: 'Segoe UI', sans-serif; color: white; overflow: hidden; text-align: center; }
+        :root { --bg-day: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); --bg-night: linear-gradient(135deg, #0f0c29, #302b63, #24243e); }
+        body { margin: 0; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--bg-day); background-size: 400% 400%; animation: gradientBG 15s ease infinite; font-family: 'Segoe UI', sans-serif; color: white; overflow: hidden; text-align: center; transition: background 2s ease; }
         @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         
-        /* 1. Регистрация */
+        /* Экраны */
         #welcome-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a2a6c; z-index: 1000; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
         .btn-magic { background: #00d2ff; color: white; border: none; padding: 15px 30px; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 18px; box-shadow: 0 5px 15px rgba(0,210,255,0.4); }
         input, select { width: 100%; max-width: 300px; padding: 15px; border-radius: 12px; border: none; background: rgba(255,255,255,0.1); color: white; margin-bottom: 15px; text-align: center; font-size: 16px; outline: none; box-sizing: border-box;}
 
-        /* 2. Защита и Штаб */
+        /* Штаб */
         #parent-entry { position: fixed; top: 20px; right: 20px; font-size: 28px; cursor: pointer; opacity: 0.4; z-index: 100; }
         #auth-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); z-index: 600; justify-content: center; align-items: center; flex-direction: column; }
         #parent-mode { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 25, 45, 0.98); backdrop-filter: blur(25px); z-index: 500; padding: 40px 20px; box-sizing: border-box; text-align: left; overflow-y: auto; }
         .parent-card { background: rgba(255,255,255,0.08); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); margin-top: 15px; }
 
-        /* 3. Премиум и Магазин */
-        .premium-banner { background: linear-gradient(90deg, #fdbb2d, #b21f1f); border-radius: 15px; padding: 15px; margin-bottom: 15px; cursor: pointer; text-align: center; }
-        .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .shop-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; text-align: center; border: 1px solid rgba(255,255,255,0.1); opacity: 0.5; position: relative; }
-        .shop-item.active { opacity: 1; border-color: #fdbb2d; }
-
-        /* 4. Ребенок */
+        /* Аватар и Анимация речи */
         .avatar-container { position: relative; margin-bottom: 25px; z-index: 10; }
-        .avatar { width: 190px; height: 190px; border-radius: 50%; background-image: url('avatar.png'); background-size: cover; border: 5px solid rgba(255, 255, 255, 0.3); animation: breathe 4s ease-in-out infinite; }
-        @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        #story-box { width: 85%; max-width: 480px; background: rgba(255,255,255,0.12); padding: 30px; border-radius: 25px; backdrop-filter: blur(20px); }
+        .avatar { width: 190px; height: 190px; border-radius: 50%; background-image: url('avatar.png'); background-size: cover; border: 5px solid rgba(255, 255, 255, 0.3); transition: transform 0.3s ease; }
+        .avatar.talking { animation: speak-pulse 0.5s ease-in-out infinite; border-color: #00d2ff; box-shadow: 0 0 30px rgba(0,210,255,0.6); }
+        @keyframes speak-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        
+        #story-box { width: 85%; max-width: 480px; background: rgba(255,255,255,0.12); padding: 30px; border-radius: 25px; backdrop-filter: blur(20px); min-height: 50px; }
         .history-item { font-size: 13px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #00d2ff; }
     </style>
 </head>
 <body>
 
-    <!-- ЭКРАН РЕГИСТРАЦИИ -->
     <div id="welcome-screen">
         <h1>✨ Привет, Создатель!</h1>
-        <p style="opacity: 0.8;">Настройте магию для ребенка</p>
         <input type="text" id="reg-name" placeholder="Имя ребенка">
         <input type="number" id="reg-age" placeholder="Возраст">
         <button class="btn-magic" onclick="finishReg()">Начать 🐾</button>
     </div>
 
-    <!-- ВХОД С ПАРОЛЕМ -->
     <div id="parent-entry" onclick="checkAccess()">⚙️</div>
+    
     <div id="auth-modal">
         <h3 id="auth-title">Ключ доступа</h3>
         <input type="password" id="pin-field" maxlength="4" style="font-size:24px; letter-spacing:10px; width:200px;">
-        <button class="btn-magic" style="margin-top:20px;" onclick="verifyPin()">Войти</button>
+        <button class="btn-magic" onclick="verifyPin()">Войти</button>
         <button onclick="closeAuth()" style="background:none; border:none; color:white; margin-top:15px;">Отмена</button>
     </div>
 
-    <!-- ШТАБ СОЗДАТЕЛЯ -->
     <div id="parent-mode">
         <h2 style="color: #00d2ff; margin:0;">🚀 Штаб Создателя</h2>
-        <div class="premium-banner" id="prem-banner" onclick="activatePremium()">
-            <div id="prem-text" style="font-weight:bold;">🌟 Активировать Создатель+</div>
-        </div>
-
         <div class="parent-card">
             <label style="font-size:12px; opacity:0.6;">ИМЯ: <b id="disp-name">...</b></label>
             <select id="child-fear" style="margin-top:10px; width:100%; max-width:none;">
                 <option value="темноты">Страх темноты</option>
                 <option value="врачей">Поход к врачу</option>
+                <option value="одиночества">Оставаться одному</option>
+                <option value="нового">Пробовать новое</option>
             </select>
             <button class="btn-magic" style="width:100%;" onclick="saveSettings()">СОХРАНИТЬ</button>
         </div>
-
-        <div class="shop-grid">
-            <div class="shop-item" id="it-1">🎤<br><small>Голос Мамы</small></div>
-            <div class="shop-item" id="it-2">🦖<br><small>Герой Драко</small></div>
-        </div>
-
         <h3 style="color:#fdbb2d; margin-top:20px;">📒 Дневник разговоров</h3>
-        <div class="parent-card" id="history-list">Тишина...</div>
-
+        <div id="history-list"></div>
         <button onclick="closeParentMode()" style="width:100%; background:none; border:none; color:white; margin-top:20px;">Назад</button>
     </div>
 
-    <!-- ЭКРАН РЕБЕНКА -->
-    <div class="avatar-container"><div class="avatar"></div></div>
-    <button id="btn" style="width:80px; height:80px; background:#ff4081; border:none; border-radius:50%; font-size:35px; color:white; cursor:pointer; margin-bottom:20px;">🎤</button>
-    <div id="story-box">Люцик ждет...</div>
+    <div class="avatar-container"><div id="main-avatar" class="avatar"></div></div>
+    <button id="btn" style="width:80px; height:80px; background:#ff4081; border:none; border-radius:50%; font-size:35px; color:white; cursor:pointer; margin-bottom:20px; transition: 0.3s;">🎤</button>
+    <div id="story-box">Загрузка магии...</div>
 
     <script>
         let config = {
             name: localStorage.getItem('childName'),
             pin: localStorage.getItem('parentPin'),
-            premium: localStorage.getItem('isPremium') === 'true'
+            fear: localStorage.getItem('childFear') || 'темноты'
         };
 
-        if (!config.name) {
-            document.getElementById('welcome-screen').style.display = 'flex';
-        } else {
-            initApp();
-        }
-
-        function finishReg() {
-            const n = document.getElementById('reg-name').value;
-            const a = document.getElementById('reg-age').value;
-            if (n && a) {
-                localStorage.setItem('childName', n);
-                localStorage.setItem('childAge', a);
-                location.reload();
+        // Инициализация
+        window.onload = () => {
+            updateTimeTheme();
+            if (!config.name) {
+                document.getElementById('welcome-screen').style.display = 'flex';
+            } else {
+                initApp();
             }
-        }
+        };
 
         function initApp() {
             document.getElementById('disp-name').innerText = config.name;
-            document.getElementById('story-box').innerText = "Привет, " + config.name + "!";
-            if(config.premium) applyPremiumUI();
+            document.getElementById('child-fear').value = config.fear;
+            document.getElementById('story-box').innerText = "Привет, " + config.name + "! Расскажи мне, как прошел твой день?";
             updateHistory();
         }
 
-        function checkAccess() {
-            document.getElementById('auth-modal').style.display = 'flex';
-            document.getElementById('auth-title').innerText = config.pin ? "Введите ключ" : "Придумайте 4 цифры";
-        }
-
-        function verifyPin() {
-            const val = document.getElementById('pin-field').value;
-            if(!config.pin) {
-                if(val.length === 4) { localStorage.setItem('parentPin', val); location.reload(); }
-            } else if(val === config.pin) {
-                closeAuth(); document.getElementById('parent-mode').style.display = 'block';
-            } else { alert("Неверно!"); }
-        }
-
-        function activatePremium() {
-            if(confirm("Активировать Создатель+?")) {
-                localStorage.setItem('isPremium', 'true');
-                location.reload();
+        // А (Визуал): Смена темы день/ночь
+        function updateTimeTheme() {
+            const hour = new Date().getHours();
+            if (hour >= 18 || hour < 6) {
+                document.body.style.background = "var(--bg-night)";
+            } else {
+                document.body.style.background = "var(--bg-day)";
             }
         }
 
-        function applyPremiumUI() {
-            document.getElementById('prem-banner').style.background = "#4caf50";
-            document.getElementById('prem-text').innerText = "✅ Создатель+ Активен";
-            document.getElementById('it-1').classList.add('active');
-            document.getElementById('it-2').classList.add('active');
+        // Б (Логика): Расширенные ответы
+        function processStory(childText) {
+            const fear = document.getElementById('child-fear').value;
+            const name = config.name;
+            let response = "";
+
+            const logic = {
+                "темноты": `Храбрый ${name}, твоя история про "${childText}" — это суперсила! В темноте просто прячутся сказки, и ты ими управляешь. Ты очень смелый лев!`,
+                "врачей": `Ничего не бойся, ${name}! Доктора — это просто помощники супергероев. Твоя история про "${childText}" понравилась бы даже самому главному врачу!`,
+                "одиночества": `Помни, ${name}, я всегда рядом в твоем телефоне, а мама и папа любят тебя всем сердцем. Ты большой молодец!`,
+                "нового": `Пробовать новое — это как открывать сундук с сокровищами. Твоя история про "${childText}" — это начало большого приключения!`
+            };
+
+            response = logic[fear] || `Ого, ${name}! Как интересно ты рассказал про "${childText}". Расскажи еще что-нибудь?`;
+            
+            document.getElementById('story-box').innerText = response;
+            speak(response);
+            saveHistory(childText);
         }
 
-        function closeAuth() { document.getElementById('auth-modal').style.display = 'none'; }
-        function closeParentMode() { document.getElementById('parent-mode').style.display = 'none'; }
+        // В (Анимация): Пульсация при речи
+        function speak(text) {
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'ru-RU';
+            const avatar = document.getElementById('main-avatar');
+
+            msg.onstart = () => avatar.classList.add('talking');
+            msg.onend = () => avatar.classList.remove('talking');
+
+            window.speechSynthesis.speak(msg);
+        }
+
+        // Микрофон
+        const btn = document.getElementById('btn');
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (SpeechRecognition) {
+            const rec = new SpeechRecognition();
+            rec.lang = 'ru-RU';
+            btn.onclick = () => {
+                rec.start();
+                btn.style.transform = "scale(1.2)";
+                btn.style.background = "#4CAF50";
+            };
+            rec.onresult = (e) => {
+                btn.style.transform = "scale(1)";
+                btn.style.background = "#ff4081";
+                processStory(e.results[0][0].transcript);
+            };
+        }
+
+        // Остальные функции (сохранение, ПИН и т.д.)
+        function finishReg() {
+            const n = document.getElementById('reg-name').value;
+            if (n) { localStorage.setItem('childName', n); location.reload(); }
+        }
         function saveSettings() {
             localStorage.setItem('childFear', document.getElementById('child-fear').value);
+            alert("Настройки сохранены!");
             location.reload();
         }
-
-        function updateHistory() {
-            const hist = JSON.parse(localStorage.getItem('chatHistory') || "[]");
-            const cont = document.getElementById('history-list');
-            if(hist.length > 0) cont.innerHTML = hist.map(h => `<div class="history-item"><b>${h.date}:</b> ${h.text}</div>`).join('');
+        function checkAccess() { document.getElementById('auth-modal').style.display = 'flex'; }
+        function closeAuth() { document.getElementById('auth-modal').style.display = 'none'; }
+        function verifyPin() {
+            const val = document.getElementById('pin-field').value;
+            if(!config.pin) { localStorage.setItem('parentPin', val); location.reload(); }
+            else if(val === config.pin) { document.getElementById('parent-mode').style.display = 'block'; closeAuth(); }
+            else { alert("Неверно!"); }
         }
-
-        const btn = document.getElementById('btn');
-        const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
-        if (SpeechRecognition) {
-            const rec = new SpeechRecognition(); rec.lang = 'ru-RU';
-            btn.onclick = () => { rec.start(); btn.style.background = '#f44336'; };
-            rec.onresult = (e) => {
-                const speech = e.results[0][0].transcript;
-                btn.style.background = '#ff4081';
-                
-                let hist = JSON.parse(localStorage.getItem('chatHistory') || "[]");
-                hist.unshift({ date: new Date().toLocaleTimeString(), text: speech });
-                localStorage.setItem('chatHistory', JSON.stringify(hist.slice(0, 5)));
-
-                document.getElementById('story-box').innerText = "Ты сказал: " + speech;
-                const utter = new SpeechSynthesisUtterance("Храбрый " + config.name + "! Твоя история про " + speech + " очень интересная!");
-                window.speechSynthesis.speak(utter);
-                updateHistory();
-            };
+        function closeParentMode() { document.getElementById('parent-mode').style.display = 'none'; }
+        function saveHistory(t) {
+            let h = JSON.parse(localStorage.getItem('storyHistory') || '[]');
+            h.unshift(new Date().toLocaleTimeString() + ": " + t);
+            localStorage.setItem('storyHistory', JSON.stringify(h.slice(0, 10)));
+            updateHistory();
+        }
+        function updateHistory() {
+            const h = JSON.parse(localStorage.getItem('storyHistory') || '[]');
+            document.getElementById('history-list').innerHTML = h.map(i => `<div class="history-item">${i}</div>`).join('');
         }
     </script>
 </body>
+</html>
 </html>
