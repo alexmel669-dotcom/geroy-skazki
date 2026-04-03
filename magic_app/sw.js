@@ -1,6 +1,6 @@
 // sw.js - Service Worker для PWA "Люцик"
 // Версия кэша - увеличивай при каждом обновлении приложения
-const CACHE_NAME = 'lucik-v3';
+const CACHE_NAME = 'lucik-v4';
 
 // Файлы, которые будут кэшироваться при установке
 const ASSETS = [
@@ -13,7 +13,7 @@ const ASSETS = [
 
 // Установка Service Worker
 self.addEventListener('install', (event) => {
-    console.log('🦁 [SW] Установка Service Worker');
+    console.log('🦁 [SW] Установка Service Worker v4');
     
     // Заставляем Service Worker активироваться сразу
     self.skipWaiting();
@@ -22,7 +22,6 @@ self.addEventListener('install', (event) => {
         caches.open(CACHE_NAME).then(async (cache) => {
             console.log('🦁 [SW] Кэширование файлов');
             
-            // Кэшируем каждый файл отдельно с обработкой ошибок
             const cachePromises = ASSETS.map(async (asset) => {
                 try {
                     const response = await fetch(asset);
@@ -45,7 +44,7 @@ self.addEventListener('install', (event) => {
 
 // Активация Service Worker
 self.addEventListener('activate', (event) => {
-    console.log('🦁 [SW] Активация Service Worker');
+    console.log('🦁 [SW] Активация Service Worker v4');
     
     event.waitUntil(
         (async () => {
@@ -82,7 +81,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     
-    // API запросы НЕ кэшируем
+    // API запросы НЕ кэшируем (важно для Edge TTS и DeepSeek)
     if (url.pathname.startsWith('/api/')) {
         console.log(`🌐 [SW] API запрос: ${url.pathname}`);
         return event.respondWith(fetch(event.request));
@@ -91,6 +90,18 @@ self.addEventListener('fetch', (event) => {
     // Запросы к DeepSeek API НЕ кэшируем
     if (url.hostname.includes('deepseek.com')) {
         console.log(`🌐 [SW] DeepSeek API запрос`);
+        return event.respondWith(fetch(event.request));
+    }
+    
+    // Запросы к Edge TTS НЕ кэшируем (всегда свежие голоса)
+    if (url.hostname.includes('speech.platform.bing.com')) {
+        console.log(`🌐 [SW] Edge TTS запрос`);
+        return event.respondWith(fetch(event.request));
+    }
+    
+    // Аудиофайлы (mp3, wav) — не кэшируем, они динамические
+    if (url.pathname.endsWith('.mp3') || url.pathname.endsWith('.wav')) {
+        console.log(`🌐 [SW] Аудио файл (не кэшируем): ${url.pathname}`);
         return event.respondWith(fetch(event.request));
     }
     
@@ -114,10 +125,13 @@ self.addEventListener('fetch', (event) => {
                 console.log(`🌐 [SW] Из сети: ${url.pathname}`);
                 const networkResponse = await fetch(event.request);
                 
-                // Кэшируем успешные ответы
+                // Кэшируем только успешные ответы (не API, не аудио)
                 if (networkResponse && networkResponse.status === 200) {
-                    const cache = await caches.open(CACHE_NAME);
-                    cache.put(event.request, networkResponse.clone());
+                    const contentType = networkResponse.headers.get('content-type') || '';
+                    if (!contentType.includes('audio') && !url.pathname.startsWith('/api')) {
+                        const cache = await caches.open(CACHE_NAME);
+                        cache.put(event.request, networkResponse.clone());
+                    }
                 }
                 
                 return networkResponse;
@@ -146,7 +160,6 @@ self.addEventListener('message', (event) => {
             self.skipWaiting();
             break;
         case 'checkForUpdates':
-            // Проверка обновлений
             self.registration.update();
             break;
         default:
