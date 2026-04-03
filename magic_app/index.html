@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Герой Сказки</title>
+    <title>Люцик — Сказочный друг</title>
     <link rel="icon" href="avatar.png" type="image/png">
     <link rel="manifest" href="manifest.json">
     <style>
@@ -23,13 +23,17 @@
         .avatar-container { position: relative; margin-bottom: 25px; z-index: 10; }
         .avatar { width: 190px; height: 190px; border-radius: 50%; background-image: url('avatar.png'); background-size: cover; border: 5px solid rgba(255, 255, 255, 0.3); transition: transform 0.3s ease; }
         .avatar.talking { animation: speak-pulse 0.5s ease-in-out infinite; border-color: #00d2ff; box-shadow: 0 0 30px rgba(0,210,255,0.6); }
-        @keyframes speak-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .avatar.listening { animation: listen-pulse 1s ease-in-out infinite; border-color: #4CAF50; box-shadow: 0 0 30px rgba(76,175,80,0.6); filter: brightness(1.1); }
+        @keyframes speak-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+        @keyframes listen-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         
-        #story-box { width: 85%; max-width: 480px; background: rgba(255,255,255,0.12); padding: 30px; border-radius: 25px; backdrop-filter: blur(20px); min-height: 50px; }
+        #story-box { width: 85%; max-width: 480px; background: rgba(255,255,255,0.12); padding: 30px; border-radius: 25px; backdrop-filter: blur(20px); min-height: 60px; font-size: 16px; line-height: 1.4; }
         .history-item { font-size: 13px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #00d2ff; }
         .loading { opacity: 0.7; }
         .loading::after { content: " ✨"; animation: dots 1s steps(5, end) infinite; }
         @keyframes dots { 0%, 20% { content: " ✨"; } 40% { content: " ✨✨"; } 60% { content: " ✨✨✨"; } 80%, 100% { content: " ✨✨✨✨"; } }
+        .recording-indicator { position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #ff4081; border-radius: 50%; animation: pulse-red 1s infinite; }
+        @keyframes pulse-red { 0%, 100% { transform: scale(0.9); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.5; } }
     </style>
 </head>
 <body>
@@ -67,8 +71,10 @@
         <button onclick="closeParentMode()" style="width:100%; background:none; border:none; color:white; margin-top:20px;">Назад</button>
     </div>
 
-    <div class="avatar-container"><div id="main-avatar" class="avatar"></div></div>
-    <button id="btn" style="width:80px; height:80px; background:#ff4081; border:none; border-radius:50%; font-size:35px; color:white; cursor:pointer; margin-bottom:20px; transition: 0.3s;">🎤</button>
+    <div class="avatar-container">
+        <div id="main-avatar" class="avatar"></div>
+    </div>
+    <button id="btn" style="width:80px; height:80px; background:#ff4081; border:none; border-radius:50%; font-size:35px; color:white; cursor:pointer; margin-bottom:20px; transition: 0.3s; position: relative;">🎤</button>
     <div id="story-box">Загрузка магии...</div>
 
     <script>
@@ -78,6 +84,9 @@
             fear: localStorage.getItem('childFear') || 'темноты'
         };
 
+        // История диалога для поддержки контекста
+        let conversationHistory = [];
+
         window.onload = () => {
             updateTimeTheme();
             if (!config.name) {
@@ -85,13 +94,18 @@
             } else {
                 initApp();
             }
+            // Предзагрузка звука мурчания
+            const audio = new Audio('purr.mp3');
+            audio.load();
         };
 
         function initApp() {
             document.getElementById('disp-name').innerText = config.name;
             document.getElementById('child-fear').value = config.fear;
-            document.getElementById('story-box').innerHTML = "Привет, " + config.name + "! Расскажи мне, что тебя волнует? 🦁";
+            document.getElementById('story-box').innerHTML = "Мур-р-р! Привет, " + config.name + "! Я Люцик. Расскажи, как у тебя дела? 🦁";
             updateHistory();
+            // Сброс истории диалога
+            conversationHistory = [];
         }
 
         function updateTimeTheme() {
@@ -103,10 +117,35 @@
             }
         }
 
-        // ГЛАВНАЯ ФУНКЦИЯ - запрос к DeepSeek через Vercel API
-        async function askDeepSeek(userSpeech) {
+        // Звук мурчания
+        let purrAudio = null;
+        function startPurr() {
+            if (!purrAudio) {
+                purrAudio = new Audio('purr.mp3');
+                purrAudio.loop = true;
+                purrAudio.volume = 0.3;
+            }
+            purrAudio.play().catch(e => console.log('Audio play failed:', e));
+        }
+        function stopPurr() {
+            if (purrAudio) {
+                purrAudio.pause();
+                purrAudio.currentTime = 0;
+            }
+        }
+
+        // Главная функция запроса к DeepSeek с историей
+        async function askLucik(userSpeech) {
             const fear = document.getElementById('child-fear').value;
             const name = config.name;
+            
+            // Добавляем сообщение ребёнка в историю
+            conversationHistory.push({ role: "user", content: userSpeech });
+            
+            // Ограничиваем историю последними 10 сообщениями
+            if (conversationHistory.length > 10) {
+                conversationHistory = conversationHistory.slice(-10);
+            }
             
             const response = await fetch('/api/generate', {
                 method: 'POST',
@@ -114,29 +153,34 @@
                 body: JSON.stringify({
                     childName: name,
                     childFear: fear,
-                    userSpeech: userSpeech
+                    userSpeech: userSpeech,
+                    history: conversationHistory.slice(0, -1) // отправляем предыдущую историю
                 })
             });
             
             const data = await response.json();
+            
+            // Добавляем ответ Люцика в историю
+            conversationHistory.push({ role: "assistant", content: data.story });
+            
             return data.story;
         }
 
         async function processStory(childText) {
             const storyBox = document.getElementById('story-box');
             
-            storyBox.innerHTML = "Лёва придумывает сказку";
+            storyBox.innerHTML = "Люцик думает";
             storyBox.classList.add('loading');
             
             try {
-                const story = await askDeepSeek(childText);
+                const story = await askLucik(childText);
                 storyBox.classList.remove('loading');
                 storyBox.innerHTML = story;
                 speak(story);
                 saveHistory(childText);
             } catch (error) {
                 storyBox.classList.remove('loading');
-                storyBox.innerHTML = "🦁 Лёва немного устал, скажи ещё раз!";
+                storyBox.innerHTML = "🦁 Мур-р-р, давай ещё раз? Я не расслышал!";
                 console.error(error);
             }
         }
@@ -144,12 +188,14 @@
         function speak(text) {
             const msg = new SpeechSynthesisUtterance(text);
             msg.lang = 'ru-RU';
+            msg.rate = 0.9;
             const avatar = document.getElementById('main-avatar');
             msg.onstart = () => avatar.classList.add('talking');
             msg.onend = () => avatar.classList.remove('talking');
             window.speechSynthesis.speak(msg);
         }
 
+        // Микрофон с визуальным эффектом "слушает"
         const btn = document.getElementById('btn');
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
@@ -163,12 +209,16 @@
                 rec.start();
                 btn.style.transform = "scale(1.2)";
                 btn.style.background = "#4CAF50";
-                document.getElementById('story-box').innerHTML = "🎤 Слушаю...";
+                document.getElementById('story-box').innerHTML = "🎤 Люцик слушает... Мур-р-р";
+                document.getElementById('main-avatar').classList.add('listening');
+                startPurr();
             };
             
             rec.onresult = async (e) => {
                 btn.style.transform = "scale(1)";
                 btn.style.background = "#ff4081";
+                document.getElementById('main-avatar').classList.remove('listening');
+                stopPurr();
                 const text = e.results[0][0].transcript;
                 await processStory(text);
             };
@@ -176,7 +226,17 @@
             rec.onerror = () => {
                 btn.style.transform = "scale(1)";
                 btn.style.background = "#ff4081";
-                document.getElementById('story-box').innerHTML = "🦁 Не расслышал, скажи ещё раз!";
+                document.getElementById('main-avatar').classList.remove('listening');
+                stopPurr();
+                document.getElementById('story-box').innerHTML = "🦁 Мур-р-р? Не расслышал, скажи ещё раз!";
+            };
+            
+            rec.onend = () => {
+                // Если вдруг закончилось без результата
+                if (document.getElementById('main-avatar').classList.contains('listening')) {
+                    document.getElementById('main-avatar').classList.remove('listening');
+                    stopPurr();
+                }
             };
         } else {
             document.getElementById('story-box').innerHTML = "Ваш браузер не поддерживает голосовой ввод";
