@@ -198,7 +198,6 @@
             else if (hour >= 12 && hour < 18) weatherIcon.innerText = '☀️';
             else if (hour >= 18 && hour < 22) weatherIcon.innerText = '🌙';
             else weatherIcon.innerText = '⭐';
-            // Иногда дождь (10% шанс)
             if (Math.random() < 0.1 && hour < 20) {
                 weatherIcon.innerText = '🌧️';
                 document.body.classList.add('rain');
@@ -215,7 +214,6 @@
             }
             purrAudio.currentTime = 0;
             purrAudio.play().catch(e => console.log('Audio error:', e));
-            // Вибрация картинки
             const avatar = document.getElementById('main-avatar');
             avatar.classList.add('vibrate');
             setTimeout(() => avatar.classList.remove('vibrate'), 500);
@@ -394,6 +392,40 @@
         
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error:', err));
+        }
+    </script>
+
+    <!-- Автоматическое обновление PWA для всех вкладок -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+                // Проверка обновлений каждые 6 часов
+                setInterval(() => {
+                    registration.update();
+                    console.log('🔄 Проверка обновлений...');
+                }, 6 * 60 * 60 * 1000);
+                
+                // Автоматическое обновление при обнаружении новой версии
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('✅ Обновление готово! Перезагружаем все вкладки...');
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1000);
+                        }
+                    });
+                });
+            });
+            
+            // Принудительная перезагрузка при смене Service Worker
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+            });
         }
     </script>
 </body>
