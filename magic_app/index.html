@@ -8,36 +8,58 @@
     <link rel="manifest" href="manifest.json">
     <style>
         :root { --bg-day: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); --bg-night: linear-gradient(135deg, #0f0c29, #302b63, #24243e); }
-        body { margin: 0; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--bg-day); background-size: 400% 400%; animation: gradientBG 15s ease infinite; font-family: 'Segoe UI', sans-serif; color: white; overflow: hidden; text-align: center; transition: background 2s ease; }
+        body { margin: 0; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--bg-day); background-size: 400% 400%; animation: gradientBG 15s ease infinite; font-family: 'Segoe UI', sans-serif; color: white; overflow: hidden; text-align: center; transition: all 0.5s ease; position: relative; }
+        body.rain { background: linear-gradient(135deg, #2c3e50, #3498db, #2c3e50); }
+        body.stars { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); }
         @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         
+        /* Погодные эффекты */
+        .weather-icon { position: fixed; top: 20px; left: 20px; font-size: 40px; z-index: 200; background: rgba(0,0,0,0.3); border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        
+        /* Экраны */
         #welcome-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a2a6c; z-index: 1000; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
-        .btn-magic { background: #00d2ff; color: white; border: none; padding: 15px 30px; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 18px; box-shadow: 0 5px 15px rgba(0,210,255,0.4); }
+        .btn-magic { background: #00d2ff; color: white; border: none; padding: 15px 30px; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 18px; box-shadow: 0 5px 15px rgba(0,210,255,0.4); transition: transform 0.2s; }
+        .btn-magic:active { transform: scale(0.95); }
         input, select { width: 100%; max-width: 300px; padding: 15px; border-radius: 12px; border: none; background: rgba(255,255,255,0.1); color: white; margin-bottom: 15px; text-align: center; font-size: 16px; outline: none; box-sizing: border-box;}
 
-        #parent-entry { position: fixed; top: 20px; right: 20px; font-size: 28px; cursor: pointer; opacity: 0.4; z-index: 100; }
+        /* Штаб */
+        #parent-entry { position: fixed; top: 20px; right: 20px; font-size: 28px; cursor: pointer; opacity: 0.4; z-index: 100; transition: opacity 0.3s; }
+        #parent-entry:hover { opacity: 1; }
         #auth-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); z-index: 600; justify-content: center; align-items: center; flex-direction: column; }
         #parent-mode { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 25, 45, 0.98); backdrop-filter: blur(25px); z-index: 500; padding: 40px 20px; box-sizing: border-box; text-align: left; overflow-y: auto; }
         .parent-card { background: rgba(255,255,255,0.08); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); margin-top: 15px; }
-
+        .character-select { display: flex; gap: 15px; justify-content: center; margin: 15px 0; }
+        .character-option { width: 80px; height: 80px; border-radius: 50%; cursor: pointer; transition: transform 0.2s, border 0.2s; border: 3px solid transparent; background-size: cover; background-position: center; }
+        .character-option.selected { border-color: #fdbb2d; transform: scale(1.05); }
+        .character-option.lion { background-image: url('avatar.png'); }
+        .character-option.dragon { background-image: url('dragon.png'); }
+        .character-option.robot { background-image: url('robot.png'); }
+        
+        /* Аватар и анимации */
         .avatar-container { position: relative; margin-bottom: 25px; z-index: 10; }
-        .avatar { width: 190px; height: 190px; border-radius: 50%; background-image: url('avatar.png'); background-size: cover; border: 5px solid rgba(255, 255, 255, 0.3); transition: transform 0.3s ease; }
+        .avatar { width: 190px; height: 190px; border-radius: 50%; background-size: cover; background-position: center; border: 5px solid rgba(255, 255, 255, 0.3); transition: all 0.2s ease; }
         .avatar.talking { animation: speak-pulse 0.5s ease-in-out infinite; border-color: #00d2ff; box-shadow: 0 0 30px rgba(0,210,255,0.6); }
         .avatar.listening { animation: listen-pulse 1s ease-in-out infinite; border-color: #4CAF50; box-shadow: 0 0 30px rgba(76,175,80,0.6); filter: brightness(1.1); }
+        .avatar.vibrate { animation: vibrate 0.2s ease-in-out infinite; }
         @keyframes speak-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
         @keyframes listen-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes vibrate { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
         
-        #story-box { width: 85%; max-width: 480px; background: rgba(255,255,255,0.12); padding: 30px; border-radius: 25px; backdrop-filter: blur(20px); min-height: 60px; font-size: 16px; line-height: 1.4; }
+        #story-box { width: 85%; max-width: 480px; background: rgba(255,255,255,0.12); padding: 30px; border-radius: 25px; backdrop-filter: blur(20px); min-height: 60px; font-size: 16px; line-height: 1.4; transition: all 0.3s; }
         .history-item { font-size: 13px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #00d2ff; }
         .loading { opacity: 0.7; }
         .loading::after { content: " ✨"; animation: dots 1s steps(5, end) infinite; }
         @keyframes dots { 0%, 20% { content: " ✨"; } 40% { content: " ✨✨"; } 60% { content: " ✨✨✨"; } 80%, 100% { content: " ✨✨✨✨"; } }
-        .recording-indicator { position: absolute; top: -10px; right: -10px; width: 30px; height: 30px; background: #ff4081; border-radius: 50%; animation: pulse-red 1s infinite; }
-        @keyframes pulse-red { 0%, 100% { transform: scale(0.9); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.5; } }
+        
+        /* Статистика страхов */
+        .stats { margin-top: 15px; font-size: 12px; opacity: 0.7; }
+        .fear-bar { height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; margin-top: 5px; overflow: hidden; }
+        .fear-fill { height: 100%; width: 0%; background: #fdbb2d; transition: width 0.5s; }
     </style>
 </head>
 <body>
 
+    <div class="weather-icon" id="weather-icon">☀️</div>
     <div id="welcome-screen">
         <h1>✨ Привет, Создатель!</h1>
         <input type="text" id="reg-name" placeholder="Имя ребенка">
@@ -64,39 +86,162 @@
                 <option value="одиночества">Оставаться одному</option>
                 <option value="нового">Пробовать новое</option>
             </select>
-            <button class="btn-magic" style="width:100%;" onclick="saveSettings()">СОХРАНИТЬ</button>
+            <button class="btn-magic" style="width:100%; margin-top:10px;" onclick="saveSettings()">СОХРАНИТЬ</button>
+        </div>
+        <div class="parent-card">
+            <label style="font-size:14px;">🎭 Выбери персонажа:</label>
+            <div class="character-select">
+                <div class="character-option lion" onclick="selectCharacter('lion')"></div>
+                <div class="character-option dragon" onclick="selectCharacter('dragon')"></div>
+                <div class="character-option robot" onclick="selectCharacter('robot')"></div>
+            </div>
+        </div>
+        <div class="parent-card">
+            <label style="font-size:14px;">🖼️ Фоновая картинка:</label>
+            <input type="file" id="bg-upload" accept="image/*" style="background: rgba(255,255,255,0.1); margin-top: 10px;">
+            <button class="btn-magic" style="width:100%; margin-top:10px;" onclick="uploadBackground()">ЗАГРУЗИТЬ</button>
+            <button class="btn-magic" style="width:100%; margin-top:5px; background:#555;" onclick="resetBackground()">СБРОСИТЬ</button>
+        </div>
+        <h3 style="color:#fdbb2d; margin-top:20px;">📊 Дневник страхов</h3>
+        <div class="parent-card" id="stats-card">
+            <div class="stats">Страх темноты: <span id="stat-dark">0</span> раз</div>
+            <div class="fear-bar"><div class="fear-fill" id="dark-fill"></div></div>
+            <div class="stats">Страх врачей: <span id="stat-doc">0</span> раз</div>
+            <div class="fear-bar"><div class="fear-fill" id="doc-fill"></div></div>
+            <div class="stats">Страх одиночества: <span id="stat-alone">0</span> раз</div>
+            <div class="fear-bar"><div class="fear-fill" id="alone-fill"></div></div>
+            <div class="stats">Страх нового: <span id="stat-new">0</span> раз</div>
+            <div class="fear-bar"><div class="fear-fill" id="new-fill"></div></div>
         </div>
         <h3 style="color:#fdbb2d; margin-top:20px;">📒 Дневник разговоров</h3>
-        <div id="history-list"></div>
+        <div class="parent-card" id="history-list">Пока тишина...</div>
         <button onclick="closeParentMode()" style="width:100%; background:none; border:none; color:white; margin-top:20px;">Назад</button>
     </div>
 
     <div class="avatar-container">
-        <div id="main-avatar" class="avatar"></div>
+        <div id="main-avatar" class="avatar" style="background-image: url('avatar.png');"></div>
     </div>
-    <button id="btn" style="width:80px; height:80px; background:#ff4081; border:none; border-radius:50%; font-size:35px; color:white; cursor:pointer; margin-bottom:20px; transition: 0.3s; position: relative;">🎤</button>
+    <button id="btn" style="width:80px; height:80px; background:#ff4081; border:none; border-radius:50%; font-size:35px; color:white; cursor:pointer; margin-bottom:20px; transition: 0.3s;">🎤</button>
     <div id="story-box">Загрузка магии...</div>
 
     <script>
         let config = {
             name: localStorage.getItem('childName'),
             pin: localStorage.getItem('parentPin'),
-            fear: localStorage.getItem('childFear') || 'темноты'
+            fear: localStorage.getItem('childFear') || 'темноты',
+            character: localStorage.getItem('character') || 'lion'
         };
 
-        // История диалога для поддержки контекста
         let conversationHistory = [];
+        let purrAudio = null;
+        let currentBg = localStorage.getItem('customBg') || null;
+        
+        // Статистика страхов
+        let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0}');
+        
+        function updateFearStats(fear) {
+            if (fearStats[fear] !== undefined) {
+                fearStats[fear]++;
+                localStorage.setItem('fearStats', JSON.stringify(fearStats));
+                updateStatsUI();
+            }
+        }
+        
+        function updateStatsUI() {
+            document.getElementById('stat-dark').innerText = fearStats['темноты'];
+            document.getElementById('stat-doc').innerText = fearStats['врачей'];
+            document.getElementById('stat-alone').innerText = fearStats['одиночества'];
+            document.getElementById('stat-new').innerText = fearStats['нового'];
+            const maxStat = Math.max(...Object.values(fearStats), 1);
+            document.getElementById('dark-fill').style.width = (fearStats['темноты'] / maxStat * 100) + '%';
+            document.getElementById('doc-fill').style.width = (fearStats['врачей'] / maxStat * 100) + '%';
+            document.getElementById('alone-fill').style.width = (fearStats['одиночества'] / maxStat * 100) + '%';
+            document.getElementById('new-fill').style.width = (fearStats['нового'] / maxStat * 100) + '%';
+        }
+        
+        function selectCharacter(char) {
+            config.character = char;
+            localStorage.setItem('character', char);
+            let img = '';
+            if (char === 'lion') img = 'avatar.png';
+            else if (char === 'dragon') img = 'dragon.png';
+            else if (char === 'robot') img = 'robot.png';
+            document.getElementById('main-avatar').style.backgroundImage = `url('${img}')`;
+            document.querySelectorAll('.character-option').forEach(el => el.classList.remove('selected'));
+            document.querySelector(`.character-option.${char}`).classList.add('selected');
+        }
+        
+        function uploadBackground() {
+            const file = document.getElementById('bg-upload').files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.body.style.backgroundImage = `url(${e.target.result})`;
+                    document.body.style.backgroundSize = 'cover';
+                    localStorage.setItem('customBg', e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        function resetBackground() {
+            document.body.style.backgroundImage = '';
+            document.body.style.background = '';
+            localStorage.removeItem('customBg');
+            updateTimeTheme();
+        }
+        
+        function updateWeather() {
+            const hour = new Date().getHours();
+            const weatherIcon = document.getElementById('weather-icon');
+            if (hour >= 6 && hour < 12) weatherIcon.innerText = '🌤️';
+            else if (hour >= 12 && hour < 18) weatherIcon.innerText = '☀️';
+            else if (hour >= 18 && hour < 22) weatherIcon.innerText = '🌙';
+            else weatherIcon.innerText = '⭐';
+            // Иногда дождь (10% шанс)
+            if (Math.random() < 0.1 && hour < 20) {
+                weatherIcon.innerText = '🌧️';
+                document.body.classList.add('rain');
+            } else {
+                document.body.classList.remove('rain');
+            }
+        }
+        
+        function startPurr() {
+            if (!purrAudio) {
+                purrAudio = new Audio('purr.mp3');
+                purrAudio.loop = true;
+                purrAudio.volume = 0.3;
+            }
+            purrAudio.currentTime = 0;
+            purrAudio.play().catch(e => console.log('Audio error:', e));
+            // Вибрация картинки
+            const avatar = document.getElementById('main-avatar');
+            avatar.classList.add('vibrate');
+            setTimeout(() => avatar.classList.remove('vibrate'), 500);
+        }
+        
+        function stopPurr() {
+            if (purrAudio) {
+                purrAudio.pause();
+            }
+        }
 
         window.onload = () => {
+            updateWeather();
+            setInterval(updateWeather, 60000);
             updateTimeTheme();
+            if (currentBg) {
+                document.body.style.backgroundImage = `url(${currentBg})`;
+                document.body.style.backgroundSize = 'cover';
+            }
             if (!config.name) {
                 document.getElementById('welcome-screen').style.display = 'flex';
             } else {
                 initApp();
             }
-            // Предзагрузка звука мурчания
-            const audio = new Audio('purr.mp3');
-            audio.load();
+            selectCharacter(config.character);
+            updateStatsUI();
         };
 
         function initApp() {
@@ -104,45 +249,27 @@
             document.getElementById('child-fear').value = config.fear;
             document.getElementById('story-box').innerHTML = "Мур-р-р! Привет, " + config.name + "! Я Люцик. Расскажи, как у тебя дела? 🦁";
             updateHistory();
-            // Сброс истории диалога
             conversationHistory = [];
         }
 
         function updateTimeTheme() {
             const hour = new Date().getHours();
-            if (hour >= 18 || hour < 6) {
-                document.body.style.background = "var(--bg-night)";
-            } else {
-                document.body.style.background = "var(--bg-day)";
+            if (!currentBg) {
+                if (hour >= 18 || hour < 6) {
+                    document.body.style.background = "var(--bg-night)";
+                } else {
+                    document.body.style.background = "var(--bg-day)";
+                }
             }
         }
 
-        // Звук мурчания
-        let purrAudio = null;
-        function startPurr() {
-            if (!purrAudio) {
-                purrAudio = new Audio('purr.mp3');
-                purrAudio.loop = true;
-                purrAudio.volume = 0.3;
-            }
-            purrAudio.play().catch(e => console.log('Audio play failed:', e));
-        }
-        function stopPurr() {
-            if (purrAudio) {
-                purrAudio.pause();
-                purrAudio.currentTime = 0;
-            }
-        }
-
-        // Главная функция запроса к DeepSeek с историей
         async function askLucik(userSpeech) {
             const fear = document.getElementById('child-fear').value;
             const name = config.name;
             
-            // Добавляем сообщение ребёнка в историю
-            conversationHistory.push({ role: "user", content: userSpeech });
+            updateFearStats(fear);
             
-            // Ограничиваем историю последними 10 сообщениями
+            conversationHistory.push({ role: "user", content: userSpeech });
             if (conversationHistory.length > 10) {
                 conversationHistory = conversationHistory.slice(-10);
             }
@@ -154,21 +281,17 @@
                     childName: name,
                     childFear: fear,
                     userSpeech: userSpeech,
-                    history: conversationHistory.slice(0, -1) // отправляем предыдущую историю
+                    history: conversationHistory.slice(0, -1)
                 })
             });
             
             const data = await response.json();
-            
-            // Добавляем ответ Люцика в историю
             conversationHistory.push({ role: "assistant", content: data.story });
-            
             return data.story;
         }
 
         async function processStory(childText) {
             const storyBox = document.getElementById('story-box');
-            
             storyBox.innerHTML = "Люцик думает";
             storyBox.classList.add('loading');
             
@@ -195,7 +318,6 @@
             window.speechSynthesis.speak(msg);
         }
 
-        // Микрофон с визуальным эффектом "слушает"
         const btn = document.getElementById('btn');
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
@@ -230,14 +352,6 @@
                 stopPurr();
                 document.getElementById('story-box').innerHTML = "🦁 Мур-р-р? Не расслышал, скажи ещё раз!";
             };
-            
-            rec.onend = () => {
-                // Если вдруг закончилось без результата
-                if (document.getElementById('main-avatar').classList.contains('listening')) {
-                    document.getElementById('main-avatar').classList.remove('listening');
-                    stopPurr();
-                }
-            };
         } else {
             document.getElementById('story-box').innerHTML = "Ваш браузер не поддерживает голосовой ввод";
         }
@@ -260,7 +374,7 @@
         function verifyPin() {
             const val = document.getElementById('pin-field').value;
             if(!config.pin) { if(val.length === 4) { localStorage.setItem('parentPin', val); location.reload(); } }
-            else if(val === config.pin) { document.getElementById('parent-mode').style.display = 'block'; closeAuth(); }
+            else if(val === config.pin) { document.getElementById('parent-mode').style.display = 'block'; closeAuth(); updateStatsUI(); }
             else { alert("Неверно!"); }
         }
         
