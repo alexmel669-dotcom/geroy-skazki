@@ -261,51 +261,7 @@
             }
         }
 
-        async function askLucik(userSpeech) {
-            const fear = document.getElementById('child-fear').value;
-            const name = config.name;
-            
-            updateFearStats(fear);
-            
-            conversationHistory.push({ role: "user", content: userSpeech });
-            if (conversationHistory.length > 10) {
-                conversationHistory = conversationHistory.slice(-10);
-            }
-            
-            const response = await fetch('/api/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    childName: name,
-                    childFear: fear,
-                    userSpeech: userSpeech,
-                    history: conversationHistory.slice(0, -1)
-                })
-            });
-            
-            const data = await response.json();
-            conversationHistory.push({ role: "assistant", content: data.story });
-            return data.story;
-        }
-
-        async function processStory(childText) {
-            const storyBox = document.getElementById('story-box');
-            storyBox.innerHTML = "Люцик думает";
-            storyBox.classList.add('loading');
-            
-            try {
-                const story = await askLucik(childText);
-                storyBox.classList.remove('loading');
-                storyBox.innerHTML = story;
-                speak(story);
-                saveHistory(childText);
-            } catch (error) {
-                storyBox.classList.remove('loading');
-                storyBox.innerHTML = "🦁 Мур-р-р, давай ещё раз? Я не расслышал!";
-                console.error(error);
-            }
-        }
-
+        // Системный голос (запасной вариант)
         function speak(text) {
             const msg = new SpeechSynthesisUtterance(text);
             msg.lang = 'ru-RU';
@@ -316,6 +272,59 @@
             window.speechSynthesis.speak(msg);
         }
 
+        // ГЛАВНАЯ ФУНКЦИЯ — запрос к DeepSeek + Edge TTS
+        async function processStory(childText) {
+            const storyBox = document.getElementById('story-box');
+            storyBox.innerHTML = "Люцик думает";
+            storyBox.classList.add('loading');
+            
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        childName: config.name,
+                        childFear: document.getElementById('child-fear').value,
+                        userSpeech: childText,
+                        history: conversationHistory.slice(-6)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                storyBox.classList.remove('loading');
+                storyBox.innerHTML = data.story;
+                
+                // Сохраняем в историю
+                saveHistory(childText);
+                
+                // Добавляем ответ Люцика в историю диалога
+                conversationHistory.push({ role: "assistant", content: data.story });
+                
+                // Обновляем статистику страхов
+                updateFearStats(document.getElementById('child-fear').value);
+                
+                // Воспроизводим аудио от Edge TTS (если есть)
+                if (data.audio && data.hasAudio !== false) {
+                    const audio = new Audio(`data:audio/mp3;base64,${data.audio}`);
+                    audio.play().catch(e => {
+                        // Если не удалось воспроизвести — используем системный голос
+                        console.log('Edge TTS failed, fallback to system voice');
+                        speak(data.story);
+                    });
+                } else {
+                    // Если аудио нет — используем системный голос
+                    speak(data.story);
+                }
+                
+            } catch (error) {
+                storyBox.classList.remove('loading');
+                storyBox.innerHTML = "🦁 Мур-р-р, давай ещё раз? Я не расслышал!";
+                console.error(error);
+            }
+        }
+
+        // Микрофон
         const btn = document.getElementById('btn');
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
@@ -399,13 +408,11 @@
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.ready.then(registration => {
-                // Проверка обновлений каждые 6 часов
                 setInterval(() => {
                     registration.update();
                     console.log('🔄 Проверка обновлений...');
                 }, 6 * 60 * 60 * 1000);
                 
-                // Автоматическое обновление при обнаружении новой версии
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
                     newWorker.addEventListener('statechange', () => {
@@ -419,7 +426,6 @@
                 });
             });
             
-            // Принудительная перезагрузка при смене Service Worker
             let refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (refreshing) return;
