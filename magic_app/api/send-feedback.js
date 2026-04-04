@@ -1,3 +1,4 @@
+// api/send-feedback.js — отправка отзывов в Telegram
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Метод не поддерживается' });
@@ -8,6 +9,10 @@ export default async function handler(req, res) {
 
         const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
         const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+        if (!BOT_TOKEN || !CHAT_ID) {
+            return res.status(500).json({ error: 'Telegram не настроен' });
+        }
 
         const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
         const message = `🦁 <b>Новый отзыв о Люцике!</b>\n\n⭐ Оценка: ${stars} (${rating}/5)\n👶 Ребёнок: ${childName || 'не указан'} (${childAge || '?'} лет)\n😨 Страх: ${fear || 'не указан'}\n⏱️ Часов в приложении: ${totalHours || 0}\n\n💬 <b>Комментарий:</b>\n${comment || '—'}\n\n📅 ${new Date().toLocaleString()}`;
