@@ -180,14 +180,18 @@
         
         <h3 style="color:#fdbb2d; margin-top:20px;">📊 Дневник страхов</h3>
         <div class="parent-card" id="stats-card">
-            <div class="stats">Страх темноты: <span id="stat-dark">0</span></div>
+            <div class="stats">😨 Страх темноты: <span id="stat-dark">0</span></div>
             <div class="fear-bar"><div class="fear-fill" id="dark-fill"></div></div>
-            <div class="stats">Страх врачей: <span id="stat-doc">0</span></div>
+            <div class="stats">🏥 Страх врачей: <span id="stat-doc">0</span></div>
             <div class="fear-bar"><div class="fear-fill" id="doc-fill"></div></div>
-            <div class="stats">Страх одиночества: <span id="stat-alone">0</span></div>
+            <div class="stats">🧸 Страх одиночества: <span id="stat-alone">0</span></div>
             <div class="fear-bar"><div class="fear-fill" id="alone-fill"></div></div>
-            <div class="stats">Страх нового: <span id="stat-new">0</span></div>
+            <div class="stats">🌟 Страх нового: <span id="stat-new">0</span></div>
             <div class="fear-bar"><div class="fear-fill" id="new-fill"></div></div>
+            <div class="stats">💔 Страх обиды: <span id="stat-offend">0</span></div>
+            <div class="fear-bar"><div class="fear-fill" id="offend-fill"></div></div>
+            <div class="stats">🐕 Страх животных: <span id="stat-animal">0</span></div>
+            <div class="fear-bar"><div class="fear-fill" id="animal-fill"></div></div>
         </div>
         
         <h3 style="color:#fdbb2d; margin-top:20px;">📒 Дневник разговоров</h3>
@@ -239,7 +243,7 @@
         let conversationHistory = [];
         let purrAudio = null;
         let currentBg = localStorage.getItem('customBg') || null;
-        let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0}');
+        let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
         
         // PWA установка
         let deferredPrompt = null;
@@ -300,15 +304,20 @@
         }
         
         function updateStatsUI() {
-            document.getElementById('stat-dark').innerText = fearStats['темноты'];
-            document.getElementById('stat-doc').innerText = fearStats['врачей'];
-            document.getElementById('stat-alone').innerText = fearStats['одиночества'];
-            document.getElementById('stat-new').innerText = fearStats['нового'];
+            document.getElementById('stat-dark').innerText = fearStats['темноты'] || 0;
+            document.getElementById('stat-doc').innerText = fearStats['врачей'] || 0;
+            document.getElementById('stat-alone').innerText = fearStats['одиночества'] || 0;
+            document.getElementById('stat-new').innerText = fearStats['нового'] || 0;
+            document.getElementById('stat-offend').innerText = fearStats['обиды'] || 0;
+            document.getElementById('stat-animal').innerText = fearStats['животных'] || 0;
+            
             const maxStat = Math.max(...Object.values(fearStats), 1);
-            document.getElementById('dark-fill').style.width = (fearStats['темноты'] / maxStat * 100) + '%';
-            document.getElementById('doc-fill').style.width = (fearStats['врачей'] / maxStat * 100) + '%';
-            document.getElementById('alone-fill').style.width = (fearStats['одиночества'] / maxStat * 100) + '%';
-            document.getElementById('new-fill').style.width = (fearStats['нового'] / maxStat * 100) + '%';
+            document.getElementById('dark-fill').style.width = ((fearStats['темноты'] || 0) / maxStat * 100) + '%';
+            document.getElementById('doc-fill').style.width = ((fearStats['врачей'] || 0) / maxStat * 100) + '%';
+            document.getElementById('alone-fill').style.width = ((fearStats['одиночества'] || 0) / maxStat * 100) + '%';
+            document.getElementById('new-fill').style.width = ((fearStats['нового'] || 0) / maxStat * 100) + '%';
+            document.getElementById('offend-fill').style.width = ((fearStats['обиды'] || 0) / maxStat * 100) + '%';
+            document.getElementById('animal-fill').style.width = ((fearStats['животных'] || 0) / maxStat * 100) + '%';
         }
         
         function selectCharacter(char) {
@@ -385,7 +394,6 @@
             }
         }
         
-        // Системный голос (запасной)
         function speak(text) {
             const msg = new SpeechSynthesisUtterance(text);
             msg.lang = 'ru-RU';
@@ -393,10 +401,14 @@
             const avatar = document.getElementById('main-avatar');
             msg.onstart = () => avatar.classList.add('talking');
             msg.onend = () => avatar.classList.remove('talking');
+            
+            const voices = window.speechSynthesis.getVoices();
+            const preferred = voices.find(v => v.lang === 'ru-RU' && (v.name.includes('Google') || v.name.includes('Microsoft')));
+            if (preferred) msg.voice = preferred;
+            
             window.speechSynthesis.speak(msg);
         }
 
-        // Основная функция с Edge TTS
         async function processStory(childText) {
             const storyBox = document.getElementById('story-box');
             
@@ -427,28 +439,47 @@
                 saveHistory(childText);
                 conversationHistory.push({ role: "assistant", content: data.story });
                 
+                // ========== ОПРЕДЕЛЕНИЕ СТРАХОВ ПО ТРИГГЕРАМ ==========
                 const text = childText.toLowerCase();
-                if (text.includes('темнот') || text.includes('ночь')) updateFearStats('темноты');
-                else if (text.includes('врач') || text.includes('укол')) updateFearStats('врачей');
-                else if (text.includes('один')) updateFearStats('одиночества');
-                else if (text.includes('новое')) updateFearStats('нового');
+                
+                const fears = {
+                    'темноты': ['темнот', 'боюсь темнот', 'страшно темно', 'ночь', 'не вижу', 'выключили свет'],
+                    'врачей': ['врач', 'укол', 'больница', 'доктор', 'медсестра', 'прививк', 'стоматолог', 'зубной'],
+                    'одиночества': ['один', 'одна', 'никого нет', 'бросили', 'ушел', 'покинули', 'все ушли'],
+                    'обиды': ['обидели', 'обидно', 'ругаются', 'ссорятся', 'кричат', 'не слушаются', 'обижают'],
+                    'нового': ['новое', 'первый раз', 'незнаком', 'не умею', 'боюсь пробовать', 'страшно идти'],
+                    'животных': ['собака', 'собаку', 'укусит', 'боюсь соба', 'кошка', 'зверь', 'животное']
+                };
+                
+                let fearDetected = null;
+                for (const [fear, triggers] of Object.entries(fears)) {
+                    if (triggers.some(trigger => text.includes(trigger))) {
+                        fearDetected = fear;
+                        break;
+                    }
+                }
+                
+                const generalFearWords = ['боюсь', 'страшно', 'пугаю', 'испугал', 'тревожно', 'волнуюсь', 'испугался'];
+                if (!fearDetected && generalFearWords.some(word => text.includes(word))) {
+                    fearDetected = 'темноты';
+                }
+                
+                if (fearDetected) {
+                    updateFearStats(fearDetected);
+                    console.log(`📊 Зафиксирован страх: ${fearDetected} из фразы: "${childText}"`);
+                }
+                // =====================================================
                 
                 if (!config.isPremium) {
                     config.dailyCount++;
                     localStorage.setItem('dailyCount', config.dailyCount);
                 }
                 
-                // Воспроизводим аудио от Edge TTS
-                if (data.audio) {
-                    const audio = new Audio(`data:audio/mp3;base64,${data.audio}`);
-                    audio.play().catch(() => speak(data.story));
-                } else {
-                    speak(data.story);
-                }
+                speak(data.story);
                 
             } catch (error) {
                 storyBox.classList.remove('loading');
-                storyBox.innerHTML = "🦁 Мур-р-р, давай ещё раз? Я не расслышал!";
+                storyBox.innerHTML = "🦁 Давай ещё раз? Я не расслышал!";
                 console.error(error);
             }
         }
@@ -466,7 +497,7 @@
                 rec.start();
                 document.getElementById('btn').style.transform = "scale(1.2)";
                 document.getElementById('btn').style.background = "#4CAF50";
-                document.getElementById('story-box').innerHTML = "🎤 Люцик слушает... Мур-р-р";
+                document.getElementById('story-box').innerHTML = "🎤 Люцик слушает...";
                 document.getElementById('main-avatar').classList.add('listening');
                 startPurr();
             };
@@ -560,7 +591,7 @@
 
         function initApp() {
             document.getElementById('disp-name').innerText = config.name;
-            document.getElementById('story-box').innerHTML = "Мур-р-р! Привет, " + config.name + "! Я Люцик. Расскажи, как у тебя дела? 🦁";
+            document.getElementById('story-box').innerHTML = "Привет, " + config.name + "! Я Люцик. Расскажи, как у тебя дела? 🦁";
             updateHistory();
             conversationHistory = [];
         }
