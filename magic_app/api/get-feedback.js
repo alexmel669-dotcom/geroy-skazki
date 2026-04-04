@@ -1,4 +1,4 @@
-// api/get-feedback.js — временная заглушка
+// api/get-feedback.js — заглушка (база не используется)
 export default async function handler(req, res) {
     res.status(200).json({
         feedback: [],
