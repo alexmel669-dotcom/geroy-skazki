@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель — Отзывы Люцика</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #1a2a6c; color: white; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #fdbb2d; }
+        table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.1); border-radius: 15px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        th { background: rgba(0,210,255,0.3); color: #fdbb2d; }
+        .stats { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; margin-bottom: 20px; }
+        .login-form { max-width: 300px; margin: 100px auto; background: rgba(255,255,255,0.1); padding: 30px; border-radius: 20px; text-align: center; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 10px; border: none; }
+        button { background: #00d2ff; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="login" class="login-form">
+        <h2>🔒 Вход в админ-панель</h2>
+        <input type="password" id="admin-password" placeholder="Пароль">
+        <button onclick="checkPassword()">Войти</button>
+    </div>
+
+    <div id="admin-panel" style="display: none;">
+        <div class="container">
+            <h1>🦁 Отзывы о Люцике</h1>
+            <div class="stats" id="stats">Загрузка...</div>
+            <div style="margin-bottom: 10px;">
+                <input type="text" id="search" placeholder="🔍 Поиск" style="width: 300px; display: inline-block;">
+                <button onclick="loadFeedback()">Поиск</button>
+                <button onclick="exportToCSV()">📥 Экспорт</button>
+            </div>
+            <table>
+                <thead><tr><th>Дата</th><th>Оценка</th><th>Ребёнок</th><th>Возраст</th><th>Страх</th><th>Часов</th><th>Комментарий</th></tr></thead>
+                <tbody id="feedback-table"><tr><td colspan="7">Загрузка...</td></tr>
+            </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const ADMIN_PASSWORD = 'admin123';
+        function checkPassword() {
+            if (document.getElementById('admin-password').value === ADMIN_PASSWORD) {
+                document.getElementById('login').style.display = 'none';
+                document.getElementById('admin-panel').style.display = 'block';
+                loadFeedback();
+            } else { alert('Неверный пароль!'); }
+        }
+        async function loadFeedback() {
+            const res = await fetch('/api/get-feedback');
+            const data = await res.json();
+            document.getElementById('stats').innerHTML = `📊 Всего: ${data.stats.total} | ⭐ ${data.stats.avgRating} | 👶 ${data.stats.avgAge} лет | 😨 ${data.stats.topFear}`;
+            document.getElementById('feedback-table').innerHTML = data.feedback.map(f => `
+                <tr>
+                    <td>${new Date(f.created_at).toLocaleDateString()}</td>
+                    <td>${'★'.repeat(f.rating)}${'☆'.repeat(5-f.rating)}</td>
+                    <td>${f.child_name || '—'}</td>
+                    <td>${f.child_age || '—'}</td>
+                    <td>${f.fear || '—'}</td>
+                    <td>${f.total_hours || '—'}</td>
+                    <td>${f.comment || '—'}</td>
+                </tr>
+            `).join('');
+        }
+        async function exportToCSV() {
+            const res = await fetch('/api/get-feedback');
+            const data = await res.json();
+            let csv = 'Дата,Оценка,Ребёнок,Возраст,Страх,Часов,Комментарий\n';
+            data.feedback.forEach(f => {
+                csv += `"${new Date(f.created_at).toLocaleDateString()}","${f.rating}","${f.child_name || ''}","${f.child_age || ''}","${f.fear || ''}","${f.total_hours || ''}","${f.comment || ''}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `lucik-feedback-${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
