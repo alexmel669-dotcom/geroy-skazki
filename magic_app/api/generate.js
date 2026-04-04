@@ -1,3 +1,4 @@
+// api/generate.js — без "мур-р-р" в ответах
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Метод не поддерживается' });
@@ -12,7 +13,7 @@ export default async function handler(req, res) {
             historyText += `${role}: ${msg.content}\n`;
         }
 
-        const systemPrompt = `Ты — Люцик, добрый волшебный лев. Ты друг ребёнка ${childName}. Будь добрым, поддерживай разговор. Если ребёнок говорит о страхе — сочини короткую сказку (3-5 предложений). Используй иногда "мур-р-р".`;
+        const systemPrompt = `Ты — Люцик, добрый волшебный лев. Ты друг ребёнка ${childName}. Будь добрым, поддерживай разговор. Если ребёнок говорит о страхе — сочини короткую сказку (3-5 предложений).`;
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
@@ -35,26 +36,17 @@ export default async function handler(req, res) {
         const data = await response.json();
         const story = data.choices[0].message.content;
 
-        const voiceName = 'ru-RU-SvetlanaNeural';
-        const ssml = `<speak version='1.0'><voice name='${voiceName}'><prosody rate='0.9'>${story}</prosody></voice></speak>`;
-
-        const audioResponse = await fetch('https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/ssml+xml',
-                'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3'
-            },
-            body: ssml
+        // Возвращаем только текст (голос системный)
+        res.status(200).json({ 
+            story: story,
+            audio: null
         });
-
-        let audioBase64 = null;
-        if (audioResponse.ok) {
-            const audioBuffer = await audioResponse.arrayBuffer();
-            audioBase64 = Buffer.from(audioBuffer).toString('base64');
-        }
-
-        res.status(200).json({ story, audio: audioBase64 });
+        
     } catch (error) {
-        res.status(500).json({ story: "🦁 Ошибка, давай ещё раз!" });
+        console.error('Ошибка:', error);
+        res.status(500).json({ 
+            story: "🦁 Давай ещё раз? Я не расслышал!",
+            audio: null
+        });
     }
 }
