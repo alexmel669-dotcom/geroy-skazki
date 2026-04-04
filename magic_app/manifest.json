@@ -1,14 +1,15 @@
 {
-  "name": "Герой Сказки",
-  "short_name": "Сказка",
-  "start_url": "index.html",
+  "name": "Люцик — Сказочный друг",
+  "short_name": "Люцик",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#1a2a6c",
   "theme_color": "#ff4081",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "avatar.png",
-      "sizes": "180x180",
+      "sizes": "192x192",
       "type": "image/png"
     },
     {
