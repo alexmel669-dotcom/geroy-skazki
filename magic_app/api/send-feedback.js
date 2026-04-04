@@ -1,6 +1,4 @@
-// api/send-feedback.js — только PostgreSQL, без Telegram
-import { sql } from '@vercel/postgres';
-
+// api/send-feedback.js
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Метод не поддерживается' });
@@ -9,10 +7,21 @@ export default async function handler(req, res) {
     try {
         const { rating, comment, childAge, childName, totalHours, fear } = req.body;
 
-        await sql`
-            INSERT INTO feedback (rating, comment, child_name, child_age, fear, total_hours)
-            VALUES (${rating}, ${comment}, ${childName}, ${childAge}, ${fear}, ${totalHours})
-        `;
+        const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+        const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+        const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+        const message = `🦁 <b>Новый отзыв о Люцике!</b>\n\n⭐ Оценка: ${stars} (${rating}/5)\n👶 Ребёнок: ${childName || 'не указан'} (${childAge || '?'} лет)\n😨 Страх: ${fear || 'не указан'}\n⏱️ Часов в приложении: ${totalHours || 0}\n\n💬 <b>Комментарий:</b>\n${comment || '—'}\n\n📅 ${new Date().toLocaleString()}`;
+
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: CHAT_ID,
+                text: message,
+                parse_mode: 'HTML'
+            })
+        });
 
         res.status(200).json({ success: true });
     } catch (error) {
