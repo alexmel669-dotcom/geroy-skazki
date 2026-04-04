@@ -1,4 +1,3 @@
-// api/send-feedback.js
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Метод не поддерживается' });
@@ -13,7 +12,7 @@ export default async function handler(req, res) {
         const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
         const message = `🦁 <b>Новый отзыв о Люцике!</b>\n\n⭐ Оценка: ${stars} (${rating}/5)\n👶 Ребёнок: ${childName || 'не указан'} (${childAge || '?'} лет)\n😨 Страх: ${fear || 'не указан'}\n⏱️ Часов в приложении: ${totalHours || 0}\n\n💬 <b>Комментарий:</b>\n${comment || '—'}\n\n📅 ${new Date().toLocaleString()}`;
 
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -22,6 +21,13 @@ export default async function handler(req, res) {
                 parse_mode: 'HTML'
             })
         });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+            console.error('Telegram error:', result);
+            return res.status(500).json({ error: 'Ошибка отправки в Telegram: ' + result.description });
+        }
 
         res.status(200).json({ success: true });
     } catch (error) {
