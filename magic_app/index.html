@@ -9,7 +9,6 @@
     <style>
         :root { --bg-day: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); --bg-night: linear-gradient(135deg, #0f0c29, #302b63, #24243e); }
         body { margin: 0; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--bg-day); background-size: 400% 400%; animation: gradientBG 15s ease infinite; font-family: 'Segoe UI', sans-serif; color: white; overflow: hidden; text-align: center; transition: all 0.5s ease; position: relative; }
-        body.rain { background: linear-gradient(135deg, #2c3e50, #3498db, #2c3e50); }
         @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         
         .weather-icon { position: fixed; top: 20px; left: 20px; font-size: 40px; z-index: 200; background: rgba(0,0,0,0.3); border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
@@ -17,7 +16,7 @@
         #welcome-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a2a6c; z-index: 1000; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
         .btn-magic { background: #00d2ff; color: white; border: none; padding: 15px 30px; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 18px; box-shadow: 0 5px 15px rgba(0,210,255,0.4); transition: transform 0.2s; }
         .btn-magic:active { transform: scale(0.95); }
-        input, select { width: 100%; max-width: 300px; padding: 15px; border-radius: 12px; border: none; background: rgba(255,255,255,0.1); color: white; margin-bottom: 15px; text-align: center; font-size: 16px; outline: none; box-sizing: border-box;}
+        input { width: 100%; max-width: 300px; padding: 15px; border-radius: 12px; border: none; background: rgba(255,255,255,0.1); color: white; margin-bottom: 15px; text-align: center; font-size: 16px; outline: none; box-sizing: border-box;}
 
         #parent-entry { position: fixed; top: 20px; right: 20px; font-size: 28px; cursor: pointer; opacity: 0.4; z-index: 100; transition: opacity 0.3s; }
         #parent-entry:hover { opacity: 1; }
@@ -53,7 +52,6 @@
         .footer { position: fixed; bottom: 10px; font-size: 11px; opacity: 0.5; }
         .footer a { color: white; text-decoration: none; }
         
-        /* Кнопка обратной связи */
         #feedback-fab {
             position: fixed;
             bottom: 20px;
@@ -71,7 +69,6 @@
         }
         #feedback-fab:active { transform: scale(0.9); }
         
-        /* Модальное окно опроса */
         .feedback-modal {
             display: none;
             position: fixed;
@@ -140,13 +137,7 @@
         
         <div class="parent-card">
             <label style="font-size:12px; opacity:0.6;">ИМЯ: <b id="disp-name">...</b></label>
-            <select id="child-fear" style="margin-top:10px; width:100%; max-width:none;">
-                <option value="темноты">Страх темноты</option>
-                <option value="врачей">Поход к врачу</option>
-                <option value="одиночества">Оставаться одному</option>
-                <option value="нового">Пробовать новое</option>
-            </select>
-            <button class="btn-magic" style="width:100%; margin-top:10px;" onclick="saveSettings()">СОХРАНИТЬ</button>
+            <button class="btn-magic" style="width:100%; margin-top:10px;" onclick="saveName()">СОХРАНИТЬ ИМЯ</button>
         </div>
         
         <div class="parent-card">
@@ -198,39 +189,30 @@
         <a href="privacy.html">Политика конфиденциальности</a>
     </div>
 
-    <!-- Кнопка обратной связи -->
     <button id="feedback-fab">💬</button>
 
-    <!-- Модальное окно опроса -->
     <div id="feedback-modal" class="feedback-modal">
         <div class="feedback-content">
             <h3 style="color: #fdbb2d;">🦁 Помоги Люцику стать лучше!</h3>
             <p style="font-size: 14px;">Ты пользуешься приложением уже несколько дней. Расскажи, что думаешь.</p>
-            
             <div class="stars" id="rating-stars">★☆☆☆☆</div>
-            
             <textarea id="feedback-comment" rows="3" placeholder="Что нравится? Что можно улучшить?"></textarea>
-            
             <button id="send-feedback" class="btn-magic" style="width: 100%;">Отправить 💌</button>
             <button onclick="closeFeedbackModal()" style="background: none; border: none; color: white; margin-top: 15px;">Напомнить позже</button>
-            
             <div id="feedback-status" style="font-size: 12px; margin-top: 10px;"></div>
         </div>
     </div>
 
     <script>
-        // ========== НАСТРОЙКИ ==========
         let config = {
             name: localStorage.getItem('childName'),
             pin: localStorage.getItem('parentPin'),
-            fear: localStorage.getItem('childFear') || 'темноты',
             character: localStorage.getItem('character') || 'lion',
             isPremium: localStorage.getItem('isPremium') === 'true',
             dailyCount: parseInt(localStorage.getItem('dailyCount')) || 0,
             lastReset: localStorage.getItem('lastReset') || ''
         };
         
-        // Сброс счётчика в новый день
         const today = new Date().toDateString();
         if (config.lastReset !== today) {
             config.dailyCount = 0;
@@ -244,7 +226,7 @@
         
         let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0}');
         
-        // ========== ТАЙМЕР ДЛЯ ОПРОСА (24 часа суммарного использования) ==========
+        // Таймер для опроса
         let totalTime = parseInt(localStorage.getItem('totalAppTime')) || 0;
         let lastActiveTime = parseInt(localStorage.getItem('lastActiveTime')) || Date.now();
         let feedbackShown = localStorage.getItem('feedbackShown') === 'true';
@@ -259,10 +241,7 @@
             lastActiveTime = now;
             localStorage.setItem('lastActiveTime', lastActiveTime);
             
-            const hours = Math.floor(totalTime / 3600);
-            console.log(`📊 Люциком пользуются: ${hours}ч ${Math.floor((totalTime % 3600) / 60)}м`);
-            
-            if (!feedbackShown && totalTime >= 3600) { // 1 час для теста, потом поменяй на 86400 (24 часа)
+            if (!feedbackShown && totalTime >= 3600) {
                 showFeedbackModal();
                 feedbackShown = true;
                 localStorage.setItem('feedbackShown', 'true');
@@ -272,7 +251,7 @@
         setInterval(updateAppTime, 60000);
         updateAppTime();
         
-        // ========== ФУНКЦИИ ОПРОСА ==========
+        // Опрос
         let currentRating = 0;
         
         function showFeedbackModal() {
@@ -283,22 +262,17 @@
             document.getElementById('feedback-modal').style.display = 'none';
         }
         
-        // Звёзды
         const starsDiv = document.getElementById('rating-stars');
         starsDiv.onclick = (e) => {
             const rect = starsDiv.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const starWidth = rect.width / 5;
             currentRating = Math.min(5, Math.max(1, Math.floor(clickX / starWidth) + 1));
-            
             let stars = '';
-            for (let i = 1; i <= 5; i++) {
-                stars += i <= currentRating ? '★' : '☆';
-            }
+            for (let i = 1; i <= 5; i++) stars += i <= currentRating ? '★' : '☆';
             starsDiv.innerHTML = stars;
         };
         
-        // Отправка отзыва
         document.getElementById('send-feedback').onclick = async () => {
             const status = document.getElementById('feedback-status');
             status.innerHTML = '🦁 Отправляю...';
@@ -312,30 +286,20 @@
                     childAge: localStorage.getItem('childAge') || 'не указан',
                     childName: localStorage.getItem('childName') || 'не указан',
                     totalHours: Math.floor(totalTime / 3600),
-                    fear: localStorage.getItem('childFear') || 'не указан'
+                    fear: 'определяется автоматически'
                 })
             });
             
             if (response.ok) {
-                status.innerHTML = '✅ Спасибо! Твоё мнение поможет Люцику стать лучше.';
-                setTimeout(() => {
-                    closeFeedbackModal();
-                    status.innerHTML = '';
-                    document.getElementById('feedback-comment').value = '';
-                    currentRating = 0;
-                    starsDiv.innerHTML = '★☆☆☆☆';
-                }, 2000);
+                status.innerHTML = '✅ Спасибо!';
+                setTimeout(() => { closeFeedbackModal(); status.innerHTML = ''; }, 2000);
             } else {
                 status.innerHTML = '❌ Ошибка. Попробуй позже.';
             }
         };
         
-        // Кнопка вызова опроса (ручной вызов)
-        document.getElementById('feedback-fab').onclick = () => {
-            showFeedbackModal();
-        };
+        document.getElementById('feedback-fab').onclick = () => showFeedbackModal();
         
-        // ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
         function updateFearStats(fear) {
             if (fearStats[fear] !== undefined) {
                 fearStats[fear]++;
@@ -407,9 +371,7 @@
         }
         
         function stopPurr() {
-            if (purrAudio) {
-                purrAudio.pause();
-            }
+            if (purrAudio) purrAudio.pause();
         }
         
         window.activatePromo = function() {
@@ -418,11 +380,21 @@
                 localStorage.setItem('isPremium', 'true');
                 config.isPremium = true;
                 document.getElementById('sub-status').innerHTML = '🌟 Премиум активен! Безлимит сказок';
-                alert('Подписка активирована! Теперь безлимит сказок.');
+                alert('Подписка активирована!');
             } else {
                 alert('Неверный промокод');
             }
         };
+        
+        function saveName() {
+            const newName = prompt('Введите имя ребёнка:', config.name);
+            if (newName) {
+                localStorage.setItem('childName', newName);
+                config.name = newName;
+                document.getElementById('disp-name').innerText = newName;
+                alert('Имя сохранено!');
+            }
+        }
 
         window.onload = () => {
             updateWeather();
@@ -446,7 +418,6 @@
 
         function initApp() {
             document.getElementById('disp-name').innerText = config.name;
-            document.getElementById('child-fear').value = config.fear;
             document.getElementById('story-box').innerHTML = "Мур-р-р! Привет, " + config.name + "! Я Люцик. Расскажи, как у тебя дела? 🦁";
             updateHistory();
             conversationHistory = [];
@@ -490,7 +461,6 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         childName: config.name,
-                        childFear: document.getElementById('child-fear').value,
                         userSpeech: childText,
                         history: conversationHistory.slice(-6)
                     })
@@ -503,7 +473,18 @@
                 
                 saveHistory(childText);
                 conversationHistory.push({ role: "assistant", content: data.story });
-                updateFearStats(document.getElementById('child-fear').value);
+                
+                // Определяем страх из речи ребёнка
+                const text = childText.toLowerCase();
+                if (text.includes('темнот') || text.includes('ночь') || text.includes('страшно')) {
+                    updateFearStats('темноты');
+                } else if (text.includes('врач') || text.includes('укол') || text.includes('больница')) {
+                    updateFearStats('врачей');
+                } else if (text.includes('один') || text.includes('одна')) {
+                    updateFearStats('одиночества');
+                } else if (text.includes('новое') || text.includes('пробовать')) {
+                    updateFearStats('нового');
+                }
                 
                 if (!config.isPremium) {
                     config.dailyCount++;
@@ -563,12 +544,6 @@
             if (n && a) { localStorage.setItem('childName', n); localStorage.setItem('childAge', a); location.reload(); }
         }
         
-        function saveSettings() {
-            localStorage.setItem('childFear', document.getElementById('child-fear').value);
-            alert("Настройки сохранены!");
-            location.reload();
-        }
-        
         function checkAccess() { document.getElementById('auth-modal').style.display = 'flex'; }
         function closeAuth() { document.getElementById('auth-modal').style.display = 'none'; }
         
@@ -598,7 +573,6 @@
         }
     </script>
     
-    <!-- Vercel Analytics -->
     <script>
         window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
     </script>
