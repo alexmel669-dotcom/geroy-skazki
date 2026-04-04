@@ -15,6 +15,11 @@
         .login-form { max-width: 300px; margin: 100px auto; background: rgba(255,255,255,0.1); padding: 30px; border-radius: 20px; text-align: center; }
         input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 10px; border: none; }
         button { background: #00d2ff; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; }
+        .rating-5 { color: #4CAF50; }
+        .rating-4 { color: #8BC34A; }
+        .rating-3 { color: #FFC107; }
+        .rating-2 { color: #FF9800; }
+        .rating-1 { color: #f44336; }
     </style>
 </head>
 <body>
@@ -29,50 +34,71 @@
             <h1>🦁 Отзывы о Люцике</h1>
             <div class="stats" id="stats">Загрузка...</div>
             <div style="margin-bottom: 10px;">
-                <input type="text" id="search" placeholder="🔍 Поиск" style="width: 300px; display: inline-block;">
+                <input type="text" id="search" placeholder="🔍 Поиск по имени или комментарию" style="width: 300px; display: inline-block;">
                 <button onclick="loadFeedback()">Поиск</button>
-                <button onclick="exportToCSV()">📥 Экспорт</button>
+                <button onclick="exportToCSV()">📥 Экспорт в CSV</button>
             </div>
             <table>
-                <thead><tr><th>Дата</th><th>Оценка</th><th>Ребёнок</th><th>Возраст</th><th>Страх</th><th>Часов</th><th>Комментарий</th></tr></thead>
-                <tbody id="feedback-table"><tr><td colspan="7">Загрузка...</td></tr>
-            </tbody>
+                <thead>
+                    <tr><th>Дата</th><th>Оценка</th><th>Ребёнок</th><th>Возраст</th><th>Страх</th><th>Часов</th><th>Комментарий</th></tr>
+                </thead>
+                <tbody id="feedback-table"><tr><td colspan="7">Загрузка...</td></tr></tbody>
             </table>
         </div>
     </div>
 
     <script>
         const ADMIN_PASSWORD = 'admin123';
+        
         function checkPassword() {
             if (document.getElementById('admin-password').value === ADMIN_PASSWORD) {
                 document.getElementById('login').style.display = 'none';
                 document.getElementById('admin-panel').style.display = 'block';
                 loadFeedback();
-            } else { alert('Неверный пароль!'); }
+            } else {
+                alert('Неверный пароль!');
+            }
         }
+        
         async function loadFeedback() {
-            const res = await fetch('/api/get-feedback');
-            const data = await res.json();
-            document.getElementById('stats').innerHTML = `📊 Всего: ${data.stats.total} | ⭐ ${data.stats.avgRating} | 👶 ${data.stats.avgAge} лет | 😨 ${data.stats.topFear}`;
+            const search = document.getElementById('search')?.value || '';
+            const response = await fetch(`/api/get-feedback?search=${encodeURIComponent(search)}`);
+            const data = await response.json();
+            
+            document.getElementById('stats').innerHTML = `
+                📊 Всего отзывов: ${data.stats.total} | 
+                ⭐ Средняя оценка: ${data.stats.avgRating} / 5 | 
+                👶 Средний возраст: ${data.stats.avgAge} лет | 
+                😨 Частый страх: ${data.stats.topFear}
+            `;
+            
+            if (data.feedback.length === 0) {
+                document.getElementById('feedback-table').innerHTML = '<tr><td colspan="7">Нет отзывов</td></tr>';
+                return;
+            }
+            
             document.getElementById('feedback-table').innerHTML = data.feedback.map(f => `
                 <tr>
                     <td>${new Date(f.created_at).toLocaleDateString()}</td>
-                    <td>${'★'.repeat(f.rating)}${'☆'.repeat(5-f.rating)}</td>
+                    <td class="rating-${f.rating}">${'★'.repeat(f.rating)}${'☆'.repeat(5-f.rating)}</td>
                     <td>${f.child_name || '—'}</td>
                     <td>${f.child_age || '—'}</td>
                     <td>${f.fear || '—'}</td>
                     <td>${f.total_hours || '—'}</td>
-                    <td>${f.comment || '—'}</td>
+                    <td style="max-width: 300px;">${f.comment || '—'}</td>
                 </tr>
             `).join('');
         }
+        
         async function exportToCSV() {
-            const res = await fetch('/api/get-feedback');
-            const data = await res.json();
+            const response = await fetch('/api/get-feedback?export=true');
+            const data = await response.json();
+            
             let csv = 'Дата,Оценка,Ребёнок,Возраст,Страх,Часов,Комментарий\n';
             data.feedback.forEach(f => {
                 csv += `"${new Date(f.created_at).toLocaleDateString()}","${f.rating}","${f.child_name || ''}","${f.child_age || ''}","${f.fear || ''}","${f.total_hours || ''}","${f.comment || ''}"\n`;
             });
+            
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -81,6 +107,11 @@
             a.click();
             URL.revokeObjectURL(url);
         }
+        
+        // Загрузка при нажатии Enter в поиске
+        document.getElementById('search')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') loadFeedback();
+        });
     </script>
 </body>
 </html>
