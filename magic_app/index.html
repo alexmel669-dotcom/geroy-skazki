@@ -69,7 +69,6 @@
         }
         #feedback-fab:active { transform: scale(0.9); }
         
-        /* Кнопка установки PWA */
         #install-pwa-btn {
             position: fixed;
             bottom: 90px;
@@ -86,7 +85,6 @@
             cursor: pointer;
             font-size: 14px;
         }
-        #install-pwa-btn:active { transform: scale(0.95); }
         
         .feedback-modal {
             display: none;
@@ -150,8 +148,7 @@
             ⚠️ <strong>Безопасность детей</strong><br>
             • Люцик не заменяет живого общения<br>
             • Не оставляйте ребёнка с телефоном надолго<br>
-            • При тревожных симптомах — обратитесь к психологу<br>
-            • Все диалоги хранятся в телефоне, мы их не видим
+            • Все диалоги хранятся в телефоне
         </div>
         
         <div class="parent-card">
@@ -175,21 +172,21 @@
         
         <div class="parent-card">
             <h3 style="color:#fdbb2d; margin:0 0 10px 0;">🌟 Люцик+</h3>
-            <div id="sub-status" style="margin-bottom: 10px;">⚡ Бесплатная версия: 5 сказок в день</div>
+            <div id="sub-status" style="margin-bottom: 10px;">⚡ Бесплатно: 5 сказок в день</div>
             <input type="text" id="promo-code" placeholder="Промокод" style="width: 60%; display: inline-block;">
             <button onclick="activatePromo()" style="width: 35%;">Активировать</button>
-            <div style="font-size: 12px; margin-top: 10px; opacity: 0.7;">Для теста: введите <strong>TEST2025</strong></div>
+            <div style="font-size: 12px; margin-top: 10px;">Для теста: <strong>TEST2025</strong></div>
         </div>
         
         <h3 style="color:#fdbb2d; margin-top:20px;">📊 Дневник страхов</h3>
         <div class="parent-card" id="stats-card">
-            <div class="stats">Страх темноты: <span id="stat-dark">0</span> раз</div>
+            <div class="stats">Страх темноты: <span id="stat-dark">0</span></div>
             <div class="fear-bar"><div class="fear-fill" id="dark-fill"></div></div>
-            <div class="stats">Страх врачей: <span id="stat-doc">0</span> раз</div>
+            <div class="stats">Страх врачей: <span id="stat-doc">0</span></div>
             <div class="fear-bar"><div class="fear-fill" id="doc-fill"></div></div>
-            <div class="stats">Страх одиночества: <span id="stat-alone">0</span> раз</div>
+            <div class="stats">Страх одиночества: <span id="stat-alone">0</span></div>
             <div class="fear-bar"><div class="fear-fill" id="alone-fill"></div></div>
-            <div class="stats">Страх нового: <span id="stat-new">0</span> раз</div>
+            <div class="stats">Страх нового: <span id="stat-new">0</span></div>
             <div class="fear-bar"><div class="fear-fill" id="new-fill"></div></div>
         </div>
         
@@ -214,9 +211,8 @@
     <div id="feedback-modal" class="feedback-modal">
         <div class="feedback-content">
             <h3 style="color: #fdbb2d;">🦁 Помоги Люцику стать лучше!</h3>
-            <p style="font-size: 14px;">Ты пользуешься приложением уже несколько дней. Расскажи, что думаешь.</p>
             <div class="stars" id="rating-stars">★☆☆☆☆</div>
-            <textarea id="feedback-comment" rows="3" placeholder="Что нравится? Что можно улучшить?"></textarea>
+            <textarea id="feedback-comment" rows="3" placeholder="Что нравится? Что улучшить?"></textarea>
             <button id="send-feedback" class="btn-magic" style="width: 100%;">Отправить 💌</button>
             <button onclick="closeFeedbackModal()" style="background: none; border: none; color: white; margin-top: 15px;">Напомнить позже</button>
             <div id="feedback-status" style="font-size: 12px; margin-top: 10px;"></div>
@@ -224,7 +220,6 @@
     </div>
 
     <script>
-        // ========== НАСТРОЙКИ ==========
         let config = {
             name: localStorage.getItem('childName'),
             pin: localStorage.getItem('parentPin'),
@@ -244,10 +239,34 @@
         let conversationHistory = [];
         let purrAudio = null;
         let currentBg = localStorage.getItem('customBg') || null;
-        
         let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0}');
         
-        // ========== ТАЙМЕР ДЛЯ ОПРОСА ==========
+        // PWA установка
+        let deferredPrompt = null;
+        const installBtn = document.getElementById('install-pwa-btn');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'block';
+        });
+        
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            installBtn.style.display = 'none';
+        });
+        
+        if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+            installBtn.textContent = '📱 Нажми "Поделиться" → "На экран Домой"';
+            installBtn.style.background = '#555';
+            installBtn.style.display = 'block';
+            installBtn.onclick = () => alert('Нажмите "Поделиться" → "На экран Домой"');
+        }
+        
+        // Таймер для опроса
         let totalTime = parseInt(localStorage.getItem('totalAppTime')) || 0;
         let lastActiveTime = parseInt(localStorage.getItem('lastActiveTime')) || Date.now();
         let feedbackShown = localStorage.getItem('feedbackShown') === 'true';
@@ -272,120 +291,6 @@
         setInterval(updateAppTime, 60000);
         updateAppTime();
         
-        // ========== ОПРОС ==========
-        let currentRating = 0;
-        
-        function showFeedbackModal() {
-            document.getElementById('feedback-modal').style.display = 'flex';
-        }
-        
-        function closeFeedbackModal() {
-            document.getElementById('feedback-modal').style.display = 'none';
-        }
-        
-        const starsDiv = document.getElementById('rating-stars');
-        if (starsDiv) {
-            starsDiv.onclick = (e) => {
-                const rect = starsDiv.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const starWidth = rect.width / 5;
-                currentRating = Math.min(5, Math.max(1, Math.floor(clickX / starWidth) + 1));
-                let stars = '';
-                for (let i = 1; i <= 5; i++) stars += i <= currentRating ? '★' : '☆';
-                starsDiv.innerHTML = stars;
-            };
-        }
-        
-        const sendBtn = document.getElementById('send-feedback');
-        if (sendBtn) {
-            sendBtn.onclick = async () => {
-                const status = document.getElementById('feedback-status');
-                status.innerHTML = '🦁 Отправляю...';
-                
-                const response = await fetch('/api/send-feedback', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        rating: currentRating,
-                        comment: document.getElementById('feedback-comment').value,
-                        childAge: localStorage.getItem('childAge') || 'не указан',
-                        childName: localStorage.getItem('childName') || 'не указан',
-                        totalHours: Math.floor(totalTime / 3600),
-                        fear: 'определяется автоматически'
-                    })
-                });
-                
-                if (response.ok) {
-                    status.innerHTML = '✅ Спасибо!';
-                    setTimeout(() => { closeFeedbackModal(); status.innerHTML = ''; }, 2000);
-                } else {
-                    status.innerHTML = '❌ Ошибка. Попробуй позже.';
-                }
-            };
-        }
-        
-        document.getElementById('feedback-fab').onclick = () => showFeedbackModal();
-        
-        // ========== PWA УСТАНОВКА ==========
-        let deferredPrompt = null;
-        const installBtn = document.getElementById('install-pwa-btn');
-        
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            if (installBtn) installBtn.style.display = 'block';
-        });
-        
-        if (installBtn) {
-            installBtn.addEventListener('click', async () => {
-                if (!deferredPrompt) return;
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                console.log(`Установка: ${outcome}`);
-                deferredPrompt = null;
-                installBtn.style.display = 'none';
-            });
-        }
-        
-        window.addEventListener('appinstalled', () => {
-            console.log('✅ PWA установлено!');
-            if (installBtn) installBtn.style.display = 'none';
-        });
-        
-        // Для iOS
-        if (/iphone|ipad|ipod/i.test(navigator.userAgent) && installBtn) {
-            installBtn.textContent = '📱 Нажми "Поделиться" → "На экран Домой"';
-            installBtn.style.background = '#555';
-            installBtn.style.display = 'block';
-            installBtn.onclick = () => {
-                alert('Нажмите "Поделиться" → "На экран Домой", чтобы установить Люцика');
-            };
-        }
-        
-        // ========== ГОЛОС (с выбором лучшего голоса) ==========
-        function speak(text) {
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = 'ru-RU';
-            msg.rate = 0.9;
-            msg.pitch = 1.0;
-            
-            const avatar = document.getElementById('main-avatar');
-            msg.onstart = () => avatar.classList.add('talking');
-            msg.onend = () => avatar.classList.remove('talking');
-            
-            const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => 
-                v.lang === 'ru-RU' && (v.name.includes('Google') || v.name.includes('Microsoft') || v.name.includes('Yandex'))
-            );
-            if (preferredVoice) msg.voice = preferredVoice;
-            
-            window.speechSynthesis.speak(msg);
-        }
-        
-        // Загружаем голоса при старте
-        window.speechSynthesis.getVoices();
-        
-        // ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
         function updateFearStats(fear) {
             if (fearStats[fear] !== undefined) {
                 fearStats[fear]++;
@@ -409,7 +314,6 @@
         function selectCharacter(char) {
             config.character = char;
             localStorage.setItem('character', char);
-            document.getElementById('main-avatar').style.backgroundImage = "url('avatar.png')";
             document.querySelectorAll('.character-option').forEach(el => el.classList.remove('selected'));
             document.querySelector(`.character-option.${char}`).classList.add('selected');
         }
@@ -436,11 +340,11 @@
         
         function updateWeather() {
             const hour = new Date().getHours();
-            const weatherIcon = document.getElementById('weather-icon');
-            if (hour >= 6 && hour < 12) weatherIcon.innerText = '🌤️';
-            else if (hour >= 12 && hour < 18) weatherIcon.innerText = '☀️';
-            else if (hour >= 18 && hour < 22) weatherIcon.innerText = '🌙';
-            else weatherIcon.innerText = '⭐';
+            const icon = document.getElementById('weather-icon');
+            if (hour >= 6 && hour < 12) icon.innerText = '🌤️';
+            else if (hour >= 12 && hour < 18) icon.innerText = '☀️';
+            else if (hour >= 18 && hour < 22) icon.innerText = '🌙';
+            else icon.innerText = '⭐';
         }
         
         function startPurr() {
@@ -451,9 +355,8 @@
             }
             purrAudio.currentTime = 0;
             purrAudio.play().catch(e => console.log('Audio error:', e));
-            const avatar = document.getElementById('main-avatar');
-            avatar.classList.add('vibrate');
-            setTimeout(() => avatar.classList.remove('vibrate'), 500);
+            document.getElementById('main-avatar').classList.add('vibrate');
+            setTimeout(() => document.getElementById('main-avatar').classList.remove('vibrate'), 500);
         }
         
         function stopPurr() {
@@ -481,7 +384,160 @@
                 alert('Имя сохранено!');
             }
         }
+        
+        // Системный голос (запасной)
+        function speak(text) {
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'ru-RU';
+            msg.rate = 0.9;
+            const avatar = document.getElementById('main-avatar');
+            msg.onstart = () => avatar.classList.add('talking');
+            msg.onend = () => avatar.classList.remove('talking');
+            window.speechSynthesis.speak(msg);
+        }
 
+        // Основная функция с Edge TTS
+        async function processStory(childText) {
+            const storyBox = document.getElementById('story-box');
+            
+            if (!config.isPremium && config.dailyCount >= 5) {
+                storyBox.innerHTML = "🦁 Люцик немного устал. Приходи завтра! А мама может активировать подписку в Штабе.";
+                return;
+            }
+            
+            storyBox.innerHTML = "🦁 Люцик думает...";
+            storyBox.classList.add('loading');
+            
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        childName: config.name,
+                        userSpeech: childText,
+                        history: conversationHistory.slice(-6)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                storyBox.classList.remove('loading');
+                storyBox.innerHTML = data.story;
+                
+                saveHistory(childText);
+                conversationHistory.push({ role: "assistant", content: data.story });
+                
+                const text = childText.toLowerCase();
+                if (text.includes('темнот') || text.includes('ночь')) updateFearStats('темноты');
+                else if (text.includes('врач') || text.includes('укол')) updateFearStats('врачей');
+                else if (text.includes('один')) updateFearStats('одиночества');
+                else if (text.includes('новое')) updateFearStats('нового');
+                
+                if (!config.isPremium) {
+                    config.dailyCount++;
+                    localStorage.setItem('dailyCount', config.dailyCount);
+                }
+                
+                // Воспроизводим аудио от Edge TTS
+                if (data.audio) {
+                    const audio = new Audio(`data:audio/mp3;base64,${data.audio}`);
+                    audio.play().catch(() => speak(data.story));
+                } else {
+                    speak(data.story);
+                }
+                
+            } catch (error) {
+                storyBox.classList.remove('loading');
+                storyBox.innerHTML = "🦁 Мур-р-р, давай ещё раз? Я не расслышал!";
+                console.error(error);
+            }
+        }
+
+        // Микрофон
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (SpeechRecognition) {
+            const rec = new SpeechRecognition();
+            rec.lang = 'ru-RU';
+            rec.interimResults = false;
+            rec.maxAlternatives = 1;
+            
+            document.getElementById('btn').onclick = () => {
+                rec.start();
+                document.getElementById('btn').style.transform = "scale(1.2)";
+                document.getElementById('btn').style.background = "#4CAF50";
+                document.getElementById('story-box').innerHTML = "🎤 Люцик слушает... Мур-р-р";
+                document.getElementById('main-avatar').classList.add('listening');
+                startPurr();
+            };
+            
+            rec.onresult = async (e) => {
+                document.getElementById('btn').style.transform = "scale(1)";
+                document.getElementById('btn').style.background = "#ff4081";
+                document.getElementById('main-avatar').classList.remove('listening');
+                stopPurr();
+                await processStory(e.results[0][0].transcript);
+            };
+            
+            rec.onerror = () => {
+                document.getElementById('btn').style.transform = "scale(1)";
+                document.getElementById('btn').style.background = "#ff4081";
+                document.getElementById('main-avatar').classList.remove('listening');
+                stopPurr();
+                document.getElementById('story-box').innerHTML = "🦁 Не расслышал, скажи ещё раз!";
+            };
+        } else {
+            document.getElementById('story-box').innerHTML = "Ваш браузер не поддерживает голосовой ввод";
+        }
+
+        // Отзывы
+        let currentRating = 0;
+        
+        function showFeedbackModal() {
+            document.getElementById('feedback-modal').style.display = 'flex';
+        }
+        
+        function closeFeedbackModal() {
+            document.getElementById('feedback-modal').style.display = 'none';
+        }
+        
+        document.getElementById('feedback-fab').onclick = showFeedbackModal;
+        
+        document.getElementById('rating-stars').onclick = (e) => {
+            const rect = e.target.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const starWidth = rect.width / 5;
+            currentRating = Math.min(5, Math.max(1, Math.floor(clickX / starWidth) + 1));
+            let stars = '';
+            for (let i = 1; i <= 5; i++) stars += i <= currentRating ? '★' : '☆';
+            document.getElementById('rating-stars').innerHTML = stars;
+        };
+        
+        document.getElementById('send-feedback').onclick = async () => {
+            const status = document.getElementById('feedback-status');
+            status.innerHTML = '🦁 Отправляю...';
+            
+            const response = await fetch('/api/send-feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    rating: currentRating,
+                    comment: document.getElementById('feedback-comment').value,
+                    childAge: localStorage.getItem('childAge') || 'не указан',
+                    childName: localStorage.getItem('childName') || 'не указан',
+                    totalHours: Math.floor(totalTime / 3600),
+                    fear: 'определяется автоматически'
+                })
+            });
+            
+            if (response.ok) {
+                status.innerHTML = '✅ Спасибо! Отзыв отправлен.';
+                setTimeout(() => { closeFeedbackModal(); status.innerHTML = ''; }, 2000);
+            } else {
+                status.innerHTML = '❌ Ошибка. Попробуй позже.';
+            }
+        };
+        
         window.onload = () => {
             updateWeather();
             setInterval(updateWeather, 60000);
@@ -520,108 +576,6 @@
             }
         }
 
-        // ========== ОСНОВНАЯ ЛОГИКА С УСКОРЕННЫМ ОТВЕТОМ ==========
-        let currentResponsePromise = null;
-        
-        async function processStory(childText) {
-            const storyBox = document.getElementById('story-box');
-            
-            if (!config.isPremium && config.dailyCount >= 5) {
-                storyBox.innerHTML = "🦁 Люцик немного устал. Приходи завтра! А мама может активировать подписку в Штабе.";
-                return;
-            }
-            
-            storyBox.innerHTML = "🦁 Люцик слушает...";
-            storyBox.classList.add('loading');
-            
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
-                
-                const response = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        childName: config.name,
-                        userSpeech: childText,
-                        history: conversationHistory.slice(-6)
-                    }),
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
-                const data = await response.json();
-                
-                storyBox.classList.remove('loading');
-                storyBox.innerHTML = data.story;
-                
-                saveHistory(childText);
-                conversationHistory.push({ role: "assistant", content: data.story });
-                
-                const text = childText.toLowerCase();
-                if (text.includes('темнот') || text.includes('ночь') || text.includes('страшно')) {
-                    updateFearStats('темноты');
-                } else if (text.includes('врач') || text.includes('укол') || text.includes('больница')) {
-                    updateFearStats('врачей');
-                } else if (text.includes('один') || text.includes('одна')) {
-                    updateFearStats('одиночества');
-                } else if (text.includes('новое') || text.includes('пробовать')) {
-                    updateFearStats('нового');
-                }
-                
-                if (!config.isPremium) {
-                    config.dailyCount++;
-                    localStorage.setItem('dailyCount', config.dailyCount);
-                }
-                
-                speak(data.story);
-                
-            } catch (error) {
-                storyBox.classList.remove('loading');
-                storyBox.innerHTML = "🦁 Мур-р-р, давай ещё раз? Я не расслышал!";
-                console.error(error);
-            }
-        }
-
-        // ========== МИКРОФОН ==========
-        const btn = document.getElementById('btn');
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        
-        if (SpeechRecognition) {
-            const rec = new SpeechRecognition();
-            rec.lang = 'ru-RU';
-            rec.interimResults = false;
-            rec.maxAlternatives = 1;
-            
-            btn.onclick = () => {
-                rec.start();
-                btn.style.transform = "scale(1.2)";
-                btn.style.background = "#4CAF50";
-                document.getElementById('story-box').innerHTML = "🎤 Люцик слушает... Мур-р-р";
-                document.getElementById('main-avatar').classList.add('listening');
-                startPurr();
-            };
-            
-            rec.onresult = async (e) => {
-                btn.style.transform = "scale(1)";
-                btn.style.background = "#ff4081";
-                document.getElementById('main-avatar').classList.remove('listening');
-                stopPurr();
-                const text = e.results[0][0].transcript;
-                await processStory(text);
-            };
-            
-            rec.onerror = () => {
-                btn.style.transform = "scale(1)";
-                btn.style.background = "#ff4081";
-                document.getElementById('main-avatar').classList.remove('listening');
-                stopPurr();
-                document.getElementById('story-box').innerHTML = "🦁 Мур-р-р? Не расслышал, скажи ещё раз!";
-            };
-        } else {
-            document.getElementById('story-box').innerHTML = "Ваш браузер не поддерживает голосовой ввод";
-        }
-
         function finishReg() {
             const n = document.getElementById('reg-name').value;
             const a = document.getElementById('reg-age').value;
@@ -657,7 +611,6 @@
         }
     </script>
     
-    <!-- Vercel Analytics -->
     <script>
         window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
     </script>
