@@ -1,3 +1,4 @@
+// api/send-feedback.js — только PostgreSQL, без Telegram
 import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
