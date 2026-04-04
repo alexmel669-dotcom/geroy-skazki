@@ -16,7 +16,7 @@
         #welcome-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a2a6c; z-index: 1000; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
         .btn-magic { background: #00d2ff; color: white; border: none; padding: 15px 30px; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 18px; box-shadow: 0 5px 15px rgba(0,210,255,0.4); transition: transform 0.2s; }
         .btn-magic:active { transform: scale(0.95); }
-        input { width: 100%; max-width: 300px; padding: 15px; border-radius: 12px; border: none; background: rgba(255,255,255,0.1); color: white; margin-bottom: 15px; text-align: center; font-size: 16px; outline: none; box-sizing: border-box;}
+        input { width: 100%; max-width: 300px; padding: 15px; border-radius: 12px; border: none; background: rgba(255,255,255,0.1); color: white; margin-bottom: 15px; text-align: center; font-size: 16px; outline: none; box-sizing: border-box; }
 
         #parent-entry { position: fixed; top: 20px; right: 20px; font-size: 28px; cursor: pointer; opacity: 0.4; z-index: 100; transition: opacity 0.3s; }
         #parent-entry:hover { opacity: 1; }
@@ -68,6 +68,25 @@
             transition: transform 0.2s;
         }
         #feedback-fab:active { transform: scale(0.9); }
+        
+        /* Кнопка установки PWA */
+        #install-pwa-btn {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            background: #00d2ff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #install-pwa-btn:active { transform: scale(0.95); }
         
         .feedback-modal {
             display: none;
@@ -189,6 +208,7 @@
         <a href="privacy.html">Политика конфиденциальности</a>
     </div>
 
+    <button id="install-pwa-btn">📱 Установить приложение</button>
     <button id="feedback-fab">💬</button>
 
     <div id="feedback-modal" class="feedback-modal">
@@ -204,6 +224,7 @@
     </div>
 
     <script>
+        // ========== НАСТРОЙКИ ==========
         let config = {
             name: localStorage.getItem('childName'),
             pin: localStorage.getItem('parentPin'),
@@ -226,7 +247,7 @@
         
         let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0}');
         
-        // Таймер для опроса
+        // ========== ТАЙМЕР ДЛЯ ОПРОСА ==========
         let totalTime = parseInt(localStorage.getItem('totalAppTime')) || 0;
         let lastActiveTime = parseInt(localStorage.getItem('lastActiveTime')) || Date.now();
         let feedbackShown = localStorage.getItem('feedbackShown') === 'true';
@@ -251,7 +272,7 @@
         setInterval(updateAppTime, 60000);
         updateAppTime();
         
-        // Опрос
+        // ========== ОПРОС ==========
         let currentRating = 0;
         
         function showFeedbackModal() {
@@ -263,43 +284,108 @@
         }
         
         const starsDiv = document.getElementById('rating-stars');
-        starsDiv.onclick = (e) => {
-            const rect = starsDiv.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const starWidth = rect.width / 5;
-            currentRating = Math.min(5, Math.max(1, Math.floor(clickX / starWidth) + 1));
-            let stars = '';
-            for (let i = 1; i <= 5; i++) stars += i <= currentRating ? '★' : '☆';
-            starsDiv.innerHTML = stars;
-        };
+        if (starsDiv) {
+            starsDiv.onclick = (e) => {
+                const rect = starsDiv.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const starWidth = rect.width / 5;
+                currentRating = Math.min(5, Math.max(1, Math.floor(clickX / starWidth) + 1));
+                let stars = '';
+                for (let i = 1; i <= 5; i++) stars += i <= currentRating ? '★' : '☆';
+                starsDiv.innerHTML = stars;
+            };
+        }
         
-        document.getElementById('send-feedback').onclick = async () => {
-            const status = document.getElementById('feedback-status');
-            status.innerHTML = '🦁 Отправляю...';
-            
-            const response = await fetch('/api/send-feedback', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    rating: currentRating,
-                    comment: document.getElementById('feedback-comment').value,
-                    childAge: localStorage.getItem('childAge') || 'не указан',
-                    childName: localStorage.getItem('childName') || 'не указан',
-                    totalHours: Math.floor(totalTime / 3600),
-                    fear: 'определяется автоматически'
-                })
-            });
-            
-            if (response.ok) {
-                status.innerHTML = '✅ Спасибо!';
-                setTimeout(() => { closeFeedbackModal(); status.innerHTML = ''; }, 2000);
-            } else {
-                status.innerHTML = '❌ Ошибка. Попробуй позже.';
-            }
-        };
+        const sendBtn = document.getElementById('send-feedback');
+        if (sendBtn) {
+            sendBtn.onclick = async () => {
+                const status = document.getElementById('feedback-status');
+                status.innerHTML = '🦁 Отправляю...';
+                
+                const response = await fetch('/api/send-feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        rating: currentRating,
+                        comment: document.getElementById('feedback-comment').value,
+                        childAge: localStorage.getItem('childAge') || 'не указан',
+                        childName: localStorage.getItem('childName') || 'не указан',
+                        totalHours: Math.floor(totalTime / 3600),
+                        fear: 'определяется автоматически'
+                    })
+                });
+                
+                if (response.ok) {
+                    status.innerHTML = '✅ Спасибо!';
+                    setTimeout(() => { closeFeedbackModal(); status.innerHTML = ''; }, 2000);
+                } else {
+                    status.innerHTML = '❌ Ошибка. Попробуй позже.';
+                }
+            };
+        }
         
         document.getElementById('feedback-fab').onclick = () => showFeedbackModal();
         
+        // ========== PWA УСТАНОВКА ==========
+        let deferredPrompt = null;
+        const installBtn = document.getElementById('install-pwa-btn');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (installBtn) installBtn.style.display = 'block';
+        });
+        
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`Установка: ${outcome}`);
+                deferredPrompt = null;
+                installBtn.style.display = 'none';
+            });
+        }
+        
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA установлено!');
+            if (installBtn) installBtn.style.display = 'none';
+        });
+        
+        // Для iOS
+        if (/iphone|ipad|ipod/i.test(navigator.userAgent) && installBtn) {
+            installBtn.textContent = '📱 Нажми "Поделиться" → "На экран Домой"';
+            installBtn.style.background = '#555';
+            installBtn.style.display = 'block';
+            installBtn.onclick = () => {
+                alert('Нажмите "Поделиться" → "На экран Домой", чтобы установить Люцика');
+            };
+        }
+        
+        // ========== ГОЛОС (с выбором лучшего голоса) ==========
+        function speak(text) {
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'ru-RU';
+            msg.rate = 0.9;
+            msg.pitch = 1.0;
+            
+            const avatar = document.getElementById('main-avatar');
+            msg.onstart = () => avatar.classList.add('talking');
+            msg.onend = () => avatar.classList.remove('talking');
+            
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => 
+                v.lang === 'ru-RU' && (v.name.includes('Google') || v.name.includes('Microsoft') || v.name.includes('Yandex'))
+            );
+            if (preferredVoice) msg.voice = preferredVoice;
+            
+            window.speechSynthesis.speak(msg);
+        }
+        
+        // Загружаем голоса при старте
+        window.speechSynthesis.getVoices();
+        
+        // ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
         function updateFearStats(fear) {
             if (fearStats[fear] !== undefined) {
                 fearStats[fear]++;
@@ -434,16 +520,9 @@
             }
         }
 
-        function speak(text) {
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = 'ru-RU';
-            msg.rate = 0.9;
-            const avatar = document.getElementById('main-avatar');
-            msg.onstart = () => avatar.classList.add('talking');
-            msg.onend = () => avatar.classList.remove('talking');
-            window.speechSynthesis.speak(msg);
-        }
-
+        // ========== ОСНОВНАЯ ЛОГИКА С УСКОРЕННЫМ ОТВЕТОМ ==========
+        let currentResponsePromise = null;
+        
         async function processStory(childText) {
             const storyBox = document.getElementById('story-box');
             
@@ -452,10 +531,13 @@
                 return;
             }
             
-            storyBox.innerHTML = "Люцик думает";
+            storyBox.innerHTML = "🦁 Люцик слушает...";
             storyBox.classList.add('loading');
             
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -463,9 +545,11 @@
                         childName: config.name,
                         userSpeech: childText,
                         history: conversationHistory.slice(-6)
-                    })
+                    }),
+                    signal: controller.signal
                 });
                 
+                clearTimeout(timeoutId);
                 const data = await response.json();
                 
                 storyBox.classList.remove('loading');
@@ -474,7 +558,6 @@
                 saveHistory(childText);
                 conversationHistory.push({ role: "assistant", content: data.story });
                 
-                // Определяем страх из речи ребёнка
                 const text = childText.toLowerCase();
                 if (text.includes('темнот') || text.includes('ночь') || text.includes('страшно')) {
                     updateFearStats('темноты');
@@ -500,6 +583,7 @@
             }
         }
 
+        // ========== МИКРОФОН ==========
         const btn = document.getElementById('btn');
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
@@ -573,6 +657,7 @@
         }
     </script>
     
+    <!-- Vercel Analytics -->
     <script>
         window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
     </script>
