@@ -1,12 +1,31 @@
-// api/generate.js — Люцик с голосом от Microsoft Edge (бесплатно)
+// api/generate.js — Люцик с защитой и фильтрацией
 export default async function handler(req, res) {
-    // Разрешаем только POST-запросы
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Метод не поддерживается' });
     }
 
     try {
         const { childName, childFear, userSpeech, history = [] } = req.body;
+
+        // ========== БЕЗОПАСНОСТЬ ==========
+        // 1. Ограничение длины запроса
+        let safeSpeech = userSpeech;
+        if (safeSpeech.length > 500) {
+            safeSpeech = safeSpeech.slice(0, 500);
+        }
+        
+        // 2. Фильтрация плохих слов
+        const badWords = ['мать', 'сука', 'хрен', 'блин', 'фиг', 'черт', 'ебать', 'пизда', 'бля', 'хуй', 'пиздец', 'залупа', 'мудак', 'гандон'];
+        const containsBadWord = badWords.some(word => safeSpeech.toLowerCase().includes(word));
+        
+        if (containsBadWord) {
+            return res.status(200).json({ 
+                story: "🦁 Мур-р-р! Давай говорить добрые слова. Расскажи мне что-нибудь хорошее или как прошёл твой день!",
+                audio: null,
+                hasAudio: false
+            });
+        }
+        // ==================================
 
         // Формируем историю для контекста
         let historyText = '';
@@ -20,13 +39,13 @@ export default async function handler(req, res) {
 Твоя задача:
 1. Будь добрым, заботливым собеседником. Спрашивай, как дела, поддерживай разговор.
 2. Если ребёнок рассказывает о страхе (особенно про ${childFear}), предложи помощь и сочини короткую терапевтическую сказку (3-5 предложений), где герой побеждает этот страх.
-3. Если ребёнок просто делится новостями или говорит о чём-то весёлом — порадуйся вместе с ним, похвали, задай уточняющий вопрос.
-4. Твоя речь должна быть тёплой, немного игривой. Используй иногда "мур-р-р" или "мяу".
-5. Не будь роботом. Ты — друг.`;
+3. Если ребёнок просто делится новостями — порадуйся вместе с ним, похвали.
+4. Твоя речь должна быть тёплой, немного игривой. Используй иногда "мур-р-р".
+5. Не будь роботом. Ты — друг.
+6. НИКОГДА не используй плохие слова, не пугай ребёнка, не говори о насилии.`;
 
-        const userPrompt = `${childName} сказал: "${userSpeech}"`;
+        const userPrompt = `${childName} сказал: "${safeSpeech}"`;
 
-        // 1. Запрос к DeepSeek за сказкой
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -48,45 +67,11 @@ export default async function handler(req, res) {
         const data = await response.json();
         const story = data.choices[0].message.content;
 
-        // 2. Преобразуем текст в речь через бесплатный Edge TTS
-        // Выбираем красивый русский голос
-        const voiceName = 'ru-RU-SvetlanaNeural';  // мягкий женский голос
-        // Альтернативные голоса: 
-        // 'ru-RU-DariyaNeural' — энергичный женский
-        // 'ru-RU-DmitryNeural' — спокойный мужской
-        
-        const ttsUrl = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list';
-        
-        // Формируем SSML-запрос
-        const ssml = `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ru-RU'>
-                        <voice name='${voiceName}'>
-                            <prosody rate='0.9' pitch='1.0'>
-                                ${story}
-                            </prosody>
-                        </voice>
-                      </speak>`;
-        
-        const audioResponse = await fetch('https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/ssml+xml',
-                'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            body: ssml
-        });
-        
-        let audioBase64 = null;
-        if (audioResponse.ok) {
-            const audioBuffer = await audioResponse.arrayBuffer();
-            audioBase64 = Buffer.from(audioBuffer).toString('base64');
-        }
-
-        // Возвращаем и текст, и аудио
+        // Возвращаем только текст (аудио = null, используем системный голос)
         res.status(200).json({ 
             story: story,
-            audio: audioBase64,
-            hasAudio: !!audioBase64
+            audio: null,
+            hasAudio: false
         });
         
     } catch (error) {
