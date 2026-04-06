@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Люцик — Сказочный друг</title>
+    <title>Герой Сказок — Виртуальный друг с ИИ</title>
     <link rel="icon" href="avatar.png" type="image/png">
     <link rel="manifest" href="manifest.json">
     <style>
@@ -31,7 +31,7 @@
         .character-option.lion { background-image: url('avatar.png'); }
         
         .avatar-container { position: relative; margin-bottom: 25px; z-index: 10; }
-        .avatar { width: 190px; height: 190px; border-radius: 50%; background-size: cover; background-position: center; border: 5px solid rgba(255, 255, 255, 0.3); transition: all 0.2s ease; }
+        .avatar { width: 190px; height: 190px; border-radius: 50%; background-size: cover; background-position: center; border: 5px solid rgba(255, 255, 255, 0.3); transition: all 0.2s ease; cursor: pointer; }
         .avatar.talking { animation: speak-pulse 0.5s ease-in-out infinite; border-color: #00d2ff; box-shadow: 0 0 30px rgba(0,210,255,0.6); }
         .avatar.listening { animation: listen-pulse 1s ease-in-out infinite; border-color: #4CAF50; box-shadow: 0 0 30px rgba(76,175,80,0.6); filter: brightness(1.1); }
         .avatar.vibrate { animation: vibrate 0.2s ease-in-out infinite; }
@@ -40,7 +40,7 @@
         @keyframes vibrate { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
         
         #story-box { width: 85%; max-width: 480px; background: rgba(255,255,255,0.12); padding: 30px; border-radius: 25px; backdrop-filter: blur(20px); min-height: 60px; font-size: 16px; line-height: 1.4; }
-        .history-item { font-size: 13px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #00d2ff; }
+        .history-item { font-size: 13px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #00d2ff; text-align: left; }
         .loading { opacity: 0.7; }
         .loading::after { content: " ✨"; animation: dots 1s steps(5, end) infinite; }
         @keyframes dots { 0%, 20% { content: " ✨"; } 40% { content: " ✨✨"; } 60% { content: " ✨✨✨"; } 80%, 100% { content: " ✨✨✨✨"; } }
@@ -119,6 +119,24 @@
             margin: 10px 0;
             font-family: inherit;
         }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .action-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            border-radius: 50%;
+            font-size: 32px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .action-btn:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
@@ -171,7 +189,7 @@
         </div>
         
         <div class="parent-card">
-            <h3 style="color:#fdbb2d; margin:0 0 10px 0;">🌟 Люцик+</h3>
+            <h3 style="color:#fdbb2d; margin:0 0 10px 0;">🌟 Герой+</h3>
             <div id="sub-status" style="margin-bottom: 10px;">⚡ Бесплатно: 5 сказок в день</div>
             <input type="text" id="promo-code" placeholder="Промокод" style="width: 60%; display: inline-block;">
             <button onclick="activatePromo()" style="width: 35%;">Активировать</button>
@@ -202,7 +220,12 @@
     <div class="avatar-container">
         <div id="main-avatar" class="avatar" style="background-image: url('avatar.png');"></div>
     </div>
-    <button id="btn" style="width:80px; height:80px; background:#ff4081; border:none; border-radius:50%; font-size:35px; color:white; cursor:pointer; margin-bottom:20px; transition: 0.3s;">🎤</button>
+    
+    <div class="action-buttons">
+        <button id="btn" class="action-btn">🎤</button>
+        <button id="parent-btn" class="action-btn">👨‍👩‍👧</button>
+    </div>
+    
     <div id="story-box">Загрузка магии...</div>
     
     <div class="footer">
@@ -214,7 +237,7 @@
 
     <div id="feedback-modal" class="feedback-modal">
         <div class="feedback-content">
-            <h3 style="color: #fdbb2d;">🦁 Помоги Люцику стать лучше!</h3>
+            <h3 style="color: #fdbb2d;">🦁 Помоги Герою Сказок стать лучше!</h3>
             <div class="stars" id="rating-stars">★☆☆☆☆</div>
             <textarea id="feedback-comment" rows="3" placeholder="Что нравится? Что улучшить?"></textarea>
             <button id="send-feedback" class="btn-magic" style="width: 100%;">Отправить 💌</button>
@@ -436,12 +459,13 @@
                 storyBox.classList.remove('loading');
                 storyBox.innerHTML = data.story;
                 
-                saveHistory(childText);
+                // Сохраняем в историю И ребёнка, И ответ Люцика
+                saveHistory(`👶 ${config.name}: ${childText}`);
+                saveHistory(`🦁 Люцик: ${data.story}`);
+                
                 conversationHistory.push({ role: "assistant", content: data.story });
                 
-                // ========== ОПРЕДЕЛЕНИЕ СТРАХОВ ПО ТРИГГЕРАМ ==========
                 const text = childText.toLowerCase();
-                
                 const fears = {
                     'темноты': ['темнот', 'боюсь темнот', 'страшно темно', 'ночь', 'не вижу', 'выключили свет'],
                     'врачей': ['врач', 'укол', 'больница', 'доктор', 'медсестра', 'прививк', 'стоматолог', 'зубной'],
@@ -468,7 +492,6 @@
                     updateFearStats(fearDetected);
                     console.log(`📊 Зафиксирован страх: ${fearDetected} из фразы: "${childText}"`);
                 }
-                // =====================================================
                 
                 if (!config.isPremium) {
                     config.dailyCount++;
@@ -479,7 +502,7 @@
                 
             } catch (error) {
                 storyBox.classList.remove('loading');
-                storyBox.innerHTML = "🦁 Давай ещё раз? Я не расслышал!";
+                storyBox.innerHTML = "🦁 Не расслышал, скажи ещё раз!";
                 console.error(error);
             }
         }
@@ -490,7 +513,8 @@
         if (SpeechRecognition) {
             const rec = new SpeechRecognition();
             rec.lang = 'ru-RU';
-            rec.interimResults = false;
+            rec.continuous = true;
+            rec.interimResults = true;
             rec.maxAlternatives = 1;
             
             document.getElementById('btn').onclick = () => {
@@ -503,14 +527,23 @@
             };
             
             rec.onresult = async (e) => {
-                document.getElementById('btn').style.transform = "scale(1)";
-                document.getElementById('btn').style.background = "#ff4081";
-                document.getElementById('main-avatar').classList.remove('listening');
-                stopPurr();
-                await processStory(e.results[0][0].transcript);
+                let finalTranscript = '';
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    if (e.results[i].isFinal) {
+                        finalTranscript += e.results[i][0].transcript;
+                    }
+                }
+                if (finalTranscript) {
+                    document.getElementById('btn').style.transform = "scale(1)";
+                    document.getElementById('btn').style.background = "#ff4081";
+                    document.getElementById('main-avatar').classList.remove('listening');
+                    stopPurr();
+                    await processStory(finalTranscript);
+                }
             };
             
-            rec.onerror = () => {
+            rec.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
                 document.getElementById('btn').style.transform = "scale(1)";
                 document.getElementById('btn').style.background = "#ff4081";
                 document.getElementById('main-avatar').classList.remove('listening');
@@ -520,6 +553,11 @@
         } else {
             document.getElementById('story-box').innerHTML = "Ваш браузер не поддерживает голосовой ввод";
         }
+
+        // Кнопка Штаба
+        document.getElementById('parent-btn').onclick = () => {
+            checkAccess();
+        };
 
         // Отзывы
         let currentRating = 0;
@@ -591,7 +629,7 @@
 
         function initApp() {
             document.getElementById('disp-name').innerText = config.name;
-            document.getElementById('story-box').innerHTML = "Привет, " + config.name + "! Я Люцик. Расскажи, как у тебя дела? 🦁";
+            document.getElementById('story-box').innerHTML = "Мяу! Привет, " + config.name + "! Я Люцик. Расскажи, как у тебя дела? 🐱";
             updateHistory();
             conversationHistory = [];
         }
@@ -628,7 +666,7 @@
         function saveHistory(t) {
             let h = JSON.parse(localStorage.getItem('storyHistory') || '[]');
             h.unshift(new Date().toLocaleTimeString() + ": " + t);
-            localStorage.setItem('storyHistory', JSON.stringify(h.slice(0, 10)));
+            localStorage.setItem('storyHistory', JSON.stringify(h.slice(0, 20)));
             updateHistory();
         }
         
@@ -636,6 +674,16 @@
             const h = JSON.parse(localStorage.getItem('storyHistory') || '[]');
             document.getElementById('history-list').innerHTML = h.map(i => `<div class="history-item">${i}</div>`).join('') || "Пока тишина...";
         }
+        
+        // Анимация поглаживания по аватару
+        document.getElementById('main-avatar').addEventListener('click', () => {
+            const avatar = document.getElementById('main-avatar');
+            avatar.classList.add('vibrate');
+            setTimeout(() => avatar.classList.remove('vibrate'), 500);
+            startPurr();
+            // Небольшое повышение настроения (если добавим шкалы)
+            console.log('🐱 Люцик поглажен!');
+        });
         
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error:', err));
