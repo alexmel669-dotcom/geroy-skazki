@@ -49,7 +49,7 @@
         .fear-bar { height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; margin-top: 5px; overflow: hidden; }
         .fear-fill { height: 100%; width: 0%; background: #fdbb2d; transition: width 0.5s; }
         
-        .footer { position: fixed; bottom: 10px; font-size: 11px; opacity: 0.5; }
+        .footer { position: fixed; bottom: 10px; font-size: 11px; opacity: 0.5; width: 100%; text-align: center; }
         .footer a { color: white; text-decoration: none; }
         
         #feedback-fab {
@@ -86,6 +86,23 @@
             font-size: 14px;
         }
         
+        #parent-tooltip {
+            position: fixed;
+            bottom: 120px;
+            right: 20px;
+            background: #00d2ff;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1001;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            max-width: 250px;
+            text-align: center;
+            display: none;
+        }
+        
         .feedback-modal {
             display: none;
             position: fixed;
@@ -95,7 +112,7 @@
             height: 100%;
             background: rgba(0,0,0,0.95);
             backdrop-filter: blur(15px);
-            z-index: 1001;
+            z-index: 1002;
             justify-content: center;
             align-items: center;
         }
@@ -122,7 +139,7 @@
         
         .action-buttons {
             display: flex;
-            gap: 15px;
+            gap: 20px;
             justify-content: center;
             margin-bottom: 20px;
         }
@@ -196,6 +213,12 @@
             <div style="font-size: 12px; margin-top: 10px;">Для теста: <strong>TEST2025</strong></div>
         </div>
         
+        <div class="parent-card">
+            <h3 style="color:#fdbb2d; margin:0 0 10px 0;">📱 Установить приложение</h3>
+            <p style="font-size: 12px;"><strong>Android:</strong> Chrome → три точки → «Установить приложение»</p>
+            <p style="font-size: 12px;"><strong>iPhone:</strong> Safari → «Поделиться» → «На экран Домой»</p>
+        </div>
+        
         <h3 style="color:#fdbb2d; margin-top:20px;">📊 Дневник страхов</h3>
         <div class="parent-card" id="stats-card">
             <div class="stats">😨 Страх темноты: <span id="stat-dark">0</span></div>
@@ -234,6 +257,10 @@
 
     <button id="install-pwa-btn">📱 Установить приложение</button>
     <button id="feedback-fab">💬</button>
+    <div id="parent-tooltip">
+        🔐 Нажми на шестерёнку ⚙️ или кнопку 👨‍👩‍👧, чтобы войти в Штаб Создателя
+        <button onclick="closeParentTooltip()" style="background: none; border: none; color: white; margin-left: 10px; font-size: 16px; cursor: pointer;">✖</button>
+    </div>
 
     <div id="feedback-modal" class="feedback-modal">
         <div class="feedback-content">
@@ -268,21 +295,35 @@
         let currentBg = localStorage.getItem('customBg') || null;
         let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
         
-        // PWA установка
+        // ========== PWA УСТАНОВКА ==========
         let deferredPrompt = null;
         const installBtn = document.getElementById('install-pwa-btn');
         
         window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('🦁 beforeinstallprompt сработал');
             e.preventDefault();
             deferredPrompt = e;
             installBtn.style.display = 'block';
         });
         
         installBtn.addEventListener('click', async () => {
-            if (!deferredPrompt) return;
+            if (!deferredPrompt) {
+                if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+                    alert('Нажмите "Поделиться" → "На экран Домой"');
+                } else {
+                    alert('Нажмите на три точки в браузере → "Установить приложение"');
+                }
+                return;
+            }
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
+            console.log(`✅ Результат установки: ${outcome}`);
             deferredPrompt = null;
+            installBtn.style.display = 'none';
+        });
+        
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA установлено!');
             installBtn.style.display = 'none';
         });
         
@@ -290,34 +331,27 @@
             installBtn.textContent = '📱 Нажми "Поделиться" → "На экран Домой"';
             installBtn.style.background = '#555';
             installBtn.style.display = 'block';
-            installBtn.onclick = () => alert('Нажмите "Поделиться" → "На экран Домой"');
+            installBtn.onclick = () => {
+                alert('Нажмите "Поделиться" → "На экран Домой", чтобы установить приложение');
+            };
         }
         
-        // Таймер для опроса
-        let totalTime = parseInt(localStorage.getItem('totalAppTime')) || 0;
-        let lastActiveTime = parseInt(localStorage.getItem('lastActiveTime')) || Date.now();
-        let feedbackShown = localStorage.getItem('feedbackShown') === 'true';
-        
-        function updateAppTime() {
-            const now = Date.now();
-            const delta = Math.floor((now - lastActiveTime) / 1000);
-            if (delta > 0 && delta < 600) {
-                totalTime += delta;
-                localStorage.setItem('totalAppTime', totalTime);
-            }
-            lastActiveTime = now;
-            localStorage.setItem('lastActiveTime', lastActiveTime);
-            
-            if (!feedbackShown && totalTime >= 3600) {
-                showFeedbackModal();
-                feedbackShown = true;
-                localStorage.setItem('feedbackShown', 'true');
+        // ========== ПОДСКАЗКА ДЛЯ РОДИТЕЛЕЙ ==========
+        function showParentTooltip() {
+            const tooltipShown = localStorage.getItem('parent_tooltip_shown');
+            if (!tooltipShown) {
+                setTimeout(() => {
+                    document.getElementById('parent-tooltip').style.display = 'block';
+                }, 2000);
             }
         }
         
-        setInterval(updateAppTime, 60000);
-        updateAppTime();
+        function closeParentTooltip() {
+            document.getElementById('parent-tooltip').style.display = 'none';
+            localStorage.setItem('parent_tooltip_shown', 'true');
+        }
         
+        // ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
         function updateFearStats(fear) {
             if (fearStats[fear] !== undefined) {
                 fearStats[fear]++;
@@ -432,6 +466,7 @@
             window.speechSynthesis.speak(msg);
         }
 
+        // ========== ОСНОВНАЯ ЛОГИКА ==========
         async function processStory(childText) {
             const storyBox = document.getElementById('story-box');
             
@@ -459,7 +494,6 @@
                 storyBox.classList.remove('loading');
                 storyBox.innerHTML = data.story;
                 
-                // Сохраняем в историю И ребёнка, И ответ Люцика
                 saveHistory(`👶 ${config.name}: ${childText}`);
                 saveHistory(`🦁 Люцик: ${data.story}`);
                 
@@ -507,7 +541,7 @@
             }
         }
 
-        // Микрофон
+        // ========== МИКРОФОН ==========
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
         if (SpeechRecognition) {
@@ -559,7 +593,15 @@
             checkAccess();
         };
 
-        // Отзывы
+        // Поглаживание по аватару
+        document.getElementById('main-avatar').addEventListener('click', () => {
+            const avatar = document.getElementById('main-avatar');
+            avatar.classList.add('vibrate');
+            setTimeout(() => avatar.classList.remove('vibrate'), 500);
+            startPurr();
+        });
+
+        // ========== ОТЗЫВЫ ==========
         let currentRating = 0;
         
         function showFeedbackModal() {
@@ -607,6 +649,32 @@
             }
         };
         
+        // ========== ТАЙМЕР ДЛЯ ОПРОСА ==========
+        let totalTime = parseInt(localStorage.getItem('totalAppTime')) || 0;
+        let lastActiveTime = parseInt(localStorage.getItem('lastActiveTime')) || Date.now();
+        let feedbackShown = localStorage.getItem('feedbackShown') === 'true';
+        
+        function updateAppTime() {
+            const now = Date.now();
+            const delta = Math.floor((now - lastActiveTime) / 1000);
+            if (delta > 0 && delta < 600) {
+                totalTime += delta;
+                localStorage.setItem('totalAppTime', totalTime);
+            }
+            lastActiveTime = now;
+            localStorage.setItem('lastActiveTime', lastActiveTime);
+            
+            if (!feedbackShown && totalTime >= 3600) {
+                showFeedbackModal();
+                feedbackShown = true;
+                localStorage.setItem('feedbackShown', 'true');
+            }
+        }
+        
+        setInterval(updateAppTime, 60000);
+        updateAppTime();
+        
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
         window.onload = () => {
             updateWeather();
             setInterval(updateWeather, 60000);
@@ -625,6 +693,7 @@
             if (config.isPremium) {
                 document.getElementById('sub-status').innerHTML = '🌟 Премиум активен! Безлимит сказок';
             }
+            showParentTooltip();
         };
 
         function initApp() {
@@ -675,18 +744,11 @@
             document.getElementById('history-list').innerHTML = h.map(i => `<div class="history-item">${i}</div>`).join('') || "Пока тишина...";
         }
         
-        // Анимация поглаживания по аватару
-        document.getElementById('main-avatar').addEventListener('click', () => {
-            const avatar = document.getElementById('main-avatar');
-            avatar.classList.add('vibrate');
-            setTimeout(() => avatar.classList.remove('vibrate'), 500);
-            startPurr();
-            // Небольшое повышение настроения (если добавим шкалы)
-            console.log('🐱 Люцик поглажен!');
-        });
-        
+        // Регистрация Service Worker
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error:', err));
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('✅ Service Worker зарегистрирован:', reg))
+                .catch(err => console.error('❌ Ошибка регистрации Service Worker:', err));
         }
     </script>
     
