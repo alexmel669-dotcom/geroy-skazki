@@ -13,22 +13,13 @@ export default async function handler(req, res) {
             historyText += `${role}: ${msg.content}\n`;
         }
 
-        // Проверка на зацикливание (3 одинаковых ответа подряд)
-        const lastTwo = history.slice(-2);
-        if (lastTwo.length === 2 && 
-            lastTwo[0].content === lastTwo[1].content &&
-            lastTwo[0].role === 'assistant') {
-            // Если зациклилось — сбрасываем историю
-            historyText = '';
-        }
-
         const systemPrompt = `Ты — Люцик, добрый волшебный кот. Ты друг ребёнка по имени ${childName}.
 
 ПРАВИЛА ОБЩЕНИЯ:
 1. Отвечай кратко и по делу. Не задавай много вопросов подряд.
 2. Если ребёнок рассказал о своей проблеме — предложи помощь или короткую сказку (3-5 предложений).
 3. Если ребёнок просто делится новостями — порадуйся вместе с ним и спроси что-то одно.
-4. НЕ будь навязчивым. Если ребёнок ответил односложно — не допытывайся.
+4. НЕ будь навязчивым. Если ребёнок ответил односложно — не допытывайсь.
 5. Используй добрый, спокойный тон.`;
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -44,7 +35,7 @@ export default async function handler(req, res) {
                     { role: 'user', content: historyText },
                     { role: 'user', content: `${childName} сказал: "${userSpeech}"` }
                 ],
-                temperature: 0.9,  // Увеличил для разнообразия (было 0.85)
+                temperature: 0.9,
                 max_tokens: 350
             })
         });
@@ -52,16 +43,9 @@ export default async function handler(req, res) {
         const data = await response.json();
         const story = data.choices[0].message.content;
 
-        res.status(200).json({ 
-            story: story,
-            audio: null
-        });
-        
+        res.status(200).json({ story, audio: null });
     } catch (error) {
         console.error('Ошибка:', error);
-        res.status(500).json({ 
-            story: "Мяу... Давай ещё раз? Я не расслышал!",
-            audio: null
-        });
+        res.status(500).json({ story: "Мяу... Давай ещё раз? Я не расслышал!", audio: null });
     }
 }
