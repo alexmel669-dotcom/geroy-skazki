@@ -1,5 +1,5 @@
-// sw.js - Service Worker для PWA "Люцик"
-const CACHE_NAME = 'lucik-v4';
+// sw.js - Service Worker с автообновлением
+const CACHE_NAME = 'lucik-v6';
 
 const ASSETS = [
     './',
@@ -11,7 +11,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-    console.log('🦁 [SW] Установка v4');
+    console.log('🦁 SW установлен');
     self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME).then(async (cache) => {
@@ -26,6 +26,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+    console.log('🦁 SW активирован');
     event.waitUntil(
         caches.keys().then(keys => Promise.all(
             keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
@@ -36,8 +37,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     if (url.pathname.startsWith('/api/') || 
-        url.hostname.includes('deepseek.com') ||
-        url.pathname.endsWith('.mp3')) {
+        url.hostname.includes('deepseek.com')) {
         return event.respondWith(fetch(event.request));
     }
     event.respondWith(
@@ -46,6 +46,6 @@ self.addEventListener('fetch', (event) => {
 });
 
 setInterval(() => {
-    console.log('🔄 [SW] Проверка обновлений');
+    console.log('🔄 Проверка обновлений');
     self.registration.update();
 }, 6 * 60 * 60 * 1000);
