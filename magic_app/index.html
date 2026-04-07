@@ -25,19 +25,25 @@
         .parent-card { background: rgba(255,255,255,0.08); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); margin-top: 15px; }
         .safety-warning { background: rgba(255, 64, 129, 0.2); border-color: #ff4081; margin-bottom: 15px; }
         
-        .character-select { display: flex; gap: 15px; justify-content: center; margin: 15px 0; }
-        .character-option { width: 80px; height: 80px; border-radius: 50%; cursor: pointer; transition: transform 0.2s, border 0.2s; border: 3px solid transparent; background-size: cover; background-position: center; }
+        .character-select { display: flex; gap: 15px; justify-content: center; margin: 15px 0; flex-wrap: wrap; }
+        .character-option { width: 60px; height: 60px; border-radius: 50%; cursor: pointer; transition: transform 0.2s, border 0.2s; border: 3px solid transparent; background-size: cover; background-position: center; background-color: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 32px; }
         .character-option.selected { border-color: #fdbb2d; transform: scale(1.05); }
-        .character-option.lion { background-image: url('avatar.png'); }
         
-        .avatar-container { position: relative; margin: 20px auto; z-index: 10; display: flex; justify-content: center; align-items: center; }
-        .avatar { width: 280px; height: 280px; max-width: 70vw; max-height: 70vw; border-radius: 50%; background-size: cover; background-position: center; border: 5px solid rgba(255, 255, 255, 0.3); transition: all 0.2s ease; cursor: pointer; }
-        .avatar.talking { animation: speak-pulse 0.5s ease-in-out infinite; border-color: #00d2ff; box-shadow: 0 0 30px rgba(0,210,255,0.6); }
-        .avatar.listening { animation: listen-pulse 1s ease-in-out infinite; border-color: #4CAF50; box-shadow: 0 0 30px rgba(76,175,80,0.6); filter: brightness(1.1); }
+        .avatar-container { position: relative; margin: 20px auto; z-index: 10; display: flex; justify-content: center; align-items: center; touch-action: pan-y pinch-zoom; }
+        .avatar { width: 280px; height: 280px; max-width: 70vw; max-height: 70vw; background-size: contain; background-repeat: no-repeat; background-position: center; transition: all 0.3s ease; cursor: pointer; }
+        .avatar.swipe-left { animation: swipeOutLeft 0.2s ease; }
+        .avatar.swipe-right { animation: swipeOutRight 0.2s ease; }
+        @keyframes swipeOutLeft { 0% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(-100px); opacity: 0; } }
+        @keyframes swipeOutRight { 0% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(100px); opacity: 0; } }
+        
+        .avatar.talking { animation: speak-pulse 0.5s ease-in-out infinite; filter: drop-shadow(0 0 15px #00d2ff); }
+        .avatar.listening { animation: listen-pulse 1s ease-in-out infinite; filter: drop-shadow(0 0 15px #4CAF50); }
         .avatar.vibrate { animation: vibrate 0.2s ease-in-out infinite; }
-        @keyframes speak-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
-        @keyframes listen-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes speak-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes listen-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
         @keyframes vibrate { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+        
+        .character-name { font-size: 18px; font-weight: bold; margin-top: 5px; text-shadow: 0 2px 5px rgba(0,0,0,0.3); }
         
         #story-box { width: 85%; max-width: 480px; background: rgba(255,255,255,0.12); padding: 20px 30px; border-radius: 25px; backdrop-filter: blur(20px); min-height: 60px; font-size: 16px; line-height: 1.4; margin: 10px 0; }
         .history-item { font-size: 13px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #00d2ff; text-align: left; }
@@ -160,9 +166,16 @@
             background: rgba(255, 255, 255, 0.3);
         }
         
+        .swipe-hint {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 5px;
+        }
+        
         @media (max-width: 480px) {
             .avatar { width: 220px; height: 220px; }
             .action-btn { width: 55px; height: 55px; font-size: 28px; gap: 10px; }
+            .character-option { width: 50px; height: 50px; font-size: 28px; }
         }
     </style>
 </head>
@@ -202,9 +215,15 @@
         </div>
         
         <div class="parent-card">
-            <label style="font-size:14px;">🎭 Выбери персонажа:</label>
-            <div class="character-select">
-                <div class="character-option lion" onclick="selectCharacter('lion')"></div>
+            <h3 style="color:#fdbb2d; margin-bottom:10px;">🎭 Выбери персонажа</h3>
+            <div class="character-select" id="character-select">
+                <div class="character-option" data-char="lucik" onclick="selectCharacterByClick('lucik')">🦁</div>
+                <div class="character-option" data-char="mom" onclick="selectCharacterByClick('mom')">👩</div>
+                <div class="character-option" data-char="dad" onclick="selectCharacterByClick('dad')">👨</div>
+                <div class="character-option" data-char="kid" onclick="selectCharacterByClick('kid')">🧒</div>
+            </div>
+            <div style="font-size: 11px; opacity: 0.7; margin-top: 10px;">
+                🔐 Премиум-персонажи (мама, папа, ребёнок) активируются промокодом
             </div>
         </div>
         
@@ -253,6 +272,8 @@
     <div class="avatar-container">
         <div id="main-avatar" class="avatar" style="background-image: url('avatar.png');"></div>
     </div>
+    <div class="character-name" id="character-name">🦁 Люцик</div>
+    <div class="swipe-hint">👆 Свайп влево/вправо по картинке</div>
     
     <div class="action-buttons">
         <button class="action-btn" id="mic-btn">🎤</button>
@@ -287,6 +308,114 @@
     </div>
 
     <script>
+        // ========== ПЕРСОНАЖИ ==========
+        const characters = [
+            { id: 'lucik', name: '🦁 Люцик', icon: 'avatar.png', premium: false, emoji: '🦁' },
+            { id: 'mom', name: '👩 Мама', icon: 'mom.png', premium: true, emoji: '👩' },
+            { id: 'dad', name: '👨 Папа', icon: 'dad.png', premium: true, emoji: '👨' },
+            { id: 'kid', name: '🧒 Ребёнок', icon: 'kid.png', premium: true, emoji: '🧒' }
+        ];
+        
+        let currentCharacterIndex = 0;
+        let isPremium = localStorage.getItem('isPremium') === 'true';
+        
+        // Загрузка выбранного персонажа
+        function loadCharacterFromStorage() {
+            const savedChar = localStorage.getItem('currentCharacter');
+            if (savedChar) {
+                const index = characters.findIndex(c => c.id === savedChar);
+                if (index !== -1) {
+                    currentCharacterIndex = index;
+                    // Проверка премиум-доступа
+                    if (characters[currentCharacterIndex].premium && !isPremium) {
+                        currentCharacterIndex = 0;
+                    }
+                }
+            }
+            updateAvatar();
+        }
+        
+        // Обновление аватара
+        function updateAvatar() {
+            const char = characters[currentCharacterIndex];
+            document.getElementById('main-avatar').style.backgroundImage = `url('${char.icon}')`;
+            document.getElementById('character-name').innerHTML = char.name;
+            
+            // Подсветка в Штабе
+            document.querySelectorAll('.character-option').forEach((el, idx) => {
+                if (idx === currentCharacterIndex) {
+                    el.classList.add('selected');
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+            
+            localStorage.setItem('currentCharacter', char.id);
+        }
+        
+        // Смена персонажа
+        function switchCharacter(direction) {
+            let newIndex = currentCharacterIndex + direction;
+            if (newIndex < 0) newIndex = characters.length - 1;
+            if (newIndex >= characters.length) newIndex = 0;
+            
+            // Проверка премиум-доступа
+            if (characters[newIndex].premium && !isPremium) {
+                // Пропускаем премиум-персонажей
+                newIndex = 0;
+            }
+            
+            if (newIndex !== currentCharacterIndex) {
+                currentCharacterIndex = newIndex;
+                updateAvatar();
+                // Звук смены персонажа
+                const meow = new Audio('purr.mp3');
+                meow.play().catch(e => console.log('no sound'));
+            }
+        }
+        
+        // Выбор персонажа кликом
+        function selectCharacterByClick(characterId) {
+            const index = characters.findIndex(c => c.id === characterId);
+            if (index !== -1) {
+                if (characters[index].premium && !isPremium) {
+                    alert(`🔐 Персонаж "${characters[index].name}" доступен в премиум-версии. Введите промокод TEST2025 в Штабе Создателя.`);
+                    return;
+                }
+                currentCharacterIndex = index;
+                updateAvatar();
+                const meow = new Audio('purr.mp3');
+                meow.play().catch(e => console.log('no sound'));
+            }
+        }
+        
+        // ========== СВАЙП ==========
+        let touchStartX = 0;
+        let touchEndX = 0;
+        
+        const avatarContainer = document.getElementById('main-avatar');
+        
+        avatarContainer.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            avatarContainer.classList.add('swipe-active');
+        });
+        
+        avatarContainer.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchEndX - touchStartX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) {
+                    // Свайп вправо - предыдущий персонаж
+                    switchCharacter(-1);
+                } else {
+                    // Свайп влево - следующий персонаж
+                    switchCharacter(1);
+                }
+            }
+            avatarContainer.classList.remove('swipe-active');
+        });
+        
+        // ========== ОСТАЛЬНЫЕ НАСТРОЙКИ ==========
         let config = {
             name: localStorage.getItem('childName'),
             pin: localStorage.getItem('parentPin'),
@@ -295,6 +424,9 @@
             dailyCount: parseInt(localStorage.getItem('dailyCount')) || 0,
             lastReset: localStorage.getItem('lastReset') || ''
         };
+        
+        // Обновляем isPremium из config
+        isPremium = config.isPremium;
         
         const today = new Date().toDateString();
         if (config.lastReset !== today) {
@@ -389,13 +521,6 @@
             document.getElementById('animal-fill').style.width = ((fearStats['животных'] || 0) / maxStat * 100) + '%';
         }
         
-        function selectCharacter(char) {
-            config.character = char;
-            localStorage.setItem('character', char);
-            document.querySelectorAll('.character-option').forEach(el => el.classList.remove('selected'));
-            document.querySelector(`.character-option.${char}`).classList.add('selected');
-        }
-        
         function uploadBackground() {
             const file = document.getElementById('bg-upload').files[0];
             if (file) {
@@ -446,8 +571,11 @@
             if (code === 'TEST2025') {
                 localStorage.setItem('isPremium', 'true');
                 config.isPremium = true;
+                isPremium = true;
                 document.getElementById('sub-status').innerHTML = '🌟 Премиум активен! Безлимит сказок';
-                alert('Подписка активирована!');
+                alert('Подписка активирована! Теперь доступны все персонажи.');
+                // Перезагружаем персонажа, если был выбран премиумный
+                loadCharacterFromStorage();
             } else {
                 alert('Неверный промокод');
             }
@@ -700,12 +828,12 @@
             } else {
                 initApp();
             }
-            selectCharacter(config.character);
             updateStatsUI();
             if (config.isPremium) {
                 document.getElementById('sub-status').innerHTML = '🌟 Премиум активен! Безлимит сказок';
             }
             showParentTooltip();
+            loadCharacterFromStorage();
         };
 
         function initApp() {
@@ -777,5 +905,4 @@
     </script>
     <script defer src="/_vercel/insights/script.js"></script>
 </body>
-</html>
 </html>
