@@ -30,8 +30,8 @@
         .character-option.selected { border-color: #fdbb2d; transform: scale(1.05); }
         .character-option.lion { background-image: url('avatar.png'); }
         
-        .avatar-container { position: relative; margin-bottom: 25px; z-index: 10; }
-        .avatar { width: 190px; height: 190px; border-radius: 50%; background-size: cover; background-position: center; border: 5px solid rgba(255, 255, 255, 0.3); transition: all 0.2s ease; cursor: pointer; }
+        .avatar-container { position: relative; margin: 20px auto; z-index: 10; display: flex; justify-content: center; align-items: center; }
+        .avatar { width: 280px; height: 280px; max-width: 70vw; max-height: 70vw; border-radius: 50%; background-size: cover; background-position: center; border: 5px solid rgba(255, 255, 255, 0.3); transition: all 0.2s ease; cursor: pointer; }
         .avatar.talking { animation: speak-pulse 0.5s ease-in-out infinite; border-color: #00d2ff; box-shadow: 0 0 30px rgba(0,210,255,0.6); }
         .avatar.listening { animation: listen-pulse 1s ease-in-out infinite; border-color: #4CAF50; box-shadow: 0 0 30px rgba(76,175,80,0.6); filter: brightness(1.1); }
         .avatar.vibrate { animation: vibrate 0.2s ease-in-out infinite; }
@@ -39,7 +39,7 @@
         @keyframes listen-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         @keyframes vibrate { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
         
-        #story-box { width: 85%; max-width: 480px; background: rgba(255,255,255,0.12); padding: 30px; border-radius: 25px; backdrop-filter: blur(20px); min-height: 60px; font-size: 16px; line-height: 1.4; }
+        #story-box { width: 85%; max-width: 480px; background: rgba(255,255,255,0.12); padding: 20px 30px; border-radius: 25px; backdrop-filter: blur(20px); min-height: 60px; font-size: 16px; line-height: 1.4; margin: 10px 0; }
         .history-item { font-size: 13px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #00d2ff; text-align: left; }
         .loading { opacity: 0.7; }
         .loading::after { content: " ✨"; animation: dots 1s steps(5, end) infinite; }
@@ -139,21 +139,31 @@
         
         .action-buttons {
             display: flex;
-            gap: 20px;
             justify-content: center;
-            margin-bottom: 20px;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
         }
         .action-btn {
-            width: 70px;
-            height: 70px;
-            background: rgba(255,255,255,0.15);
-            border: none;
+            width: 65px;
+            height: 65px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             font-size: 32px;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: transform 0.2s, background 0.2s;
         }
-        .action-btn:active { transform: scale(0.9); }
+        .action-btn:active {
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        @media (max-width: 480px) {
+            .avatar { width: 220px; height: 220px; }
+            .action-btn { width: 55px; height: 55px; font-size: 28px; gap: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -245,8 +255,11 @@
     </div>
     
     <div class="action-buttons">
-        <button id="btn" class="action-btn">🎤</button>
-        <button id="parent-btn" class="action-btn">👨‍👩‍👧</button>
+        <button class="action-btn" id="mic-btn">🎤</button>
+        <button class="action-btn" id="feed-btn">🍎</button>
+        <button class="action-btn" id="play-btn">🎾</button>
+        <button class="action-btn" id="dress-btn">🧸</button>
+        <button class="action-btn" id="room-btn">🏠</button>
     </div>
     
     <div id="story-box">Загрузка магии...</div>
@@ -295,7 +308,7 @@
         let currentBg = localStorage.getItem('customBg') || null;
         let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
         
-        // ========== PWA УСТАНОВКА ==========
+        // PWA установка
         let deferredPrompt = null;
         const installBtn = document.getElementById('install-pwa-btn');
         
@@ -336,7 +349,7 @@
             };
         }
         
-        // ========== ПОДСКАЗКА ДЛЯ РОДИТЕЛЕЙ ==========
+        // Подсказка для родителей
         function showParentTooltip() {
             const tooltipShown = localStorage.getItem('parent_tooltip_shown');
             if (!tooltipShown) {
@@ -351,7 +364,6 @@
             localStorage.setItem('parent_tooltip_shown', 'true');
         }
         
-        // ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
         function updateFearStats(fear) {
             if (fearStats[fear] !== undefined) {
                 fearStats[fear]++;
@@ -466,7 +478,6 @@
             window.speechSynthesis.speak(msg);
         }
 
-        // ========== ОСНОВНАЯ ЛОГИКА ==========
         async function processStory(childText) {
             const storyBox = document.getElementById('story-box');
             
@@ -541,7 +552,7 @@
             }
         }
 
-        // ========== МИКРОФОН ==========
+        // Микрофон
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
         if (SpeechRecognition) {
@@ -551,10 +562,10 @@
             rec.interimResults = true;
             rec.maxAlternatives = 1;
             
-            document.getElementById('btn').onclick = () => {
+            document.getElementById('mic-btn').onclick = () => {
                 rec.start();
-                document.getElementById('btn').style.transform = "scale(1.2)";
-                document.getElementById('btn').style.background = "#4CAF50";
+                document.getElementById('mic-btn').style.transform = "scale(1.2)";
+                document.getElementById('mic-btn').style.background = "#4CAF50";
                 document.getElementById('story-box').innerHTML = "🎤 Люцик слушает...";
                 document.getElementById('main-avatar').classList.add('listening');
                 startPurr();
@@ -568,8 +579,8 @@
                     }
                 }
                 if (finalTranscript) {
-                    document.getElementById('btn').style.transform = "scale(1)";
-                    document.getElementById('btn').style.background = "#ff4081";
+                    document.getElementById('mic-btn').style.transform = "scale(1)";
+                    document.getElementById('mic-btn').style.background = "rgba(255, 255, 255, 0.15)";
                     document.getElementById('main-avatar').classList.remove('listening');
                     stopPurr();
                     await processStory(finalTranscript);
@@ -578,8 +589,8 @@
             
             rec.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
-                document.getElementById('btn').style.transform = "scale(1)";
-                document.getElementById('btn').style.background = "#ff4081";
+                document.getElementById('mic-btn').style.transform = "scale(1)";
+                document.getElementById('mic-btn').style.background = "rgba(255, 255, 255, 0.15)";
                 document.getElementById('main-avatar').classList.remove('listening');
                 stopPurr();
                 document.getElementById('story-box').innerHTML = "🦁 Не расслышал, скажи ещё раз!";
@@ -588,20 +599,21 @@
             document.getElementById('story-box').innerHTML = "Ваш браузер не поддерживает голосовой ввод";
         }
 
-        // Кнопка Штаба
-        document.getElementById('parent-btn').onclick = () => {
-            checkAccess();
+        // Кнопки-заглушки для тамагочи (пока показывают уведомления)
+        document.getElementById('feed-btn').onclick = () => {
+            alert('🍎 Покормить Люцика (будет в следующем обновлении)');
+        };
+        document.getElementById('play-btn').onclick = () => {
+            alert('🎾 Поиграть с Люциком (будет в следующем обновлении)');
+        };
+        document.getElementById('dress-btn').onclick = () => {
+            alert('🧸 Нарядить Люцика (будет в следующем обновлении)');
+        };
+        document.getElementById('room-btn').onclick = () => {
+            alert('🏠 Комната Люцика (будет в следующем обновлении)');
         };
 
-        // Поглаживание по аватару
-        document.getElementById('main-avatar').addEventListener('click', () => {
-            const avatar = document.getElementById('main-avatar');
-            avatar.classList.add('vibrate');
-            setTimeout(() => avatar.classList.remove('vibrate'), 500);
-            startPurr();
-        });
-
-        // ========== ОТЗЫВЫ ==========
+        // Отзывы
         let currentRating = 0;
         
         function showFeedbackModal() {
@@ -649,7 +661,7 @@
             }
         };
         
-        // ========== ТАЙМЕР ДЛЯ ОПРОСА ==========
+        // Таймер для опроса
         let totalTime = parseInt(localStorage.getItem('totalAppTime')) || 0;
         let lastActiveTime = parseInt(localStorage.getItem('lastActiveTime')) || Date.now();
         let feedbackShown = localStorage.getItem('feedbackShown') === 'true';
@@ -674,7 +686,7 @@
         setInterval(updateAppTime, 60000);
         updateAppTime();
         
-        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        // Инициализация
         window.onload = () => {
             updateWeather();
             setInterval(updateWeather, 60000);
@@ -744,6 +756,14 @@
             document.getElementById('history-list').innerHTML = h.map(i => `<div class="history-item">${i}</div>`).join('') || "Пока тишина...";
         }
         
+        // Поглаживание по аватару
+        document.getElementById('main-avatar').addEventListener('click', () => {
+            const avatar = document.getElementById('main-avatar');
+            avatar.classList.add('vibrate');
+            setTimeout(() => avatar.classList.remove('vibrate'), 500);
+            startPurr();
+        });
+        
         // Регистрация Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
@@ -757,4 +777,5 @@
     </script>
     <script defer src="/_vercel/insights/script.js"></script>
 </body>
+</html>
 </html>
