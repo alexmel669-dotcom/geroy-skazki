@@ -11,12 +11,12 @@
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-        
+
         :root {
             --bg-day: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
             --bg-night: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
         }
-        
+
         body {
             margin: 0;
             height: 100vh;
@@ -34,13 +34,13 @@
             padding: 20px 0 80px 0;
             box-sizing: border-box;
         }
-        
+
         @keyframes gradientBG {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-        
+
         /* Верхняя панель */
         .top-bar {
             position: fixed;
@@ -82,7 +82,7 @@
             transition: opacity 0.3s;
         }
         .parent-entry:active { opacity: 1; transform: scale(0.95); }
-        
+
         /* Шкалы тамагочи */
         .stats-container {
             position: fixed;
@@ -120,7 +120,7 @@
         .fill-hunger { background: #4CAF50; }
         .fill-energy { background: #00d2ff; }
         .fill-bravery { background: #ff4081; }
-        
+
         /* Аватар */
         .avatar-container {
             position: fixed;
@@ -149,7 +149,7 @@
         @keyframes speak-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         @keyframes listen-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
         @keyframes vibrate { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
-        
+
         /* Кнопка микрофона (центр, крупная) */
         .mic-container {
             position: fixed;
@@ -176,7 +176,7 @@
         }
         .mic-btn:active { transform: scale(0.92); background: #e91e63; }
         .mic-btn.recording { background: #4CAF50; transform: scale(1.05); }
-        
+
         /* Кнопки действий (внизу) */
         .action-buttons {
             position: fixed;
@@ -205,7 +205,7 @@
             justify-content: center;
         }
         .action-btn:active { transform: scale(0.92); background: rgba(0,0,0,0.6); }
-        
+
         /* Модальные окна */
         .modal {
             display: none;
@@ -232,7 +232,7 @@
             width: 85%;
             border: 1px solid rgba(255,255,255,0.2);
         }
-        .modal-card input, .modal-card select {
+        .modal-card input {
             width: 100%;
             padding: 15px;
             border-radius: 15px;
@@ -256,7 +256,7 @@
             margin-top: 10px;
         }
         .btn-magic { background: #00d2ff; }
-        
+
         .parent-mode {
             display: none;
             position: fixed;
@@ -302,7 +302,7 @@
             font-size: 35px;
         }
         .character-option.selected { border-color: #fdbb2d; transform: scale(1.05); }
-        
+
         .footer {
             position: fixed;
             bottom: 5px;
@@ -313,7 +313,7 @@
             pointer-events: none;
         }
         .footer a { color: white; text-decoration: none; pointer-events: auto; }
-        
+
         @media (max-width: 480px) {
             .avatar { width: 200px; height: 200px; }
             .mic-btn { width: 75px; height: 75px; font-size: 40px; }
@@ -347,7 +347,7 @@
         </div>
         <div class="stat-item">
             <span class="stat-icon">⭐</span>
-            <div class="stat-bar"><div class="stat-fill fill-bravery" id="bravery-fill" style="width: 40%"></div></div>
+            <div class="stat-bar"><div class="stat-fill fill-bravery" id="bravery-fill" style="width: 0%"></div></div>
         </div>
     </div>
 
@@ -356,7 +356,7 @@
         <div id="main-avatar" class="avatar" style="background-image: url('avatar.png');"></div>
     </div>
 
-    <!-- Кнопка микрофона (центр, крупная) -->
+    <!-- Кнопка микрофона -->
     <div class="mic-container">
         <button id="mic-btn" class="mic-btn">🎤</button>
     </div>
@@ -373,7 +373,7 @@
         <a href="privacy.html">Политика конфиденциальности</a>
     </div>
 
-    <!-- Модальное окно: Приветствие + создание ПИН-кода -->
+    <!-- Модальное окно: Приветствие -->
     <div id="welcome-modal" class="modal">
         <div class="modal-card">
             <h2>✨ Добро пожаловать!</h2>
@@ -406,36 +406,36 @@
     <!-- Родительский Штаб -->
     <div id="parent-mode" class="parent-mode">
         <h2 style="color: #00d2ff; margin:0;">🚀 Штаб Создателя</h2>
-        
+
         <div class="parent-card safety-warning" style="background: rgba(255,64,129,0.2); border-color:#ff4081;">
             ⚠️ <strong>Безопасность детей</strong><br>
             • Люцик не заменяет живого общения<br>
             • Не оставляйте ребёнка с телефоном надолго
         </div>
-        
+
         <div class="parent-card">
             <label style="font-size:12px; opacity:0.6;">ИМЯ РЕБЁНКА: <b id="disp-name">...</b></label>
             <button class="btn-magic" style="width:100%; margin-top:10px;" onclick="saveName()">СОХРАНИТЬ ИМЯ</button>
         </div>
-        
+
         <div class="parent-card">
             <h3 style="color:#fdbb2d; margin:0 0 10px 0;">🎭 Выбери рассказчика сказок</h3>
             <div class="character-select" id="character-select">
-                <div class="character-option" data-char="lucik" onclick="selectCharacterByClick('lucik')">🦁</div>
-                <div class="character-option" data-char="mom" onclick="selectCharacterByClick('mom')">👩</div>
-                <div class="character-option" data-char="dad" onclick="selectCharacterByClick('dad')">👨</div>
-                <div class="character-option" data-char="kid" onclick="selectCharacterByClick('kid')">🧒</div>
+                <div class="character-option" data-char="lucik" onclick="selectCharacterByClick('lucik')" style="background-image: url('avatar.png'); background-size: cover;">🦁</div>
+                <div class="character-option" data-char="mom" onclick="selectCharacterByClick('mom')" style="background-image: url('mom.png'); background-size: cover;">👩</div>
+                <div class="character-option" data-char="dad" onclick="selectCharacterByClick('dad')" style="background-image: url('dad.png'); background-size: cover;">👨</div>
+                <div class="character-option" data-char="kid" onclick="selectCharacterByClick('kid')" style="background-image: url('kid.png'); background-size: cover;">🧒</div>
             </div>
             <div style="font-size: 11px; opacity: 0.7; margin-top: 10px;">🔐 Мама, папа, ребёнок — после активации промокода</div>
         </div>
-        
+
         <div class="parent-card">
             <label style="font-size:14px;">🖼️ Фоновая картинка:</label>
             <input type="file" id="bg-upload" accept="image/*" style="background: rgba(255,255,255,0.1); margin-top: 10px;">
             <button class="btn-magic" style="width:100%; margin-top:10px;" onclick="uploadBackground()">ЗАГРУЗИТЬ</button>
             <button class="btn-magic" style="width:100%; margin-top:5px; background:#555;" onclick="resetBackground()">СБРОСИТЬ</button>
         </div>
-        
+
         <div class="parent-card">
             <h3 style="color:#fdbb2d; margin:0 0 10px 0;">🌟 Герой+</h3>
             <div id="sub-status" style="margin-bottom: 10px;">⚡ Бесплатно: 5 сказок в день</div>
@@ -443,13 +443,13 @@
             <button onclick="activatePromo()" style="width: 35%;">Активировать</button>
             <div style="font-size: 12px; margin-top: 10px;">Тестовый промокод: <strong>TEST2025</strong></div>
         </div>
-        
+
         <div class="parent-card">
             <h3 style="color:#fdbb2d; margin:0 0 10px 0;">📱 Установить приложение</h3>
             <p style="font-size: 12px;"><strong>Android:</strong> Chrome → три точки → «Установить приложение»</p>
             <p style="font-size: 12px;"><strong>iPhone:</strong> Safari → «Поделиться» → «На экран Домой»</p>
         </div>
-        
+
         <h3 style="color:#fdbb2d; margin-top:20px;">📊 Дневник страхов</h3>
         <div class="parent-card" id="stats-card">
             <div class="stats" style="margin-top: 5px;">😨 Темнота: <span id="stat-dark">0</span></div>
@@ -459,7 +459,7 @@
             <div class="stats">💔 Обиды: <span id="stat-offend">0</span></div>
             <div class="stats">🐕 Животные: <span id="stat-animal">0</span></div>
         </div>
-        
+
         <h3 style="color:#fdbb2d; margin-top:20px;">📒 Дневник разговоров</h3>
         <div class="parent-card" id="history-list">Пока тишина...</div>
         <button onclick="closeParentMode()" style="width:100%; background:none; border:none; color:white; margin-top:20px;">Назад</button>
@@ -504,7 +504,7 @@
             energy = Math.max(0, energy - 1);
             if (hunger < 30 || energy < 30) mood = Math.max(0, mood - 5);
             saveStats();
-        }, 30 * 60 * 1000); // каждые 30 минут
+        }, 30 * 60 * 1000);
         
         function loadCharacterFromStorage() {
             const savedChar = localStorage.getItem('currentCharacter');
@@ -584,16 +584,6 @@
         let currentBg = localStorage.getItem('customBg') || null;
         let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
         
-        // PWA установка
-        let deferredPrompt = null;
-        const installBtn = document.getElementById('install-pwa-btn');
-        
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            // Кнопку установки можно показывать, но у нас её нет на экране — добавим в Штабе
-        });
-        
         // Приветственное окно
         function showWelcomeModal() {
             const welcomeShown = localStorage.getItem('welcome_shown');
@@ -664,7 +654,6 @@
                 fearStats[fear]++;
                 localStorage.setItem('fearStats', JSON.stringify(fearStats));
                 updateFearStatsUI();
-                // За храбрость: +10 к шкале смелости
                 bravery = Math.min(100, bravery + 10);
                 saveStats();
             }
@@ -819,7 +808,6 @@
             micBtn.onclick = () => {
                 rec.start();
                 micBtn.classList.add('recording');
-                micBtn.innerText = '🎤';
                 avatarEl.classList.add('listening');
                 startPurr();
             };
@@ -845,7 +833,7 @@
             };
         }
         
-        // Кнопки действий (тамагочи)
+        // Кнопки действий
         document.getElementById('feed-btn').onclick = () => {
             hunger = Math.min(100, hunger + 15);
             mood = Math.min(100, mood + 5);
@@ -873,7 +861,6 @@
             startPurr();
         };
         
-        // Поглаживание по аватару
         avatarEl.addEventListener('click', () => {
             mood = Math.min(100, mood + 10);
             saveStats();
@@ -934,7 +921,6 @@
         }
     </script>
     
-    <!-- Временный экран регистрации (простой) -->
     <div id="welcome-screen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#1a2a6c; z-index:2000; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; box-sizing:border-box;">
         <h1>✨ Привет, Создатель!</h1>
         <input type="text" id="reg-name" placeholder="Имя ребенка" style="width:80%; padding:15px; border-radius:15px; border:none; margin:10px;">
