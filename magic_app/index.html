@@ -34,7 +34,6 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* Верхняя панель */
         .top-bar {
             position: fixed;
             top: 15px;
@@ -58,7 +57,6 @@
             cursor: pointer;
         }
 
-        /* Шкалы */
         .stats {
             position: fixed;
             top: 80px;
@@ -91,7 +89,6 @@
         .fill-energy { background: #00d2ff; }
         .fill-bravery { background: #ff4081; }
 
-        /* Аватар */
         .avatar-container {
             position: fixed;
             bottom: 180px;
@@ -116,7 +113,6 @@
         .avatar.listening { animation: pulse 0.6s infinite; filter: drop-shadow(0 0 12px #4CAF50); }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-        /* Микрофон */
         .mic-btn {
             position: fixed;
             bottom: 100px;
@@ -139,7 +135,6 @@
         .mic-btn:active { transform: translateX(-50%) scale(0.92); }
         .mic-btn.recording { background: #4CAF50; transform: translateX(-50%) scale(1.05); }
 
-        /* Кнопки действий */
         .action-buttons {
             position: fixed;
             bottom: 15px;
@@ -166,7 +161,6 @@
         }
         .action-btn:active { transform: scale(0.9); }
 
-        /* Модальные окна */
         .modal {
             display: none;
             position: fixed;
@@ -213,7 +207,6 @@
             margin-top: 10px;
         }
 
-        /* Родительский Штаб */
         .parent-panel {
             display: none;
             position: fixed;
@@ -221,8 +214,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.97);
-            backdrop-filter: blur(20px);
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
             z-index: 500;
             padding: 40px 20px;
             overflow-y: auto;
@@ -299,7 +291,6 @@
         <a href="privacy.html">Политика конфиденциальности</a>
     </div>
 
-    <!-- Модальные окна -->
     <div id="welcomeModal" class="modal">
         <div class="modal-card">
             <h2>✨ Добро пожаловать!</h2>
@@ -327,7 +318,6 @@
         </div>
     </div>
 
-    <!-- Родительский Штаб -->
     <div id="parentPanel" class="parent-panel">
         <h2 style="color:#00d2ff;">🚀 Штаб Создателя</h2>
         <div class="parent-card">
@@ -518,6 +508,28 @@
         document.getElementById('dressBtn').onclick = () => speak("Мяу! Мне нравится этот наряд!");
         document.getElementById('roomBtn').onclick = () => speak("Пойдём в мою комнату!");
         avatar.onclick = () => { mood = Math.min(100, mood+10); updateStats(); speak("Мур-р-р, как приятно!"); };
+
+        // ========== СВАЙП ==========
+        let touchStart = 0;
+        avatar.addEventListener('touchstart', (e) => { touchStart = e.changedTouches[0].screenX; });
+        avatar.addEventListener('touchend', (e) => {
+            let diff = e.changedTouches[0].screenX - touchStart;
+            if(Math.abs(diff) > 50) {
+                let direction = diff > 0 ? -1 : 1;
+                let newIndex = currentChar + direction;
+                if(newIndex < 0) newIndex = characters.length - 1;
+                if(newIndex >= characters.length) newIndex = 0;
+                if(!characters[newIndex].premium || isPremium) {
+                    currentChar = newIndex;
+                    localStorage.setItem('currentChar', characters[currentChar].id);
+                    loadCharacter();
+                    let sound = new Audio('purr.mp3');
+                    sound.play().catch(e=>console.log);
+                } else {
+                    speak("Этот персонаж в премиум-версии");
+                }
+            }
+        });
 
         // Родительский Штаб
         function updateParentUI() {
