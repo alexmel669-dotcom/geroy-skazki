@@ -1,5 +1,15 @@
-const CACHE_NAME = 'lucik-v7';
-const ASSETS = ['./', './index.html', './avatar.png', './mom.png', './dad.png', './kid.png', './manifest.json', './purr.mp3', './privacy.html'];
+const CACHE_NAME = 'lucik-v8';
+const ASSETS = [
+    './',
+    './index.html',
+    './avatar.png',
+    './mom.png',
+    './dad.png',
+    './kid.png',
+    './manifest.json',
+    './purr.mp3',
+    './privacy.html'
+];
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();
