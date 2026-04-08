@@ -32,7 +32,7 @@ export default async function handler(req, res) {
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: historyText },
-                    { role: 'user', content: `${childName} sagte: "${userSpeech}"` }
+                    { role: 'user', content: `${childName} сказал: "${userSpeech}"` }
                 ],
                 temperature: 0.9,
                 max_tokens: 350
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
 
         res.status(200).json({ story, audio: null });
     } catch (error) {
-        console.error('Fehler:', error);
+        console.error('Ошибка:', error);
         res.status(500).json({ story: "Мяу... Давай ещё раз? Я не расслышал!", audio: null });
     }
 }
