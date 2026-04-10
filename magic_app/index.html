@@ -2,43 +2,66 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Герой Сказок — Виртуальный друг с ИИ</title>
     <link rel="icon" href="avatar.png" type="image/png">
     <link rel="manifest" href="manifest.json">
     <style>
-        * {
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        :root {
-            --bg-day: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-            --bg-night: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-        }
-        
+        * { user-select: none; -webkit-tap-highlight-color: transparent; }
         body {
             margin: 0;
-            height: 100vh;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+        }
+        
+        /* Экран регистрации */
+        .screen-register {
             display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .screen-register input {
+            width: 80%;
+            max-width: 300px;
+            padding: 15px;
+            border-radius: 15px;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            margin: 10px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .screen-register input::placeholder { color: rgba(255,255,255,0.7); }
+        .screen-register button {
+            background: #00d2ff;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 18px;
+            color: white;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        
+        /* Основной экран */
+        .screen-main {
+            display: none;
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
-            background: var(--bg-day);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-            font-family: 'Segoe UI', sans-serif;
-            color: white;
-            overflow: hidden;
-            position: relative;
+            height: 100vh;
             padding: 20px 0 80px 0;
             box-sizing: border-box;
-        }
-        
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            position: relative;
         }
         
         .top-bar {
@@ -50,10 +73,6 @@
             justify-content: space-between;
             padding: 0 20px;
             z-index: 100;
-            pointer-events: none;
-        }
-        .top-bar .weather-icon, .top-bar .parent-entry {
-            pointer-events: auto;
         }
         .weather-icon {
             font-size: 40px;
@@ -64,23 +83,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(5px);
         }
         .parent-entry {
             display: flex;
             align-items: center;
             gap: 5px;
-            cursor: pointer;
             background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(5px);
             border-radius: 30px;
             padding: 5px 12px;
-            transition: opacity 0.3s;
+            cursor: pointer;
         }
-        .parent-entry span {
-            font-size: 14px;
-        }
-        .parent-entry:active { opacity: 0.7; transform: scale(0.98); }
         
         .stats-container {
             position: fixed;
@@ -88,7 +100,6 @@
             left: 20px;
             right: 20px;
             background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 10px 15px;
             z-index: 90;
@@ -100,7 +111,6 @@
             margin-bottom: 6px;
             font-size: 14px;
         }
-        .stat-icon { font-size: 18px; min-width: 30px; text-align: center; }
         .stat-bar {
             flex: 1;
             height: 8px;
@@ -126,26 +136,18 @@
             right: 0;
             display: flex;
             justify-content: center;
-            align-items: center;
-            z-index: 10;
         }
         .avatar {
             width: 260px;
             height: 260px;
-            max-width: 60vw;
-            max-height: 60vw;
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
-            transition: all 0.2s ease;
             cursor: pointer;
         }
-        .avatar.talking { animation: speak-pulse 0.5s ease-in-out infinite; filter: drop-shadow(0 0 15px #00d2ff); }
-        .avatar.listening { animation: listen-pulse 1s ease-in-out infinite; filter: drop-shadow(0 0 15px #4CAF50); }
-        .avatar.vibrate { animation: vibrate 0.2s ease-in-out infinite; }
-        @keyframes speak-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        @keyframes listen-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
-        @keyframes vibrate { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+        .avatar.talking { animation: pulse 0.5s infinite; filter: drop-shadow(0 0 15px #00d2ff); }
+        .avatar.listening { animation: pulse 1s infinite; filter: drop-shadow(0 0 15px #4CAF50); }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         
         .mic-container {
             position: fixed;
@@ -154,7 +156,6 @@
             right: 0;
             display: flex;
             justify-content: center;
-            z-index: 20;
         }
         .mic-btn {
             width: 85px;
@@ -165,13 +166,8 @@
             font-size: 45px;
             cursor: pointer;
             box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-            transition: transform 0.1s, background 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
-        .mic-btn:active { transform: scale(0.92); background: #e91e63; }
-        .mic-btn.recording { background: #4CAF50; transform: scale(1.05); }
+        .mic-btn.recording { background: #4CAF50; }
         
         .action-buttons {
             position: fixed;
@@ -181,138 +177,15 @@
             display: flex;
             justify-content: center;
             gap: 20px;
-            flex-wrap: wrap;
-            padding: 0 10px;
-            z-index: 20;
         }
         .action-btn {
             width: 60px;
             height: 60px;
             background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.2);
             border-radius: 50%;
             font-size: 30px;
             cursor: pointer;
-            transition: transform 0.1s, background 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .action-btn:active { transform: scale(0.92); background: rgba(0,0,0,0.6); }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.95);
-            backdrop-filter: blur(15px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            padding: 20px;
-            box-sizing: border-box;
-            text-align: center;
-        }
-        .modal-card {
-            background: #1a2a6c;
-            border-radius: 30px;
-            padding: 30px;
-            max-width: 320px;
-            width: 85%;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-        .modal-card input, .modal-card select {
-            width: 100%;
-            padding: 15px;
-            border-radius: 15px;
-            border: none;
-            background: rgba(255,255,255,0.1);
-            color: white;
-            margin: 10px 0;
-            text-align: center;
-            font-size: 18px;
-            box-sizing: border-box;
-        }
-        .modal-card button {
-            background: #00d2ff;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 30px;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .btn-magic { background: #00d2ff; }
-        
-        .parent-mode {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(15, 25, 45, 0.98);
-            backdrop-filter: blur(25px);
-            z-index: 500;
-            padding: 40px 20px;
-            box-sizing: border-box;
-            text-align: left;
-            overflow-y: auto;
-        }
-        .parent-card {
-            background: rgba(255,255,255,0.08);
-            padding: 20px;
-            border-radius: 20px;
-            border: 1px solid rgba(255,255,255,0.1);
-            margin-top: 15px;
-        }
-        .character-select {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin: 15px 0;
-            flex-wrap: wrap;
-        }
-        .character-option {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: transform 0.2s, border 0.2s;
-            border: 3px solid transparent;
-            background-size: cover;
-            background-position: center;
-            background-color: rgba(255,255,255,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 35px;
-        }
-        .character-option.selected { border-color: #fdbb2d; transform: scale(1.05); }
-        
-        .avatar-upload {
-            margin-top: 10px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .avatar-upload label {
-            background: rgba(255,255,255,0.2);
-            padding: 8px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        .avatar-upload input {
-            display: none;
         }
         
         .footer {
@@ -322,21 +195,28 @@
             opacity: 0.4;
             width: 100%;
             text-align: center;
-            pointer-events: none;
         }
-        .footer a { color: white; text-decoration: none; pointer-events: auto; }
+        .footer a { color: white; text-decoration: none; }
         
         @media (max-width: 480px) {
             .avatar { width: 200px; height: 200px; }
             .mic-btn { width: 75px; height: 75px; font-size: 40px; }
-            .action-btn { width: 55px; height: 55px; font-size: 26px; gap: 12px; }
-            .stats-container { top: 70px; padding: 8px 12px; }
-            .stat-item { font-size: 12px; }
+            .action-btn { width: 55px; height: 55px; font-size: 26px; }
         }
     </style>
 </head>
 <body>
 
+<!-- Экран регистрации -->
+<div id="register-screen" class="screen-register">
+    <h1>✨ Привет, Создатель!</h1>
+    <input type="text" id="reg-name" placeholder="Имя ребенка">
+    <input type="number" id="reg-age" placeholder="Возраст">
+    <button onclick="finishReg()">Начать 🐾</button>
+</div>
+
+<!-- Основной экран -->
+<div id="main-screen" class="screen-main">
     <div class="top-bar">
         <div class="weather-icon" id="weather-icon">☀️</div>
         <div class="parent-entry" onclick="checkAccess()">
@@ -346,22 +226,10 @@
     </div>
 
     <div class="stats-container">
-        <div class="stat-item">
-            <span class="stat-icon">😊</span>
-            <div class="stat-bar"><div class="stat-fill fill-mood" id="mood-fill" style="width: 70%"></div></div>
-        </div>
-        <div class="stat-item">
-            <span class="stat-icon">🍽️</span>
-            <div class="stat-bar"><div class="stat-fill fill-hunger" id="hunger-fill" style="width: 60%"></div></div>
-        </div>
-        <div class="stat-item">
-            <span class="stat-icon">⚡</span>
-            <div class="stat-bar"><div class="stat-fill fill-energy" id="energy-fill" style="width: 50%"></div></div>
-        </div>
-        <div class="stat-item">
-            <span class="stat-icon">⭐</span>
-            <div class="stat-bar"><div class="stat-fill fill-bravery" id="bravery-fill" style="width: 0%"></div></div>
-        </div>
+        <div class="stat-item"><span class="stat-icon">😊</span><div class="stat-bar"><div class="stat-fill fill-mood" id="mood-fill" style="width:70%"></div></div></div>
+        <div class="stat-item"><span class="stat-icon">🍽️</span><div class="stat-bar"><div class="stat-fill fill-hunger" id="hunger-fill" style="width:60%"></div></div></div>
+        <div class="stat-item"><span class="stat-icon">⚡</span><div class="stat-bar"><div class="stat-fill fill-energy" id="energy-fill" style="width:50%"></div></div></div>
+        <div class="stat-item"><span class="stat-icon">⭐</span><div class="stat-bar"><div class="stat-fill fill-bravery" id="bravery-fill" style="width:0%"></div></div></div>
     </div>
 
     <div class="avatar-container">
@@ -382,590 +250,217 @@
     <div class="footer">
         <a href="privacy.html">Политика конфиденциальности</a>
     </div>
+</div>
 
-    <!-- Модальное окно приветствия -->
-    <div id="welcome-modal" class="modal" style="display: flex;">
-        <div class="modal-card">
-            <h2>✨ Добро пожаловать!</h2>
-            <p>Нажми на микрофон 🎤 и расскажи Люцику о своих страхах.</p>
-            <p>⚙️ Чтобы войти в настройки для родителей, нажми на кнопку <strong>«Родителям»</strong> в правом верхнем углу.</p>
-            <button onclick="closeWelcomeModal()" class="btn-magic">🎉 Начать</button>
-        </div>
-    </div>
-
-    <div id="pin-setup-modal" class="modal">
-        <div class="modal-card">
-            <h2>🔐 Создайте пароль для Штаба</h2>
-            <p>Придумайте 4-6 цифр, например: 1234</p>
-            <input type="password" id="new-pin" maxlength="6" placeholder="Введите пароль" style="font-size: 24px; letter-spacing: 5px;">
-            <button onclick="createPin()">Создать и продолжить</button>
-        </div>
-    </div>
-
-    <div id="auth-modal" class="modal">
-        <div class="modal-card">
-            <h2>🔐 Введите пароль</h2>
-            <input type="password" id="pin-field" maxlength="6" placeholder="Пароль" style="font-size: 24px; letter-spacing: 5px;">
-            <button onclick="verifyPin()">Войти</button>
-            <button onclick="closeAuth()" style="background: none; border: 1px solid white; margin-top: 10px;">Отмена</button>
-        </div>
-    </div>
-
-    <div id="parent-mode" class="parent-mode">
-        <h2 style="color: #00d2ff; margin:0;">🚀 Штаб Создателя</h2>
+<script>
+    // ========== РЕГИСТРАЦИЯ ==========
+    function finishReg() {
+        const name = document.getElementById('reg-name').value;
+        const age = document.getElementById('reg-age').value;
+        if (name && age) {
+            localStorage.setItem('childName', name);
+            localStorage.setItem('childAge', age);
+            document.getElementById('register-screen').style.display = 'none';
+            document.getElementById('main-screen').style.display = 'flex';
+            initApp();
+        } else {
+            alert('Пожалуйста, введите имя и возраст');
+        }
+    }
+    
+    // ========== ОСНОВНОЕ ПРИЛОЖЕНИЕ ==========
+    let config = {
+        name: localStorage.getItem('childName'),
+        pin: localStorage.getItem('parentPin'),
+        isPremium: localStorage.getItem('isPremium') === 'true'
+    };
+    
+    // Шкалы
+    let mood = parseInt(localStorage.getItem('lucik_mood')) || 70;
+    let hunger = parseInt(localStorage.getItem('lucik_hunger')) || 60;
+    let energy = parseInt(localStorage.getItem('lucik_energy')) || 50;
+    let bravery = parseInt(localStorage.getItem('lucik_bravery')) || 0;
+    
+    function updateStatsUI() {
+        document.getElementById('mood-fill').style.width = mood + '%';
+        document.getElementById('hunger-fill').style.width = hunger + '%';
+        document.getElementById('energy-fill').style.width = energy + '%';
+        document.getElementById('bravery-fill').style.width = bravery + '%';
+    }
+    
+    function saveStats() {
+        localStorage.setItem('lucik_mood', mood);
+        localStorage.setItem('lucik_hunger', hunger);
+        localStorage.setItem('lucik_energy', energy);
+        localStorage.setItem('lucik_bravery', bravery);
+        updateStatsUI();
+    }
+    
+    // Голос
+    function speak(text) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'ru-RU';
+        msg.rate = 0.9;
+        const avatar = document.getElementById('main-avatar');
+        msg.onstart = () => avatar.classList.add('talking');
+        msg.onend = () => avatar.classList.remove('talking');
+        window.speechSynthesis.speak(msg);
+    }
+    
+    // Звук мурчания
+    let purrAudio = null;
+    function startPurr() {
+        if (!purrAudio) {
+            purrAudio = new Audio('purr.mp3');
+            purrAudio.loop = true;
+            purrAudio.volume = 0.3;
+        }
+        purrAudio.currentTime = 0;
+        purrAudio.play().catch(e => console.log('no sound'));
+        document.getElementById('main-avatar').classList.add('vibrate');
+        setTimeout(() => document.getElementById('main-avatar').classList.remove('vibrate'), 500);
+    }
+    function stopPurr() { if (purrAudio) purrAudio.pause(); }
+    
+    // Микрофон
+    const micBtn = document.getElementById('mic-btn');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        rec.lang = 'ru-RU';
+        rec.continuous = true;
+        rec.interimResults = true;
         
-        <div class="parent-card" style="background: rgba(255,64,129,0.2); border-color:#ff4081;">
-            ⚠️ <strong>Безопасность детей</strong><br>
-            • Люцик не заменяет живого общения<br>
-            • Не оставляйте ребёнка с телефоном надолго
-        </div>
-        
-        <div class="parent-card">
-            <label style="font-size:12px; opacity:0.6;">ИМЯ РЕБЁНКА: <b id="disp-name">...</b></label>
-            <button class="btn-magic" style="width:100%; margin-top:10px;" onclick="saveName()">СОХРАНИТЬ ИМЯ</button>
-        </div>
-        
-        <div class="parent-card">
-            <h3 style="color:#fdbb2d; margin:0 0 10px 0;">🎭 Выбери рассказчика сказок</h3>
-            <div class="character-select" id="character-select">
-                <div class="character-option" data-char="lucik" onclick="selectCharacterByClick('lucik')" style="background-image: url('avatar.png'); background-size: cover;"></div>
-                <div class="character-option" data-char="mom" onclick="selectCharacterByClick('mom')" id="mom-avatar" style="background-image: url('mom.png'); background-size: cover;"></div>
-                <div class="character-option" data-char="dad" onclick="selectCharacterByClick('dad')" id="dad-avatar" style="background-image: url('dad.png'); background-size: cover;"></div>
-                <div class="character-option" data-char="kid" onclick="selectCharacterByClick('kid')" id="kid-avatar" style="background-image: url('kid.png'); background-size: cover;"></div>
-            </div>
-            
-            <div class="avatar-upload">
-                <label for="mom-upload">📸 Загрузить аватар мамы</label>
-                <input type="file" id="mom-upload" accept="image/*" onchange="uploadCharacterAvatar('mom', this)">
-                <label for="dad-upload">📸 Загрузить аватар папы</label>
-                <input type="file" id="dad-upload" accept="image/*" onchange="uploadCharacterAvatar('dad', this)">
-                <label for="kid-upload">📸 Загрузить аватар ребёнка</label>
-                <input type="file" id="kid-upload" accept="image/*" onchange="uploadCharacterAvatar('kid', this)">
-            </div>
-            
-            <div style="font-size: 11px; opacity: 0.7; margin-top: 10px;">
-                🔐 Персонажи Мама, Папа, Ребёнок открываются по промокоду.<br>
-                <strong>Тестовый промокод: TEST2025</strong>
-            </div>
-        </div>
-        
-        <div class="parent-card">
-            <label style="font-size:14px;">🖼️ Фоновая картинка:</label>
-            <input type="file" id="bg-upload" accept="image/*" style="background: rgba(255,255,255,0.1); margin-top: 10px;">
-            <button class="btn-magic" style="width:100%; margin-top:10px;" onclick="uploadBackground()">ЗАГРУЗИТЬ</button>
-            <button class="btn-magic" style="width:100%; margin-top:5px; background:#555;" onclick="resetBackground()">СБРОСИТЬ</button>
-        </div>
-        
-        <div class="parent-card">
-            <h3 style="color:#fdbb2d; margin:0 0 10px 0;">🌟 Герой+</h3>
-            <div id="sub-status" style="margin-bottom: 10px;">⚡ Бесплатно: 5 сказок в день</div>
-            <input type="text" id="promo-code" placeholder="Промокод" style="width: 60%; display: inline-block;">
-            <button onclick="activatePromo()" style="width: 35%;">Активировать</button>
-            <div style="font-size: 12px; margin-top: 10px;">Тестовый промокод: <strong>TEST2025</strong></div>
-        </div>
-        
-        <div class="parent-card">
-            <h3 style="color:#fdbb2d; margin:0 0 10px 0;">📱 Установить приложение</h3>
-            <p style="font-size: 12px;"><strong>Android:</strong> Chrome → три точки → «Установить приложение»</p>
-            <p style="font-size: 12px;"><strong>iPhone:</strong> Safari → «Поделиться» → «На экран Домой»</p>
-        </div>
-        
-        <h3 style="color:#fdbb2d; margin-top:20px;">📊 Дневник страхов</h3>
-        <div class="parent-card" id="stats-card">
-            <div class="stats" style="margin-top: 5px;">😨 Темнота: <span id="stat-dark">0</span></div>
-            <div class="stats">🏥 Врачи: <span id="stat-doc">0</span></div>
-            <div class="stats">🧸 Одиночество: <span id="stat-alone">0</span></div>
-            <div class="stats">🌟 Новое: <span id="stat-new">0</span></div>
-            <div class="stats">💔 Обиды: <span id="stat-offend">0</span></div>
-            <div class="stats">🐕 Животные: <span id="stat-animal">0</span></div>
-        </div>
-        
-        <h3 style="color:#fdbb2d; margin-top:20px;">📒 Дневник разговоров</h3>
-        <div class="parent-card" id="history-list">Пока тишина...</div>
-        <button onclick="closeParentMode()" style="width:100%; background:none; border:none; color:white; margin-top:20px;">Назад</button>
-    </div>
-
-    <div id="welcome-screen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#1a2a6c; z-index:2000; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; box-sizing:border-box;">
-        <h1>✨ Привет, Создатель!</h1>
-        <input type="text" id="reg-name" placeholder="Имя ребенка" style="width:80%; padding:15px; border-radius:15px; border:none; margin:10px;">
-        <input type="number" id="reg-age" placeholder="Возраст" style="width:80%; padding:15px; border-radius:15px; border:none; margin:10px;">
-        <button class="btn-magic" onclick="finishReg()" style="background:#00d2ff; padding:15px 30px; border-radius:30px; border:none; color:white; font-weight:bold;">Начать 🐾</button>
-    </div>
-
-    <script>
-        // ========== ПЕРСОНАЖИ ==========
-        const characters = [
-            { id: 'lucik', name: '🦁 Люцик', icon: 'avatar.png', premium: false, emoji: '🦁' },
-            { id: 'mom', name: '👩 Мама', icon: 'mom.png', premium: true, emoji: '👩' },
-            { id: 'dad', name: '👨 Папа', icon: 'dad.png', premium: true, emoji: '👨' },
-            { id: 'kid', name: '🧒 Ребёнок', icon: 'kid.png', premium: true, emoji: '🧒' }
-        ];
-        
-        let currentCharacterIndex = 0;
-        let isPremium = localStorage.getItem('isPremium') === 'true';
-        let config = {
-            name: localStorage.getItem('childName'),
-            pin: localStorage.getItem('parentPin'),
-            isPremium: localStorage.getItem('isPremium') === 'true',
-            dailyCount: parseInt(localStorage.getItem('dailyCount')) || 0,
-            lastReset: localStorage.getItem('lastReset') || ''
+        micBtn.onclick = () => {
+            rec.start();
+            micBtn.classList.add('recording');
+            document.getElementById('main-avatar').classList.add('listening');
+            startPurr();
         };
         
-        let mood = parseInt(localStorage.getItem('lucik_mood')) || 70;
-        let hunger = parseInt(localStorage.getItem('lucik_hunger')) || 60;
-        let energy = parseInt(localStorage.getItem('lucik_energy')) || 50;
-        let bravery = parseInt(localStorage.getItem('lucik_bravery')) || 0;
-        let conversationHistory = [];
-        let purrAudio = null;
-        let currentBg = localStorage.getItem('customBg') || null;
-        let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
-        
-        const today = new Date().toDateString();
-        if (config.lastReset !== today) {
-            config.dailyCount = 0;
-            localStorage.setItem('dailyCount', '0');
-            localStorage.setItem('lastReset', today);
-        }
-        isPremium = config.isPremium;
-        
-        function updateStatsUI() {
-            document.getElementById('mood-fill').style.width = mood + '%';
-            document.getElementById('hunger-fill').style.width = hunger + '%';
-            document.getElementById('energy-fill').style.width = energy + '%';
-            document.getElementById('bravery-fill').style.width = bravery + '%';
-        }
-        
-        function saveStats() {
-            localStorage.setItem('lucik_mood', mood);
-            localStorage.setItem('lucik_hunger', hunger);
-            localStorage.setItem('lucik_energy', energy);
-            localStorage.setItem('lucik_bravery', bravery);
-            updateStatsUI();
-        }
-        
-        function uploadCharacterAvatar(character, input) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const imgData = e.target.result;
-                    localStorage.setItem(`avatar_${character}`, imgData);
-                    const avatarDiv = document.getElementById(`${character}-avatar`);
-                    if (avatarDiv) {
-                        avatarDiv.style.backgroundImage = `url(${imgData})`;
-                        avatarDiv.style.backgroundSize = 'cover';
-                    }
-                    const charObj = characters.find(c => c.id === character);
-                    if (charObj) charObj.icon = imgData;
-                    if (characters[currentCharacterIndex].id === character) {
-                        document.getElementById('main-avatar').style.backgroundImage = `url(${imgData})`;
-                    }
-                    alert(`Аватар для ${character === 'mom' ? 'мамы' : character === 'dad' ? 'папы' : 'ребёнка'} загружен!`);
-                };
-                reader.readAsDataURL(file);
+        rec.onresult = async (e) => {
+            let final = '';
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+                if (e.results[i].isFinal) final += e.results[i][0].transcript;
             }
-        }
-        
-        function loadSavedAvatars() {
-            const chars = ['mom', 'dad', 'kid'];
-            chars.forEach(char => {
-                const saved = localStorage.getItem(`avatar_${char}`);
-                if (saved) {
-                    const avatarDiv = document.getElementById(`${char}-avatar`);
-                    if (avatarDiv) {
-                        avatarDiv.style.backgroundImage = `url(${saved})`;
-                        avatarDiv.style.backgroundSize = 'cover';
-                    }
-                    const charObj = characters.find(c => c.id === char);
-                    if (charObj) charObj.icon = saved;
-                }
-            });
-        }
-        
-        function loadCharacterFromStorage() {
-            const savedChar = localStorage.getItem('currentCharacter');
-            if (savedChar) {
-                const index = characters.findIndex(c => c.id === savedChar);
-                if (index !== -1) {
-                    currentCharacterIndex = index;
-                    if (characters[currentCharacterIndex].premium && !isPremium) currentCharacterIndex = 0;
-                }
-            }
-            updateAvatar();
-        }
-        
-        function updateAvatar() {
-            const char = characters[currentCharacterIndex];
-            document.getElementById('main-avatar').style.backgroundImage = `url('${char.icon}')`;
-            document.querySelectorAll('.character-option').forEach((el, idx) => {
-                if (idx === currentCharacterIndex) el.classList.add('selected');
-                else el.classList.remove('selected');
-            });
-            localStorage.setItem('currentCharacter', char.id);
-        }
-        
-        function switchCharacter(direction) {
-            let newIndex = currentCharacterIndex + direction;
-            if (newIndex < 0) newIndex = characters.length - 1;
-            if (newIndex >= characters.length) newIndex = 0;
-            if (characters[newIndex].premium && !isPremium) return;
-            currentCharacterIndex = newIndex;
-            updateAvatar();
-            const meow = new Audio('purr.mp3');
-            meow.play().catch(e => console.log('no sound'));
-        }
-        
-        function selectCharacterByClick(characterId) {
-            const index = characters.findIndex(c => c.id === characterId);
-            if (index !== -1) {
-                if (characters[index].premium && !isPremium) {
-                    alert(`🔐 Персонаж "${characters[index].name}" доступен в премиум-версии. Введите промокод TEST2025 в Штабе.`);
-                    return;
-                }
-                currentCharacterIndex = index;
-                updateAvatar();
-                const meow = new Audio('purr.mp3');
-                meow.play().catch(e => console.log('no sound'));
-            }
-        }
-        
-        function closeWelcomeModal() {
-            document.getElementById('welcome-modal').style.display = 'none';
-            localStorage.setItem('welcome_shown', 'true');
-        }
-        
-        function createPin() {
-            const newPin = document.getElementById('new-pin').value;
-            if (newPin.length >= 4) {
-                localStorage.setItem('parentPin', newPin);
-                config.pin = newPin;
-                document.getElementById('pin-setup-modal').style.display = 'none';
-                alert('Пароль создан!');
-            } else {
-                alert('Придумайте пароль из 4-6 цифр');
-            }
-        }
-        
-        function checkAccess() {
-            if (config.pin) {
-                document.getElementById('auth-modal').style.display = 'flex';
-            } else {
-                document.getElementById('pin-setup-modal').style.display = 'flex';
-            }
-        }
-        
-        function verifyPin() {
-            const val = document.getElementById('pin-field').value;
-            if (val === config.pin) {
-                closeAuth();
-                document.getElementById('parent-mode').style.display = 'block';
-                updateStatsUI();
-                updateHistory();
-                updateFearStatsUI();
-            } else {
-                alert('Неверный пароль!');
-            }
-        }
-        
-        function closeAuth() { document.getElementById('auth-modal').style.display = 'none'; }
-        function closeParentMode() { document.getElementById('parent-mode').style.display = 'none'; }
-        
-        function updateFearStatsUI() {
-            document.getElementById('stat-dark').innerText = fearStats['темноты'] || 0;
-            document.getElementById('stat-doc').innerText = fearStats['врачей'] || 0;
-            document.getElementById('stat-alone').innerText = fearStats['одиночества'] || 0;
-            document.getElementById('stat-new').innerText = fearStats['нового'] || 0;
-            document.getElementById('stat-offend').innerText = fearStats['обиды'] || 0;
-            document.getElementById('stat-animal').innerText = fearStats['животных'] || 0;
-        }
-        
-        function updateFearStats(fear) {
-            if (fearStats[fear] !== undefined) {
-                fearStats[fear]++;
-                localStorage.setItem('fearStats', JSON.stringify(fearStats));
-                updateFearStatsUI();
-                bravery = Math.min(100, bravery + 10);
-                saveStats();
-            }
-        }
-        
-        function uploadBackground() {
-            const file = document.getElementById('bg-upload').files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.body.style.backgroundImage = `url(${e.target.result})`;
-                    document.body.style.backgroundSize = 'cover';
-                    localStorage.setItem('customBg', e.target.result);
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-        
-        function resetBackground() {
-            document.body.style.backgroundImage = '';
-            document.body.style.background = '';
-            localStorage.removeItem('customBg');
-            updateTimeTheme();
-        }
-        
-        function updateWeather() {
-            const hour = new Date().getHours();
-            const icon = document.getElementById('weather-icon');
-            if (hour >= 6 && hour < 12) icon.innerText = '🌤️';
-            else if (hour >= 12 && hour < 18) icon.innerText = '☀️';
-            else if (hour >= 18 && hour < 22) icon.innerText = '🌙';
-            else icon.innerText = '⭐';
-        }
-        
-        function updateTimeTheme() {
-            const hour = new Date().getHours();
-            if (!currentBg) {
-                if (hour >= 18 || hour < 6) document.body.style.background = "var(--bg-night)";
-                else document.body.style.background = "var(--bg-day)";
-            }
-        }
-        
-        function startPurr() {
-            if (!purrAudio) {
-                purrAudio = new Audio('purr.mp3');
-                purrAudio.loop = true;
-                purrAudio.volume = 0.3;
-            }
-            purrAudio.currentTime = 0;
-            purrAudio.play().catch(e => console.log('Audio error:', e));
-            const avatar = document.getElementById('main-avatar');
-            avatar.classList.add('vibrate');
-            setTimeout(() => avatar.classList.remove('vibrate'), 500);
-        }
-        
-        function stopPurr() { if (purrAudio) purrAudio.pause(); }
-        
-        window.activatePromo = function() {
-            const code = document.getElementById('promo-code').value.toUpperCase();
-            if (code === 'TEST2025') {
-                localStorage.setItem('isPremium', 'true');
-                config.isPremium = true;
-                isPremium = true;
-                document.getElementById('sub-status').innerHTML = '🌟 Премиум активен! Безлимит сказок';
-                alert('Подписка активирована!');
-                loadCharacterFromStorage();
-            } else {
-                alert('Неверный промокод');
-            }
-        };
-        
-        function saveName() {
-            const newName = prompt('Введите имя ребёнка:', config.name);
-            if (newName) {
-                localStorage.setItem('childName', newName);
-                config.name = newName;
-                document.getElementById('disp-name').innerText = newName;
-                alert('Имя сохранено!');
-            }
-        }
-        
-        function speak(text) {
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = 'ru-RU';
-            msg.rate = 0.9;
-            const avatar = document.getElementById('main-avatar');
-            msg.onstart = () => avatar.classList.add('talking');
-            msg.onend = () => avatar.classList.remove('talking');
-            const voices = window.speechSynthesis.getVoices();
-            const preferred = voices.find(v => v.lang === 'ru-RU' && (v.name.includes('Google') || v.name.includes('Microsoft')));
-            if (preferred) msg.voice = preferred;
-            window.speechSynthesis.speak(msg);
-        }
-        
-        async function processStory(childText) {
-            if (!config.isPremium && config.dailyCount >= 5) {
-                speak("🦁 Люцик немного устал. Приходи завтра! А мама может активировать подписку в Штабе.");
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        childName: config.name,
-                        userSpeech: childText,
-                        history: conversationHistory.slice(-6)
-                    })
-                });
-                const data = await response.json();
-                saveHistory(`👶 ${config.name}: ${childText}`);
-                saveHistory(`🦁 Люцик: ${data.story}`);
-                conversationHistory.push({ role: "assistant", content: data.story });
-                
-                const text = childText.toLowerCase();
-                const fears = {
-                    'темноты': ['темнот', 'боюсь темнот', 'страшно темно', 'ночь', 'не вижу'],
-                    'врачей': ['врач', 'укол', 'больница', 'доктор', 'прививк'],
-                    'одиночества': ['один', 'одна', 'никого нет', 'бросили'],
-                    'обиды': ['обидели', 'обидно', 'ругаются', 'ссорятся'],
-                    'нового': ['новое', 'первый раз', 'незнаком', 'не умею'],
-                    'животных': ['собака', 'укусит', 'боюсь соба', 'кошка']
-                };
-                for (const [fear, triggers] of Object.entries(fears)) {
-                    if (triggers.some(t => text.includes(t))) {
-                        updateFearStats(fear);
-                        break;
-                    }
-                }
-                
-                if (!config.isPremium) {
-                    config.dailyCount++;
-                    localStorage.setItem('dailyCount', config.dailyCount);
-                }
-                
-                speak(data.story);
-            } catch (error) {
-                speak("🦁 Не расслышал, скажи ещё раз!");
-                console.error(error);
-            }
-        }
-        
-        const micBtn = document.getElementById('mic-btn');
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        
-        if (SpeechRecognition) {
-            const rec = new SpeechRecognition();
-            rec.lang = 'ru-RU';
-            rec.continuous = true;
-            rec.interimResults = true;
-            
-            micBtn.onclick = () => {
-                rec.start();
-                micBtn.classList.add('recording');
-                document.getElementById('main-avatar').classList.add('listening');
-                startPurr();
-            };
-            
-            rec.onresult = async (e) => {
-                let final = '';
-                for (let i = e.resultIndex; i < e.results.length; i++) {
-                    if (e.results[i].isFinal) final += e.results[i][0].transcript;
-                }
-                if (final) {
-                    micBtn.classList.remove('recording');
-                    document.getElementById('main-avatar').classList.remove('listening');
-                    stopPurr();
-                    await processStory(final);
-                }
-            };
-            
-            rec.onerror = () => {
+            if (final) {
                 micBtn.classList.remove('recording');
                 document.getElementById('main-avatar').classList.remove('listening');
                 stopPurr();
-                speak("🦁 Не расслышал, скажи ещё раз!");
-            };
-        }
-        
-        document.getElementById('feed-btn').onclick = () => {
-            hunger = Math.min(100, hunger + 15);
-            mood = Math.min(100, mood + 5);
-            saveStats();
-            speak("Мур-р-р, вкусно! Спасибо!");
-            startPurr();
-        };
-        document.getElementById('play-btn').onclick = () => {
-            if (energy >= 20) {
-                energy -= 20;
-                mood = Math.min(100, mood + 15);
-                saveStats();
-                speak("Ура! Весело играть с тобой!");
-            } else {
-                speak("Я слишком устал для игр. Дай мне отдохнуть.");
+                speak("Ты сказал: " + final);
             }
-            startPurr();
-        };
-        document.getElementById('dress-btn').onclick = () => {
-            speak("Мяу! Мне нравится этот наряд!");
-            startPurr();
-        };
-        document.getElementById('room-btn').onclick = () => {
-            speak("Пойдём в мою комнату? Там так уютно!");
-            startPurr();
         };
         
-        document.getElementById('main-avatar').addEventListener('click', () => {
-            mood = Math.min(100, mood + 10);
-            saveStats();
-            startPurr();
-            speak("Мур-р-р... как приятно!");
-        });
-        
-        function saveHistory(t) {
-            let h = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-            h.unshift(new Date().toLocaleTimeString() + ": " + t);
-            localStorage.setItem('storyHistory', JSON.stringify(h.slice(0, 20)));
-            updateHistory();
-        }
-        
-        function updateHistory() {
-            const h = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-            document.getElementById('history-list').innerHTML = h.map(i => `<div style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">${i}</div>`).join('') || "Пока тишина...";
-        }
-        
-        window.onload = () => {
-            updateWeather();
-            setInterval(updateWeather, 60000);
-            updateTimeTheme();
-            if (currentBg) {
-                document.body.style.backgroundImage = `url(${currentBg})`;
-                document.body.style.backgroundSize = 'cover';
-            }
-            if (!config.name) {
-                document.getElementById('welcome-screen').style.display = 'flex';
-            } else {
-                initApp();
-            }
-            updateStatsUI();
-            if (config.isPremium) document.getElementById('sub-status').innerHTML = '🌟 Премиум активен! Безлимит сказок';
-            if (!localStorage.getItem('welcome_shown')) {
-                document.getElementById('welcome-modal').style.display = 'flex';
-            }
-            if (!config.pin) {
-                document.getElementById('pin-setup-modal').style.display = 'flex';
-            }
-            loadCharacterFromStorage();
-            loadSavedAvatars();
-            updateFearStatsUI();
-            setTimeout(() => {
-                if (!localStorage.getItem('welcome_shown')) {
-                    speak("Мяу! Погладь меня, я соскучился!");
-                    document.getElementById('main-avatar').classList.add('vibrate');
-                    setTimeout(() => document.getElementById('main-avatar').classList.remove('vibrate'), 2000);
-                }
-            }, 2000);
+        rec.onerror = () => {
+            micBtn.classList.remove('recording');
+            document.getElementById('main-avatar').classList.remove('listening');
+            stopPurr();
+            speak("Не расслышал, скажи ещё раз!");
         };
-        
-        function initApp() {
-            document.getElementById('disp-name').innerText = config.name;
-            updateHistory();
-            conversationHistory = [];
-            speak("Мяу! Привет, " + config.name + "! Я Люцик. Расскажи, как у тебя дела?");
-        }
-        
-        function finishReg() {
-            const n = document.getElementById('reg-name').value;
-            const a = document.getElementById('reg-age').value;
-            if (n && a) { localStorage.setItem('childName', n); localStorage.setItem('childAge', a); location.reload(); }
-        }
-        
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('✅ SW зарегистрирован:', reg))
-                .catch(err => console.error('❌ SW ошибка:', err));
-        }
-    </script>
+    } else {
+        micBtn.onclick = () => alert('Ваш браузер не поддерживает голосовой ввод');
+    }
     
-    <script>
-        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-    </script>
-    <script defer src="/_vercel/insights/script.js"></script>
+    // Кнопки действий
+    document.getElementById('feed-btn').onclick = () => {
+        hunger = Math.min(100, hunger + 15);
+        mood = Math.min(100, mood + 5);
+        saveStats();
+        speak("Мур-р-р, вкусно! Спасибо!");
+        startPurr();
+    };
+    document.getElementById('play-btn').onclick = () => {
+        if (energy >= 20) {
+            energy -= 20;
+            mood = Math.min(100, mood + 15);
+            saveStats();
+            speak("Ура! Весело играть с тобой!");
+        } else {
+            speak("Я слишком устал. Дай мне отдохнуть.");
+        }
+        startPurr();
+    };
+    document.getElementById('dress-btn').onclick = () => {
+        speak("Мяу! Мне нравится этот наряд!");
+        startPurr();
+    };
+    document.getElementById('room-btn').onclick = () => {
+        speak("Пойдём в мою комнату? Там уютно!");
+        startPurr();
+    };
+    
+    // Поглаживание по аватару
+    document.getElementById('main-avatar').addEventListener('click', () => {
+        mood = Math.min(100, mood + 10);
+        saveStats();
+        startPurr();
+        speak("Мур-р-р... как приятно!");
+    });
+    
+    // Родительский доступ (упрощённо)
+    function checkAccess() {
+        const savedPin = localStorage.getItem('parentPin');
+        if (savedPin) {
+            const entered = prompt('Введите пароль:');
+            if (entered === savedPin) {
+                alert('Добро пожаловать в Штаб! (тут будут настройки)');
+            } else {
+                alert('Неверный пароль!');
+            }
+        } else {
+            const newPin = prompt('Создайте пароль для входа в Штаб (4-6 цифр):');
+            if (newPin && newPin.length >= 4) {
+                localStorage.setItem('parentPin', newPin);
+                alert('Пароль создан! Теперь используйте его для входа.');
+            }
+        }
+    }
+    
+    // Инициализация
+    function initApp() {
+        document.getElementById('register-screen').style.display = 'none';
+        document.getElementById('main-screen').style.display = 'flex';
+        updateStatsUI();
+        speak("Мяу! Привет, " + config.name + "! Я Люцик. Расскажи, как у тебя дела?");
+        setTimeout(() => {
+            speak("Погладь меня, я соскучился!");
+            document.getElementById('main-avatar').classList.add('vibrate');
+            setTimeout(() => document.getElementById('main-avatar').classList.remove('vibrate'), 2000);
+        }, 3000);
+    }
+    
+    // Автоснижение параметров
+    setInterval(() => {
+        hunger = Math.max(0, hunger - 2);
+        energy = Math.max(0, energy - 1);
+        if (hunger < 30 || energy < 30) mood = Math.max(0, mood - 5);
+        saveStats();
+    }, 30 * 60 * 1000);
+    
+    // Погода
+    function updateWeather() {
+        const hour = new Date().getHours();
+        const icon = document.getElementById('weather-icon');
+        if (hour >= 6 && hour < 12) icon.innerText = '🌤️';
+        else if (hour >= 12 && hour < 18) icon.innerText = '☀️';
+        else if (hour >= 18 && hour < 22) icon.innerText = '🌙';
+        else icon.innerText = '⭐';
+    }
+    updateWeather();
+    setInterval(updateWeather, 60000);
+    
+    // Проверяем, есть ли уже имя
+    if (config.name) {
+        document.getElementById('register-screen').style.display = 'none';
+        document.getElementById('main-screen').style.display = 'flex';
+        initApp();
+    }
+    
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error:', err));
+    }
+</script>
 </body>
 </html>
