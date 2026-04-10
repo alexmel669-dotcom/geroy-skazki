@@ -24,7 +24,7 @@
             flex-direction: column;
         }
 
-        /* === ЭКРАН РЕГИСТРАЦИИ === */
+        /* ЭКРАН РЕГИСТРАЦИИ */
         .screen-register {
             display: flex;
             flex-direction: column;
@@ -60,7 +60,7 @@
             cursor: pointer;
         }
 
-        /* === ОСНОВНОЙ ЭКРАН === */
+        /* ОСНОВНОЙ ЭКРАН */
         .screen-main {
             display: none;
             flex-direction: column;
@@ -68,10 +68,80 @@
             justify-content: space-between;
             width: 100%;
             height: 100vh;
-            padding: 20px 0 60px 0;
+            padding: 20px 0 80px 0;
             box-sizing: border-box;
             position: relative;
         }
+
+        .top-bar {
+            position: fixed;
+            top: 15px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+        }
+
+        .weather-icon {
+            font-size: 36px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .parent-btn {
+            background: rgba(0,0,0,0.5);
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Шкалы */
+        .stats-container {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 10px 15px;
+            z-index: 90;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+
+        .stat-bar {
+            flex: 1;
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .fill-mood { background: #fdbb2d; }
+        .fill-hunger { background: #4CAF50; }
+        .fill-energy { background: #00d2ff; }
+        .fill-bravery { background: #ff4081; }
 
         .avatar {
             width: 220px;
@@ -80,8 +150,24 @@
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
-            margin-top: 30px;
+            margin-top: 120px;
             cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .avatar.talking {
+            animation: pulse 0.5s infinite;
+            filter: drop-shadow(0 0 15px #00d2ff);
+        }
+
+        .avatar.listening {
+            animation: pulse 1s infinite;
+            filter: drop-shadow(0 0 15px #4CAF50);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
 
         .mic-btn {
@@ -92,29 +178,56 @@
             border-radius: 50%;
             font-size: 45px;
             cursor: pointer;
-            margin: 20px auto;
+            margin: 10px auto;
+            transition: 0.1s;
+        }
+
+        .mic-btn.recording {
+            background: #4CAF50;
+            transform: scale(1.05);
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 10px 0;
+        }
+
+        .action-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            font-size: 28px;
+            cursor: pointer;
         }
 
         .status-text {
             background: rgba(0,0,0,0.5);
             padding: 12px 20px;
             border-radius: 30px;
-            margin: 10px 20px;
+            margin: 5px 20px;
             font-size: 16px;
+            text-align: center;
         }
 
-        .parent-btn {
+        .footer {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.5);
-            padding: 8px 16px;
-            border-radius: 40px;
-            font-size: 14px;
-            cursor: pointer;
-            z-index: 200;
+            bottom: 5px;
+            font-size: 10px;
+            opacity: 0.4;
+            width: 100%;
+            text-align: center;
         }
 
+        .footer a {
+            color: white;
+            text-decoration: none;
+        }
+
+        /* Родительская панель */
         .parent-panel {
             display: none;
             position: fixed;
@@ -141,6 +254,12 @@
             color: white;
             margin-top: 20px;
         }
+
+        @media (max-width: 480px) {
+            .avatar { width: 180px; height: 180px; margin-top: 100px; }
+            .mic-btn { width: 75px; height: 75px; font-size: 40px; }
+            .action-btn { width: 55px; height: 55px; font-size: 24px; }
+        }
     </style>
 </head>
 <body>
@@ -155,10 +274,34 @@
 
 <!-- ОСНОВНОЙ ЭКРАН -->
 <div id="mainScreen" class="screen-main">
-    <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
+    <div class="top-bar">
+        <div class="weather-icon" id="weatherIcon">☀️</div>
+        <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
+    </div>
+
+    <div class="stats-container">
+        <div class="stat-item"><span class="stat-icon">😊</span><div class="stat-bar"><div class="stat-fill fill-mood" id="moodFill" style="width:70%"></div></div></div>
+        <div class="stat-item"><span class="stat-icon">🍽️</span><div class="stat-bar"><div class="stat-fill fill-hunger" id="hungerFill" style="width:60%"></div></div></div>
+        <div class="stat-item"><span class="stat-icon">⚡</span><div class="stat-bar"><div class="stat-fill fill-energy" id="energyFill" style="width:50%"></div></div></div>
+        <div class="stat-item"><span class="stat-icon">⭐</span><div class="stat-bar"><div class="stat-fill fill-bravery" id="braveryFill" style="width:0%"></div></div></div>
+    </div>
+
     <div class="avatar" id="avatar"></div>
+
     <button class="mic-btn" id="micButton">🎤</button>
+
+    <div class="action-buttons">
+        <button class="action-btn" id="feedBtn">🍎</button>
+        <button class="action-btn" id="playBtn">🎾</button>
+        <button class="action-btn" id="dressBtn">🧸</button>
+        <button class="action-btn" id="roomBtn">🏠</button>
+    </div>
+
     <div class="status-text" id="statusText">Нажми на микрофон 🎤</div>
+
+    <div class="footer">
+        <a href="privacy.html">Политика конфиденциальности</a>
+    </div>
 </div>
 
 <!-- РОДИТЕЛЬСКАЯ ПАНЕЛЬ -->
@@ -172,7 +315,9 @@
     <h3>⭐ Промокод</h3>
     <input type="text" id="promoInput" placeholder="TEST2025">
     <button id="promoBtn">Активировать</button>
-    <br><br>
+    <h3>📊 Дневник страхов</h3>
+    <div id="fearStats">😨 Темнота: 0<br>🏥 Врачи: 0<br>🧸 Одиночество: 0<br>🌟 Новое: 0<br>💔 Обиды: 0<br>🐕 Животные: 0</div>
+    <br>
     <button class="close-panel" id="closePanelBtn">Закрыть</button>
 </div>
 
@@ -180,21 +325,68 @@
     // ========== 1. ЗАГРУЗКА ИМЕНИ ==========
     let childName = localStorage.getItem('childName');
     let childAge = localStorage.getItem('childAge');
+    let savedPin = localStorage.getItem('parentPin');
+    let isPremium = localStorage.getItem('isPremium') === 'true';
+
+    // Шкалы
+    let mood = parseInt(localStorage.getItem('lucik_mood')) || 70;
+    let hunger = parseInt(localStorage.getItem('lucik_hunger')) || 60;
+    let energy = parseInt(localStorage.getItem('lucik_energy')) || 50;
+    let bravery = parseInt(localStorage.getItem('lucik_bravery')) || 0;
+
+    // Статистика страхов
+    let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+
+    function updateStatsUI() {
+        document.getElementById('moodFill').style.width = mood + '%';
+        document.getElementById('hungerFill').style.width = hunger + '%';
+        document.getElementById('energyFill').style.width = energy + '%';
+        document.getElementById('braveryFill').style.width = bravery + '%';
+    }
+
+    function saveStats() {
+        localStorage.setItem('lucik_mood', mood);
+        localStorage.setItem('lucik_hunger', hunger);
+        localStorage.setItem('lucik_energy', energy);
+        localStorage.setItem('lucik_bravery', bravery);
+        updateStatsUI();
+    }
+
+    function updateFearStatsUI() {
+        document.getElementById('fearStats').innerHTML = `
+            😨 Темнота: ${fearStats['темноты'] || 0}<br>
+            🏥 Врачи: ${fearStats['врачей'] || 0}<br>
+            🧸 Одиночество: ${fearStats['одиночества'] || 0}<br>
+            🌟 Новое: ${fearStats['нового'] || 0}<br>
+            💔 Обиды: ${fearStats['обиды'] || 0}<br>
+            🐕 Животные: ${fearStats['животных'] || 0}
+        `;
+    }
+
+    function updateFearStats(fear) {
+        if (fearStats[fear] !== undefined) {
+            fearStats[fear]++;
+            localStorage.setItem('fearStats', JSON.stringify(fearStats));
+            updateFearStatsUI();
+            bravery = Math.min(100, bravery + 10);
+            saveStats();
+        }
+    }
 
     const registerScreen = document.getElementById('registerScreen');
     const mainScreen = document.getElementById('mainScreen');
 
     if (childName && childAge) {
-        // Сразу показываем главный экран
         registerScreen.style.display = 'none';
         mainScreen.style.display = 'flex';
-        document.getElementById('statusText').innerText = `Привет, ${childName}! Нажми на микрофон 🎤`;
+        document.getElementById('statusText').innerHTML = `Привет, ${childName}! Нажми на микрофон 🎤`;
+        updateStatsUI();
+        updateFearStatsUI();
     } else {
         registerScreen.style.display = 'flex';
         mainScreen.style.display = 'none';
     }
 
-    // Кнопка "Начать"
     document.getElementById('startBtn').addEventListener('click', () => {
         const name = document.getElementById('childNameInput').value;
         const age = document.getElementById('childAgeInput').value;
@@ -204,29 +396,33 @@
             childName = name;
             registerScreen.style.display = 'none';
             mainScreen.style.display = 'flex';
-            document.getElementById('statusText').innerText = `Привет, ${name}! Нажми на микрофон 🎤`;
+            document.getElementById('statusText').innerHTML = `Привет, ${name}! Нажми на микрофон 🎤`;
+            updateStatsUI();
+            updateFearStatsUI();
         } else {
             alert('Введите имя и возраст');
         }
     });
 
-    // ========== 2. ГОЛОСОВОЙ ВВОД ==========
-    const micButton = document.getElementById('micButton');
-    const statusText = document.getElementById('statusText');
-    let isListening = false;
-
+    // ========== 2. ГОЛОС ==========
     function speak(message) {
         const utterance = new SpeechSynthesisUtterance(message);
         utterance.lang = 'ru-RU';
         utterance.rate = 0.9;
+        const avatar = document.getElementById('avatar');
+        utterance.onstart = () => avatar.classList.add('talking');
+        utterance.onend = () => avatar.classList.remove('talking');
         window.speechSynthesis.speak(utterance);
     }
 
-    // Простая имитация мурчания (звук через Web Audio)
     function purr() {
         const audio = new Audio('purr.mp3');
         audio.play().catch(e => console.log('no purr.mp3'));
     }
+
+    const micButton = document.getElementById('micButton');
+    const statusText = document.getElementById('statusText');
+    let isListening = false;
 
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -245,43 +441,89 @@
         }
         if (isListening) return;
         isListening = true;
-        micButton.style.background = '#4CAF50';
+        micButton.classList.add('recording');
+        document.getElementById('avatar').classList.add('listening');
         statusText.innerText = '🎤 Слушаю... скажи что-нибудь';
         recognition.start();
     });
 
     if (recognition) {
-        recognition.onresult = (event) => {
+        recognition.onresult = async (event) => {
             const text = event.results[0][0].transcript;
             statusText.innerText = `Ты сказал: "${text}"`;
-            micButton.style.background = '#ff4081';
+            micButton.classList.remove('recording');
+            document.getElementById('avatar').classList.remove('listening');
             isListening = false;
 
-            // Простой ответ
-            setTimeout(() => {
-                speak(`Мяу, ${childName}! Я тебя понял. Расскажи ещё что-нибудь!`);
-                statusText.innerText = `🦁 Мяу, ${childName}! Я тебя понял.`;
-                purr();
-            }, 500);
+            // Определяем страх
+            const lowerText = text.toLowerCase();
+            if (lowerText.includes('темнот') || lowerText.includes('ночь')) updateFearStats('темноты');
+            else if (lowerText.includes('врач') || lowerText.includes('укол')) updateFearStats('врачей');
+            else if (lowerText.includes('один') || lowerText.includes('одна')) updateFearStats('одиночества');
+            else if (lowerText.includes('обид')) updateFearStats('обиды');
+            else if (lowerText.includes('новое') || lowerText.includes('первый раз')) updateFearStats('нового');
+            else if (lowerText.includes('собака') || lowerText.includes('кошка')) updateFearStats('животных');
+
+            speak(`Мяу, ${childName}! Ты сказал: "${text}". Расскажи ещё что-нибудь!`);
+            statusText.innerText = `🦁 ${childName}, я тебя понял!`;
+            purr();
         };
 
         recognition.onerror = () => {
             statusText.innerText = '🦁 Не расслышал, попробуй ещё раз';
-            micButton.style.background = '#ff4081';
+            micButton.classList.remove('recording');
+            document.getElementById('avatar').classList.remove('listening');
             isListening = false;
         };
 
         recognition.onend = () => {
-            micButton.style.background = '#ff4081';
+            micButton.classList.remove('recording');
+            document.getElementById('avatar').classList.remove('listening');
             isListening = false;
         };
     }
 
-    // ========== 3. РОДИТЕЛЬСКАЯ ПАНЕЛЬ ==========
+    // ========== 3. КНОПКИ ДЕЙСТВИЙ ==========
+    document.getElementById('feedBtn').addEventListener('click', () => {
+        hunger = Math.min(100, hunger + 15);
+        mood = Math.min(100, mood + 5);
+        saveStats();
+        speak("Мур-р-р, вкусно! Спасибо!");
+        purr();
+    });
+    document.getElementById('playBtn').addEventListener('click', () => {
+        if (energy >= 20) {
+            energy -= 20;
+            mood = Math.min(100, mood + 15);
+            saveStats();
+            speak("Ура! Весело играть с тобой!");
+        } else {
+            speak("Я слишком устал. Дай мне отдохнуть.");
+        }
+        purr();
+    });
+    document.getElementById('dressBtn').addEventListener('click', () => {
+        speak("Мяу! Мне нравится этот наряд!");
+        purr();
+    });
+    document.getElementById('roomBtn').addEventListener('click', () => {
+        speak("Пойдём в мою комнату? Там уютно!");
+        purr();
+    });
+
+    // Поглаживание
+    document.getElementById('avatar').addEventListener('click', () => {
+        mood = Math.min(100, mood + 10);
+        saveStats();
+        purr();
+        speak(`Мурр, ${childName}, как приятно!`);
+        statusText.innerText = `😊 Ты погладил кота!`;
+    });
+
+    // ========== 4. РОДИТЕЛЬСКАЯ ПАНЕЛЬ ==========
     const parentPanel = document.getElementById('parentPanel');
     const pinInput = document.getElementById('pinInput');
     const pinStatus = document.getElementById('pinStatus');
-    let savedPin = localStorage.getItem('parentPin');
 
     function updatePinStatus() {
         if (savedPin) {
@@ -295,12 +537,10 @@
     document.getElementById('parentBtn').addEventListener('click', () => {
         parentPanel.style.display = 'block';
     });
-
     document.getElementById('closePanelBtn').addEventListener('click', () => {
         parentPanel.style.display = 'none';
     });
 
-    // Сохранение пароля
     document.getElementById('pinSaveBtn').addEventListener('click', () => {
         const newPin = pinInput.value.trim();
         if (newPin.length >= 4 && /^\d+$/.test(newPin)) {
@@ -314,7 +554,6 @@
         }
     });
 
-    // Проверка пароля
     document.getElementById('pinCheckBtn').addEventListener('click', () => {
         if (!savedPin) {
             alert('Сначала создайте пароль через кнопку "Сохранить пароль"');
@@ -322,34 +561,45 @@
         }
         const enteredPin = pinInput.value.trim();
         if (enteredPin === savedPin) {
-            alert('Вход выполнен! Добро пожаловать в Штаб.');
-            // Здесь можно добавить расширенные настройки
+            alert('Вход выполнен!');
         } else {
             alert('Неверный пароль!');
         }
         pinInput.value = '';
     });
 
-    // Промокод
     document.getElementById('promoBtn').addEventListener('click', () => {
         const code = document.getElementById('promoInput').value.trim();
         if (code === 'TEST2025') {
             localStorage.setItem('isPremium', 'true');
+            isPremium = true;
             alert('Премиум активирован!');
         } else {
             alert('Неверный промокод');
         }
     });
 
-    // Поглаживание кота
-    const avatar = document.getElementById('avatar');
-    avatar.addEventListener('click', () => {
-        purr();
-        speak(`Мурр, ${childName}, как приятно!`);
-        statusText.innerText = `😊 Ты погладил кота!`;
-    });
+    // ========== 5. ПОГОДА ==========
+    function updateWeather() {
+        const hour = new Date().getHours();
+        const icon = document.getElementById('weatherIcon');
+        if (hour >= 6 && hour < 12) icon.innerText = '🌤️';
+        else if (hour >= 12 && hour < 18) icon.innerText = '☀️';
+        else if (hour >= 18 && hour < 22) icon.innerText = '🌙';
+        else icon.innerText = '⭐';
+    }
+    updateWeather();
+    setInterval(updateWeather, 60000);
 
-    // Service Worker
+    // ========== 6. АВТОСНИЖЕНИЕ ==========
+    setInterval(() => {
+        hunger = Math.max(0, hunger - 2);
+        energy = Math.max(0, energy - 1);
+        if (hunger < 30 || energy < 30) mood = Math.max(0, mood - 5);
+        saveStats();
+    }, 30 * 60 * 1000);
+
+    // ========== 7. SERVICE WORKER ==========
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error', e));
     }
