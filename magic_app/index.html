@@ -41,7 +41,6 @@
             100% { background-position: 0% 50%; }
         }
         
-        /* Верхняя панель */
         .top-bar {
             position: fixed;
             top: 15px;
@@ -83,7 +82,6 @@
         }
         .parent-entry:active { opacity: 0.7; transform: scale(0.98); }
         
-        /* Шкалы тамагочи */
         .stats-container {
             position: fixed;
             top: 80px;
@@ -121,7 +119,6 @@
         .fill-energy { background: #00d2ff; }
         .fill-bravery { background: #ff4081; }
         
-        /* Аватар */
         .avatar-container {
             position: fixed;
             bottom: 180px;
@@ -150,7 +147,6 @@
         @keyframes listen-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
         @keyframes vibrate { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
         
-        /* Кнопка микрофона */
         .mic-container {
             position: fixed;
             bottom: 100px;
@@ -177,7 +173,6 @@
         .mic-btn:active { transform: scale(0.92); background: #e91e63; }
         .mic-btn.recording { background: #4CAF50; transform: scale(1.05); }
         
-        /* Кнопки действий */
         .action-buttons {
             position: fixed;
             bottom: 15px;
@@ -206,7 +201,6 @@
         }
         .action-btn:active { transform: scale(0.92); background: rgba(0,0,0,0.6); }
         
-        /* Модальные окна */
         .modal {
             display: none;
             position: fixed;
@@ -343,7 +337,6 @@
 </head>
 <body>
 
-    <!-- Верхняя панель -->
     <div class="top-bar">
         <div class="weather-icon" id="weather-icon">☀️</div>
         <div class="parent-entry" onclick="checkAccess()">
@@ -352,8 +345,7 @@
         </div>
     </div>
 
-    <!-- Шкалы тамагочи -->
-    <div class="stats-container" id="stats-container">
+    <div class="stats-container">
         <div class="stat-item">
             <span class="stat-icon">😊</span>
             <div class="stat-bar"><div class="stat-fill fill-mood" id="mood-fill" style="width: 70%"></div></div>
@@ -372,17 +364,14 @@
         </div>
     </div>
 
-    <!-- Аватар -->
     <div class="avatar-container">
         <div id="main-avatar" class="avatar" style="background-image: url('avatar.png');"></div>
     </div>
 
-    <!-- Кнопка микрофона -->
     <div class="mic-container">
         <button id="mic-btn" class="mic-btn">🎤</button>
     </div>
 
-    <!-- Кнопки действий -->
     <div class="action-buttons">
         <button class="action-btn" id="feed-btn">🍎</button>
         <button class="action-btn" id="play-btn">🎾</button>
@@ -394,7 +383,7 @@
         <a href="privacy.html">Политика конфиденциальности</a>
     </div>
 
-    <!-- Модальные окна -->
+    <!-- Модальное окно приветствия -->
     <div id="welcome-modal" class="modal" style="display: flex;">
         <div class="modal-card">
             <h2>✨ Добро пожаловать!</h2>
@@ -422,11 +411,10 @@
         </div>
     </div>
 
-    <!-- Родительский Штаб -->
     <div id="parent-mode" class="parent-mode">
         <h2 style="color: #00d2ff; margin:0;">🚀 Штаб Создателя</h2>
         
-        <div class="parent-card safety-warning" style="background: rgba(255,64,129,0.2); border-color:#ff4081;">
+        <div class="parent-card" style="background: rgba(255,64,129,0.2); border-color:#ff4081;">
             ⚠️ <strong>Безопасность детей</strong><br>
             • Люцик не заменяет живого общения<br>
             • Не оставляйте ребёнка с телефоном надолго
@@ -446,7 +434,6 @@
                 <div class="character-option" data-char="kid" onclick="selectCharacterByClick('kid')" id="kid-avatar" style="background-image: url('kid.png'); background-size: cover;"></div>
             </div>
             
-            <!-- Загрузка своих аватаров -->
             <div class="avatar-upload">
                 <label for="mom-upload">📸 Загрузить аватар мамы</label>
                 <input type="file" id="mom-upload" accept="image/*" onchange="uploadCharacterAvatar('mom', this)">
@@ -498,6 +485,13 @@
         <button onclick="closeParentMode()" style="width:100%; background:none; border:none; color:white; margin-top:20px;">Назад</button>
     </div>
 
+    <div id="welcome-screen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#1a2a6c; z-index:2000; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; box-sizing:border-box;">
+        <h1>✨ Привет, Создатель!</h1>
+        <input type="text" id="reg-name" placeholder="Имя ребенка" style="width:80%; padding:15px; border-radius:15px; border:none; margin:10px;">
+        <input type="number" id="reg-age" placeholder="Возраст" style="width:80%; padding:15px; border-radius:15px; border:none; margin:10px;">
+        <button class="btn-magic" onclick="finishReg()" style="background:#00d2ff; padding:15px 30px; border-radius:30px; border:none; color:white; font-weight:bold;">Начать 🐾</button>
+    </div>
+
     <script>
         // ========== ПЕРСОНАЖИ ==========
         const characters = [
@@ -509,57 +503,30 @@
         
         let currentCharacterIndex = 0;
         let isPremium = localStorage.getItem('isPremium') === 'true';
+        let config = {
+            name: localStorage.getItem('childName'),
+            pin: localStorage.getItem('parentPin'),
+            isPremium: localStorage.getItem('isPremium') === 'true',
+            dailyCount: parseInt(localStorage.getItem('dailyCount')) || 0,
+            lastReset: localStorage.getItem('lastReset') || ''
+        };
         
-        // Загрузка своих аватаров
-        function uploadCharacterAvatar(character, input) {
-            const file = input.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const imgData = e.target.result;
-                    localStorage.setItem(`avatar_${character}`, imgData);
-                    
-                    // Обновляем отображение в Штабе
-                    const avatarDiv = document.getElementById(`${character}-avatar`);
-                    if (avatarDiv) {
-                        avatarDiv.style.backgroundImage = `url(${imgData})`;
-                        avatarDiv.style.backgroundSize = 'cover';
-                    }
-                    
-                    // Если этот персонаж выбран — обновляем главный аватар
-                    if (characters[currentCharacterIndex].id === character) {
-                        document.getElementById('main-avatar').style.backgroundImage = `url(${imgData})`;
-                    }
-                    
-                    alert(`Аватар для ${character === 'mom' ? 'мамы' : character === 'dad' ? 'папы' : 'ребёнка'} загружен!`);
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-        
-        // Загрузка сохранённых аватаров
-        function loadSavedAvatars() {
-            const chars = ['mom', 'dad', 'kid'];
-            chars.forEach(char => {
-                const saved = localStorage.getItem(`avatar_${char}`);
-                if (saved) {
-                    const avatarDiv = document.getElementById(`${char}-avatar`);
-                    if (avatarDiv) {
-                        avatarDiv.style.backgroundImage = `url(${saved})`;
-                        avatarDiv.style.backgroundSize = 'cover';
-                    }
-                    // Обновляем иконку в массиве персонажей
-                    const charObj = characters.find(c => c.id === char);
-                    if (charObj) charObj.icon = saved;
-                }
-            });
-        }
-        
-        // Тамагочи шкалы
         let mood = parseInt(localStorage.getItem('lucik_mood')) || 70;
         let hunger = parseInt(localStorage.getItem('lucik_hunger')) || 60;
         let energy = parseInt(localStorage.getItem('lucik_energy')) || 50;
         let bravery = parseInt(localStorage.getItem('lucik_bravery')) || 0;
+        let conversationHistory = [];
+        let purrAudio = null;
+        let currentBg = localStorage.getItem('customBg') || null;
+        let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+        
+        const today = new Date().toDateString();
+        if (config.lastReset !== today) {
+            config.dailyCount = 0;
+            localStorage.setItem('dailyCount', '0');
+            localStorage.setItem('lastReset', today);
+        }
+        isPremium = config.isPremium;
         
         function updateStatsUI() {
             document.getElementById('mood-fill').style.width = mood + '%';
@@ -576,13 +543,44 @@
             updateStatsUI();
         }
         
-        // Автоснижение параметров
-        setInterval(() => {
-            hunger = Math.max(0, hunger - 2);
-            energy = Math.max(0, energy - 1);
-            if (hunger < 30 || energy < 30) mood = Math.max(0, mood - 5);
-            saveStats();
-        }, 30 * 60 * 1000);
+        function uploadCharacterAvatar(character, input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imgData = e.target.result;
+                    localStorage.setItem(`avatar_${character}`, imgData);
+                    const avatarDiv = document.getElementById(`${character}-avatar`);
+                    if (avatarDiv) {
+                        avatarDiv.style.backgroundImage = `url(${imgData})`;
+                        avatarDiv.style.backgroundSize = 'cover';
+                    }
+                    const charObj = characters.find(c => c.id === character);
+                    if (charObj) charObj.icon = imgData;
+                    if (characters[currentCharacterIndex].id === character) {
+                        document.getElementById('main-avatar').style.backgroundImage = `url(${imgData})`;
+                    }
+                    alert(`Аватар для ${character === 'mom' ? 'мамы' : character === 'dad' ? 'папы' : 'ребёнка'} загружен!`);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        function loadSavedAvatars() {
+            const chars = ['mom', 'dad', 'kid'];
+            chars.forEach(char => {
+                const saved = localStorage.getItem(`avatar_${char}`);
+                if (saved) {
+                    const avatarDiv = document.getElementById(`${char}-avatar`);
+                    if (avatarDiv) {
+                        avatarDiv.style.backgroundImage = `url(${saved})`;
+                        avatarDiv.style.backgroundSize = 'cover';
+                    }
+                    const charObj = characters.find(c => c.id === char);
+                    if (charObj) charObj.icon = saved;
+                }
+            });
+        }
         
         function loadCharacterFromStorage() {
             const savedChar = localStorage.getItem('currentCharacter');
@@ -631,46 +629,6 @@
             }
         }
         
-        // Свайп
-        let touchStartX = 0;
-        const avatarEl = document.getElementById('main-avatar');
-        avatarEl.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; });
-        avatarEl.addEventListener('touchend', (e) => {
-            const diff = e.changedTouches[0].screenX - touchStartX;
-            if (Math.abs(diff) > 50) switchCharacter(diff > 0 ? -1 : 1);
-        });
-        
-        // При первом запуске — Люцик говорит
-        setTimeout(() => {
-            if (!localStorage.getItem('welcome_shown')) {
-                speak("Мяу! Погладь меня, я соскучился!");
-                avatarEl.classList.add('vibrate');
-                setTimeout(() => avatarEl.classList.remove('vibrate'), 2000);
-            }
-        }, 2000);
-        
-        // Основные настройки
-        let config = {
-            name: localStorage.getItem('childName'),
-            pin: localStorage.getItem('parentPin'),
-            isPremium: localStorage.getItem('isPremium') === 'true',
-            dailyCount: parseInt(localStorage.getItem('dailyCount')) || 0,
-            lastReset: localStorage.getItem('lastReset') || ''
-        };
-        
-        const today = new Date().toDateString();
-        if (config.lastReset !== today) {
-            config.dailyCount = 0;
-            localStorage.setItem('dailyCount', '0');
-            localStorage.setItem('lastReset', today);
-        }
-        
-        isPremium = config.isPremium;
-        let conversationHistory = [];
-        let purrAudio = null;
-        let currentBg = localStorage.getItem('customBg') || null;
-        let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
-        
         function closeWelcomeModal() {
             document.getElementById('welcome-modal').style.display = 'none';
             localStorage.setItem('welcome_shown', 'true');
@@ -682,7 +640,7 @@
                 localStorage.setItem('parentPin', newPin);
                 config.pin = newPin;
                 document.getElementById('pin-setup-modal').style.display = 'none';
-                alert('Пароль создан! Теперь используйте его для входа в Штаб.');
+                alert('Пароль создан!');
             } else {
                 alert('Придумайте пароль из 4-6 цифр');
             }
@@ -776,8 +734,9 @@
             }
             purrAudio.currentTime = 0;
             purrAudio.play().catch(e => console.log('Audio error:', e));
-            avatarEl.classList.add('vibrate');
-            setTimeout(() => avatarEl.classList.remove('vibrate'), 500);
+            const avatar = document.getElementById('main-avatar');
+            avatar.classList.add('vibrate');
+            setTimeout(() => avatar.classList.remove('vibrate'), 500);
         }
         
         function stopPurr() { if (purrAudio) purrAudio.pause(); }
@@ -789,7 +748,7 @@
                 config.isPremium = true;
                 isPremium = true;
                 document.getElementById('sub-status').innerHTML = '🌟 Премиум активен! Безлимит сказок';
-                alert('Подписка активирована! Теперь доступны все персонажи.');
+                alert('Подписка активирована!');
                 loadCharacterFromStorage();
             } else {
                 alert('Неверный промокод');
@@ -810,8 +769,9 @@
             const msg = new SpeechSynthesisUtterance(text);
             msg.lang = 'ru-RU';
             msg.rate = 0.9;
-            msg.onstart = () => avatarEl.classList.add('talking');
-            msg.onend = () => avatarEl.classList.remove('talking');
+            const avatar = document.getElementById('main-avatar');
+            msg.onstart = () => avatar.classList.add('talking');
+            msg.onend = () => avatar.classList.remove('talking');
             const voices = window.speechSynthesis.getVoices();
             const preferred = voices.find(v => v.lang === 'ru-RU' && (v.name.includes('Google') || v.name.includes('Microsoft')));
             if (preferred) msg.voice = preferred;
@@ -867,9 +827,8 @@
             }
         }
         
-        // Микрофон
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const micBtn = document.getElementById('mic-btn');
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
         if (SpeechRecognition) {
             const rec = new SpeechRecognition();
@@ -880,7 +839,7 @@
             micBtn.onclick = () => {
                 rec.start();
                 micBtn.classList.add('recording');
-                avatarEl.classList.add('listening');
+                document.getElementById('main-avatar').classList.add('listening');
                 startPurr();
             };
             
@@ -891,7 +850,7 @@
                 }
                 if (final) {
                     micBtn.classList.remove('recording');
-                    avatarEl.classList.remove('listening');
+                    document.getElementById('main-avatar').classList.remove('listening');
                     stopPurr();
                     await processStory(final);
                 }
@@ -899,13 +858,12 @@
             
             rec.onerror = () => {
                 micBtn.classList.remove('recording');
-                avatarEl.classList.remove('listening');
+                document.getElementById('main-avatar').classList.remove('listening');
                 stopPurr();
                 speak("🦁 Не расслышал, скажи ещё раз!");
             };
         }
         
-        // Кнопки действий
         document.getElementById('feed-btn').onclick = () => {
             hunger = Math.min(100, hunger + 15);
             mood = Math.min(100, mood + 5);
@@ -933,8 +891,7 @@
             startPurr();
         };
         
-        // Поглаживание
-        avatarEl.addEventListener('click', () => {
+        document.getElementById('main-avatar').addEventListener('click', () => {
             mood = Math.min(100, mood + 10);
             saveStats();
             startPurr();
@@ -950,7 +907,7 @@
         
         function updateHistory() {
             const h = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-            document.getElementById('history-list').innerHTML = h.map(i => `<div class="history-item" style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">${i}</div>`).join('') || "Пока тишина...";
+            document.getElementById('history-list').innerHTML = h.map(i => `<div style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">${i}</div>`).join('') || "Пока тишина...";
         }
         
         window.onload = () => {
@@ -977,6 +934,13 @@
             loadCharacterFromStorage();
             loadSavedAvatars();
             updateFearStatsUI();
+            setTimeout(() => {
+                if (!localStorage.getItem('welcome_shown')) {
+                    speak("Мяу! Погладь меня, я соскучился!");
+                    document.getElementById('main-avatar').classList.add('vibrate');
+                    setTimeout(() => document.getElementById('main-avatar').classList.remove('vibrate'), 2000);
+                }
+            }, 2000);
         };
         
         function initApp() {
@@ -998,14 +962,6 @@
                 .catch(err => console.error('❌ SW ошибка:', err));
         }
     </script>
-    
-    <!-- Экран регистрации -->
-    <div id="welcome-screen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#1a2a6c; z-index:2000; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; box-sizing:border-box;">
-        <h1>✨ Привет, Создатель!</h1>
-        <input type="text" id="reg-name" placeholder="Имя ребенка" style="width:80%; padding:15px; border-radius:15px; border:none; margin:10px;">
-        <input type="number" id="reg-age" placeholder="Возраст" style="width:80%; padding:15px; border-radius:15px; border:none; margin:10px;">
-        <button class="btn-magic" onclick="finishReg()" style="background:#00d2ff; padding:15px 30px; border-radius:30px; border:none; color:white; font-weight:bold;">Начать 🐾</button>
-    </div>
     
     <script>
         window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
