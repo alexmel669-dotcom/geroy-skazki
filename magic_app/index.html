@@ -24,7 +24,6 @@
             flex-direction: column;
         }
 
-        /* ЭКРАН РЕГИСТРАЦИИ */
         .screen-register {
             display: flex;
             flex-direction: column;
@@ -58,7 +57,6 @@
             cursor: pointer;
         }
 
-        /* ОСНОВНОЙ ЭКРАН */
         .screen-main {
             display: none;
             flex-direction: column;
@@ -99,7 +97,6 @@
             cursor: pointer;
         }
 
-        /* Шкалы */
         .stats-container {
             position: fixed;
             top: 80px;
@@ -135,7 +132,6 @@
         .fill-energy { background: #00d2ff; }
         .fill-bravery { background: #ff4081; }
 
-        /* Аватар (портрет, по центру, достаточно низко) */
         .avatar-container {
             position: fixed;
             bottom: 200px;
@@ -167,7 +163,6 @@
             50% { transform: scale(1.05); }
         }
 
-        /* Микрофон (крупная кнопка внизу) */
         .mic-container {
             position: fixed;
             bottom: 120px;
@@ -193,7 +188,6 @@
             transform: scale(1.05);
         }
 
-        /* Кнопки действий */
         .action-buttons {
             position: fixed;
             bottom: 20px;
@@ -215,19 +209,6 @@
             backdrop-filter: blur(5px);
         }
 
-        .status-text {
-            position: fixed;
-            bottom: 250px;
-            left: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.6);
-            padding: 12px 20px;
-            border-radius: 30px;
-            font-size: 16px;
-            text-align: center;
-            z-index: 15;
-        }
-
         .footer {
             position: fixed;
             bottom: 5px;
@@ -242,7 +223,6 @@
             text-decoration: none;
         }
 
-        /* Родительская панель */
         .parent-panel {
             display: none;
             position: fixed;
@@ -293,13 +273,11 @@
             .avatar { width: 200px; height: 200px; }
             .mic-btn { width: 75px; height: 75px; font-size: 40px; }
             .action-btn { width: 55px; height: 55px; font-size: 24px; }
-            .status-text { bottom: 220px; font-size: 14px; }
         }
     </style>
 </head>
 <body>
 
-<!-- ЭКРАН РЕГИСТРАЦИИ -->
 <div id="registerScreen" class="screen-register">
     <h1>✨ Привет, Создатель!</h1>
     <input type="text" id="childNameInput" placeholder="Имя ребенка">
@@ -307,7 +285,6 @@
     <button id="startBtn">Начать 🐾</button>
 </div>
 
-<!-- ОСНОВНОЙ ЭКРАН -->
 <div id="mainScreen" class="screen-main">
     <div class="top-bar">
         <div class="weather-icon" id="weatherIcon">☀️</div>
@@ -336,14 +313,11 @@
         <button class="action-btn" id="roomBtn">🏠</button>
     </div>
 
-    <div class="status-text" id="statusText">Нажми на микрофон 🎤</div>
-
     <div class="footer">
         <a href="privacy.html">Политика конфиденциальности</a>
     </div>
 </div>
 
-<!-- РОДИТЕЛЬСКАЯ ПАНЕЛЬ -->
 <div id="parentPanel" class="parent-panel">
     <h2>🚀 Штаб Создателя</h2>
     <div id="pinStatus"></div>
@@ -374,7 +348,7 @@
 </div>
 
 <script>
-    // ========== 1. ЗАГРУЗКА ИМЕНИ И ПАРОЛЯ ==========
+    // ========== 1. ЗАГРУЗКА ДАННЫХ ==========
     let childName = localStorage.getItem('childName');
     let childAge = localStorage.getItem('childAge');
     let savedPin = localStorage.getItem('parentPin');
@@ -399,7 +373,7 @@
     let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
     let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
 
-    // ========== ФУНКЦИИ ==========
+    // ========== ФУНКЦИИ UI ==========
     function updateStatsUI() {
         document.getElementById('moodFill').style.width = mood + '%';
         document.getElementById('hungerFill').style.width = hunger + '%';
@@ -447,7 +421,7 @@
         updateHistory();
     }
 
-    // Голос
+    // ========== ГОЛОС (только голос, без текста на экране) ==========
     function speak(message) {
         const utterance = new SpeechSynthesisUtterance(message);
         utterance.lang = 'ru-RU';
@@ -462,98 +436,31 @@
         audio.play().catch(e => console.log('no purr.mp3'));
     }
 
-    // Персонажи
-    function updateAvatar() {
-        const char = characters[currentCharacterIndex];
-        document.getElementById('avatar').style.backgroundImage = `url('${char.icon}')`;
-        document.querySelectorAll('.character-option').forEach((el, idx) => {
-            if (idx === currentCharacterIndex) el.classList.add('selected');
-            else el.classList.remove('selected');
-        });
-        localStorage.setItem('currentCharacter', char.id);
-    }
-    function switchCharacter(direction) {
-        let newIndex = currentCharacterIndex + direction;
-        if (newIndex < 0) newIndex = characters.length - 1;
-        if (newIndex >= characters.length) newIndex = 0;
-        if (characters[newIndex].premium && !isPremium) return;
-        currentCharacterIndex = newIndex;
-        updateAvatar();
-        purr();
-        speak(`Теперь я ${characters[currentCharacterIndex].name}!`);
-    }
-    function selectCharacterById(id) {
-        const index = characters.findIndex(c => c.id === id);
-        if (index !== -1) {
-            if (characters[index].premium && !isPremium) {
-                alert('Персонаж доступен в премиум-версии. Введите промокод TEST2025');
-                return;
-            }
-            currentCharacterIndex = index;
-            updateAvatar();
-            purr();
-            speak(`Привет! Я ${characters[currentCharacterIndex].name}!`);
+    // ========== ЗАПРОС К DEEPSEEK API (УМНЫЙ ОТВЕТ) ==========
+    async function askDeepSeek(userText) {
+        try {
+            const response = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    childName: childName,
+                    userSpeech: userText,
+                    history: conversationHistory.slice(-6).map(item => ({ role: "assistant", content: item }))
+                })
+            });
+            const data = await response.json();
+            return data.story;
+        } catch (error) {
+            console.error('DeepSeek error:', error);
+            return "Мяу! Давай ещё раз?";
         }
     }
 
-    // ========== ИНИЦИАЛИЗАЦИЯ ЭКРАНА ==========
-    const registerScreen = document.getElementById('registerScreen');
-    const mainScreen = document.getElementById('mainScreen');
-
-    if (childName && childAge) {
-        registerScreen.style.display = 'none';
-        mainScreen.style.display = 'flex';
-        document.getElementById('statusText').innerHTML = `Привет, ${childName}! Нажми на микрофон 🎤`;
-        updateStatsUI();
-        updateFearStatsUI();
-        updateHistory();
-        // Загружаем персонажа
-        const savedChar = localStorage.getItem('currentCharacter');
-        if (savedChar) {
-            const idx = characters.findIndex(c => c.id === savedChar);
-            if (idx !== -1 && (!characters[idx].premium || isPremium)) currentCharacterIndex = idx;
-        }
-        updateAvatar();
-    } else {
-        registerScreen.style.display = 'flex';
-        mainScreen.style.display = 'none';
-    }
-
-    document.getElementById('startBtn').addEventListener('click', () => {
-        const name = document.getElementById('childNameInput').value;
-        const age = document.getElementById('childAgeInput').value;
-        if (name && age) {
-            localStorage.setItem('childName', name);
-            localStorage.setItem('childAge', age);
-            childName = name;
-            registerScreen.style.display = 'none';
-            mainScreen.style.display = 'flex';
-            document.getElementById('statusText').innerHTML = `Привет, ${name}! Нажми на микрофон 🎤`;
-            updateStatsUI();
-            updateFearStatsUI();
-            updateHistory();
-            updateAvatar();
-        } else {
-            alert('Введите имя и возраст');
-        }
-    });
-
-    // ========== СВАЙП ==========
-    let touchStartX = 0;
-    const avatarElement = document.getElementById('avatar');
-    avatarElement.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; });
-    avatarElement.addEventListener('touchend', (e) => {
-        const diff = e.changedTouches[0].screenX - touchStartX;
-        if (Math.abs(diff) > 50) switchCharacter(diff > 0 ? -1 : 1);
-    });
-
-    // ========== МИКРОФОН ==========
-    const micButton = document.getElementById('micButton');
-    const statusText = document.getElementById('statusText');
+    // ========== ОБРАБОТКА ГОЛОСА ==========
     let isListening = false;
-
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
+    
     if (SpeechRecognitionAPI) {
         recognition = new SpeechRecognitionAPI();
         recognition.lang = 'ru-RU';
@@ -561,29 +468,30 @@
         recognition.interimResults = false;
     }
 
+    const micButton = document.getElementById('micButton');
+
     micButton.addEventListener('click', () => {
         if (!recognition) {
-            statusText.innerText = '❌ Голос не поддерживается';
+            speak("Голос не поддерживается в этом браузере");
             return;
         }
         if (isListening) return;
         isListening = true;
         micButton.classList.add('recording');
         document.getElementById('avatar').classList.add('listening');
-        statusText.innerText = '🎤 Слушаю... скажи что-нибудь';
         recognition.start();
     });
 
     if (recognition) {
         recognition.onresult = async (event) => {
             const text = event.results[0][0].transcript;
-            statusText.innerText = `Ты сказал: "${text}"`;
             micButton.classList.remove('recording');
             document.getElementById('avatar').classList.remove('listening');
             isListening = false;
+            
             saveHistory(`👶 ${childName}: ${text}`);
-
-            // Определяем страх
+            
+            // Определяем страх из речи
             const lowerText = text.toLowerCase();
             if (lowerText.includes('темнот') || lowerText.includes('ночь')) updateFearStats('темноты');
             else if (lowerText.includes('врач') || lowerText.includes('укол')) updateFearStats('врачей');
@@ -591,19 +499,21 @@
             else if (lowerText.includes('обид')) updateFearStats('обиды');
             else if (lowerText.includes('новое') || lowerText.includes('первый раз')) updateFearStats('нового');
             else if (lowerText.includes('собака') || lowerText.includes('кошка')) updateFearStats('животных');
-
-            const responseText = `Мяу, ${childName}! Ты сказал: "${text}". Расскажи ещё что-нибудь!`;
-            saveHistory(`🦁 Люцик: ${responseText}`);
-            speak(responseText);
-            statusText.innerText = `🦁 ${childName}, я тебя понял!`;
+            
+            // Умный ответ через DeepSeek
+            const answer = await askDeepSeek(text);
+            saveHistory(`🦁 ${characters[currentCharacterIndex].name}: ${answer}`);
+            speak(answer);
             purr();
         };
+        
         recognition.onerror = () => {
-            statusText.innerText = '🦁 Не расслышал, попробуй ещё раз';
             micButton.classList.remove('recording');
             document.getElementById('avatar').classList.remove('listening');
             isListening = false;
+            speak("Мяу, не расслышал, скажи ещё раз!");
         };
+        
         recognition.onend = () => {
             micButton.classList.remove('recording');
             document.getElementById('avatar').classList.remove('listening');
@@ -618,7 +528,7 @@
         saveStats();
         speak("Мур-р-р, вкусно! Спасибо!");
         purr();
-        saveHistory(`🍎 Покормил Люцика`);
+        saveHistory(`🍎 Покормил ${characters[currentCharacterIndex].name}`);
     });
     document.getElementById('playBtn').addEventListener('click', () => {
         if (energy >= 20) {
@@ -630,45 +540,86 @@
             speak("Я слишком устал. Дай мне отдохнуть.");
         }
         purr();
-        saveHistory(`🎾 Поиграл с Люциком`);
+        saveHistory(`🎾 Поиграл с ${characters[currentCharacterIndex].name}`);
     });
     document.getElementById('dressBtn').addEventListener('click', () => {
         speak("Мяу! Мне нравится этот наряд!");
         purr();
-        saveHistory(`🧸 Переодел Люцика`);
+        saveHistory(`🧸 Переодел ${characters[currentCharacterIndex].name}`);
     });
     document.getElementById('roomBtn').addEventListener('click', () => {
         speak("Пойдём в мою комнату? Там уютно!");
         purr();
-        saveHistory(`🏠 Зашёл в комнату Люцика`);
+        saveHistory(`🏠 Зашёл в комнату ${characters[currentCharacterIndex].name}`);
     });
 
-    // Поглаживание
-    avatarElement.addEventListener('click', () => {
+    // ========== ПОГЛАЖИВАНИЕ ==========
+    document.getElementById('avatar').addEventListener('click', () => {
         mood = Math.min(100, mood + 10);
         saveStats();
         purr();
         speak(`Мурр, ${childName}, как приятно!`);
-        statusText.innerText = `😊 Ты погладил кота!`;
-        saveHistory(`🤚 Погладил Люцика`);
+        saveHistory(`🤚 Погладил ${characters[currentCharacterIndex].name}`);
+    });
+
+    // ========== ПЕРСОНАЖИ И СВАЙП ==========
+    function updateAvatar() {
+        const char = characters[currentCharacterIndex];
+        document.getElementById('avatar').style.backgroundImage = `url('${char.icon}')`;
+        document.querySelectorAll('.character-option').forEach((el, idx) => {
+            if (idx === currentCharacterIndex) el.classList.add('selected');
+            else el.classList.remove('selected');
+        });
+        localStorage.setItem('currentCharacter', char.id);
+    }
+    
+    function switchCharacter(direction) {
+        let newIndex = currentCharacterIndex + direction;
+        if (newIndex < 0) newIndex = characters.length - 1;
+        if (newIndex >= characters.length) newIndex = 0;
+        if (characters[newIndex].premium && !isPremium) return;
+        currentCharacterIndex = newIndex;
+        updateAvatar();
+        purr();
+        speak(`Теперь я ${characters[currentCharacterIndex].name}!`);
+    }
+    
+    function selectCharacterById(id) {
+        const index = characters.findIndex(c => c.id === id);
+        if (index !== -1) {
+            if (characters[index].premium && !isPremium) {
+                speak("Этот персонаж в премиум-версии. Введите промокод в Штабе.");
+                return;
+            }
+            currentCharacterIndex = index;
+            updateAvatar();
+            purr();
+            speak(`Привет! Я ${characters[currentCharacterIndex].name}!`);
+        }
+    }
+    
+    // Свайп
+    let touchStartX = 0;
+    const avatarElement = document.getElementById('avatar');
+    avatarElement.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; });
+    avatarElement.addEventListener('touchend', (e) => {
+        const diff = e.changedTouches[0].screenX - touchStartX;
+        if (Math.abs(diff) > 50) switchCharacter(diff > 0 ? -1 : 1);
     });
 
     // ========== РОДИТЕЛЬСКАЯ ПАНЕЛЬ ==========
     const parentPanel = document.getElementById('parentPanel');
     const pinInput = document.getElementById('pinInput');
     const pinStatus = document.getElementById('pinStatus');
-
+    
     function updatePinStatus() {
         pinStatus.innerText = savedPin ? '✅ Пароль установлен.' : '🔐 Пароль ещё не создан.';
     }
     updatePinStatus();
-
-    document.getElementById('parentBtn').addEventListener('click', () => {
-        parentPanel.style.display = 'block';
-    });
-    document.getElementById('closePanelBtn').addEventListener('click', () => {
-        parentPanel.style.display = 'none';
-    });
+    
+    document.getElementById('parentBtn').addEventListener('click', () => { parentPanel.style.display = 'block'; });
+    document.getElementById('closePanelBtn').addEventListener('click', () => { parentPanel.style.display = 'none'; });
+    
     document.getElementById('pinSaveBtn').addEventListener('click', () => {
         const newPin = pinInput.value.trim();
         if (newPin.length >= 4 && /^\d+$/.test(newPin)) {
@@ -681,18 +632,14 @@
             alert('Пароль должен содержать минимум 4 цифры');
         }
     });
+    
     document.getElementById('pinCheckBtn').addEventListener('click', () => {
-        if (!savedPin) {
-            alert('Сначала создайте пароль');
-            return;
-        }
-        if (pinInput.value.trim() === savedPin) {
-            alert('Вход выполнен!');
-        } else {
-            alert('Неверный пароль!');
-        }
+        if (!savedPin) { alert('Сначала создайте пароль'); return; }
+        if (pinInput.value.trim() === savedPin) { alert('Вход выполнен!'); } 
+        else { alert('Неверный пароль!'); }
         pinInput.value = '';
     });
+    
     document.getElementById('promoBtn').addEventListener('click', () => {
         if (document.getElementById('promoInput').value.trim() === 'TEST2025') {
             localStorage.setItem('isPremium', 'true');
@@ -702,13 +649,12 @@
             alert('Неверный промокод');
         }
     });
-
-    // Выбор персонажа в панели
+    
     document.querySelectorAll('.character-option').forEach((el, idx) => {
         el.addEventListener('click', () => selectCharacterById(characters[idx].id));
     });
-
-    // Загрузка своих аватаров (если есть в localStorage)
+    
+    // Загрузка сохранённых аватаров
     ['mom', 'dad', 'kid'].forEach(char => {
         const saved = localStorage.getItem(`avatar_${char}`);
         if (saved) {
@@ -731,7 +677,7 @@
     updateWeather();
     setInterval(updateWeather, 60000);
 
-    // ========== АВТОСНИЖЕНИЕ ==========
+    // ========== АВТОСНИЖЕНИЕ ПАРАМЕТРОВ ==========
     setInterval(() => {
         hunger = Math.max(0, hunger - 2);
         energy = Math.max(0, energy - 1);
@@ -739,7 +685,47 @@
         saveStats();
     }, 30 * 60 * 1000);
 
-    // ========== SERVICE WORKER ==========
+    // ========== ИНИЦИАЛИЗАЦИЯ ==========
+    const registerScreen = document.getElementById('registerScreen');
+    const mainScreen = document.getElementById('mainScreen');
+    
+    if (childName && childAge) {
+        registerScreen.style.display = 'none';
+        mainScreen.style.display = 'flex';
+        updateStatsUI();
+        updateFearStatsUI();
+        updateHistory();
+        const savedChar = localStorage.getItem('currentCharacter');
+        if (savedChar) {
+            const idx = characters.findIndex(c => c.id === savedChar);
+            if (idx !== -1 && (!characters[idx].premium || isPremium)) currentCharacterIndex = idx;
+        }
+        updateAvatar();
+        speak(`Мяу! Привет, ${childName}! Я ${characters[currentCharacterIndex].name}. Расскажи, что тебя беспокоит?`);
+    } else {
+        registerScreen.style.display = 'flex';
+        mainScreen.style.display = 'none';
+    }
+    
+    document.getElementById('startBtn').addEventListener('click', () => {
+        const name = document.getElementById('childNameInput').value;
+        const age = document.getElementById('childAgeInput').value;
+        if (name && age) {
+            localStorage.setItem('childName', name);
+            localStorage.setItem('childAge', age);
+            childName = name;
+            registerScreen.style.display = 'none';
+            mainScreen.style.display = 'flex';
+            updateStatsUI();
+            updateFearStatsUI();
+            updateHistory();
+            updateAvatar();
+            speak(`Мяу! Привет, ${name}! Я ${characters[currentCharacterIndex].name}. Расскажи, что тебя беспокоит?`);
+        } else {
+            alert('Введите имя и возраст');
+        }
+    });
+    
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error', e));
     }
