@@ -198,6 +198,9 @@
             cursor: pointer;
             backdrop-filter: blur(5px);
         }
+        .game-btn {
+            background: #ffa500;
+        }
         .footer {
             position: fixed;
             bottom: 5px;
@@ -248,6 +251,50 @@
             background-color: rgba(255,255,255,0.1);
         }
         .character-option.selected { border-color: #fdbb2d; transform: scale(1.05); }
+        
+        /* Игра */
+        .game-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .game-area {
+            width: 90%;
+            height: 400px;
+            background: #1a2a6c;
+            border-radius: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        .fish {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"%23ff9800\"><path d=\"M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M12,20c-4.41,0-8-3.59-8-8s3.59-8,8-8s8,3.59,8,8 S16.41,20,12,20z\"/></svg>');
+            background-size: contain;
+            cursor: pointer;
+        }
+        .score {
+            font-size: 24px;
+            margin-top: 10px;
+        }
+        .close-game {
+            margin-top: 20px;
+            background: #ff4081;
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: none;
+            color: white;
+        }
+        
         @media (max-width: 480px) {
             .avatar { width: 180px; height: 180px; }
             .mic-btn { width: 75px; height: 75px; font-size: 40px; }
@@ -288,6 +335,7 @@
         <button class="action-btn" id="playBtn">🎾</button>
         <button class="action-btn" id="dressBtn">🧸</button>
         <button class="action-btn" id="roomBtn">🏠</button>
+        <button class="action-btn game-btn" id="gameBtn">🐟</button>
     </div>
     <div class="footer">
         <a href="privacy.html">Политика конфиденциальности</a>
@@ -298,8 +346,8 @@
     <h2>🚀 Штаб Создателя</h2>
     <div id="pinStatus"></div>
     <input type="password" id="pinInput" placeholder="Пароль" style="width:100%; padding:10px; margin:10px 0;">
-    <button id="pinSaveBtn">Сохранить пароль</button>
-    <button id="pinCheckBtn">Войти</button>
+    <button id="pinCheckBtn">Войти в Штаб</button>
+    <button id="pinSaveBtn">Создать пароль</button>
     <hr>
     <h3>🎭 Выбор персонажа (свайп по аватару)</h3>
     <div class="character-select" id="characterSelect">
@@ -308,7 +356,7 @@
         <div class="character-option" data-char="dad" id="dadAvatar" style="background-image: url('dad.png');"></div>
         <div class="character-option" data-char="kid" id="kidAvatar" style="background-image: url('kid.png');"></div>
     </div>
-    <div style="font-size:12px; margin-top:5px;">🔐 Мама, папа, ребёнок — по промокоду TEST2025</div>
+    <div style="font-size:12px; margin-top:5px;">🔐 Мама, папа, ребёнок — по промокоду</div>
     <h3>⭐ Промокод</h3>
     <input type="text" id="promoInput" placeholder="TEST2025">
     <button id="promoBtn">Активировать</button>
@@ -317,6 +365,15 @@
     <h3>📒 Дневник разговоров</h3>
     <div id="historyList">Пока тишина...</div>
     <button class="close-panel" id="closePanelBtn">Закрыть</button>
+</div>
+
+<div id="gameModal" class="game-modal">
+    <h2>🐟 Поймай рыбку!</h2>
+    <div class="game-area" id="gameArea">
+        <div class="fish" id="fish"></div>
+    </div>
+    <div class="score">Счёт: <span id="score">0</span></div>
+    <button class="close-game" id="closeGameBtn">Закрыть</button>
 </div>
 
 <script>
@@ -387,9 +444,8 @@
         updateHistory();
     }
     
-    // ========== ГОЛОС (без звёздочек, детские слова) ==========
+    // ========== ГОЛОС ==========
     function speak(message) {
-        // Убираем звёздочки, точки, сложные слова
         let cleanMessage = message
             .replace(/[\*\_\-\#]/g, '')
             .replace(/беспокоит/g, 'случилось')
@@ -482,12 +538,11 @@
         };
     }
     
-    // ========== КНОПКИ ДЕЙСТВИЙ ==========
+    // ========== КНОПКИ ДЕЙСТВИЙ (без озвучки, только мурчание) ==========
     document.getElementById('feedBtn').addEventListener('click', () => {
         hunger = Math.min(100, hunger + 15);
         mood = Math.min(100, mood + 5);
         saveStats();
-        speak("Мур-р-р, вкусно! Спасибо!");
         purr();
         saveHistory(`🍎 Покормил ${characters[currentCharacterIndex].name}`);
     });
@@ -496,7 +551,6 @@
             energy -= 20;
             mood = Math.min(100, mood + 15);
             saveStats();
-            speak("Ура! Весело играть с тобой!");
         } else {
             speak("Я устал. Дай мне отдохнуть.");
         }
@@ -504,12 +558,10 @@
         saveHistory(`🎾 Поиграл с ${characters[currentCharacterIndex].name}`);
     });
     document.getElementById('dressBtn').addEventListener('click', () => {
-        speak("Мяу! Мне нравится этот наряд!");
         purr();
         saveHistory(`🧸 Переодел ${characters[currentCharacterIndex].name}`);
     });
     document.getElementById('roomBtn').addEventListener('click', () => {
-        speak("Пойдём в мою комнату? Там уютно!");
         purr();
         saveHistory(`🏠 Зашёл в комнату ${characters[currentCharacterIndex].name}`);
     });
@@ -519,6 +571,47 @@
         purr();
         speak(`Мурр, ${childName}, как приятно!`);
         saveHistory(`🤚 Погладил ${characters[currentCharacterIndex].name}`);
+    });
+    
+    // ========== ИГРА ==========
+    let gameScore = 0;
+    const gameModal = document.getElementById('gameModal');
+    const gameArea = document.getElementById('gameArea');
+    const fish = document.getElementById('fish');
+    const scoreSpan = document.getElementById('score');
+    
+    function moveFish() {
+        const maxX = gameArea.clientWidth - 50;
+        const maxY = gameArea.clientHeight - 50;
+        const x = Math.random() * maxX;
+        const y = Math.random() * maxY;
+        fish.style.left = x + 'px';
+        fish.style.top = y + 'px';
+    }
+    
+    function catchFish() {
+        gameScore++;
+        scoreSpan.innerText = gameScore;
+        moveFish();
+        purr();
+        hunger = Math.min(100, hunger + 5);
+        mood = Math.min(100, mood + 5);
+        saveStats();
+    }
+    
+    fish.addEventListener('click', catchFish);
+    
+    document.getElementById('gameBtn').addEventListener('click', () => {
+        gameScore = 0;
+        scoreSpan.innerText = '0';
+        gameModal.style.display = 'flex';
+        setTimeout(() => {
+            moveFish();
+        }, 100);
+    });
+    
+    document.getElementById('closeGameBtn').addEventListener('click', () => {
+        gameModal.style.display = 'none';
     });
     
     // ========== ЗАГРУЗКА АВАТАРА ==========
@@ -589,7 +682,7 @@
         if (Math.abs(diff) > 50) switchCharacter(diff > 0 ? -1 : 1);
     });
     
-    // ========== РОДИТЕЛЬСКАЯ ПАНЕЛЬ (сначала пароль) ==========
+    // ========== РОДИТЕЛЬСКАЯ ПАНЕЛЬ ==========
     const parentPanel = document.getElementById('parentPanel');
     const pinInput = document.getElementById('pinInput');
     const pinStatus = document.getElementById('pinStatus');
@@ -631,7 +724,8 @@
         pinInput.value = '';
     });
     document.getElementById('promoBtn').addEventListener('click', () => {
-        if (document.getElementById('promoInput').value.trim() === 'TEST2025') {
+        const code = document.getElementById('promoInput').value.trim().toUpperCase();
+        if (code === 'TEST2025') {
             localStorage.setItem('isPremium', 'true');
             isPremium = true;
             alert('Премиум активирован!');
@@ -649,6 +743,18 @@
             if (el) el.style.backgroundImage = `url(${saved})`;
         }
     });
+    
+    // ========== КНОПКА НАЗАД НА ТЕЛЕФОНЕ ==========
+    window.addEventListener('popstate', () => {
+        if (parentPanel.style.display === 'block') {
+            parentPanel.style.display = 'none';
+        } else if (gameModal.style.display === 'flex') {
+            gameModal.style.display = 'none';
+        } else {
+            window.close();
+        }
+    });
+    history.pushState(null, null, location.href);
     
     // ========== ПОГОДА ==========
     function updateWeather() {
