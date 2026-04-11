@@ -7,11 +7,7 @@
     <link rel="icon" href="avatar.png" type="image/png">
     <link rel="manifest" href="manifest.json">
     <style>
-        * {
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
+        * { user-select: none; -webkit-tap-highlight-color: transparent; }
         body {
             margin: 0;
             min-height: 100vh;
@@ -23,7 +19,6 @@
             align-items: center;
             flex-direction: column;
         }
-
         .screen-register {
             display: flex;
             flex-direction: column;
@@ -56,7 +51,6 @@
             margin-top: 20px;
             cursor: pointer;
         }
-
         .screen-main {
             display: none;
             flex-direction: column;
@@ -68,7 +62,6 @@
             box-sizing: border-box;
             position: relative;
         }
-
         .top-bar {
             position: fixed;
             top: 15px;
@@ -96,7 +89,6 @@
             font-size: 14px;
             cursor: pointer;
         }
-
         .stats-container {
             position: fixed;
             top: 80px;
@@ -131,7 +123,6 @@
         .fill-hunger { background: #4CAF50; }
         .fill-energy { background: #00d2ff; }
         .fill-bravery { background: #ff4081; }
-
         .avatar-container {
             position: fixed;
             bottom: 200px;
@@ -150,19 +141,9 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        .avatar.talking {
-            animation: pulse 0.5s infinite;
-            filter: drop-shadow(0 0 15px #00d2ff);
-        }
-        .avatar.listening {
-            animation: pulse 1s infinite;
-            filter: drop-shadow(0 0 15px #4CAF50);
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
+        .avatar.talking { animation: pulse 0.5s infinite; filter: drop-shadow(0 0 15px #00d2ff); }
+        .avatar.listening { animation: pulse 1s infinite; filter: drop-shadow(0 0 15px #4CAF50); }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .mic-container {
             position: fixed;
             bottom: 120px;
@@ -183,11 +164,7 @@
             transition: 0.1s;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-        .mic-btn.recording {
-            background: #4CAF50;
-            transform: scale(1.05);
-        }
-
+        .mic-btn.recording { background: #4CAF50; transform: scale(1.05); }
         .action-buttons {
             position: fixed;
             bottom: 20px;
@@ -208,7 +185,6 @@
             cursor: pointer;
             backdrop-filter: blur(5px);
         }
-
         .footer {
             position: fixed;
             bottom: 5px;
@@ -218,11 +194,7 @@
             text-align: center;
             z-index: 20;
         }
-        .footer a {
-            color: white;
-            text-decoration: none;
-        }
-
+        .footer a { color: white; text-decoration: none; }
         .parent-panel {
             display: none;
             position: fixed;
@@ -236,9 +208,7 @@
             box-sizing: border-box;
             overflow-y: auto;
         }
-        .parent-panel h3 {
-            color: #fdbb2d;
-        }
+        .parent-panel h3 { color: #fdbb2d; }
         .close-panel {
             background: #ff4081;
             padding: 10px 20px;
@@ -264,11 +234,7 @@
             background-position: center;
             background-color: rgba(255,255,255,0.1);
         }
-        .character-option.selected {
-            border-color: #fdbb2d;
-            transform: scale(1.05);
-        }
-
+        .character-option.selected { border-color: #fdbb2d; transform: scale(1.05); }
         @media (max-width: 480px) {
             .avatar { width: 200px; height: 200px; }
             .mic-btn { width: 75px; height: 75px; font-size: 40px; }
@@ -290,29 +256,24 @@
         <div class="weather-icon" id="weatherIcon">☀️</div>
         <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
     </div>
-
     <div class="stats-container">
         <div class="stat-item"><span class="stat-icon">😊</span><div class="stat-bar"><div class="stat-fill fill-mood" id="moodFill" style="width:70%"></div></div></div>
         <div class="stat-item"><span class="stat-icon">🍽️</span><div class="stat-bar"><div class="stat-fill fill-hunger" id="hungerFill" style="width:60%"></div></div></div>
         <div class="stat-item"><span class="stat-icon">⚡</span><div class="stat-bar"><div class="stat-fill fill-energy" id="energyFill" style="width:50%"></div></div></div>
         <div class="stat-item"><span class="stat-icon">⭐</span><div class="stat-bar"><div class="stat-fill fill-bravery" id="braveryFill" style="width:0%"></div></div></div>
     </div>
-
     <div class="avatar-container">
         <div class="avatar" id="avatar" style="background-image: url('avatar.png');"></div>
     </div>
-
     <div class="mic-container">
         <button class="mic-btn" id="micButton">🎤</button>
     </div>
-
     <div class="action-buttons">
         <button class="action-btn" id="feedBtn">🍎</button>
         <button class="action-btn" id="playBtn">🎾</button>
         <button class="action-btn" id="dressBtn">🧸</button>
         <button class="action-btn" id="roomBtn">🏠</button>
     </div>
-
     <div class="footer">
         <a href="privacy.html">Политика конфиденциальности</a>
     </div>
@@ -333,28 +294,23 @@
         <div class="character-option" data-char="kid" id="kidAvatar" style="background-image: url('kid.png');"></div>
     </div>
     <div style="font-size:12px; margin-top:5px;">🔐 Мама, папа, ребёнок — по промокоду TEST2025</div>
-    
     <h3>⭐ Промокод</h3>
     <input type="text" id="promoInput" placeholder="TEST2025">
     <button id="promoBtn">Активировать</button>
-    
     <h3>📊 Дневник страхов</h3>
     <div id="fearStats">😨 Темнота: 0<br>🏥 Врачи: 0<br>🧸 Одиночество: 0<br>🌟 Новое: 0<br>💔 Обиды: 0<br>🐕 Животные: 0</div>
-    
     <h3>📒 Дневник разговоров</h3>
     <div id="historyList">Пока тишина...</div>
-    
     <button class="close-panel" id="closePanelBtn">Закрыть</button>
 </div>
 
 <script>
-    // ========== 1. ЗАГРУЗКА ДАННЫХ ==========
+    // ========== ДАННЫЕ ==========
     let childName = localStorage.getItem('childName');
     let childAge = localStorage.getItem('childAge');
     let savedPin = localStorage.getItem('parentPin');
     let isPremium = localStorage.getItem('isPremium') === 'true';
-
-    // Персонажи
+    
     const characters = [
         { id: 'lucik', name: 'Люцик', icon: 'avatar.png', premium: false },
         { id: 'mom', name: 'Мама', icon: 'mom.png', premium: true },
@@ -362,18 +318,16 @@
         { id: 'kid', name: 'Ребёнок', icon: 'kid.png', premium: true }
     ];
     let currentCharacterIndex = 0;
-
-    // Шкалы
+    
     let mood = parseInt(localStorage.getItem('lucik_mood')) || 70;
     let hunger = parseInt(localStorage.getItem('lucik_hunger')) || 60;
     let energy = parseInt(localStorage.getItem('lucik_energy')) || 50;
     let bravery = parseInt(localStorage.getItem('lucik_bravery')) || 0;
-
-    // Статистика страхов
+    
     let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
     let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-
-    // ========== ФУНКЦИИ UI ==========
+    
+    // ========== UI ФУНКЦИИ ==========
     function updateStatsUI() {
         document.getElementById('moodFill').style.width = mood + '%';
         document.getElementById('hungerFill').style.width = hunger + '%';
@@ -408,11 +362,8 @@
     }
     function updateHistory() {
         const historyDiv = document.getElementById('historyList');
-        if (conversationHistory.length === 0) {
-            historyDiv.innerHTML = 'Пока тишина...';
-        } else {
-            historyDiv.innerHTML = conversationHistory.slice(-10).map(item => `<div style="padding:5px; border-bottom:1px solid rgba(255,255,255,0.1);">${item}</div>`).join('');
-        }
+        if (conversationHistory.length === 0) historyDiv.innerHTML = 'Пока тишина...';
+        else historyDiv.innerHTML = conversationHistory.slice(-10).map(item => `<div style="padding:5px; border-bottom:1px solid rgba(255,255,255,0.1);">${item}</div>`).join('');
     }
     function saveHistory(text) {
         conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + text);
@@ -420,8 +371,8 @@
         localStorage.setItem('storyHistory', JSON.stringify(conversationHistory));
         updateHistory();
     }
-
-    // ========== ГОЛОС (только голос, без текста на экране) ==========
+    
+    // ========== ГОЛОС ==========
     function speak(message) {
         const utterance = new SpeechSynthesisUtterance(message);
         utterance.lang = 'ru-RU';
@@ -435,8 +386,8 @@
         const audio = new Audio('purr.mp3');
         audio.play().catch(e => console.log('no purr.mp3'));
     }
-
-    // ========== ЗАПРОС К DEEPSEEK API (УМНЫЙ ОТВЕТ) ==========
+    
+    // ========== DEEPSEEK API ==========
     async function askDeepSeek(userText) {
         try {
             const response = await fetch('/api/generate', {
@@ -455,43 +406,33 @@
             return "Мяу! Давай ещё раз?";
         }
     }
-
-    // ========== ОБРАБОТКА ГОЛОСА ==========
+    
+    // ========== МИКРОФОН ==========
     let isListening = false;
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
-    
     if (SpeechRecognitionAPI) {
         recognition = new SpeechRecognitionAPI();
         recognition.lang = 'ru-RU';
         recognition.continuous = false;
         recognition.interimResults = false;
     }
-
     const micButton = document.getElementById('micButton');
-
     micButton.addEventListener('click', () => {
-        if (!recognition) {
-            speak("Голос не поддерживается в этом браузере");
-            return;
-        }
+        if (!recognition) { speak("Голос не поддерживается"); return; }
         if (isListening) return;
         isListening = true;
         micButton.classList.add('recording');
         document.getElementById('avatar').classList.add('listening');
         recognition.start();
     });
-
     if (recognition) {
         recognition.onresult = async (event) => {
             const text = event.results[0][0].transcript;
             micButton.classList.remove('recording');
             document.getElementById('avatar').classList.remove('listening');
             isListening = false;
-            
             saveHistory(`👶 ${childName}: ${text}`);
-            
-            // Определяем страх из речи
             const lowerText = text.toLowerCase();
             if (lowerText.includes('темнот') || lowerText.includes('ночь')) updateFearStats('темноты');
             else if (lowerText.includes('врач') || lowerText.includes('укол')) updateFearStats('врачей');
@@ -499,28 +440,24 @@
             else if (lowerText.includes('обид')) updateFearStats('обиды');
             else if (lowerText.includes('новое') || lowerText.includes('первый раз')) updateFearStats('нового');
             else if (lowerText.includes('собака') || lowerText.includes('кошка')) updateFearStats('животных');
-            
-            // Умный ответ через DeepSeek
             const answer = await askDeepSeek(text);
             saveHistory(`🦁 ${characters[currentCharacterIndex].name}: ${answer}`);
             speak(answer);
             purr();
         };
-        
         recognition.onerror = () => {
             micButton.classList.remove('recording');
             document.getElementById('avatar').classList.remove('listening');
             isListening = false;
             speak("Мяу, не расслышал, скажи ещё раз!");
         };
-        
         recognition.onend = () => {
             micButton.classList.remove('recording');
             document.getElementById('avatar').classList.remove('listening');
             isListening = false;
         };
     }
-
+    
     // ========== КНОПКИ ДЕЙСТВИЙ ==========
     document.getElementById('feedBtn').addEventListener('click', () => {
         hunger = Math.min(100, hunger + 15);
@@ -552,8 +489,6 @@
         purr();
         saveHistory(`🏠 Зашёл в комнату ${characters[currentCharacterIndex].name}`);
     });
-
-    // ========== ПОГЛАЖИВАНИЕ ==========
     document.getElementById('avatar').addEventListener('click', () => {
         mood = Math.min(100, mood + 10);
         saveStats();
@@ -561,7 +496,7 @@
         speak(`Мурр, ${childName}, как приятно!`);
         saveHistory(`🤚 Погладил ${characters[currentCharacterIndex].name}`);
     });
-
+    
     // ========== ПЕРСОНАЖИ И СВАЙП ==========
     function updateAvatar() {
         const char = characters[currentCharacterIndex];
@@ -572,7 +507,6 @@
         });
         localStorage.setItem('currentCharacter', char.id);
     }
-    
     function switchCharacter(direction) {
         let newIndex = currentCharacterIndex + direction;
         if (newIndex < 0) newIndex = characters.length - 1;
@@ -583,7 +517,6 @@
         purr();
         speak(`Теперь я ${characters[currentCharacterIndex].name}!`);
     }
-    
     function selectCharacterById(id) {
         const index = characters.findIndex(c => c.id === id);
         if (index !== -1) {
@@ -597,8 +530,6 @@
             speak(`Привет! Я ${characters[currentCharacterIndex].name}!`);
         }
     }
-    
-    // Свайп
     let touchStartX = 0;
     const avatarElement = document.getElementById('avatar');
     avatarElement.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; });
@@ -606,20 +537,15 @@
         const diff = e.changedTouches[0].screenX - touchStartX;
         if (Math.abs(diff) > 50) switchCharacter(diff > 0 ? -1 : 1);
     });
-
+    
     // ========== РОДИТЕЛЬСКАЯ ПАНЕЛЬ ==========
     const parentPanel = document.getElementById('parentPanel');
     const pinInput = document.getElementById('pinInput');
     const pinStatus = document.getElementById('pinStatus');
-    
-    function updatePinStatus() {
-        pinStatus.innerText = savedPin ? '✅ Пароль установлен.' : '🔐 Пароль ещё не создан.';
-    }
+    function updatePinStatus() { pinStatus.innerText = savedPin ? '✅ Пароль установлен.' : '🔐 Пароль ещё не создан.'; }
     updatePinStatus();
-    
     document.getElementById('parentBtn').addEventListener('click', () => { parentPanel.style.display = 'block'; });
     document.getElementById('closePanelBtn').addEventListener('click', () => { parentPanel.style.display = 'none'; });
-    
     document.getElementById('pinSaveBtn').addEventListener('click', () => {
         const newPin = pinInput.value.trim();
         if (newPin.length >= 4 && /^\d+$/.test(newPin)) {
@@ -628,33 +554,24 @@
             alert('Пароль сохранён!');
             updatePinStatus();
             pinInput.value = '';
-        } else {
-            alert('Пароль должен содержать минимум 4 цифры');
-        }
+        } else { alert('Пароль должен содержать минимум 4 цифры'); }
     });
-    
     document.getElementById('pinCheckBtn').addEventListener('click', () => {
         if (!savedPin) { alert('Сначала создайте пароль'); return; }
-        if (pinInput.value.trim() === savedPin) { alert('Вход выполнен!'); } 
-        else { alert('Неверный пароль!'); }
+        if (pinInput.value.trim() === savedPin) alert('Вход выполнен!');
+        else alert('Неверный пароль!');
         pinInput.value = '';
     });
-    
     document.getElementById('promoBtn').addEventListener('click', () => {
         if (document.getElementById('promoInput').value.trim() === 'TEST2025') {
             localStorage.setItem('isPremium', 'true');
             isPremium = true;
             alert('Премиум активирован!');
-        } else {
-            alert('Неверный промокод');
-        }
+        } else { alert('Неверный промокод'); }
     });
-    
     document.querySelectorAll('.character-option').forEach((el, idx) => {
         el.addEventListener('click', () => selectCharacterById(characters[idx].id));
     });
-    
-    // Загрузка сохранённых аватаров
     ['mom', 'dad', 'kid'].forEach(char => {
         const saved = localStorage.getItem(`avatar_${char}`);
         if (saved) {
@@ -664,7 +581,7 @@
             if (el) el.style.backgroundImage = `url(${saved})`;
         }
     });
-
+    
     // ========== ПОГОДА ==========
     function updateWeather() {
         const hour = new Date().getHours();
@@ -676,19 +593,18 @@
     }
     updateWeather();
     setInterval(updateWeather, 60000);
-
-    // ========== АВТОСНИЖЕНИЕ ПАРАМЕТРОВ ==========
+    
+    // ========== АВТОСНИЖЕНИЕ ==========
     setInterval(() => {
         hunger = Math.max(0, hunger - 2);
         energy = Math.max(0, energy - 1);
         if (hunger < 30 || energy < 30) mood = Math.max(0, mood - 5);
         saveStats();
     }, 30 * 60 * 1000);
-
+    
     // ========== ИНИЦИАЛИЗАЦИЯ ==========
     const registerScreen = document.getElementById('registerScreen');
     const mainScreen = document.getElementById('mainScreen');
-    
     if (childName && childAge) {
         registerScreen.style.display = 'none';
         mainScreen.style.display = 'flex';
@@ -706,7 +622,6 @@
         registerScreen.style.display = 'flex';
         mainScreen.style.display = 'none';
     }
-    
     document.getElementById('startBtn').addEventListener('click', () => {
         const name = document.getElementById('childNameInput').value;
         const age = document.getElementById('childAgeInput').value;
@@ -721,9 +636,7 @@
             updateHistory();
             updateAvatar();
             speak(`Мяу! Привет, ${name}! Я ${characters[currentCharacterIndex].name}. Расскажи, что тебя беспокоит?`);
-        } else {
-            alert('Введите имя и возраст');
-        }
+        } else { alert('Введите имя и возраст'); }
     });
     
     if ('serviceWorker' in navigator) {
