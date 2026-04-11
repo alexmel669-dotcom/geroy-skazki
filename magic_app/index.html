@@ -198,9 +198,6 @@
             cursor: pointer;
             backdrop-filter: blur(5px);
         }
-        .game-btn {
-            background: #ffa500;
-        }
         .footer {
             position: fixed;
             bottom: 5px;
@@ -252,8 +249,8 @@
         }
         .character-option.selected { border-color: #fdbb2d; transform: scale(1.05); }
         
-        /* Игра */
-        .game-modal {
+        /* Игры */
+        .games-modal {
             display: none;
             position: fixed;
             top: 0;
@@ -266,10 +263,50 @@
             align-items: center;
             flex-direction: column;
         }
+        .games-menu {
+            background: #1a2a6c;
+            border-radius: 30px;
+            padding: 30px;
+            text-align: center;
+        }
+        .game-item {
+            background: #ff4081;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 40px;
+            font-size: 18px;
+            color: white;
+            margin: 10px;
+            cursor: pointer;
+        }
+        .close-games {
+            margin-top: 20px;
+            background: #555;
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        
+        /* Игра Поймай рыбку */
+        .game-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 2001;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
         .game-area {
             width: 90%;
             height: 400px;
-            background: #1a2a6c;
+            background: #0a2a5c;
             border-radius: 30px;
             position: relative;
             overflow: hidden;
@@ -279,10 +316,27 @@
             position: absolute;
             width: 60px;
             height: 60px;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"%23ff9800\"><path d=\"M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M12,20c-4.41,0-8-3.59-8-8s3.59-8,8-8s8,3.59,8,8 S16.41,20,12,20z M13,7h-2v2h2V7z M13,11h-2v6h2V11z\"/></svg>');
-            background-size: contain;
-            background-repeat: no-repeat;
+            background: #ff9800;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
             cursor: pointer;
+            transition: 0.05s linear;
+        }
+        .splash {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: splashAnim 0.3s ease-out forwards;
+        }
+        @keyframes splashAnim {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
         }
         .score {
             font-size: 24px;
@@ -344,7 +398,7 @@
         <button class="action-btn" id="playBtn">🎾</button>
         <button class="action-btn" id="dressBtn">🧸</button>
         <button class="action-btn" id="roomBtn">🏠</button>
-        <button class="action-btn game-btn" id="gameBtn">🐟</button>
+        <button class="action-btn" id="gamesBtn">🎮</button>
     </div>
     <div class="footer">
         <a href="privacy.html">Политика конфиденциальности</a>
@@ -376,14 +430,25 @@
     <button class="close-panel" id="closePanelBtn">Закрыть</button>
 </div>
 
-<div id="gameModal" class="game-modal">
+<!-- Меню игр -->
+<div id="gamesMenuModal" class="games-modal">
+    <div class="games-menu">
+        <h2>🎮 Выбери игру</h2>
+        <button class="game-item" id="fishGameBtn">🐟 Поймай рыбку</button>
+        <br>
+        <button class="close-games" id="closeGamesBtn">Закрыть</button>
+    </div>
+</div>
+
+<!-- Игра Поймай рыбку -->
+<div id="fishGameModal" class="game-modal">
     <h2>🐟 Поймай рыбку!</h2>
     <div class="game-area" id="gameArea">
-        <div class="fish" id="fish"></div>
+        <div class="fish" id="fish">🐟</div>
     </div>
     <div class="score">Счёт: <span id="score">0</span></div>
     <div class="timer">Осталось: <span id="timer">30</span> сек</div>
-    <button class="close-game" id="closeGameBtn">Закрыть</button>
+    <button class="close-game" id="closeFishGameBtn">Закрыть</button>
 </div>
 
 <script>
@@ -454,7 +519,7 @@
         updateHistory();
     }
     
-    // ========== ГОЛОС (без озвучки "мурлычет" и т.д.) ==========
+    // ========== ГОЛОС ==========
     function speak(message) {
         let cleanMessage = message
             .replace(/[\*\_\-\#]/g, '')
@@ -464,7 +529,7 @@
         
         const utterance = new SpeechSynthesisUtterance(cleanMessage);
         utterance.lang = 'ru-RU';
-        utterance.rate = 0.85;
+        utterance.rate = 0.9;
         const avatar = document.getElementById('avatar');
         utterance.onstart = () => avatar.classList.add('talking');
         utterance.onend = () => avatar.classList.remove('talking');
@@ -476,7 +541,12 @@
     }
     
     // ========== DEEPSEEK API ==========
+    let isWaitingForResponse = false;
+    
     async function askDeepSeek(userText) {
+        if (isWaitingForResponse) return "Мяу! Подожди чуть-чуть, я ещё думаю...";
+        isWaitingForResponse = true;
+        
         try {
             const response = await fetch('/api/generate', {
                 method: 'POST',
@@ -485,7 +555,7 @@
                     childName: childName,
                     childAge: childAge,
                     userSpeech: userText,
-                    history: conversationHistory.slice(-6).map(item => ({ role: "assistant", content: item }))
+                    history: conversationHistory.slice(-10).map(item => ({ role: "assistant", content: item }))
                 })
             });
             const data = await response.json();
@@ -493,6 +563,8 @@
         } catch (error) {
             console.error('DeepSeek error:', error);
             return "Мяу! Давай ещё раз?";
+        } finally {
+            isWaitingForResponse = false;
         }
     }
     
@@ -510,6 +582,7 @@
     micButton.addEventListener('click', () => {
         if (!recognition) { speak("Голос не поддерживается"); return; }
         if (isListening) return;
+        if (isWaitingForResponse) { speak("Мяу! Подожди, я ещё отвечаю..."); return; }
         isListening = true;
         micButton.classList.add('recording');
         document.getElementById('avatar').classList.add('listening');
@@ -522,7 +595,7 @@
             document.getElementById('avatar').classList.remove('listening');
             isListening = false;
             saveHistory(`👶 ${childName}: ${text}`);
-            // Определяем страхи
+            
             const lowerText = text.toLowerCase();
             if (lowerText.includes('темнот') || lowerText.includes('ночь')) updateFearStats('темноты');
             else if (lowerText.includes('врач') || lowerText.includes('укол')) updateFearStats('врачей');
@@ -584,16 +657,35 @@
         saveHistory(`🤚 Погладил ${characters[currentCharacterIndex].name}`);
     });
     
-    // ========== ИГРА ==========
+    // ========== ИГРЫ ==========
+    const gamesMenuModal = document.getElementById('gamesMenuModal');
+    const fishGameModal = document.getElementById('fishGameModal');
+    
+    document.getElementById('gamesBtn').addEventListener('click', () => {
+        gamesMenuModal.style.display = 'flex';
+    });
+    document.getElementById('closeGamesBtn').addEventListener('click', () => {
+        gamesMenuModal.style.display = 'none';
+    });
+    
+    // Игра Поймай рыбку
     let gameScore = 0;
     let gameTimer = 30;
     let gameInterval = null;
     let timerInterval = null;
-    const gameModal = document.getElementById('gameModal');
     const gameArea = document.getElementById('gameArea');
     const fish = document.getElementById('fish');
     const scoreSpan = document.getElementById('score');
     const timerSpan = document.getElementById('timer');
+    
+    function createSplash(x, y) {
+        const splash = document.createElement('div');
+        splash.className = 'splash';
+        splash.style.left = (x - 40) + 'px';
+        splash.style.top = (y - 40) + 'px';
+        gameArea.appendChild(splash);
+        setTimeout(() => splash.remove(), 300);
+    }
     
     function moveFish() {
         const maxX = gameArea.clientWidth - 60;
@@ -604,10 +696,13 @@
         fish.style.top = Math.max(0, y) + 'px';
     }
     
-    function catchFish() {
+    function catchFish(e) {
         if (gameTimer > 0) {
             gameScore++;
             scoreSpan.innerText = gameScore;
+            const rect = fish.getBoundingClientRect();
+            const areaRect = gameArea.getBoundingClientRect();
+            createSplash(rect.left - areaRect.left + 30, rect.top - areaRect.top + 30);
             moveFish();
             purr();
             hunger = Math.min(100, hunger + 3);
@@ -616,7 +711,7 @@
         }
     }
     
-    function startGame() {
+    function startFishGame() {
         gameScore = 0;
         gameTimer = 30;
         scoreSpan.innerText = '0';
@@ -643,13 +738,14 @@
     
     fish.addEventListener('click', catchFish);
     
-    document.getElementById('gameBtn').addEventListener('click', () => {
-        gameModal.style.display = 'flex';
-        setTimeout(() => startGame(), 100);
+    document.getElementById('fishGameBtn').addEventListener('click', () => {
+        gamesMenuModal.style.display = 'none';
+        fishGameModal.style.display = 'flex';
+        setTimeout(() => startFishGame(), 100);
     });
     
-    document.getElementById('closeGameBtn').addEventListener('click', () => {
-        gameModal.style.display = 'none';
+    document.getElementById('closeFishGameBtn').addEventListener('click', () => {
+        fishGameModal.style.display = 'none';
         if (timerInterval) clearInterval(timerInterval);
         if (gameInterval) clearInterval(gameInterval);
     });
@@ -786,10 +882,12 @@
     window.addEventListener('popstate', () => {
         if (parentPanel.style.display === 'block') {
             parentPanel.style.display = 'none';
-        } else if (gameModal.style.display === 'flex') {
-            gameModal.style.display = 'none';
+        } else if (fishGameModal.style.display === 'flex') {
+            fishGameModal.style.display = 'none';
             if (timerInterval) clearInterval(timerInterval);
             if (gameInterval) clearInterval(gameInterval);
+        } else if (gamesMenuModal.style.display === 'flex') {
+            gamesMenuModal.style.display = 'none';
         } else {
             window.close();
         }
@@ -831,7 +929,6 @@
             if (idx !== -1 && (!characters[idx].premium || isPremium)) currentCharacterIndex = idx;
         }
         updateAvatar();
-        // Приветствие без акцента на страхах
         const ageNum = parseInt(childAge);
         if (ageNum <= 6) {
             speak(`Мяу! Привет, ${childName}! Как прошёл твой день в садике?`);
