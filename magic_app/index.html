@@ -260,7 +260,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             z-index: 2000;
             justify-content: center;
             align-items: center;
@@ -273,18 +273,26 @@
             border-radius: 30px;
             position: relative;
             overflow: hidden;
+            border: 2px solid white;
         }
         .fish {
             position: absolute;
-            width: 50px;
-            height: 50px;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"%23ff9800\"><path d=\"M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M12,20c-4.41,0-8-3.59-8-8s3.59-8,8-8s8,3.59,8,8 S16.41,20,12,20z\"/></svg>');
+            width: 60px;
+            height: 60px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"%23ff9800\"><path d=\"M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M12,20c-4.41,0-8-3.59-8-8s3.59-8,8-8s8,3.59,8,8 S16.41,20,12,20z M13,7h-2v2h2V7z M13,11h-2v6h2V11z\"/></svg>');
             background-size: contain;
+            background-repeat: no-repeat;
             cursor: pointer;
         }
         .score {
             font-size: 24px;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .timer {
+            font-size: 20px;
             margin-top: 10px;
+            color: #fdbb2d;
         }
         .close-game {
             margin-top: 20px;
@@ -293,6 +301,7 @@
             border-radius: 30px;
             border: none;
             color: white;
+            cursor: pointer;
         }
         
         @media (max-width: 480px) {
@@ -373,6 +382,7 @@
         <div class="fish" id="fish"></div>
     </div>
     <div class="score">Счёт: <span id="score">0</span></div>
+    <div class="timer">Осталось: <span id="timer">30</span> сек</div>
     <button class="close-game" id="closeGameBtn">Закрыть</button>
 </div>
 
@@ -444,15 +454,13 @@
         updateHistory();
     }
     
-    // ========== ГОЛОС ==========
+    // ========== ГОЛОС (без озвучки "мурлычет" и т.д.) ==========
     function speak(message) {
         let cleanMessage = message
             .replace(/[\*\_\-\#]/g, '')
-            .replace(/беспокоит/g, 'случилось')
-            .replace(/проблема/g, 'что-то')
-            .replace(/ситуация/g, 'история')
-            .replace(/тревожит/g, 'пугает')
-            .replace(/расстройство/g, 'грусть');
+            .replace(/мурлычет/g, '')
+            .replace(/покачивает головой/g, '')
+            .replace(/мяукает/g, '');
         
         const utterance = new SpeechSynthesisUtterance(cleanMessage);
         utterance.lang = 'ru-RU';
@@ -475,6 +483,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     childName: childName,
+                    childAge: childAge,
                     userSpeech: userText,
                     history: conversationHistory.slice(-6).map(item => ({ role: "assistant", content: item }))
                 })
@@ -513,6 +522,7 @@
             document.getElementById('avatar').classList.remove('listening');
             isListening = false;
             saveHistory(`👶 ${childName}: ${text}`);
+            // Определяем страхи
             const lowerText = text.toLowerCase();
             if (lowerText.includes('темнот') || lowerText.includes('ночь')) updateFearStats('темноты');
             else if (lowerText.includes('врач') || lowerText.includes('укол')) updateFearStats('врачей');
@@ -520,6 +530,7 @@
             else if (lowerText.includes('обид')) updateFearStats('обиды');
             else if (lowerText.includes('новое') || lowerText.includes('первый раз')) updateFearStats('нового');
             else if (lowerText.includes('собака') || lowerText.includes('кошка')) updateFearStats('животных');
+            
             const answer = await askDeepSeek(text);
             saveHistory(`🦁 ${characters[currentCharacterIndex].name}: ${answer}`);
             speak(answer);
@@ -538,7 +549,7 @@
         };
     }
     
-    // ========== КНОПКИ ДЕЙСТВИЙ (без озвучки, только мурчание) ==========
+    // ========== КНОПКИ ДЕЙСТВИЙ ==========
     document.getElementById('feedBtn').addEventListener('click', () => {
         hunger = Math.min(100, hunger + 15);
         mood = Math.min(100, mood + 5);
@@ -575,43 +586,72 @@
     
     // ========== ИГРА ==========
     let gameScore = 0;
+    let gameTimer = 30;
+    let gameInterval = null;
+    let timerInterval = null;
     const gameModal = document.getElementById('gameModal');
     const gameArea = document.getElementById('gameArea');
     const fish = document.getElementById('fish');
     const scoreSpan = document.getElementById('score');
+    const timerSpan = document.getElementById('timer');
     
     function moveFish() {
-        const maxX = gameArea.clientWidth - 50;
-        const maxY = gameArea.clientHeight - 50;
+        const maxX = gameArea.clientWidth - 60;
+        const maxY = gameArea.clientHeight - 60;
         const x = Math.random() * maxX;
         const y = Math.random() * maxY;
-        fish.style.left = x + 'px';
-        fish.style.top = y + 'px';
+        fish.style.left = Math.max(0, x) + 'px';
+        fish.style.top = Math.max(0, y) + 'px';
     }
     
     function catchFish() {
-        gameScore++;
-        scoreSpan.innerText = gameScore;
+        if (gameTimer > 0) {
+            gameScore++;
+            scoreSpan.innerText = gameScore;
+            moveFish();
+            purr();
+            hunger = Math.min(100, hunger + 3);
+            mood = Math.min(100, mood + 3);
+            saveStats();
+        }
+    }
+    
+    function startGame() {
+        gameScore = 0;
+        gameTimer = 30;
+        scoreSpan.innerText = '0';
+        timerSpan.innerText = '30';
         moveFish();
-        purr();
-        hunger = Math.min(100, hunger + 5);
-        mood = Math.min(100, mood + 5);
-        saveStats();
+        
+        if (gameInterval) clearInterval(gameInterval);
+        if (timerInterval) clearInterval(timerInterval);
+        
+        timerInterval = setInterval(() => {
+            gameTimer--;
+            timerSpan.innerText = gameTimer;
+            if (gameTimer <= 0) {
+                clearInterval(timerInterval);
+                clearInterval(gameInterval);
+                speak(`Игра окончена! Ты поймал ${gameScore} рыбок! Молодец!`);
+            }
+        }, 1000);
+        
+        gameInterval = setInterval(() => {
+            if (gameTimer > 0) moveFish();
+        }, 1500);
     }
     
     fish.addEventListener('click', catchFish);
     
     document.getElementById('gameBtn').addEventListener('click', () => {
-        gameScore = 0;
-        scoreSpan.innerText = '0';
         gameModal.style.display = 'flex';
-        setTimeout(() => {
-            moveFish();
-        }, 100);
+        setTimeout(() => startGame(), 100);
     });
     
     document.getElementById('closeGameBtn').addEventListener('click', () => {
         gameModal.style.display = 'none';
+        if (timerInterval) clearInterval(timerInterval);
+        if (gameInterval) clearInterval(gameInterval);
     });
     
     // ========== ЗАГРУЗКА АВАТАРА ==========
@@ -691,10 +731,8 @@
     
     document.getElementById('parentBtn').addEventListener('click', () => {
         if (!savedPin) {
-            // Нет пароля — показываем создание
             parentPanel.style.display = 'block';
         } else {
-            // Есть пароль — сначала проверяем
             const entered = prompt('Введите пароль для входа в Штаб:');
             if (entered === savedPin) {
                 parentPanel.style.display = 'block';
@@ -750,6 +788,8 @@
             parentPanel.style.display = 'none';
         } else if (gameModal.style.display === 'flex') {
             gameModal.style.display = 'none';
+            if (timerInterval) clearInterval(timerInterval);
+            if (gameInterval) clearInterval(gameInterval);
         } else {
             window.close();
         }
@@ -791,7 +831,13 @@
             if (idx !== -1 && (!characters[idx].premium || isPremium)) currentCharacterIndex = idx;
         }
         updateAvatar();
-        speak(`Мяу! Привет, ${childName}! Расскажи, что у тебя случилось?`);
+        // Приветствие без акцента на страхах
+        const ageNum = parseInt(childAge);
+        if (ageNum <= 6) {
+            speak(`Мяу! Привет, ${childName}! Как прошёл твой день в садике?`);
+        } else {
+            speak(`Мяу! Привет, ${childName}! Как дела в школе?`);
+        }
     } else {
         registerScreen.style.display = 'flex';
         mainScreen.style.display = 'none';
@@ -803,13 +849,19 @@
             localStorage.setItem('childName', name);
             localStorage.setItem('childAge', age);
             childName = name;
+            childAge = age;
             registerScreen.style.display = 'none';
             mainScreen.style.display = 'flex';
             updateStatsUI();
             updateFearStatsUI();
             updateHistory();
             updateAvatar();
-            speak(`Мяу! Привет, ${name}! Расскажи, что у тебя случилось?`);
+            const ageNum = parseInt(age);
+            if (ageNum <= 6) {
+                speak(`Мяу! Привет, ${name}! Как прошёл твой день в садике?`);
+            } else {
+                speak(`Мяу! Привет, ${name}! Как дела в школе?`);
+            }
         } else { alert('Введите имя и возраст'); }
     });
     
