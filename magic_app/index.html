@@ -129,12 +129,13 @@
             left: 0;
             right: 0;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
             z-index: 10;
         }
         .avatar {
-            width: 240px;
-            height: 240px;
+            width: 200px;
+            height: 200px;
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
@@ -144,6 +145,18 @@
         .avatar.talking { animation: pulse 0.5s infinite; filter: drop-shadow(0 0 15px #00d2ff); }
         .avatar.listening { animation: pulse 1s infinite; filter: drop-shadow(0 0 15px #4CAF50); }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        
+        .upload-avatar-btn {
+            margin-top: 10px;
+            background: rgba(0,0,0,0.5);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 12px;
+            color: white;
+            cursor: pointer;
+        }
+        
         .mic-container {
             position: fixed;
             bottom: 120px;
@@ -236,7 +249,7 @@
         }
         .character-option.selected { border-color: #fdbb2d; transform: scale(1.05); }
         @media (max-width: 480px) {
-            .avatar { width: 200px; height: 200px; }
+            .avatar { width: 180px; height: 180px; }
             .mic-btn { width: 75px; height: 75px; font-size: 40px; }
             .action-btn { width: 55px; height: 55px; font-size: 24px; }
         }
@@ -246,8 +259,8 @@
 
 <div id="registerScreen" class="screen-register">
     <h1>✨ Привет, Создатель!</h1>
-    <input type="text" id="childNameInput" placeholder="Имя ребенка">
-    <input type="number" id="childAgeInput" placeholder="Возраст">
+    <input type="text" id="childNameInput" placeholder="Как зовут малыша?">
+    <input type="number" id="childAgeInput" placeholder="Сколько лет?">
     <button id="startBtn">Начать 🐾</button>
 </div>
 
@@ -264,6 +277,8 @@
     </div>
     <div class="avatar-container">
         <div class="avatar" id="avatar" style="background-image: url('avatar.png');"></div>
+        <button class="upload-avatar-btn" id="uploadAvatarBtn">📸 Загрузить фото</button>
+        <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
     </div>
     <div class="mic-container">
         <button class="mic-btn" id="micButton">🎤</button>
@@ -372,11 +387,20 @@
         updateHistory();
     }
     
-    // ========== ГОЛОС ==========
+    // ========== ГОЛОС (без звёздочек, детские слова) ==========
     function speak(message) {
-        const utterance = new SpeechSynthesisUtterance(message);
+        // Убираем звёздочки, точки, сложные слова
+        let cleanMessage = message
+            .replace(/[\*\_\-\#]/g, '')
+            .replace(/беспокоит/g, 'случилось')
+            .replace(/проблема/g, 'что-то')
+            .replace(/ситуация/g, 'история')
+            .replace(/тревожит/g, 'пугает')
+            .replace(/расстройство/g, 'грусть');
+        
+        const utterance = new SpeechSynthesisUtterance(cleanMessage);
         utterance.lang = 'ru-RU';
-        utterance.rate = 0.9;
+        utterance.rate = 0.85;
         const avatar = document.getElementById('avatar');
         utterance.onstart = () => avatar.classList.add('talking');
         utterance.onend = () => avatar.classList.remove('talking');
@@ -474,7 +498,7 @@
             saveStats();
             speak("Ура! Весело играть с тобой!");
         } else {
-            speak("Я слишком устал. Дай мне отдохнуть.");
+            speak("Я устал. Дай мне отдохнуть.");
         }
         purr();
         saveHistory(`🎾 Поиграл с ${characters[currentCharacterIndex].name}`);
@@ -497,10 +521,37 @@
         saveHistory(`🤚 Погладил ${characters[currentCharacterIndex].name}`);
     });
     
+    // ========== ЗАГРУЗКА АВАТАРА ==========
+    document.getElementById('uploadAvatarBtn').addEventListener('click', () => {
+        document.getElementById('avatarUpload').click();
+    });
+    document.getElementById('avatarUpload').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const imgData = event.target.result;
+                document.getElementById('avatar').style.backgroundImage = `url(${imgData})`;
+                localStorage.setItem('customAvatar', imgData);
+                speak("Мяу! Спасибо за новую картинку!");
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    const savedAvatar = localStorage.getItem('customAvatar');
+    if (savedAvatar) {
+        document.getElementById('avatar').style.backgroundImage = `url(${savedAvatar})`;
+    }
+    
     // ========== ПЕРСОНАЖИ И СВАЙП ==========
     function updateAvatar() {
         const char = characters[currentCharacterIndex];
-        document.getElementById('avatar').style.backgroundImage = `url('${char.icon}')`;
+        if (char.id === 'lucik') {
+            const saved = localStorage.getItem('customAvatar');
+            document.getElementById('avatar').style.backgroundImage = saved ? `url(${saved})` : `url('${char.icon}')`;
+        } else {
+            document.getElementById('avatar').style.backgroundImage = `url('${char.icon}')`;
+        }
         document.querySelectorAll('.character-option').forEach((el, idx) => {
             if (idx === currentCharacterIndex) el.classList.add('selected');
             else el.classList.remove('selected');
@@ -538,13 +589,28 @@
         if (Math.abs(diff) > 50) switchCharacter(diff > 0 ? -1 : 1);
     });
     
-    // ========== РОДИТЕЛЬСКАЯ ПАНЕЛЬ ==========
+    // ========== РОДИТЕЛЬСКАЯ ПАНЕЛЬ (сначала пароль) ==========
     const parentPanel = document.getElementById('parentPanel');
     const pinInput = document.getElementById('pinInput');
     const pinStatus = document.getElementById('pinStatus');
-    function updatePinStatus() { pinStatus.innerText = savedPin ? '✅ Пароль установлен.' : '🔐 Пароль ещё не создан.'; }
+    function updatePinStatus() { pinStatus.innerText = savedPin ? '✅ Пароль есть. Введите его для входа.' : '🔐 Пароль ещё не создан.'; }
     updatePinStatus();
-    document.getElementById('parentBtn').addEventListener('click', () => { parentPanel.style.display = 'block'; });
+    
+    document.getElementById('parentBtn').addEventListener('click', () => {
+        if (!savedPin) {
+            // Нет пароля — показываем создание
+            parentPanel.style.display = 'block';
+        } else {
+            // Есть пароль — сначала проверяем
+            const entered = prompt('Введите пароль для входа в Штаб:');
+            if (entered === savedPin) {
+                parentPanel.style.display = 'block';
+            } else if (entered !== null) {
+                alert('Неверный пароль!');
+            }
+        }
+    });
+    
     document.getElementById('closePanelBtn').addEventListener('click', () => { parentPanel.style.display = 'none'; });
     document.getElementById('pinSaveBtn').addEventListener('click', () => {
         const newPin = pinInput.value.trim();
@@ -554,12 +620,14 @@
             alert('Пароль сохранён!');
             updatePinStatus();
             pinInput.value = '';
+            parentPanel.style.display = 'none';
         } else { alert('Пароль должен содержать минимум 4 цифры'); }
     });
     document.getElementById('pinCheckBtn').addEventListener('click', () => {
         if (!savedPin) { alert('Сначала создайте пароль'); return; }
-        if (pinInput.value.trim() === savedPin) alert('Вход выполнен!');
-        else alert('Неверный пароль!');
+        if (pinInput.value.trim() === savedPin) {
+            alert('Вход выполнен!');
+        } else { alert('Неверный пароль!'); }
         pinInput.value = '';
     });
     document.getElementById('promoBtn').addEventListener('click', () => {
@@ -617,7 +685,7 @@
             if (idx !== -1 && (!characters[idx].premium || isPremium)) currentCharacterIndex = idx;
         }
         updateAvatar();
-        speak(`Мяу! Привет, ${childName}! Я ${characters[currentCharacterIndex].name}. Расскажи, что тебя беспокоит?`);
+        speak(`Мяу! Привет, ${childName}! Расскажи, что у тебя случилось?`);
     } else {
         registerScreen.style.display = 'flex';
         mainScreen.style.display = 'none';
@@ -635,7 +703,7 @@
             updateFearStatsUI();
             updateHistory();
             updateAvatar();
-            speak(`Мяу! Привет, ${name}! Я ${characters[currentCharacterIndex].name}. Расскажи, что тебя беспокоит?`);
+            speak(`Мяу! Привет, ${name}! Расскажи, что у тебя случилось?`);
         } else { alert('Введите имя и возраст'); }
     });
     
