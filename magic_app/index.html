@@ -34,6 +34,8 @@
             font-size: 18px;
             margin: 10px;
             transition: transform 0.2s;
+            cursor: pointer;
+            border: none;
         }
         .btn-green { background: #4CAF50; }
         .btn:hover { transform: scale(1.05); }
@@ -50,7 +52,6 @@
             text-align: center;
         }
         .feature-card h3 { margin-bottom: 15px; color: #fdbb2d; }
-        .feature-card p { font-size: 14px; }
         .stat-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -100,15 +101,13 @@
 </head>
 <body>
     <div class="container">
-        <!-- Герой -->
         <div class="hero">
             <h1>🦁 Герой Сказок</h1>
             <p>Виртуальный друг с ИИ, который помогает детям 3–7 лет справляться со страхами</p>
-            <a href="#" class="btn btn-green" id="installBtn">📱 Установить приложение</a>
-            <a href="/app" class="btn">🎮 Открыть в браузере</a>
+            <button class="btn btn-green" id="installBtn">📱 Установить приложение</button>
+            <a href="/app.html" class="btn">🎮 Открыть в браузере</a>
         </div>
 
-        <!-- Статистика -->
         <div class="stat-grid">
             <div class="stat-card">
                 <div class="stat-number" id="statFears">0</div>
@@ -124,64 +123,30 @@
             </div>
         </div>
 
-        <!-- Что умеет -->
         <h2>✨ Что умеет Люцик?</h2>
         <div class="features">
-            <div class="feature-card">
-                <h3>🗣️ Умный диалог</h3>
-                <p>Люцик поддерживает разговор, задаёт вопросы и сочиняет терапевтические сказки</p>
-            </div>
-            <div class="feature-card">
-                <h3>😨 Выявляет страхи</h3>
-                <p>В игровой форме узнаёт, чего боится ребёнок: темнота, врачи, одиночество, обиды, новое, животные</p>
-            </div>
-            <div class="feature-card">
-                <h3>🎮 Игры и забота</h3>
-                <p>Корми, играй, одевай и гладь Люцика — он отвечает взаимностью</p>
-            </div>
-            <div class="feature-card">
-                <h3>👨‍👩‍👧 Выбор персонажа</h3>
-                <p>Свайп по аватару — сказку может рассказывать мама, папа или сам ребёнок</p>
-            </div>
-            <div class="feature-card">
-                <h3>📊 Дневник страхов</h3>
-                <p>Родители видят статистику и историю разговоров в Штабе Создателя</p>
-            </div>
-            <div class="feature-card">
-                <h3>🔐 Безопасно</h3>
-                <p>Все данные хранятся на устройстве. Родительский вход по паролю</p>
-            </div>
+            <div class="feature-card"><h3>🗣️ Умный диалог</h3><p>Люцик поддерживает разговор, задаёт вопросы и сочиняет терапевтические сказки</p></div>
+            <div class="feature-card"><h3>😨 Выявляет страхи</h3><p>В игровой форме узнаёт, чего боится ребёнок</p></div>
+            <div class="feature-card"><h3>🎮 Игры и забота</h3><p>Корми, играй, одевай и гладь Люцика</p></div>
+            <div class="feature-card"><h3>👨‍👩‍👧 Выбор персонажа</h3><p>Свайп по аватару — мама, папа или сам ребёнок</p></div>
+            <div class="feature-card"><h3>📊 Дневник страхов</h3><p>Родители видят статистику и историю разговоров</p></div>
+            <div class="feature-card"><h3>🔐 Безопасно</h3><p>Все данные на устройстве. Родительский вход по паролю</p></div>
         </div>
 
-        <!-- Отзывы -->
         <h2>⭐ Отзывы родителей</h2>
         <div class="reviews" id="reviewsList">
-            <div class="review">
-                <div class="review-stars">★★★★★</div>
-                <p>«Сын боялся темноты 2 года. После трёх сказок Люцика — сам выключает свет! Спасибо!»</p>
-                <small>— Екатерина, сын 5 лет</small>
-            </div>
-            <div class="review">
-                <div class="review-stars">★★★★★</div>
-                <p>«Дочь каждый день разговаривает с котом, рассказывает ему про садик. Я вижу, о чём она переживает, через дневник страхов.»</p>
-                <small>— Анна, дочь 4 года</small>
-            </div>
-            <div class="review">
-                <div class="review-stars">★★★★☆</div>
-                <p>«Хорошее приложение, ребёнок в восторге. Ждём голос мамы и больше игр!»</p>
-                <small>— Дмитрий, сын 6 лет</small>
-            </div>
+            <div class="review"><div class="review-stars">★★★★★</div><p>«Сын боялся темноты 2 года. После сказок Люцика — сам выключает свет!»</p><small>— Екатерина, сын 5 лет</small></div>
+            <div class="review"><div class="review-stars">★★★★★</div><p>«Дочь каждый день разговаривает с котом. Я вижу её страхи в дневнике.»</p><small>— Анна, дочь 4 года</small></div>
+            <div class="review"><div class="review-stars">★★★★☆</div><p>«Ребёнок в восторге. Ждём голос мамы и больше игр!»</p><small>— Дмитрий, сын 6 лет</small></div>
         </div>
 
-        <!-- Как установить -->
         <div class="install-instruction">
             <h3>📲 Как установить приложение на телефон</h3>
             <p><strong>Android (Chrome):</strong> откройте сайт → нажмите «Установить приложение» → подтвердите</p>
-            <p><strong>iPhone (Safari):</strong> откройте сайт → нажмите «Поделировать» → «На экран Домой»</p>
+            <p><strong>iPhone (Safari):</strong> откройте сайт → нажмите «Поделиться» → «На экран Домой»</p>
             <p style="margin-top: 15px;">🎁 <strong>Промокод для премиум-доступа:</strong> TEST2025</p>
         </div>
 
-        <!-- Политика -->
         <footer>
             <p>© 2026 Герой Сказок — виртуальный друг для детей</p>
             <p><a href="/privacy.html">Политика конфиденциальности</a> | <a href="/terms.html">Пользовательское соглашение</a></p>
@@ -189,7 +154,6 @@
     </div>
 
     <script>
-        // Загрузка статистики из localStorage (если приложение уже установлено)
         function loadStats() {
             const fearStats = JSON.parse(localStorage.getItem('fearStats') || '{}');
             const totalFears = Object.values(fearStats).reduce((a, b) => a + b, 0);
@@ -215,7 +179,6 @@
         }
         
         document.getElementById('installBtn').addEventListener('click', installPWA);
-        
         loadStats();
         setInterval(loadStats, 5000);
     </script>
