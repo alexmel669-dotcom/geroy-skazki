@@ -5,43 +5,123 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Пользовательское соглашение — Герой Сказок</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #0a0a2a, #1a1a4a);
-            color: white;
-            padding: 40px 20px;
-            line-height: 1.6;
+            font-family: 'Segoe UI', 'Roboto', 'Georgia', serif;
+            min-height: 100vh;
+            background: #d4c4a4;
+            position: relative;
+            overflow-x: hidden;
         }
-        .container { max-width: 800px; margin: 0 auto; }
-        h1 { color: #fdbb2d; }
-        h2 { color: #00d2ff; margin-top: 30px; }
-        a { color: #00d2ff; }
+        
+        .sand-dunes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
+        }
+        .sand-texture {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.12'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .dune-shadow {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 40%;
+            background: linear-gradient(0deg, rgba(0,0,0,0.08) 0%, transparent 100%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        .wind-ripple {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(200,170,120,0.08) 80px, rgba(200,170,120,0.08) 120px, transparent 120px, transparent 200px);
+            pointer-events: none;
+            z-index: -1;
+            animation: windMove 20s linear infinite;
+        }
+        @keyframes windMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 200px 0; }
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .matte-card {
+            background: rgba(245, 240, 230, 0.88);
+            backdrop-filter: blur(2px);
+            border-radius: 30px;
+            padding: 40px;
+            border: 1px solid rgba(255,255,255,0.5);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+        }
+        
+        h1 { font-size: 36px; color: #6b3a1f; margin-bottom: 20px; }
+        h2 { font-size: 24px; color: #6b3a1f; margin: 25px 0 15px; border-left: 4px solid #c8a86c; padding-left: 15px; }
+        p { line-height: 1.6; margin-bottom: 15px; color: #3a2a1a; }
+        a { color: #6b3a1f; text-decoration: none; border-bottom: 1px solid #c8a86c; }
+        a:hover { color: #a8844a; }
+        
+        @media (max-width: 768px) {
+            .matte-card { padding: 25px; }
+            h1 { font-size: 28px; }
+            h2 { font-size: 20px; }
+        }
     </style>
 </head>
 <body>
+    <div class="sand-dunes"></div>
+    <div class="sand-texture"></div>
+    <div class="dune-shadow"></div>
+    <div class="wind-ripple"></div>
+    
     <div class="container">
-        <h1>📜 Пользовательское соглашение</h1>
-        <p><strong>Дата последнего обновления:</strong> 12 апреля 2026 г.</p>
-        
-        <h2>1. Общие положения</h2>
-        <p>Приложение «Герой Сказок» (далее — «Приложение») предоставляет услуги по созданию терапевтических сказок и развитию эмоционального интеллекта у детей 3-7 лет.</p>
-        
-        <h2>2. Использование приложения</h2>
-        <p>Приложение предназначено для использования под контролем родителей. Родители несут ответственность за время использования приложения ребёнком.</p>
-        
-        <h2>3. Данные и конфиденциальность</h2>
-        <p>Все данные (имя ребёнка, возраст, история разговоров) хранятся только на устройстве. Мы не собираем и не передаём персональные данные третьим лицам. Подробнее в <a href="/privacy.html">Политике конфиденциальности</a>.</p>
-        
-        <h2>4. Платная подписка</h2>
-        <p>Премиум-доступ (безлимит сказок, все персонажи) оплачивается отдельно. Подписка автоматически не продлевается.</p>
-        
-        <h2>5. Ограничение ответственности</h2>
-        <p>Приложение не заменяет профессиональную психологическую помощь. При серьёзных проблемах обращайтесь к специалисту.</p>
-        
-        <h2>6. Контакты</h2>
-        <p>По вопросам: <a href="mailto:support@geroy-skazki.ru">support@geroy-skazki.ru</a></p>
-        
-        <p style="margin-top: 40px;"><a href="/">← Вернуться на главную</a></p>
+        <div class="matte-card">
+            <h1>📜 Пользовательское соглашение</h1>
+            <p><strong>Дата последнего обновления:</strong> 13 апреля 2026 г.</p>
+            
+            <h2>1. Общие положения</h2>
+            <p>Приложение «Герой Сказок» (далее — «Приложение») предоставляет услуги по созданию терапевтических сказок и развитию эмоционального интеллекта у детей 3-7 лет.</p>
+            
+            <h2>2. Использование приложения</h2>
+            <p>Приложение предназначено для использования под контролем родителей. Родители несут ответственность за время использования приложения ребёнком.</p>
+            
+            <h2>3. Данные и конфиденциальность</h2>
+            <p>Все данные (имя ребёнка, возраст, история разговоров) хранятся только на устройстве. Мы не собираем и не передаём персональные данные третьим лицам. Подробнее в <a href="/privacy.html">Политике конфиденциальности</a>.</p>
+            
+            <h2>4. Платная подписка</h2>
+            <p>Премиум-доступ (безлимит сказок, все персонажи) оплачивается отдельно. Подписка автоматически не продлевается.</p>
+            
+            <h2>5. Ограничение ответственности</h2>
+            <p>Приложение не заменяет профессиональную психологическую помощь. При серьёзных проблемах обращайтесь к специалисту.</p>
+            
+            <h2>6. Контакты</h2>
+            <p>По вопросам: <a href="mailto:support@geroy-skazki.ru">support@geroy-skazki.ru</a></p>
+            
+            <p style="margin-top: 30px;"><a href="/">← Вернуться на главную</a></p>
+        </div>
     </div>
 </body>
 </html>
