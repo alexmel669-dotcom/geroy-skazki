@@ -8,50 +8,80 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', 'Roboto', 'Georgia', serif;
-            background: linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 30%, #f0e2c5 60%, #f5e6d3 100%);
-            background-size: 200% 200%;
-            animation: gradientShift 15s ease infinite;
-            color: #3e2a1f;
+            background-color: #f2e6d8;
+            color: #4a2a1a;
             line-height: 1.6;
+            position: relative;
+            min-height: 100vh;
         }
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
-        h1 { font-size: 48px; margin-bottom: 20px; color: #6b3a1f; text-shadow: 2px 2px 4px rgba(0,0,0,0.05); }
-        h2 { font-size: 32px; margin: 40px 0 20px; color: #6b3a1f; border-left: 4px solid #d4a373; padding-left: 20px; }
         
-        /* Стеклянные карточки */
-        .glass {
-            background: rgba(255, 250, 240, 0.25);
-            backdrop-filter: blur(12px);
-            border-radius: 32px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        /* Песочный фон с анимированными частицами */
+        .sand-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: linear-gradient(135deg, #e8d5b7 0%, #dcc8a4 50%, #e8d5b7 100%);
+        }
+        
+        /* Анимированные песчинки */
+        .sand-particle {
+            position: fixed;
+            background: rgba(180, 140, 100, 0.15);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1;
+            animation: floatSand linear infinite;
+        }
+        @keyframes floatSand {
+            0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0.3; }
+            50% { opacity: 0.6; }
+            100% { transform: translateY(-100px) translateX(20px) rotate(360deg); opacity: 0.3; }
+        }
+        
+        /* Стеклянные карточки-капли */
+        .drop-card {
+            background: rgba(255, 250, 240, 0.35);
+            backdrop-filter: blur(16px);
+            border-radius: 60px 60px 60px 40px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.6);
             transition: all 0.3s ease;
         }
-        .glass:hover {
-            background: rgba(255, 250, 240, 0.35);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-            transform: translateY(-3px);
+        .drop-card:hover {
+            background: rgba(255, 250, 240, 0.5);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
+        
+        /* Специальные формы для разных карточек (вариации капель) */
+        .drop-card-alt {
+            border-radius: 50px 50px 30px 60px;
+        }
+        .drop-card-round {
+            border-radius: 70px 40px 70px 40px;
+        }
+        
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; position: relative; z-index: 1; }
+        
+        h1 { font-size: 48px; margin-bottom: 20px; color: #6b3a1f; text-shadow: 2px 2px 4px rgba(0,0,0,0.03); }
+        h2 { font-size: 32px; margin: 40px 0 20px; color: #6b3a1f; border-left: 4px solid #d4a373; padding-left: 20px; }
         
         .hero {
             text-align: center;
-            padding: 60px 20px;
+            padding: 50px 30px;
             margin-bottom: 40px;
         }
         .hero p { font-size: 20px; margin-bottom: 30px; color: #4a2a1a; font-weight: 500; }
         
-        /* Кнопки */
         .btn {
             display: inline-block;
             background: linear-gradient(90deg, #d4a373, #b5835a);
             color: white;
-            padding: 15px 40px;
-            border-radius: 60px;
+            padding: 14px 38px;
+            border-radius: 50px;
             text-decoration: none;
             font-weight: bold;
             font-size: 18px;
@@ -60,39 +90,34 @@
             cursor: pointer;
             border: none;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            animation: gentlePulse 2s infinite;
         }
-        .btn-blue { background: linear-gradient(90deg, #00d2ff, #3a7bd5); animation: none; }
+        .btn-blue { background: linear-gradient(90deg, #00d2ff, #3a7bd5); }
         .btn:hover {
-            transform: scale(1.03);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-        }
-        @keyframes gentlePulse {
-            0%, 100% { box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-            50% { box-shadow: 0 5px 25px rgba(212, 163, 115, 0.5); }
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
         }
         
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 30px;
             margin: 40px 0;
         }
         .feature-card {
-            padding: 28px;
+            padding: 28px 22px;
             text-align: center;
         }
-        .feature-card h3 { margin-bottom: 15px; color: #6b3a1f; font-size: 22px; }
-        .feature-card p { color: #4a2a1a; }
+        .feature-card h3 { margin-bottom: 12px; color: #6b3a1f; font-size: 22px; }
+        .feature-card p { color: #4a2a1a; font-size: 15px; }
         
         .stat-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 25px;
-            margin: 40px 0;
+            margin: 45px 0;
         }
         .stat-card {
-            padding: 25px;
+            padding: 25px 20px;
             text-align: center;
         }
         .stat-number { font-size: 52px; font-weight: bold; color: #d4a373; text-shadow: 0 2px 5px rgba(0,0,0,0.05); }
@@ -102,12 +127,12 @@
             margin: 40px 0;
         }
         .review {
-            background: rgba(255, 255, 255, 0.3);
-            backdrop-filter: blur(4px);
-            padding: 20px;
-            border-radius: 24px;
-            margin: 15px 0;
-            border: 1px solid rgba(255,255,255,0.4);
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(8px);
+            padding: 20px 25px;
+            border-radius: 45px 35px 50px 35px;
+            margin: 18px 0;
+            border: 1px solid rgba(255,255,255,0.5);
         }
         .review-stars { color: #d4a373; font-size: 22px; letter-spacing: 2px; }
         .review p { color: #3e2a1f; font-style: italic; }
@@ -136,12 +161,17 @@
             h1 { font-size: 32px; }
             .hero p { font-size: 16px; }
             .stat-number { font-size: 38px; }
+            .drop-card, .drop-card-alt, .drop-card-round { border-radius: 40px 40px 40px 30px; }
         }
     </style>
 </head>
 <body>
+    <div class="sand-bg"></div>
+    
+    <!-- Анимированные песчинки (создаются через JS) -->
+    
     <div class="container">
-        <div class="hero glass">
+        <div class="hero drop-card">
             <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
                 <img src="avatar.png" alt="Герой Сказок" style="height: 70px; width: 70px; border-radius: 50%; object-fit: cover; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 2px solid rgba(255,255,255,0.5);">
                 <h1 style="margin: 0;">Герой Сказок</h1>
@@ -152,17 +182,17 @@
         </div>
 
         <div class="stat-grid">
-            <div class="stat-card glass">
+            <div class="stat-card drop-card-alt">
                 <div class="stat-number" id="statFears">0</div>
                 <div>страхов выявлено</div>
                 <small style="font-size: 10px; opacity: 0.7;">(с момента установки)</small>
             </div>
-            <div class="stat-card glass">
+            <div class="stat-card drop-card-alt">
                 <div class="stat-number" id="statTales">0</div>
                 <div>сказок рассказано</div>
                 <small style="font-size: 10px; opacity: 0.7;">(с момента установки)</small>
             </div>
-            <div class="stat-card glass">
+            <div class="stat-card drop-card-alt">
                 <div class="stat-number" id="statHours">0</div>
                 <div>часов общения</div>
                 <small style="font-size: 10px; opacity: 0.7;">(с момента установки)</small>
@@ -171,16 +201,16 @@
 
         <h2>✨ Что умеет Люцик?</h2>
         <div class="features">
-            <div class="feature-card glass"><h3>🗣️ Умный диалог</h3><p>Люцик поддерживает разговор, задаёт вопросы и сочиняет терапевтические сказки</p></div>
-            <div class="feature-card glass"><h3>😨 Выявляет страхи</h3><p>В игровой форме узнаёт, чего боится ребёнок</p></div>
-            <div class="feature-card glass"><h3>🎮 Игры и забота</h3><p>Корми, играй, одевай и гладь Люцика</p></div>
-            <div class="feature-card glass"><h3>👨‍👩‍👧 Выбор персонажа</h3><p>Свайп по аватару — мама, папа или сам ребёнок</p></div>
-            <div class="feature-card glass"><h3>📊 Дневник страхов</h3><p>Родители видят статистику и историю разговоров</p></div>
-            <div class="feature-card glass"><h3>🔐 Безопасно</h3><p>Все данные на устройстве. Родительский вход по паролю</p></div>
+            <div class="feature-card drop-card"><h3>🗣️ Умный диалог</h3><p>Люцик поддерживает разговор, задаёт вопросы и сочиняет терапевтические сказки</p></div>
+            <div class="feature-card drop-card-round"><h3>😨 Выявляет страхи</h3><p>В игровой форме узнаёт, чего боится ребёнок</p></div>
+            <div class="feature-card drop-card"><h3>🎮 Игры и забота</h3><p>Корми, играй, одевай и гладь Люцика</p></div>
+            <div class="feature-card drop-card-round"><h3>👨‍👩‍👧 Выбор персонажа</h3><p>Свайп по аватару — мама, папа или сам ребёнок</p></div>
+            <div class="feature-card drop-card"><h3>📊 Дневник страхов</h3><p>Родители видят статистику и историю разговоров</p></div>
+            <div class="feature-card drop-card-round"><h3>🔐 Безопасно</h3><p>Все данные на устройстве. Родительский вход по паролю</p></div>
         </div>
 
         <h2>⭐ Отзывы родителей</h2>
-        <div class="reviews glass">
+        <div class="reviews drop-card">
             <div class="review">
                 <div class="review-stars">★★★★★</div>
                 <p>«Сын боялся темноты 2 года. После сказок Люцика — сам выключает свет!»</p>
@@ -198,7 +228,7 @@
             </div>
         </div>
 
-        <div class="install-instruction glass">
+        <div class="install-instruction drop-card">
             <h3>📲 Как установить приложение на телефон</h3>
             <p><strong>Android (Chrome):</strong> откройте сайт → нажмите «Установить приложение» → подтвердите</p>
             <p><strong>iPhone (Safari):</strong> откройте сайт → нажмите «Поделиться» → «На экран Домой»</p>
@@ -212,6 +242,26 @@
     </div>
 
     <script>
+        // Создаём анимированные песчинки
+        function createSandParticles() {
+            const particleCount = window.innerWidth < 768 ? 30 : 50;
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'sand-particle';
+                const size = Math.random() * 8 + 3;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDuration = Math.random() * 15 + 10 + 's';
+                particle.style.animationDelay = Math.random() * 10 + 's';
+                particle.style.opacity = Math.random() * 0.3 + 0.1;
+                document.body.appendChild(particle);
+            }
+        }
+        
+        createSandParticles();
+        
         let deferredPrompt = null;
         
         function loadStats() {
