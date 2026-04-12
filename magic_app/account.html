@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет — Герой Сказок</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Georgia', serif;
+            min-height: 100vh;
+            background: #d4c4a4;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .sand-dunes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
+        }
+        .sand-texture {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.12'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .dune-shadow {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 40%;
+            background: linear-gradient(0deg, rgba(0,0,0,0.08) 0%, transparent 100%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        .wind-ripple {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(200,170,120,0.08) 80px, rgba(200,170,120,0.08) 120px, transparent 120px, transparent 200px);
+            pointer-events: none;
+            z-index: -1;
+            animation: windMove 20s linear infinite;
+        }
+        @keyframes windMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 200px 0; }
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .glass-card {
+            background: rgba(255, 248, 235, 0.15);
+            backdrop-filter: blur(8px);
+            border-radius: 30px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.35);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+        
+        h1 { font-size: 36px; color: #6b3a1f; margin-bottom: 20px; }
+        h2 { font-size: 24px; color: #6b3a1f; margin: 20px 0 15px; border-left: 4px solid #c8a86c; padding-left: 15px; }
+        h3 { font-size: 18px; color: #6b3a1f; margin-bottom: 10px; }
+        
+        .btn {
+            display: inline-block;
+            background: linear-gradient(90deg, #c8a86c, #a8844a);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 40px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 10px 5px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+        }
+        .btn-blue { background: linear-gradient(90deg, #00d2ff, #3a7bd5); }
+        .btn-green { background: linear-gradient(90deg, #4CAF50, #2e7d32); }
+        .btn:hover { transform: scale(1.02); opacity: 0.95; }
+        
+        .premium-badge {
+            background: linear-gradient(90deg, #d4a373, #fdbb2d);
+            padding: 5px 15px;
+            border-radius: 30px;
+            display: inline-block;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,248,235,0.1);
+            border-radius: 20px;
+        }
+        .stat-number { font-size: 32px; font-weight: bold; color: #c8a86c; }
+        
+        .plan-card {
+            background: rgba(255,248,235,0.1);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .plan-card:hover { transform: translateY(-3px); background: rgba(255,248,235,0.15); }
+        .plan-price { font-size: 28px; font-weight: bold; color: #c8a86c; margin: 10px 0; }
+        .plan-features { list-style: none; margin: 15px 0; }
+        .plan-features li { margin: 8px 0; font-size: 14px; }
+        
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,248,235,0.15);
+            color: #3a2a1a;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .input-field:focus { outline: none; border-color: #c8a86c; }
+        
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .nav-link {
+            color: #6b3a1f;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 5px 10px;
+        }
+        .nav-link:hover { color: #c8a86c; }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            border-top: 1px solid rgba(100,70,40,0.15);
+            font-size: 12px;
+        }
+        footer a { color: #6b3a1f; text-decoration: none; }
+        
+        @media (max-width: 768px) {
+            .glass-card { padding: 20px; }
+            h1 { font-size: 28px; }
+            .plan-card { margin-bottom: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sand-dunes"></div>
+    <div class="sand-texture"></div>
+    <div class="dune-shadow"></div>
+    <div class="wind-ripple"></div>
+    
+    <div class="container">
+        <div class="top-nav">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="avatar.png" alt="Герой Сказок" style="height: 50px; width: 50px; border-radius: 50%; object-fit: cover;">
+                <span style="font-weight: bold; font-size: 20px; color: #6b3a1f;">Герой Сказок</span>
+            </div>
+            <div>
+                <a href="/" class="nav-link">Главная</a>
+                <a href="/app.html" class="nav-link">Приложение</a>
+                <a href="/account.html" class="nav-link">Личный кабинет</a>
+            </div>
+        </div>
+        
+        <!-- Статус аккаунта -->
+        <div class="glass-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <h2 style="margin: 0 0 5px 0;">👋 Добро пожаловать!</h2>
+                    <p style="margin: 0;">Email: <span id="userEmail">не указан</span></p>
+                </div>
+                <div>
+                    <span class="premium-badge" id="premiumBadge">Бесплатный аккаунт</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Форма входа/регистрации -->
+        <div class="glass-card" id="loginSection">
+            <h2>🔐 Вход / Регистрация</h2>
+            <p style="margin-bottom: 15px;">Введите email, чтобы сохранить прогресс и управлять подпиской</p>
+            <input type="email" id="loginEmail" class="input-field" placeholder="Ваш email">
+            <input type="password" id="loginPassword" class="input-field" placeholder="Пароль">
+            <button class="btn" id="registerBtn">Зарегистрироваться</button>
+            <button class="btn btn-blue" id="loginBtn">Войти</button>
+            <div id="loginStatus" style="margin-top: 10px; font-size: 14px; color: #6b3a1f;"></div>
+        </div>
+        
+        <!-- Статистика ребёнка -->
+        <div class="glass-card">
+            <h2>📊 Статистика ребёнка</h2>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="stat-number" id="statFears">0</div>
+                    <div>страхов выявлено</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="statTales">0</div>
+                    <div>сказок рассказано</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="statHours">0</div>
+                    <div>часов общения</div>
+                </div>
+            </div>
+            <div style="margin-top: 15px;">
+                <p><strong>Последний страх:</strong> <span id="lastFear">—</span></p>
+                <p><strong>Любимая сказка:</strong> <span id="favoriteTale">—</span></p>
+            </div>
+        </div>
+        
+        <!-- Тарифы и подписка -->
+        <h2>💎 Премиум-доступ</h2>
+        <div class="stat-grid">
+            <div class="plan-card glass-card">
+                <h3>🆓 Бесплатный</h3>
+                <div class="plan-price">0 ₽/мес</div>
+                <ul class="plan-features">
+                    <li>✅ 5 сказок в день</li>
+                    <li>✅ Базовый голос</li>
+                    <li>✅ 1 персонаж (Люцик)</li>
+                    <li>✅ Дневник страхов</li>
+                </ul>
+                <button class="btn" disabled style="opacity:0.5;">Текущий план</button>
+            </div>
+            <div class="plan-card glass-card">
+                <h3>🌟 Премиум</h3>
+                <div class="plan-price">299 ₽/мес</div>
+                <ul class="plan-features">
+                    <li>✅ Безлимит сказок</li>
+                    <li>✅ Живой голос (скоро)</li>
+                    <li>✅ Все персонажи (мама, папа, ребёнок)</li>
+                    <li>✅ Генерация аватара по фото (скоро)</li>
+                    <li>✅ Приоритетная поддержка</li>
+                </ul>
+                <button class="btn btn-green" id="subscribeBtn">Оформить подписку</button>
+            </div>
+            <div class="plan-card glass-card">
+                <h3>👨‍👩‍👧 Семейный</h3>
+                <div class="plan-price">499 ₽/мес</div>
+                <ul class="plan-features">
+                    <li>✅ Всё из Премиум</li>
+                    <li>✅ До 3 детей</li>
+                    <li>✅ Общая статистика</li>
+                    <li>✅ Отдельные сказки для каждого</li>
+                </ul>
+                <button class="btn btn-green" id="familySubscribeBtn">Оформить подписку</button>
+            </div>
+        </div>
+        
+        <!-- Настройки -->
+        <div class="glass-card">
+            <h2>⚙️ Настройки</h2>
+            <p><strong>Имя ребёнка:</strong> <span id="childName">—</span></p>
+            <p><strong>Возраст:</strong> <span id="childAge">—</span></p>
+            <button class="btn" id="clearDataBtn">Очистить все данные</button>
+            <button class="btn btn-blue" id="syncDataBtn">Синхронизировать</button>
+        </div>
+        
+        <!-- Промокод -->
+        <div class="glass-card">
+            <h2>🎁 Промокод</h2>
+            <p>Введите промокод для активации премиум-доступа</p>
+            <input type="text" id="promoInput" class="input-field" placeholder="TEST2025" style="max-width: 200px;">
+            <button class="btn" id="applyPromoBtn">Активировать</button>
+            <p style="margin-top: 10px; font-size: 12px;">Тестовый промокод: <strong>TEST2025</strong></p>
+        </div>
+        
+        <footer>
+            <p>© 2026 Герой Сказок — виртуальный друг для детей</p>
+            <p><a href="/privacy.html">Политика конфиденциальности</a> | <a href="/terms.html">Пользовательское соглашение</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // Загрузка данных из localStorage
+        function loadStats() {
+            const fearStats = JSON.parse(localStorage.getItem('fearStats') || '{}');
+            const totalFears = Object.values(fearStats).reduce((a, b) => a + b, 0);
+            document.getElementById('statFears').innerText = totalFears;
+            
+            const history = JSON.parse(localStorage.getItem('storyHistory') || '[]');
+            const talesCount = history.filter(item => item.includes('Люцик:')).length;
+            document.getElementById('statTales').innerText = talesCount;
+            
+            const totalTime = parseInt(localStorage.getItem('totalAppTime')) || 0;
+            const hours = Math.floor(totalTime / 3600);
+            document.getElementById('statHours').innerText = hours;
+            
+            // Последний страх
+            const lastFearItem = history.find(item => item.toLowerCase().includes('боюсь') || item.toLowerCase().includes('страшно'));
+            if (lastFearItem) {
+                document.getElementById('lastFear').innerText = lastFearItem.substring(0, 50);
+            }
+            
+            // Имя и возраст
+            document.getElementById('childName').innerText = localStorage.getItem('childName') || '—';
+            document.getElementById('childAge').innerText = localStorage.getItem('childAge') || '—';
+            
+            // Статус подписки
+            const isPremium = localStorage.getItem('isPremium') === 'true';
+            const premiumBadge = document.getElementById('premiumBadge');
+            if (isPremium) {
+                premiumBadge.innerText = '🌟 Премиум аккаунт';
+                premiumBadge.style.background = 'linear-gradient(90deg, #fdbb2d, #d4a373)';
+            } else {
+                premiumBadge.innerText = 'Бесплатный аккаунт';
+                premiumBadge.style.background = 'linear-gradient(90deg, #a8844a, #c8a86c)';
+            }
+        }
+        
+        // Регистрация (заглушка)
+        document.getElementById('registerBtn').addEventListener('click', () => {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            if (email && password) {
+                localStorage.setItem('userEmail', email);
+                document.getElementById('userEmail').innerText = email;
+                document.getElementById('loginStatus').innerHTML = '✅ Регистрация успешна! Данные сохранены.';
+                setTimeout(() => document.getElementById('loginStatus').innerHTML = '', 3000);
+            } else {
+                document.getElementById('loginStatus').innerHTML = '❌ Введите email и пароль';
+            }
+        });
+        
+        // Вход (заглушка)
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            const email = document.getElementById('loginEmail').value;
+            if (email) {
+                localStorage.setItem('userEmail', email);
+                document.getElementById('userEmail').innerText = email;
+                document.getElementById('loginStatus').innerHTML = '✅ Вход выполнен!';
+                setTimeout(() => document.getElementById('loginStatus').innerHTML = '', 2000);
+            } else {
+                document.getElementById('loginStatus').innerHTML = '❌ Введите email';
+            }
+        });
+        
+        // Подписка (заглушка)
+        document.getElementById('subscribeBtn').addEventListener('click', () => {
+            alert('🌟 Премиум-подписка\nСтоимость: 299 ₽/мес\n\nСпособ оплаты: Telegram Stars / ЮMoney\n(тестовый режим, оплата не списывается)');
+        });
+        
+        document.getElementById('familySubscribeBtn').addEventListener('click', () => {
+            alert('👨‍👩‍👧 Семейная подписка\nСтоимость: 499 ₽/мес\n\nДо 3 детей, общая статистика\n(тестовый режим, оплата не списывается)');
+        });
+        
+        // Промокод
+        document.getElementById('applyPromoBtn').addEventListener('click', () => {
+            const code = document.getElementById('promoInput').value.trim().toUpperCase();
+            if (code === 'TEST2025') {
+                localStorage.setItem('isPremium', 'true');
+                alert('🎉 Премиум активирован! Перезагрузите страницу для обновления статуса.');
+                loadStats();
+            } else {
+                alert('Неверный промокод');
+            }
+        });
+        
+        // Очистка данных
+        document.getElementById('clearDataBtn').addEventListener('click', () => {
+            if (confirm('Вы уверены? Все данные о ребёнке будут удалены без возможности восстановления.')) {
+                localStorage.clear();
+                alert('Все данные очищены. Страница будет перезагружена.');
+                location.reload();
+            }
+        });
+        
+        // Синхронизация (заглушка)
+        document.getElementById('syncDataBtn').addEventListener('click', () => {
+            alert('🔄 Синхронизация с облаком\n(функция в разработке, пока данные хранятся только на устройстве)');
+        });
+        
+        // Загрузка email из localStorage
+        const savedEmail = localStorage.getItem('userEmail');
+        if (savedEmail) {
+            document.getElementById('userEmail').innerText = savedEmail;
+        }
+        
+        loadStats();
+        setInterval(loadStats, 5000);
+    </script>
+</body>
+</html>
