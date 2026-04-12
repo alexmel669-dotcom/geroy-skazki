@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Герой Сказок</title>
+    <title>Герой Сказок — Виртуальный друг с ИИ</title>
     <link rel="icon" href="avatar.png" type="image/png">
     <link rel="manifest" href="manifest.json">
     <style>
@@ -198,6 +198,7 @@
             cursor: pointer;
             backdrop-filter: blur(5px);
         }
+        .game-btn { background: #ffa500; }
         .footer {
             position: fixed;
             bottom: 5px;
@@ -249,7 +250,6 @@
         }
         .character-option.selected { border-color: #fdbb2d; transform: scale(1.05); }
         
-        /* Игры */
         .games-modal {
             display: none;
             position: fixed;
@@ -289,7 +289,6 @@
             cursor: pointer;
         }
         
-        /* Игра Поймай рыбку */
         .game-modal {
             display: none;
             position: fixed;
@@ -334,29 +333,11 @@
             pointer-events: none;
             animation: splashAnim 0.3s ease-out forwards;
         }
-        @keyframes splashAnim {
-            0% { transform: scale(0.5); opacity: 1; }
-            100% { transform: scale(2); opacity: 0; }
-        }
-        .score {
-            font-size: 24px;
-            margin-top: 15px;
-            font-weight: bold;
-        }
-        .timer {
-            font-size: 20px;
-            margin-top: 10px;
-            color: #fdbb2d;
-        }
-        .close-game {
-            margin-top: 20px;
-            background: #ff4081;
-            padding: 10px 20px;
-            border-radius: 30px;
-            border: none;
-            color: white;
-            cursor: pointer;
-        }
+        @keyframes splashAnim { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+        .score { font-size: 24px; margin-top: 15px; font-weight: bold; }
+        .timer { font-size: 20px; margin-top: 10px; color: #fdbb2d; }
+        .close-game { margin-top: 20px; background: #ff4081; padding: 10px 20px; border-radius: 30px; border: none; color: white; cursor: pointer; }
+        .history-item { font-size: 13px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         
         @media (max-width: 480px) {
             .avatar { width: 180px; height: 180px; }
@@ -398,7 +379,7 @@
         <button class="action-btn" id="playBtn">🎾</button>
         <button class="action-btn" id="dressBtn">🧸</button>
         <button class="action-btn" id="roomBtn">🏠</button>
-        <button class="action-btn" id="gamesBtn">🎮</button>
+        <button class="action-btn game-btn" id="gamesBtn">🎮</button>
     </div>
     <div class="footer">
         <a href="privacy.html">Политика конфиденциальности</a>
@@ -430,7 +411,6 @@
     <button class="close-panel" id="closePanelBtn">Закрыть</button>
 </div>
 
-<!-- Меню игр -->
 <div id="gamesMenuModal" class="games-modal">
     <div class="games-menu">
         <h2>🎮 Выбери игру</h2>
@@ -440,7 +420,6 @@
     </div>
 </div>
 
-<!-- Игра Поймай рыбку -->
 <div id="fishGameModal" class="game-modal">
     <h2>🐟 Поймай рыбку!</h2>
     <div class="game-area" id="gameArea">
@@ -507,26 +486,39 @@
             saveStats();
         }
     }
+    
+    // ========== ИСТОРИЯ С ВЫДЕЛЕНИЕМ СТРАХОВ ==========
     function updateHistory() {
-        const historyDiv = document.getElementById('historyList');
-        if (conversationHistory.length === 0) historyDiv.innerHTML = 'Пока тишина...';
-        else historyDiv.innerHTML = conversationHistory.slice(-10).map(item => `<div style="padding:5px; border-bottom:1px solid rgba(255,255,255,0.1);">${item}</div>`).join('');
+        const h = JSON.parse(localStorage.getItem('storyHistory') || '[]');
+        const fearWords = ['боюсь', 'страшно', 'темнот', 'врач', 'укол', 'один', 'обид', 'собака', 'кошка'];
+        
+        const historyHtml = h.map(item => {
+            let isFear = false;
+            const lowerItem = item.toLowerCase();
+            for (const word of fearWords) {
+                if (lowerItem.includes(word)) {
+                    isFear = true;
+                    break;
+                }
+            }
+            const style = isFear ? 'background: rgba(255,64,129,0.3); border-left: 3px solid #ff4081;' : '';
+            return `<div class="history-item" style="${style}">${item}</div>`;
+        }).join('');
+        
+        document.getElementById('historyList').innerHTML = historyHtml || "Пока тишина...";
     }
+    
     function saveHistory(text) {
-        conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + text);
-        if (conversationHistory.length > 20) conversationHistory.pop();
-        localStorage.setItem('storyHistory', JSON.stringify(conversationHistory));
+        let h = JSON.parse(localStorage.getItem('storyHistory') || '[]');
+        h.unshift(new Date().toLocaleTimeString() + ": " + text);
+        if (h.length > 20) h.pop();
+        localStorage.setItem('storyHistory', JSON.stringify(h));
         updateHistory();
     }
     
     // ========== ГОЛОС ==========
     function speak(message) {
-        let cleanMessage = message
-            .replace(/[\*\_\-\#]/g, '')
-            .replace(/мурлычет/g, '')
-            .replace(/покачивает головой/g, '')
-            .replace(/мяукает/g, '');
-        
+        let cleanMessage = message.replace(/[\*\_\-\#]/g, '').replace(/мурлычет/g, '').replace(/покачивает головой/g, '');
         const utterance = new SpeechSynthesisUtterance(cleanMessage);
         utterance.lang = 'ru-RU';
         utterance.rate = 0.9;
@@ -535,18 +527,13 @@
         utterance.onend = () => avatar.classList.remove('talking');
         window.speechSynthesis.speak(utterance);
     }
-    function purr() {
-        const audio = new Audio('purr.mp3');
-        audio.play().catch(e => console.log('no purr.mp3'));
-    }
+    function purr() { const audio = new Audio('purr.mp3'); audio.play().catch(e => console.log('no purr.mp3')); }
     
     // ========== DEEPSEEK API ==========
     let isWaitingForResponse = false;
-    
     async function askDeepSeek(userText) {
-        if (isWaitingForResponse) return "Мяу! Подожди чуть-чуть, я ещё думаю...";
+        if (isWaitingForResponse) return "Мяу! Подожди чуть-чуть...";
         isWaitingForResponse = true;
-        
         try {
             const response = await fetch('/api/generate', {
                 method: 'POST',
@@ -561,11 +548,8 @@
             const data = await response.json();
             return data.story;
         } catch (error) {
-            console.error('DeepSeek error:', error);
             return "Мяу! Давай ещё раз?";
-        } finally {
-            isWaitingForResponse = false;
-        }
+        } finally { isWaitingForResponse = false; }
     }
     
     // ========== МИКРОФОН ==========
@@ -635,20 +619,12 @@
             energy -= 20;
             mood = Math.min(100, mood + 15);
             saveStats();
-        } else {
-            speak("Я устал. Дай мне отдохнуть.");
-        }
+        } else { speak("Я устал. Дай мне отдохнуть."); }
         purr();
         saveHistory(`🎾 Поиграл с ${characters[currentCharacterIndex].name}`);
     });
-    document.getElementById('dressBtn').addEventListener('click', () => {
-        purr();
-        saveHistory(`🧸 Переодел ${characters[currentCharacterIndex].name}`);
-    });
-    document.getElementById('roomBtn').addEventListener('click', () => {
-        purr();
-        saveHistory(`🏠 Зашёл в комнату ${characters[currentCharacterIndex].name}`);
-    });
+    document.getElementById('dressBtn').addEventListener('click', () => { purr(); saveHistory(`🧸 Переодел ${characters[currentCharacterIndex].name}`); });
+    document.getElementById('roomBtn').addEventListener('click', () => { purr(); saveHistory(`🏠 Зашёл в комнату ${characters[currentCharacterIndex].name}`); });
     document.getElementById('avatar').addEventListener('click', () => {
         mood = Math.min(100, mood + 10);
         saveStats();
@@ -660,23 +636,12 @@
     // ========== ИГРЫ ==========
     const gamesMenuModal = document.getElementById('gamesMenuModal');
     const fishGameModal = document.getElementById('fishGameModal');
+    document.getElementById('gamesBtn').addEventListener('click', () => { gamesMenuModal.style.display = 'flex'; });
+    document.getElementById('closeGamesBtn').addEventListener('click', () => { gamesMenuModal.style.display = 'none'; });
     
-    document.getElementById('gamesBtn').addEventListener('click', () => {
-        gamesMenuModal.style.display = 'flex';
-    });
-    document.getElementById('closeGamesBtn').addEventListener('click', () => {
-        gamesMenuModal.style.display = 'none';
-    });
-    
-    // Игра Поймай рыбку
-    let gameScore = 0;
-    let gameTimer = 30;
-    let gameInterval = null;
-    let timerInterval = null;
-    const gameArea = document.getElementById('gameArea');
-    const fish = document.getElementById('fish');
-    const scoreSpan = document.getElementById('score');
-    const timerSpan = document.getElementById('timer');
+    let gameScore = 0, gameTimer = 30, gameInterval = null, timerInterval = null;
+    const gameArea = document.getElementById('gameArea'), fish = document.getElementById('fish');
+    const scoreSpan = document.getElementById('score'), timerSpan = document.getElementById('timer');
     
     function createSplash(x, y) {
         const splash = document.createElement('div');
@@ -686,16 +651,11 @@
         gameArea.appendChild(splash);
         setTimeout(() => splash.remove(), 300);
     }
-    
     function moveFish() {
-        const maxX = gameArea.clientWidth - 60;
-        const maxY = gameArea.clientHeight - 60;
-        const x = Math.random() * maxX;
-        const y = Math.random() * maxY;
-        fish.style.left = Math.max(0, x) + 'px';
-        fish.style.top = Math.max(0, y) + 'px';
+        const maxX = gameArea.clientWidth - 60, maxY = gameArea.clientHeight - 60;
+        fish.style.left = Math.max(0, Math.random() * maxX) + 'px';
+        fish.style.top = Math.max(0, Math.random() * maxY) + 'px';
     }
-    
     function catchFish(e) {
         if (gameTimer > 0) {
             gameScore++;
@@ -710,17 +670,12 @@
             saveStats();
         }
     }
-    
     function startFishGame() {
-        gameScore = 0;
-        gameTimer = 30;
-        scoreSpan.innerText = '0';
-        timerSpan.innerText = '30';
+        gameScore = 0; gameTimer = 30;
+        scoreSpan.innerText = '0'; timerSpan.innerText = '30';
         moveFish();
-        
         if (gameInterval) clearInterval(gameInterval);
         if (timerInterval) clearInterval(timerInterval);
-        
         timerInterval = setInterval(() => {
             gameTimer--;
             timerSpan.innerText = gameTimer;
@@ -730,30 +685,22 @@
                 speak(`Игра окончена! Ты поймал ${gameScore} рыбок! Молодец!`);
             }
         }, 1000);
-        
-        gameInterval = setInterval(() => {
-            if (gameTimer > 0) moveFish();
-        }, 1500);
+        gameInterval = setInterval(() => { if (gameTimer > 0) moveFish(); }, 1500);
     }
-    
     fish.addEventListener('click', catchFish);
-    
     document.getElementById('fishGameBtn').addEventListener('click', () => {
         gamesMenuModal.style.display = 'none';
         fishGameModal.style.display = 'flex';
         setTimeout(() => startFishGame(), 100);
     });
-    
     document.getElementById('closeFishGameBtn').addEventListener('click', () => {
         fishGameModal.style.display = 'none';
         if (timerInterval) clearInterval(timerInterval);
         if (gameInterval) clearInterval(gameInterval);
     });
     
-    // ========== ЗАГРУЗКА АВАТАРА ==========
-    document.getElementById('uploadAvatarBtn').addEventListener('click', () => {
-        document.getElementById('avatarUpload').click();
-    });
+    // ========== АВАТАР ==========
+    document.getElementById('uploadAvatarBtn').addEventListener('click', () => { document.getElementById('avatarUpload').click(); });
     document.getElementById('avatarUpload').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -768,9 +715,7 @@
         }
     });
     const savedAvatar = localStorage.getItem('customAvatar');
-    if (savedAvatar) {
-        document.getElementById('avatar').style.backgroundImage = `url(${savedAvatar})`;
-    }
+    if (savedAvatar) document.getElementById('avatar').style.backgroundImage = `url(${savedAvatar})`;
     
     // ========== ПЕРСОНАЖИ И СВАЙП ==========
     function updateAvatar() {
@@ -826,18 +771,13 @@
     updatePinStatus();
     
     document.getElementById('parentBtn').addEventListener('click', () => {
-        if (!savedPin) {
-            parentPanel.style.display = 'block';
-        } else {
+        if (!savedPin) { parentPanel.style.display = 'block'; }
+        else {
             const entered = prompt('Введите пароль для входа в Штаб:');
-            if (entered === savedPin) {
-                parentPanel.style.display = 'block';
-            } else if (entered !== null) {
-                alert('Неверный пароль!');
-            }
+            if (entered === savedPin) parentPanel.style.display = 'block';
+            else if (entered !== null) alert('Неверный пароль!');
         }
     });
-    
     document.getElementById('closePanelBtn').addEventListener('click', () => { parentPanel.style.display = 'none'; });
     document.getElementById('pinSaveBtn').addEventListener('click', () => {
         const newPin = pinInput.value.trim();
@@ -852,14 +792,12 @@
     });
     document.getElementById('pinCheckBtn').addEventListener('click', () => {
         if (!savedPin) { alert('Сначала создайте пароль'); return; }
-        if (pinInput.value.trim() === savedPin) {
-            alert('Вход выполнен!');
-        } else { alert('Неверный пароль!'); }
+        if (pinInput.value.trim() === savedPin) alert('Вход выполнен!');
+        else alert('Неверный пароль!');
         pinInput.value = '';
     });
     document.getElementById('promoBtn').addEventListener('click', () => {
-        const code = document.getElementById('promoInput').value.trim().toUpperCase();
-        if (code === 'TEST2025') {
+        if (document.getElementById('promoInput').value.trim().toUpperCase() === 'TEST2025') {
             localStorage.setItem('isPremium', 'true');
             isPremium = true;
             alert('Премиум активирован!');
@@ -878,19 +816,15 @@
         }
     });
     
-    // ========== КНОПКА НАЗАД НА ТЕЛЕФОНЕ ==========
+    // ========== КНОПКА НАЗАД ==========
     window.addEventListener('popstate', () => {
-        if (parentPanel.style.display === 'block') {
-            parentPanel.style.display = 'none';
-        } else if (fishGameModal.style.display === 'flex') {
+        if (parentPanel.style.display === 'block') parentPanel.style.display = 'none';
+        else if (fishGameModal.style.display === 'flex') {
             fishGameModal.style.display = 'none';
             if (timerInterval) clearInterval(timerInterval);
             if (gameInterval) clearInterval(gameInterval);
-        } else if (gamesMenuModal.style.display === 'flex') {
-            gamesMenuModal.style.display = 'none';
-        } else {
-            window.close();
-        }
+        } else if (gamesMenuModal.style.display === 'flex') gamesMenuModal.style.display = 'none';
+        else window.close();
     });
     history.pushState(null, null, location.href);
     
@@ -930,11 +864,8 @@
         }
         updateAvatar();
         const ageNum = parseInt(childAge);
-        if (ageNum <= 6) {
-            speak(`Мяу! Привет, ${childName}! Как прошёл твой день в садике?`);
-        } else {
-            speak(`Мяу! Привет, ${childName}! Как дела в школе?`);
-        }
+        if (ageNum <= 6) speak(`Мяу! Привет, ${childName}! Как прошёл твой день в садике?`);
+        else speak(`Мяу! Привет, ${childName}! Как дела в школе?`);
     } else {
         registerScreen.style.display = 'flex';
         mainScreen.style.display = 'none';
@@ -954,11 +885,8 @@
             updateHistory();
             updateAvatar();
             const ageNum = parseInt(age);
-            if (ageNum <= 6) {
-                speak(`Мяу! Привет, ${name}! Как прошёл твой день в садике?`);
-            } else {
-                speak(`Мяу! Привет, ${name}! Как дела в школе?`);
-            }
+            if (ageNum <= 6) speak(`Мяу! Привет, ${name}! Как прошёл твой день в садике?`);
+            else speak(`Мяу! Привет, ${name}! Как дела в школе?`);
         } else { alert('Введите имя и возраст'); }
     });
     
