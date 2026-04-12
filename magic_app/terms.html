@@ -69,13 +69,13 @@
             z-index: 1;
         }
         
-        .matte-card {
-            background: rgba(245, 240, 230, 0.88);
-            backdrop-filter: blur(2px);
+        .glass-card {
+            background: rgba(255, 248, 235, 0.15);
+            backdrop-filter: blur(8px);
             border-radius: 30px;
             padding: 40px;
-            border: 1px solid rgba(255,255,255,0.5);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+            border: 1px solid rgba(255,255,255,0.35);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
         }
         
         h1 { font-size: 36px; color: #6b3a1f; margin-bottom: 20px; }
@@ -85,7 +85,7 @@
         a:hover { color: #a8844a; }
         
         @media (max-width: 768px) {
-            .matte-card { padding: 25px; }
+            .glass-card { padding: 25px; }
             h1 { font-size: 28px; }
             h2 { font-size: 20px; }
         }
@@ -98,7 +98,7 @@
     <div class="wind-ripple"></div>
     
     <div class="container">
-        <div class="matte-card">
+        <div class="glass-card">
             <h1>📜 Пользовательское соглашение</h1>
             <p><strong>Дата последнего обновления:</strong> 13 апреля 2026 г.</p>
             
