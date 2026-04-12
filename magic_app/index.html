@@ -92,20 +92,20 @@
             z-index: 1;
         }
         
-        /* Матовая карточка (плотная, без прозрачности) */
-        .matte-card {
-            background: rgba(245, 240, 230, 0.85);
-            backdrop-filter: blur(2px);
-            -webkit-backdrop-filter: blur(2px);
+        /* Прозрачное стекло */
+        .glass-card {
+            background: rgba(255, 248, 235, 0.15);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             border-radius: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.2);
             transition: all 0.3s ease;
         }
-        .matte-card:hover {
-            background: rgba(245, 240, 230, 0.92);
+        .glass-card:hover {
+            background: rgba(255, 248, 235, 0.22);
             transform: translateY(-2px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
         }
         
         h1 { font-size: 48px; margin-bottom: 20px; color: #6b3a1f; text-shadow: 1px 1px 2px rgba(0,0,0,0.05); }
@@ -166,11 +166,12 @@
             margin: 40px 0;
         }
         .review {
-            background: rgba(245, 240, 230, 0.7);
+            background: rgba(255, 248, 235, 0.15);
+            backdrop-filter: blur(4px);
             padding: 20px 25px;
             border-radius: 25px;
             margin: 18px 0;
-            border: 1px solid rgba(255,255,255,0.4);
+            border: 1px solid rgba(255,255,255,0.3);
         }
         .review-stars { color: #c8a86c; font-size: 22px; letter-spacing: 2px; }
         .review p { color: #3e2a1f; font-style: italic; }
@@ -194,7 +195,7 @@
             h1 { font-size: 32px; }
             .hero p { font-size: 16px; }
             .stat-number { font-size: 38px; }
-            .matte-card { border-radius: 25px; }
+            .glass-card { border-radius: 25px; }
         }
     </style>
 </head>
@@ -206,7 +207,7 @@
     <div class="wind-ripple"></div>
     
     <div class="container">
-        <div class="hero matte-card">
+        <div class="hero glass-card">
             <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
                 <img src="avatar.png" alt="Герой Сказок" style="height: 70px; width: 70px; border-radius: 50%; object-fit: cover; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.5);">
                 <h1 style="margin: 0;">Герой Сказок</h1>
@@ -217,17 +218,17 @@
         </div>
 
         <div class="stat-grid">
-            <div class="stat-card matte-card">
+            <div class="stat-card glass-card">
                 <div class="stat-number" id="statFears">0</div>
                 <div>страхов выявлено</div>
                 <small style="font-size: 10px; opacity: 0.6;">(с момента установки)</small>
             </div>
-            <div class="stat-card matte-card">
+            <div class="stat-card glass-card">
                 <div class="stat-number" id="statTales">0</div>
                 <div>сказок рассказано</div>
                 <small style="font-size: 10px; opacity: 0.6;">(с момента установки)</small>
             </div>
-            <div class="stat-card matte-card">
+            <div class="stat-card glass-card">
                 <div class="stat-number" id="statHours">0</div>
                 <div>часов общения</div>
                 <small style="font-size: 10px; opacity: 0.6;">(с момента установки)</small>
@@ -236,16 +237,16 @@
 
         <h2>✨ Что умеет Люцик?</h2>
         <div class="features">
-            <div class="feature-card matte-card"><h3>🗣️ Умный диалог</h3><p>Люцик поддерживает разговор, задаёт вопросы и сочиняет терапевтические сказки</p></div>
-            <div class="feature-card matte-card"><h3>😨 Выявляет страхи</h3><p>В игровой форме узнаёт, чего боится ребёнок</p></div>
-            <div class="feature-card matte-card"><h3>🎮 Игры и забота</h3><p>Корми, играй, одевай и гладь Люцика</p></div>
-            <div class="feature-card matte-card"><h3>👨‍👩‍👧 Выбор персонажа</h3><p>Свайп по аватару — мама, папа или сам ребёнок</p></div>
-            <div class="feature-card matte-card"><h3>📊 Дневник страхов</h3><p>Родители видят статистику и историю разговоров</p></div>
-            <div class="feature-card matte-card"><h3>🔐 Безопасно</h3><p>Все данные на устройстве. Родительский вход по паролю</p></div>
+            <div class="feature-card glass-card"><h3>🗣️ Умный диалог</h3><p>Люцик поддерживает разговор, задаёт вопросы и сочиняет терапевтические сказки</p></div>
+            <div class="feature-card glass-card"><h3>😨 Выявляет страхи</h3><p>В игровой форме узнаёт, чего боится ребёнок</p></div>
+            <div class="feature-card glass-card"><h3>🎮 Игры и забота</h3><p>Корми, играй, одевай и гладь Люцика</p></div>
+            <div class="feature-card glass-card"><h3>👨‍👩‍👧 Выбор персонажа</h3><p>Свайп по аватару — мама, папа или сам ребёнок</p></div>
+            <div class="feature-card glass-card"><h3>📊 Дневник страхов</h3><p>Родители видят статистику и историю разговоров</p></div>
+            <div class="feature-card glass-card"><h3>🔐 Безопасно</h3><p>Все данные на устройстве. Родительский вход по паролю</p></div>
         </div>
 
         <h2>⭐ Отзывы родителей</h2>
-        <div class="reviews matte-card">
+        <div class="reviews glass-card">
             <div class="review">
                 <div class="review-stars">★★★★★</div>
                 <p>«Сын боялся темноты 2 года. После сказок Люцика — сам выключает свет!»</p>
@@ -263,7 +264,7 @@
             </div>
         </div>
 
-        <div class="install-instruction matte-card">
+        <div class="install-instruction glass-card">
             <h3>📲 Как установить приложение на телефон</h3>
             <p><strong>Android (Chrome):</strong> откройте сайт → нажмите «Установить приложение» → подтвердите</p>
             <p><strong>iPhone (Safari):</strong> откройте сайт → нажмите «Поделиться» → «На экран Домой»</p>
