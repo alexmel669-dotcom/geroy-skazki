@@ -7,88 +7,254 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: linear-gradient(135deg, #e8d5b7, #dcc8a4);
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', 'Roboto', 'Georgia', serif;
+            background: radial-gradient(circle at 20% 30%, #f2e6d0, #e0d0b8, #d4c4a8);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            color: #4a2a1a;
+            position: relative;
         }
         
-        /* Стеклянная карточка (точно работает) */
-        .glass-card {
-            background: rgba(255, 250, 240, 0.3);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 50px;
-            padding: 50px 40px;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 800px;
+        /* Песчаная текстура (кварцевый песок) */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" opacity="0.15"><path fill="%23b8956a" d="M30,30 Q40,25 50,30 T70,28 T90,32 T110,28 T130,31 T150,29 T170,32 T190,30" stroke="%23b8956a" stroke-width="0.5" fill="none"/><circle cx="45" cy="80" r="1.5" fill="%23b8956a"/><circle cx="120" cy="65" r="1" fill="%23b8956a"/><circle cx="170" cy="100" r="1.2" fill="%23b8956a"/><circle cx="30" cy="140" r="1.8" fill="%23b8956a"/><circle cx="90" cy="160" r="1" fill="%23b8956a"/><circle cx="150" cy="175" r="1.3" fill="%23b8956a"/></svg>');
+            background-repeat: repeat;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        /* Анимированные кварцевые песчинки */
+        .sand-particle {
+            position: fixed;
+            background: rgba(180, 140, 100, 0.2);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            animation: floatSand linear infinite;
+        }
+        @keyframes floatSand {
+            0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0.1; }
+            25% { opacity: 0.4; }
+            50% { opacity: 0.6; }
+            75% { opacity: 0.4; }
+            100% { transform: translateY(-150px) translateX(30px) rotate(360deg); opacity: 0; }
+        }
+        
+        .container {
+            max-width: 1200px;
             margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
         }
         
-        h1 { color: #6b3a1f; margin-bottom: 20px; }
+        /* Прозрачное стекло (кварцевое) — минимальное размытие */
+        .quartz-glass {
+            background: rgba(255, 250, 240, 0.2);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border-radius: 48px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .quartz-glass:hover {
+            background: rgba(255, 250, 240, 0.3);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        h1 { font-size: 48px; margin-bottom: 20px; color: #6b3a1f; text-shadow: 1px 1px 2px rgba(0,0,0,0.03); }
+        h2 { font-size: 32px; margin: 40px 0 20px; color: #6b3a1f; border-left: 4px solid #d4a373; padding-left: 20px; }
+        
+        .hero {
+            text-align: center;
+            padding: 50px 30px;
+            margin-bottom: 40px;
+        }
+        .hero p { font-size: 20px; margin-bottom: 30px; color: #4a2a1a; font-weight: 500; }
+        
         .btn {
             display: inline-block;
             background: linear-gradient(90deg, #d4a373, #b5835a);
             color: white;
-            padding: 12px 30px;
-            border-radius: 40px;
+            padding: 14px 38px;
+            border-radius: 60px;
             text-decoration: none;
+            font-weight: bold;
+            font-size: 18px;
             margin: 10px;
-            border: none;
+            transition: all 0.3s;
             cursor: pointer;
+            border: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
+        .btn-blue { background: linear-gradient(90deg, #00d2ff, #3a7bd5); }
+        .btn:hover { transform: scale(1.02); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        .feature-card {
+            padding: 28px 22px;
+            text-align: center;
+        }
+        .feature-card h3 { margin-bottom: 12px; color: #6b3a1f; font-size: 22px; }
+        .feature-card p { color: #4a2a1a; }
+        
         .stat-grid {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin: 30px 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 25px;
+            margin: 45px 0;
         }
         .stat-card {
-            background: rgba(255, 250, 240, 0.2);
-            backdrop-filter: blur(8px);
-            border-radius: 30px;
-            padding: 20px;
-            min-width: 120px;
+            padding: 25px 20px;
+            text-align: center;
         }
-        .stat-number { font-size: 48px; font-weight: bold; color: #d4a373; }
+        .stat-number { font-size: 52px; font-weight: bold; color: #d4a373; text-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        .reviews {
+            padding: 30px;
+            margin: 40px 0;
+        }
+        .review {
+            background: rgba(255, 250, 240, 0.25);
+            backdrop-filter: blur(4px);
+            padding: 20px 25px;
+            border-radius: 35px;
+            margin: 18px 0;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .review-stars { color: #d4a373; font-size: 22px; letter-spacing: 2px; }
+        .review p { color: #3e2a1f; font-style: italic; }
+        
+        .install-instruction {
+            padding: 30px;
+            margin: 40px 0;
+            text-align: center;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 20px;
+            border-top: 1px solid rgba(107, 58, 31, 0.15);
+            font-size: 12px;
+        }
+        footer a { color: #6b3a1f; text-decoration: none; }
         
         @media (max-width: 768px) {
-            .glass-card { padding: 30px 20px; border-radius: 35px; }
-            .stat-number { font-size: 32px; }
+            h1 { font-size: 32px; }
+            .hero p { font-size: 16px; }
+            .stat-number { font-size: 38px; }
+            .quartz-glass { border-radius: 35px; }
         }
     </style>
 </head>
 <body>
-    <div class="glass-card">
-        <h1>🏜️ Герой Сказок</h1>
-        <p>Виртуальный друг с ИИ для детей 3-7 лет</p>
-        
+    <div class="container">
+        <div class="hero quartz-glass">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                <img src="avatar.png" alt="Герой Сказок" style="height: 70px; width: 70px; border-radius: 50%; object-fit: cover; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.5);">
+                <h1 style="margin: 0;">Герой Сказок</h1>
+            </div>
+            <p>Виртуальный друг с ИИ, который помогает детям 3–7 лет справляться со страхами</p>
+            <button class="btn" id="installBtn">📱 Установить приложение</button>
+            <a href="/app.html" class="btn btn-blue">🎮 Открыть в браузере</a>
+        </div>
+
         <div class="stat-grid">
-            <div class="stat-card">
+            <div class="stat-card quartz-glass">
                 <div class="stat-number" id="statFears">0</div>
-                <div>страхов</div>
+                <div>страхов выявлено</div>
+                <small style="font-size: 10px; opacity: 0.6;">(с момента установки)</small>
             </div>
-            <div class="stat-card">
+            <div class="stat-card quartz-glass">
                 <div class="stat-number" id="statTales">0</div>
-                <div>сказок</div>
+                <div>сказок рассказано</div>
+                <small style="font-size: 10px; opacity: 0.6;">(с момента установки)</small>
             </div>
-            <div class="stat-card">
+            <div class="stat-card quartz-glass">
                 <div class="stat-number" id="statHours">0</div>
-                <div>часов</div>
+                <div>часов общения</div>
+                <small style="font-size: 10px; opacity: 0.6;">(с момента установки)</small>
             </div>
         </div>
-        
-        <button class="btn" id="installBtn">📱 Установить приложение</button>
-        <a href="/app.html" class="btn">🎮 Открыть в браузере</a>
+
+        <h2>✨ Что умеет Люцик?</h2>
+        <div class="features">
+            <div class="feature-card quartz-glass"><h3>🗣️ Умный диалог</h3><p>Люцик поддерживает разговор, задаёт вопросы и сочиняет терапевтические сказки</p></div>
+            <div class="feature-card quartz-glass"><h3>😨 Выявляет страхи</h3><p>В игровой форме узнаёт, чего боится ребёнок</p></div>
+            <div class="feature-card quartz-glass"><h3>🎮 Игры и забота</h3><p>Корми, играй, одевай и гладь Люцика</p></div>
+            <div class="feature-card quartz-glass"><h3>👨‍👩‍👧 Выбор персонажа</h3><p>Свайп по аватару — мама, папа или сам ребёнок</p></div>
+            <div class="feature-card quartz-glass"><h3>📊 Дневник страхов</h3><p>Родители видят статистику и историю разговоров</p></div>
+            <div class="feature-card quartz-glass"><h3>🔐 Безопасно</h3><p>Все данные на устройстве. Родительский вход по паролю</p></div>
+        </div>
+
+        <h2>⭐ Отзывы родителей</h2>
+        <div class="reviews quartz-glass">
+            <div class="review">
+                <div class="review-stars">★★★★★</div>
+                <p>«Сын боялся темноты 2 года. После сказок Люцика — сам выключает свет!»</p>
+                <small>— Екатерина, сын 5 лет</small>
+            </div>
+            <div class="review">
+                <div class="review-stars">★★★★★</div>
+                <p>«Дочь каждый день разговаривает с котом. Я вижу её страхи в дневнике.»</p>
+                <small>— Анна, дочь 4 года</small>
+            </div>
+            <div class="review">
+                <div class="review-stars">★★★★☆</div>
+                <p>«Ребёнок в восторге. Ждём голос мамы и больше игр!»</p>
+                <small>— Дмитрий, сын 6 лет</small>
+            </div>
+        </div>
+
+        <div class="install-instruction quartz-glass">
+            <h3>📲 Как установить приложение на телефон</h3>
+            <p><strong>Android (Chrome):</strong> откройте сайт → нажмите «Установить приложение» → подтвердите</p>
+            <p><strong>iPhone (Safari):</strong> откройте сайт → нажмите «Поделиться» → «На экран Домой»</p>
+            <p style="margin-top: 15px;">🎁 <strong>Промокод для премиум-доступа:</strong> TEST2025</p>
+        </div>
+
+        <footer>
+            <p>© 2026 Герой Сказок — виртуальный друг для детей</p>
+            <p><a href="/privacy.html">Политика конфиденциальности</a> | <a href="/terms.html">Пользовательское соглашение</a></p>
+        </footer>
     </div>
 
     <script>
+        // Создаём анимированные кварцевые песчинки
+        function createSandParticles() {
+            const particleCount = window.innerWidth < 768 ? 40 : 70;
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'sand-particle';
+                const size = Math.random() * 6 + 2;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDuration = Math.random() * 18 + 12 + 's';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.background = `rgba(180, 140, 100, ${Math.random() * 0.3 + 0.1})`;
+                document.body.appendChild(particle);
+            }
+        }
+        
+        createSandParticles();
+        
+        let deferredPrompt = null;
+        
         function loadStats() {
             const fearStats = JSON.parse(localStorage.getItem('fearStats') || '{}');
             const totalFears = Object.values(fearStats).reduce((a, b) => a + b, 0);
@@ -105,13 +271,27 @@
         
         function installPWA() {
             if (window.matchMedia('(display-mode: standalone)').matches) {
-                alert('Приложение уже установлено!');
+                alert('Приложение уже установлено и открыто!');
+            } else if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('Пользователь установил PWA');
+                    }
+                    deferredPrompt = null;
+                });
             } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
                 alert('Нажмите "Поделиться" → "На экран Домой"');
             } else {
                 alert('Нажмите на три точки в браузере → "Установить приложение"');
             }
         }
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBtn').style.display = 'inline-block';
+        });
         
         document.getElementById('installBtn').addEventListener('click', installPWA);
         loadStats();
