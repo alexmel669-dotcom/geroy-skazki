@@ -79,7 +79,6 @@
             margin-bottom: 25px;
         }
         
-        h1 { font-size: 36px; color: #6b3a1f; margin-bottom: 20px; }
         h2 { font-size: 24px; color: #6b3a1f; margin: 20px 0 15px; border-left: 4px solid #c8a86c; padding-left: 15px; }
         h3 { font-size: 18px; color: #6b3a1f; margin-bottom: 10px; }
         
@@ -175,7 +174,7 @@
         
         @media (max-width: 768px) {
             .glass-card { padding: 20px; }
-            h1 { font-size: 28px; }
+            .stat-number { font-size: 24px; }
             .plan-card { margin-bottom: 15px; }
         }
     </style>
@@ -213,9 +212,9 @@
         </div>
         
         <!-- Форма входа/регистрации -->
-        <div class="glass-card" id="loginSection">
+        <div class="glass-card">
             <h2>🔐 Вход / Регистрация</h2>
-            <p style="margin-bottom: 15px;">Введите email, чтобы сохранить прогресс и управлять подпиской</p>
+            <p>Введите email, чтобы сохранить прогресс и управлять подпиской</p>
             <input type="email" id="loginEmail" class="input-field" placeholder="Ваш email">
             <input type="password" id="loginPassword" class="input-field" placeholder="Пароль">
             <button class="btn" id="registerBtn">Зарегистрироваться</button>
@@ -241,8 +240,8 @@
                 </div>
             </div>
             <div style="margin-top: 15px;">
-                <p><strong>Последний страх:</strong> <span id="lastFear">—</span></p>
-                <p><strong>Любимая сказка:</strong> <span id="favoriteTale">—</span></p>
+                <p><strong>Имя ребёнка:</strong> <span id="childName">—</span></p>
+                <p><strong>Возраст:</strong> <span id="childAge">—</span></p>
             </div>
         </div>
         
@@ -268,7 +267,6 @@
                     <li>✅ Живой голос (скоро)</li>
                     <li>✅ Все персонажи (мама, папа, ребёнок)</li>
                     <li>✅ Генерация аватара по фото (скоро)</li>
-                    <li>✅ Приоритетная поддержка</li>
                 </ul>
                 <button class="btn btn-green" id="subscribeBtn">Оформить подписку</button>
             </div>
@@ -288,8 +286,6 @@
         <!-- Настройки -->
         <div class="glass-card">
             <h2>⚙️ Настройки</h2>
-            <p><strong>Имя ребёнка:</strong> <span id="childName">—</span></p>
-            <p><strong>Возраст:</strong> <span id="childAge">—</span></p>
             <button class="btn" id="clearDataBtn">Очистить все данные</button>
             <button class="btn btn-blue" id="syncDataBtn">Синхронизировать</button>
         </div>
@@ -324,17 +320,9 @@
             const hours = Math.floor(totalTime / 3600);
             document.getElementById('statHours').innerText = hours;
             
-            // Последний страх
-            const lastFearItem = history.find(item => item.toLowerCase().includes('боюсь') || item.toLowerCase().includes('страшно'));
-            if (lastFearItem) {
-                document.getElementById('lastFear').innerText = lastFearItem.substring(0, 50);
-            }
-            
-            // Имя и возраст
             document.getElementById('childName').innerText = localStorage.getItem('childName') || '—';
             document.getElementById('childAge').innerText = localStorage.getItem('childAge') || '—';
             
-            // Статус подписки
             const isPremium = localStorage.getItem('isPremium') === 'true';
             const premiumBadge = document.getElementById('premiumBadge');
             if (isPremium) {
@@ -346,7 +334,7 @@
             }
         }
         
-        // Регистрация (заглушка)
+        // Регистрация
         document.getElementById('registerBtn').addEventListener('click', () => {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
@@ -360,7 +348,7 @@
             }
         });
         
-        // Вход (заглушка)
+        // Вход
         document.getElementById('loginBtn').addEventListener('click', () => {
             const email = document.getElementById('loginEmail').value;
             if (email) {
@@ -375,7 +363,7 @@
         
         // Подписка (заглушка)
         document.getElementById('subscribeBtn').addEventListener('click', () => {
-            alert('🌟 Премиум-подписка\nСтоимость: 299 ₽/мес\n\nСпособ оплаты: Telegram Stars / ЮMoney\n(тестовый режим, оплата не списывается)');
+            alert('🌟 Премиум-подписка\nСтоимость: 299 ₽/мес\n\nСпособы оплаты: Telegram Stars, ЮMoney, банковская карта\n(тестовый режим, оплата не списывается)');
         });
         
         document.getElementById('familySubscribeBtn').addEventListener('click', () => {
