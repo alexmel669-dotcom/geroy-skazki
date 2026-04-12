@@ -111,6 +111,26 @@
         h1 { font-size: 48px; margin-bottom: 20px; color: #6b3a1f; text-shadow: 1px 1px 2px rgba(0,0,0,0.05); }
         h2 { font-size: 32px; margin: 40px 0 20px; color: #6b3a1f; border-left: 4px solid #c8a86c; padding-left: 20px; }
         
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+            background: rgba(255,248,235,0.1);
+            backdrop-filter: blur(8px);
+            border-radius: 50px;
+            padding: 12px 25px;
+        }
+        .nav-link {
+            color: #6b3a1f;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 5px 10px;
+        }
+        .nav-link:hover { color: #c8a86c; }
+        
         .hero {
             text-align: center;
             padding: 50px 30px;
@@ -196,6 +216,7 @@
             .hero p { font-size: 16px; }
             .stat-number { font-size: 38px; }
             .glass-card { border-radius: 25px; }
+            .top-nav { border-radius: 30px; padding: 10px 15px; }
         }
     </style>
 </head>
@@ -207,6 +228,18 @@
     <div class="wind-ripple"></div>
     
     <div class="container">
+        <div class="top-nav">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="avatar.png" alt="Герой Сказок" style="height: 50px; width: 50px; border-radius: 50%; object-fit: cover;">
+                <span style="font-weight: bold; font-size: 20px; color: #6b3a1f;">Герой Сказок</span>
+            </div>
+            <div>
+                <a href="/" class="nav-link">Главная</a>
+                <a href="/app.html" class="nav-link">Приложение</a>
+                <a href="/account.html" class="nav-link">👤 Личный кабинет</a>
+            </div>
+        </div>
+        
         <div class="hero glass-card">
             <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
                 <img src="avatar.png" alt="Герой Сказок" style="height: 70px; width: 70px; border-radius: 50%; object-fit: cover; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.5);">
