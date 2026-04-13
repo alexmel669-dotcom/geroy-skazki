@@ -1,8 +1,6 @@
-// api/generate.js
 import { sql } from '@vercel/postgres';
 
-// Список запрещённых слов
-const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись', 'пошёл', 'уйди', 'убирайся', 'хрен', 'фиг', 'блин', 'черт', 'ебать', 'пизда', 'бля'];
+const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись', 'пошёл', 'уйди', 'убирайся', 'хрен', 'фиг', 'блин', 'черт'];
 
 function containsBadWords(text) {
     const lowerText = text.toLowerCase();
@@ -17,7 +15,6 @@ export default async function handler(req, res) {
     try {
         const { childName, childAge, userEmail, userSpeech, history = [] } = req.body;
 
-        // Фильтрация мата
         if (containsBadWords(userSpeech)) {
             return res.status(200).json({ 
                 story: "Мяу! Давай говорить добрые слова. Расскажи мне что-нибудь хорошее!",
@@ -25,8 +22,6 @@ export default async function handler(req, res) {
             });
         }
 
-        // Сохраняем сообщение ребёнка в localStorage (через фронтенд, здесь только генерация)
-        
         const ageNum = parseInt(childAge) || 5;
         const schoolType = ageNum <= 6 ? 'садике' : 'школе';
 
@@ -50,8 +45,6 @@ export default async function handler(req, res) {
 2. Если ребёнок говорит о страхе — поддержись, предложи сказку.
 3. Отвечай тепло, с юмором.`;
 
-        const userPrompt = `${childName} сказал: "${userSpeech}"`;
-
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -62,7 +55,7 @@ export default async function handler(req, res) {
                 model: 'deepseek-chat',
                 messages: [
                     { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
+                    { role: 'user', content: `${childName} сказал: "${userSpeech}"` }
                 ],
                 temperature: 0.85,
                 max_tokens: 400
