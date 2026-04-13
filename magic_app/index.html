@@ -189,7 +189,6 @@
             text-align: center;
         }
         
-        /* Форма регистрации на главной */
         .auth-form {
             max-width: 400px;
             margin: 30px auto;
@@ -256,7 +255,7 @@
         <!-- Форма регистрации -->
         <div class="glass-card auth-form">
             <h2 style="margin: 0 0 15px 0; font-size: 24px;">🔐 Вход / Регистрация</h2>
-            <p style="margin-bottom: 15px;">Введите email, чтобы сохранить прогресс и управлять подпиской</p>
+            <p style="margin-bottom: 15px;">Введите email, чтобы сохранить прогресс</p>
             <input type="email" id="loginEmail" class="input-field" placeholder="Ваш email">
             <input type="password" id="loginPassword" class="input-field" placeholder="Пароль">
             <button class="btn" id="registerBtn" style="width: 48%;">Зарегистрироваться</button>
@@ -276,21 +275,9 @@
 
         <h2>⭐ Отзывы родителей</h2>
         <div class="reviews glass-card">
-            <div class="review">
-                <div class="review-stars">★★★★★</div>
-                <p>«Сын боялся темноты 2 года. После сказок Люцика — сам выключает свет!»</p>
-                <small>— Екатерина, сын 5 лет</small>
-            </div>
-            <div class="review">
-                <div class="review-stars">★★★★★</div>
-                <p>«Дочь каждый день разговаривает с котом. Я вижу её страхи в дневнике.»</p>
-                <small>— Анна, дочь 4 года</small>
-            </div>
-            <div class="review">
-                <div class="review-stars">★★★★☆</div>
-                <p>«Ребёнок в восторге. Ждём голос мамы и больше игр!»</p>
-                <small>— Дмитрий, сын 6 лет</small>
-            </div>
+            <div class="review"><div class="review-stars">★★★★★</div><p>«Сын боялся темноты 2 года. После сказок Люцика — сам выключает свет!»</p><small>— Екатерина, сын 5 лет</small></div>
+            <div class="review"><div class="review-stars">★★★★★</div><p>«Дочь каждый день разговаривает с котом. Я вижу её страхи в дневнике.»</p><small>— Анна, дочь 4 года</small></div>
+            <div class="review"><div class="review-stars">★★★★☆</div><p>«Ребёнок в восторге. Ждём голос мамы и больше игр!»</p><small>— Дмитрий, сын 6 лет</small></div>
         </div>
 
         <div class="install-instruction glass-card">
@@ -315,9 +302,7 @@
             } else if (deferredPrompt) {
                 deferredPrompt.prompt();
                 deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('Пользователь установил PWA');
-                    }
+                    if (choiceResult.outcome === 'accepted') console.log('PWA установлен');
                     deferredPrompt = null;
                 });
             } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
@@ -336,34 +321,55 @@
         document.getElementById('installBtn').addEventListener('click', installPWA);
         
         // Регистрация
-        document.getElementById('registerBtn').addEventListener('click', () => {
+        document.getElementById('registerBtn').addEventListener('click', async () => {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
-            if (email && password) {
-                localStorage.setItem('userEmail', email);
-                document.getElementById('loginStatus').innerHTML = '✅ Регистрация успешна! Теперь войдите.';
-                setTimeout(() => document.getElementById('loginStatus').innerHTML = '', 3000);
-            } else {
+            if (!email || !password) {
                 document.getElementById('loginStatus').innerHTML = '❌ Введите email и пароль';
+                return;
+            }
+            
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                localStorage.setItem('userEmail', email);
+                document.getElementById('loginStatus').innerHTML = '✅ Регистрация успешна! Войдите.';
+            } else {
+                document.getElementById('loginStatus').innerHTML = '❌ ' + data.error;
             }
         });
         
         // Вход
-        document.getElementById('loginBtn').addEventListener('click', () => {
+        document.getElementById('loginBtn').addEventListener('click', async () => {
             const email = document.getElementById('loginEmail').value;
-            if (email) {
+            const password = document.getElementById('loginPassword').value;
+            if (!email || !password) {
+                document.getElementById('loginStatus').innerHTML = '❌ Введите email и пароль';
+                return;
+            }
+            
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+            if (response.ok) {
                 localStorage.setItem('userEmail', email);
-                document.getElementById('loginStatus').innerHTML = '✅ Вход выполнен!';
-                setTimeout(() => document.getElementById('loginStatus').innerHTML = '', 2000);
+                localStorage.setItem('userToken', data.token);
+                document.getElementById('loginStatus').innerHTML = '✅ Вход выполнен! Перенаправление...';
+                setTimeout(() => { window.location.href = '/account.html'; }, 1000);
             } else {
-                document.getElementById('loginStatus').innerHTML = '❌ Введите email';
+                document.getElementById('loginStatus').innerHTML = '❌ ' + data.error;
             }
         });
         
         const savedEmail = localStorage.getItem('userEmail');
-        if (savedEmail) {
-            document.getElementById('loginEmail').value = savedEmail;
-        }
+        if (savedEmail) document.getElementById('loginEmail').value = savedEmail;
     </script>
 </body>
 </html>
