@@ -401,6 +401,39 @@
         .close-game { margin-top: 20px; background: #ff4081; padding: 10px 20px; border-radius: 30px; border: none; color: white; cursor: pointer; }
         .history-item { font-size: 13px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         
+        /* Видео-приветствие */
+        .welcome-video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a2a6c;
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .welcome-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .skip-video-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 2001;
+        }
+        
         @media (max-width: 480px) {
             .avatar { width: 180px; height: 180px; }
             .mic-btn { width: 75px; height: 75px; font-size: 40px; }
@@ -413,10 +446,18 @@
     <div class="sand-texture"></div>
     <div class="wind-ripple"></div>
 
+    <!-- ВИДЕО-ПРИВЕТСТВИЕ -->
+    <div id="welcomeVideoContainer" class="welcome-video-container" style="display: none;">
+        <video id="welcomeVideo" class="welcome-video" autoplay muted playsinline>
+            <source src="welcome.mp4" type="video/mp4">
+        </video>
+        <button id="skipVideoBtn" class="skip-video-btn">Пропустить</button>
+    </div>
+
     <div id="registerScreen" class="screen-register">
         <h1>✨ Привет, Создатель!</h1>
         <input type="text" id="childNameInput" placeholder="Как зовут малыша?">
-        <input type="number" id="childAgeInput" placeholder="Сколько лет?">
+        <input type="text" id="childAgeInput" placeholder="Сколько лет?" inputmode="numeric" pattern="[0-9]*" autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
         <button id="startBtn">Начать 🐾</button>
     </div>
 
@@ -474,7 +515,6 @@
         <h3>📒 Дневник разговоров</h3>
         <div id="historyList">Пока тишина...</div>
         
-        <!-- Ссылка на личный кабинет -->
         <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 20px;">
             <h3>👤 Личный кабинет</h3>
             <p style="font-size: 12px;">Управляйте подпиской, смотрите статистику и настройки</p>
@@ -515,6 +555,35 @@
         }
         updateTimeTheme();
         setInterval(updateTimeTheme, 60000);
+        
+        // ========== ВИДЕО-ПРИВЕТСТВИЕ ==========
+        const welcomeShown = localStorage.getItem('welcome_animation_shown');
+        const welcomeContainer = document.getElementById('welcomeVideoContainer');
+        const welcomeVideo = document.getElementById('welcomeVideo');
+        
+        function showWelcomeVideo() {
+            welcomeContainer.style.display = 'flex';
+            welcomeVideo.play().catch(e => console.log('Video autoplay error:', e));
+            
+            // Озвучка
+            setTimeout(() => {
+                speak("Мяу! Привет, я Люцик! Нажми на микрофон, и мы подружимся!");
+            }, 500);
+        }
+        
+        function hideWelcomeVideo() {
+            welcomeContainer.style.display = 'none';
+            welcomeVideo.pause();
+            localStorage.setItem('welcome_animation_shown', 'true');
+        }
+        
+        if (!welcomeShown) {
+            showWelcomeVideo();
+            welcomeVideo.onended = hideWelcomeVideo;
+            document.getElementById('skipVideoBtn').onclick = hideWelcomeVideo;
+        } else {
+            welcomeContainer.style.display = 'none';
+        }
         
         // ========== ДАННЫЕ ==========
         let childName = localStorage.getItem('childName');
@@ -838,38 +907,55 @@
             if (Math.abs(diff) > 50) switchCharacter(diff > 0 ? -1 : 1);
         });
         
-        const parentPanel = document.getElementById('parentPanel');
-        const pinInput = document.getElementById('pinInput');
-        const pinStatus = document.getElementById('pinStatus');
-        function updatePinStatus() { pinStatus.innerText = savedPin ? '✅ Пароль есть. Введите его для входа.' : '🔐 Пароль ещё не создан.'; }
-        updatePinStatus();
+        // ========== ПРАВИЛЬНЫЙ ВХОД В ШТАБ ==========
+        function showCreatePinModal() {
+            const pin = prompt('Создайте пароль для входа в Штаб (4-6 цифр):');
+            if (pin && pin.length >= 4 && /^\d+$/.test(pin)) {
+                localStorage.setItem('parentPin', pin);
+                savedPin = pin;
+                alert('Пароль создан! Теперь используйте его для входа.');
+                showEnterPinModal();
+            } else {
+                alert('Пароль должен содержать минимум 4 цифры');
+            }
+        }
+        
+        function showEnterPinModal() {
+            const enteredPin = prompt('Введите пароль для входа в Штаб:');
+            if (enteredPin === savedPin) {
+                document.getElementById('parentPanel').style.display = 'block';
+            } else if (enteredPin !== null) {
+                alert('Неверный пароль!');
+            }
+        }
         
         document.getElementById('parentBtn').addEventListener('click', () => {
-            if (!savedPin) { parentPanel.style.display = 'block'; }
-            else {
-                const entered = prompt('Введите пароль для входа в Штаб:');
-                if (entered === savedPin) parentPanel.style.display = 'block';
-                else if (entered !== null) alert('Неверный пароль!');
+            if (!savedPin) {
+                showCreatePinModal();
+            } else {
+                showEnterPinModal();
             }
         });
-        document.getElementById('closePanelBtn').addEventListener('click', () => { parentPanel.style.display = 'none'; });
+        
+        document.getElementById('closePanelBtn').addEventListener('click', () => { document.getElementById('parentPanel').style.display = 'none'; });
         document.getElementById('pinSaveBtn').addEventListener('click', () => {
-            const newPin = pinInput.value.trim();
+            const newPin = document.getElementById('pinInput').value.trim();
             if (newPin.length >= 4 && /^\d+$/.test(newPin)) {
                 localStorage.setItem('parentPin', newPin);
                 savedPin = newPin;
                 alert('Пароль сохранён!');
-                updatePinStatus();
-                pinInput.value = '';
-                parentPanel.style.display = 'none';
+                document.getElementById('pinStatus').innerText = '✅ Пароль установлен.';
+                document.getElementById('pinInput').value = '';
             } else { alert('Пароль должен содержать минимум 4 цифры'); }
         });
         document.getElementById('pinCheckBtn').addEventListener('click', () => {
             if (!savedPin) { alert('Сначала создайте пароль'); return; }
-            if (pinInput.value.trim() === savedPin) alert('Вход выполнен!');
-            else alert('Неверный пароль!');
-            pinInput.value = '';
+            if (document.getElementById('pinInput').value.trim() === savedPin) {
+                alert('Вход выполнен!');
+            } else { alert('Неверный пароль!'); }
+            document.getElementById('pinInput').value = '';
         });
+        
         document.getElementById('promoBtn').addEventListener('click', () => {
             if (document.getElementById('promoInput').value.trim().toUpperCase() === 'TEST2025') {
                 localStorage.setItem('isPremium', 'true');
@@ -890,14 +976,28 @@
             }
         });
         
+        // ========== КНОПКА НАЗАД ==========
+        let backPressCount = 0;
+        let backPressTimer = null;
+        
         window.addEventListener('popstate', () => {
-            if (parentPanel.style.display === 'block') parentPanel.style.display = 'none';
-            else if (fishGameModal.style.display === 'flex') {
+            if (document.getElementById('parentPanel').style.display === 'block') {
+                document.getElementById('parentPanel').style.display = 'none';
+            } else if (fishGameModal.style.display === 'flex') {
                 fishGameModal.style.display = 'none';
                 if (timerInterval) clearInterval(timerInterval);
                 if (gameInterval) clearInterval(gameInterval);
-            } else if (gamesMenuModal.style.display === 'flex') gamesMenuModal.style.display = 'none';
-            else window.close();
+            } else if (gamesMenuModal.style.display === 'flex') {
+                gamesMenuModal.style.display = 'none';
+            } else {
+                backPressCount++;
+                if (backPressCount === 1) {
+                    alert('Нажмите ещё раз, чтобы выйти');
+                    backPressTimer = setTimeout(() => { backPressCount = 0; }, 2000);
+                } else if (backPressCount >= 2) {
+                    window.close();
+                }
+            }
         });
         history.pushState(null, null, location.href);
         
