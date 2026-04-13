@@ -23,6 +23,7 @@
             z-index: -2;
             background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
         }
+        
         .sand-texture {
             position: fixed;
             top: 0;
@@ -35,6 +36,7 @@
             opacity: 0.5;
             pointer-events: none;
         }
+        
         .dune-shadow {
             position: fixed;
             bottom: 0;
@@ -45,6 +47,7 @@
             z-index: -1;
             pointer-events: none;
         }
+        
         .wind-ripple {
             position: fixed;
             top: 0;
@@ -79,6 +82,7 @@
             margin-bottom: 25px;
         }
         
+        h1 { font-size: 36px; color: #6b3a1f; margin-bottom: 20px; }
         h2 { font-size: 24px; color: #6b3a1f; margin: 20px 0 15px; border-left: 4px solid #c8a86c; padding-left: 15px; }
         h3 { font-size: 18px; color: #6b3a1f; margin-bottom: 10px; }
         
@@ -98,6 +102,7 @@
         }
         .btn-blue { background: linear-gradient(90deg, #00d2ff, #3a7bd5); }
         .btn-green { background: linear-gradient(90deg, #4CAF50, #2e7d32); }
+        .btn-red { background: linear-gradient(90deg, #ff4081, #c2185b); }
         .btn:hover { transform: scale(1.02); opacity: 0.95; }
         
         .premium-badge {
@@ -154,6 +159,10 @@
             margin-bottom: 30px;
             flex-wrap: wrap;
             gap: 15px;
+            background: rgba(255,248,235,0.1);
+            backdrop-filter: blur(8px);
+            border-radius: 50px;
+            padding: 12px 25px;
         }
         .nav-link {
             color: #6b3a1f;
@@ -162,6 +171,31 @@
             padding: 5px 10px;
         }
         .nav-link:hover { color: #c8a86c; }
+        
+        .setting-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+        }
+        .setting-item label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .setting-item select, .setting-item input[type="time"] {
+            padding: 8px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,248,235,0.15);
+            color: #3a2a1a;
+        }
+        .setting-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
         
         footer {
             text-align: center;
@@ -172,9 +206,14 @@
         }
         footer a { color: #6b3a1f; text-decoration: none; }
         
+        .logout-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
         @media (max-width: 768px) {
             .glass-card { padding: 20px; }
-            .stat-number { font-size: 24px; }
+            h1 { font-size: 28px; }
             .plan-card { margin-bottom: 15px; }
         }
     </style>
@@ -198,105 +237,144 @@
             </div>
         </div>
         
-        <!-- Статус аккаунта -->
-        <div class="glass-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                <div>
-                    <h2 style="margin: 0 0 5px 0;">👋 Добро пожаловать!</h2>
-                    <p style="margin: 0;">Email: <span id="userEmail">не указан</span></p>
-                </div>
-                <div>
-                    <span class="premium-badge" id="premiumBadge">Бесплатный аккаунт</span>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Форма входа/регистрации -->
-        <div class="glass-card">
-            <h2>🔐 Вход / Регистрация</h2>
-            <p>Введите email, чтобы сохранить прогресс и управлять подпиской</p>
+        <!-- Состояние: не залогинен -->
+        <div id="notLoggedIn" class="glass-card" style="display: none;">
+            <h2>🔐 Вход в личный кабинет</h2>
+            <p>Введите email и пароль, чтобы управлять подпиской и смотреть статистику</p>
             <input type="email" id="loginEmail" class="input-field" placeholder="Ваш email">
             <input type="password" id="loginPassword" class="input-field" placeholder="Пароль">
-            <button class="btn" id="registerBtn">Зарегистрироваться</button>
-            <button class="btn btn-blue" id="loginBtn">Войти</button>
+            <button class="btn" id="loginBtn">Войти</button>
+            <button class="btn btn-blue" id="registerBtn">Зарегистрироваться</button>
             <div id="loginStatus" style="margin-top: 10px; font-size: 14px; color: #6b3a1f;"></div>
         </div>
         
-        <!-- Статистика ребёнка -->
-        <div class="glass-card">
-            <h2>📊 Статистика ребёнка</h2>
+        <!-- Состояние: залогинен -->
+        <div id="loggedIn" style="display: none;">
+            <!-- Статус аккаунта -->
+            <div class="glass-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                    <div>
+                        <h2 style="margin: 0 0 5px 0;">👋 Здравствуйте, <span id="userEmailDisplay">...</span>!</h2>
+                        <p style="margin: 0;">Ребёнок: <span id="childNameDisplay">—</span>, <span id="childAgeDisplay">—</span> лет</p>
+                    </div>
+                    <div>
+                        <span class="premium-badge" id="premiumBadge">Бесплатный аккаунт</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Статистика ребёнка -->
+            <div class="glass-card">
+                <h2>📊 Статистика ребёнка</h2>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="statFears">0</div>
+                        <div>страхов выявлено</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="statTales">0</div>
+                        <div>сказок рассказано</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="statHours">0</div>
+                        <div>часов общения</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Тарифы и подписка -->
+            <h2>💎 Премиум-доступ</h2>
             <div class="stat-grid">
-                <div class="stat-item">
-                    <div class="stat-number" id="statFears">0</div>
-                    <div>страхов выявлено</div>
+                <div class="plan-card glass-card">
+                    <h3>🆓 Бесплатный</h3>
+                    <div class="plan-price">0 ₽/мес</div>
+                    <ul class="plan-features">
+                        <li>✅ 5 сказок в день</li>
+                        <li>✅ Базовый голос</li>
+                        <li>✅ 1 персонаж (Люцик)</li>
+                        <li>✅ Дневник страхов</li>
+                    </ul>
+                    <button class="btn" disabled style="opacity:0.5;">Текущий план</button>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="statTales">0</div>
-                    <div>сказок рассказано</div>
+                <div class="plan-card glass-card">
+                    <h3>🌟 Премиум</h3>
+                    <div class="plan-price">299 ₽/мес</div>
+                    <ul class="plan-features">
+                        <li>✅ Безлимит сказок</li>
+                        <li>✅ Живой голос (скоро)</li>
+                        <li>✅ Все персонажи (мама, папа, ребёнок)</li>
+                        <li>✅ Генерация аватара по фото (скоро)</li>
+                    </ul>
+                    <button class="btn btn-green" id="subscribeBtn">Оформить подписку</button>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="statHours">0</div>
-                    <div>часов общения</div>
+                <div class="plan-card glass-card">
+                    <h3>👨‍👩‍👧 Семейный</h3>
+                    <div class="plan-price">499 ₽/мес</div>
+                    <ul class="plan-features">
+                        <li>✅ Всё из Премиум</li>
+                        <li>✅ До 3 детей</li>
+                        <li>✅ Общая статистика</li>
+                        <li>✅ Отдельные сказки для каждого</li>
+                    </ul>
+                    <button class="btn btn-green" id="familySubscribeBtn">Оформить подписку</button>
                 </div>
             </div>
-            <div style="margin-top: 15px;">
-                <p><strong>Имя ребёнка:</strong> <span id="childName">—</span></p>
-                <p><strong>Возраст:</strong> <span id="childAge">—</span></p>
+            
+            <!-- Настройки -->
+            <div class="glass-card">
+                <h2>⚙️ Настройки</h2>
+                
+                <div class="setting-item">
+                    <label>👶 Имя ребёнка</label>
+                    <input type="text" id="settingsChildName" class="input-field" placeholder="Имя ребёнка">
+                </div>
+                <div class="setting-item">
+                    <label>📅 Возраст ребёнка</label>
+                    <input type="text" id="settingsChildAge" class="input-field" placeholder="Возраст" inputmode="numeric">
+                </div>
+                <div class="setting-item">
+                    <label>🔐 Пароль для быстрого доступа в настройки (4-6 цифр)</label>
+                    <input type="password" id="settingsParentPin" class="input-field" placeholder="Пароль для Штаба" maxlength="6">
+                    <button class="btn" id="savePinBtn">Сохранить пароль</button>
+                </div>
+                <div class="setting-item">
+                    <label>🎨 Тема оформления</label>
+                    <select id="themeSelect">
+                        <option value="auto">Авто (по времени суток)</option>
+                        <option value="sand">Светлая (песок)</option>
+                        <option value="night">Тёмная (ночь)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>🎬 Показывать приветствие при запуске</label>
+                    <select id="welcomeSelect">
+                        <option value="first">Только при первом запуске</option>
+                        <option value="always">Всегда</option>
+                        <option value="never">Никогда</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>🧠 Режим «Почемучка» (умные ответы)</label>
+                    <input type="checkbox" id="whyMode" checked> Включено
+                </div>
+                <div class="setting-item">
+                    <label>🌙 Напоминание перед сном</label>
+                    <input type="checkbox" id="bedtimeReminder">
+                    <input type="time" id="bedtimeTime" style="margin-top: 5px;">
+                </div>
+                
+                <button class="btn" id="saveSettingsBtn">Сохранить настройки</button>
+                <button class="btn btn-red logout-btn" id="logoutBtn">Выйти из аккаунта</button>
             </div>
-        </div>
-        
-        <!-- Тарифы и подписка -->
-        <h2>💎 Премиум-доступ</h2>
-        <div class="stat-grid">
-            <div class="plan-card glass-card">
-                <h3>🆓 Бесплатный</h3>
-                <div class="plan-price">0 ₽/мес</div>
-                <ul class="plan-features">
-                    <li>✅ 5 сказок в день</li>
-                    <li>✅ Базовый голос</li>
-                    <li>✅ 1 персонаж (Люцик)</li>
-                    <li>✅ Дневник страхов</li>
-                </ul>
-                <button class="btn" disabled style="opacity:0.5;">Текущий план</button>
+            
+            <!-- Промокод -->
+            <div class="glass-card">
+                <h2>🎁 Промокод</h2>
+                <p>Введите промокод для активации премиум-доступа</p>
+                <input type="text" id="promoInput" class="input-field" placeholder="TEST2025" style="max-width: 200px;">
+                <button class="btn" id="applyPromoBtn">Активировать</button>
+                <p style="margin-top: 10px; font-size: 12px;">Тестовый промокод: <strong>TEST2025</strong></p>
             </div>
-            <div class="plan-card glass-card">
-                <h3>🌟 Премиум</h3>
-                <div class="plan-price">299 ₽/мес</div>
-                <ul class="plan-features">
-                    <li>✅ Безлимит сказок</li>
-                    <li>✅ Живой голос (скоро)</li>
-                    <li>✅ Все персонажи (мама, папа, ребёнок)</li>
-                    <li>✅ Генерация аватара по фото (скоро)</li>
-                </ul>
-                <button class="btn btn-green" id="subscribeBtn">Оформить подписку</button>
-            </div>
-            <div class="plan-card glass-card">
-                <h3>👨‍👩‍👧 Семейный</h3>
-                <div class="plan-price">499 ₽/мес</div>
-                <ul class="plan-features">
-                    <li>✅ Всё из Премиум</li>
-                    <li>✅ До 3 детей</li>
-                    <li>✅ Общая статистика</li>
-                    <li>✅ Отдельные сказки для каждого</li>
-                </ul>
-                <button class="btn btn-green" id="familySubscribeBtn">Оформить подписку</button>
-            </div>
-        </div>
-        
-        <!-- Настройки -->
-        <div class="glass-card">
-            <h2>⚙️ Настройки</h2>
-            <button class="btn" id="clearDataBtn">Очистить все данные</button>
-            <button class="btn btn-blue" id="syncDataBtn">Синхронизировать</button>
-        </div>
-        
-        <!-- Промокод -->
-        <div class="glass-card">
-            <h2>🎁 Промокод</h2>
-            <p>Введите промокод для активации премиум-доступа</p>
-            <input type="text" id="promoInput" class="input-field" placeholder="TEST2025" style="max-width: 200px;">
-            <button class="btn" id="applyPromoBtn">Активировать</button>
-            <p style="margin-top: 10px; font-size: 12px;">Тестовый промокод: <strong>TEST2025</strong></p>
         </div>
         
         <footer>
@@ -306,7 +384,36 @@
     </div>
 
     <script>
-        // Загрузка данных из localStorage
+        const API_URL = '/api';
+        let currentUser = null;
+        
+        // ========== ПРОВЕРКА СОСТОЯНИЯ ==========
+        function checkAuth() {
+            const token = localStorage.getItem('userToken');
+            const email = localStorage.getItem('userEmail');
+            if (token && email) {
+                currentUser = { email };
+                showLoggedIn();
+                loadUserData();
+            } else {
+                showNotLoggedIn();
+            }
+        }
+        
+        function showLoggedIn() {
+            document.getElementById('notLoggedIn').style.display = 'none';
+            document.getElementById('loggedIn').style.display = 'block';
+            document.getElementById('userEmailDisplay').innerText = localStorage.getItem('userEmail') || '...';
+            loadStats();
+            loadSettings();
+        }
+        
+        function showNotLoggedIn() {
+            document.getElementById('notLoggedIn').style.display = 'block';
+            document.getElementById('loggedIn').style.display = 'none';
+        }
+        
+        // ========== ЗАГРУЗКА ДАННЫХ ==========
         function loadStats() {
             const fearStats = JSON.parse(localStorage.getItem('fearStats') || '{}');
             const totalFears = Object.values(fearStats).reduce((a, b) => a + b, 0);
@@ -320,8 +427,8 @@
             const hours = Math.floor(totalTime / 3600);
             document.getElementById('statHours').innerText = hours;
             
-            document.getElementById('childName').innerText = localStorage.getItem('childName') || '—';
-            document.getElementById('childAge').innerText = localStorage.getItem('childAge') || '—';
+            document.getElementById('childNameDisplay').innerText = localStorage.getItem('childName') || '—';
+            document.getElementById('childAgeDisplay').innerText = localStorage.getItem('childAge') || '—';
             
             const isPremium = localStorage.getItem('isPremium') === 'true';
             const premiumBadge = document.getElementById('premiumBadge');
@@ -334,76 +441,169 @@
             }
         }
         
-        // Регистрация
-        document.getElementById('registerBtn').addEventListener('click', () => {
+        function loadUserData() {
+            // Загружаем данные ребёнка из localStorage
+            document.getElementById('settingsChildName').value = localStorage.getItem('childName') || '';
+            document.getElementById('settingsChildAge').value = localStorage.getItem('childAge') || '';
+            document.getElementById('settingsParentPin').value = '';
+        }
+        
+        function loadSettings() {
+            document.getElementById('themeSelect').value = localStorage.getItem('theme') || 'auto';
+            document.getElementById('welcomeSelect').value = localStorage.getItem('welcomeMode') || 'first';
+            document.getElementById('whyMode').checked = localStorage.getItem('whyMode') !== 'false';
+            document.getElementById('bedtimeReminder').checked = localStorage.getItem('bedtimeReminder') === 'true';
+            document.getElementById('bedtimeTime').value = localStorage.getItem('bedtimeTime') || '21:00';
+        }
+        
+        function saveSettings() {
+            localStorage.setItem('theme', document.getElementById('themeSelect').value);
+            localStorage.setItem('welcomeMode', document.getElementById('welcomeSelect').value);
+            localStorage.setItem('whyMode', document.getElementById('whyMode').checked);
+            localStorage.setItem('bedtimeReminder', document.getElementById('bedtimeReminder').checked);
+            localStorage.setItem('bedtimeTime', document.getElementById('bedtimeTime').value);
+            
+            const childName = document.getElementById('settingsChildName').value;
+            const childAge = document.getElementById('settingsChildAge').value;
+            if (childName) localStorage.setItem('childName', childName);
+            if (childAge) localStorage.setItem('childAge', childAge);
+            
+            const parentPin = document.getElementById('settingsParentPin').value;
+            if (parentPin && parentPin.length >= 4 && /^\d+$/.test(parentPin)) {
+                localStorage.setItem('parentPin', parentPin);
+                alert('Пароль для Штаба сохранён!');
+            } else if (parentPin) {
+                alert('Пароль должен содержать минимум 4 цифры');
+            }
+            
+            alert('Настройки сохранены!');
+            loadStats();
+        }
+        
+        // ========== АВТОРИЗАЦИЯ ==========
+        async function login() {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
-            if (email && password) {
-                localStorage.setItem('userEmail', email);
-                document.getElementById('userEmail').innerText = email;
-                document.getElementById('loginStatus').innerHTML = '✅ Регистрация успешна! Данные сохранены.';
-                setTimeout(() => document.getElementById('loginStatus').innerHTML = '', 3000);
-            } else {
-                document.getElementById('loginStatus').innerHTML = '❌ Введите email и пароль';
+            const statusDiv = document.getElementById('loginStatus');
+            
+            if (!email || !password) {
+                statusDiv.innerHTML = '❌ Введите email и пароль';
+                return;
             }
-        });
+            
+            statusDiv.innerHTML = '⏳ Вход...';
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('userToken', data.token);
+                    localStorage.setItem('userEmail', data.email);
+                    statusDiv.innerHTML = '✅ Вход выполнен!';
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка входа');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '❌ Ошибка соединения';
+            }
+        }
         
-        // Вход
-        document.getElementById('loginBtn').addEventListener('click', () => {
+        async function register() {
             const email = document.getElementById('loginEmail').value;
-            if (email) {
-                localStorage.setItem('userEmail', email);
-                document.getElementById('userEmail').innerText = email;
-                document.getElementById('loginStatus').innerHTML = '✅ Вход выполнен!';
-                setTimeout(() => document.getElementById('loginStatus').innerHTML = '', 2000);
-            } else {
-                document.getElementById('loginStatus').innerHTML = '❌ Введите email';
+            const password = document.getElementById('loginPassword').value;
+            const statusDiv = document.getElementById('loginStatus');
+            
+            if (!email || !password) {
+                statusDiv.innerHTML = '❌ Введите email и пароль';
+                return;
             }
-        });
+            if (password.length < 4) {
+                statusDiv.innerHTML = '❌ Пароль должен быть не менее 4 символов';
+                return;
+            }
+            
+            statusDiv.innerHTML = '⏳ Регистрация...';
+            
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '✅ Регистрация успешна! Теперь войдите.';
+                    document.getElementById('loginPassword').value = '';
+                } else {
+                    statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка регистрации');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '❌ Ошибка соединения';
+            }
+        }
         
-        // Подписка (заглушка)
-        document.getElementById('subscribeBtn').addEventListener('click', () => {
+        function logout() {
+            localStorage.removeItem('userToken');
+            localStorage.removeItem('userEmail');
+            location.reload();
+        }
+        
+        // ========== ПОДПИСКА И ПРОМОКОД ==========
+        document.getElementById('subscribeBtn')?.addEventListener('click', () => {
             alert('🌟 Премиум-подписка\nСтоимость: 299 ₽/мес\n\nСпособы оплаты: Telegram Stars, ЮMoney, банковская карта\n(тестовый режим, оплата не списывается)');
         });
         
-        document.getElementById('familySubscribeBtn').addEventListener('click', () => {
+        document.getElementById('familySubscribeBtn')?.addEventListener('click', () => {
             alert('👨‍👩‍👧 Семейная подписка\nСтоимость: 499 ₽/мес\n\nДо 3 детей, общая статистика\n(тестовый режим, оплата не списывается)');
         });
         
-        // Промокод
-        document.getElementById('applyPromoBtn').addEventListener('click', () => {
+        document.getElementById('applyPromoBtn')?.addEventListener('click', () => {
             const code = document.getElementById('promoInput').value.trim().toUpperCase();
             if (code === 'TEST2025') {
                 localStorage.setItem('isPremium', 'true');
-                alert('🎉 Премиум активирован! Перезагрузите страницу для обновления статуса.');
+                alert('🎉 Премиум активирован!');
                 loadStats();
             } else {
                 alert('Неверный промокод');
             }
         });
         
-        // Очистка данных
-        document.getElementById('clearDataBtn').addEventListener('click', () => {
-            if (confirm('Вы уверены? Все данные о ребёнке будут удалены без возможности восстановления.')) {
-                localStorage.clear();
-                alert('Все данные очищены. Страница будет перезагружена.');
-                location.reload();
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        document.getElementById('loginBtn')?.addEventListener('click', login);
+        document.getElementById('registerBtn')?.addEventListener('click', register);
+        document.getElementById('logoutBtn')?.addEventListener('click', logout);
+        document.getElementById('saveSettingsBtn')?.addEventListener('click', saveSettings);
+        document.getElementById('savePinBtn')?.addEventListener('click', saveSettings);
+        
+        // Тема
+        function applyTheme() {
+            const theme = localStorage.getItem('theme') || 'auto';
+            if (theme === 'auto') {
+                const hour = new Date().getHours();
+                if (hour >= 18 || hour < 6) {
+                    document.body.classList.add('night');
+                } else {
+                    document.body.classList.remove('night');
+                }
+            } else if (theme === 'sand') {
+                document.body.classList.remove('night');
+            } else if (theme === 'night') {
+                document.body.classList.add('night');
             }
-        });
-        
-        // Синхронизация (заглушка)
-        document.getElementById('syncDataBtn').addEventListener('click', () => {
-            alert('🔄 Синхронизация с облаком\n(функция в разработке, пока данные хранятся только на устройстве)');
-        });
-        
-        // Загрузка email из localStorage
-        const savedEmail = localStorage.getItem('userEmail');
-        if (savedEmail) {
-            document.getElementById('userEmail').innerText = savedEmail;
         }
         
-        loadStats();
-        setInterval(loadStats, 5000);
+        setInterval(applyTheme, 60000);
+        applyTheme();
+        
+        checkAuth();
+        setInterval(() => { if (currentUser) loadStats(); }, 5000);
     </script>
 </body>
 </html>
