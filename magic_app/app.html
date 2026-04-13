@@ -8,6 +8,7 @@
     <link rel="manifest" href="manifest.json">
     <style>
         * { user-select: none; -webkit-tap-highlight-color: transparent; }
+        
         body {
             margin: 0;
             min-height: 100vh;
@@ -401,7 +402,6 @@
         .close-game { margin-top: 20px; background: #ff4081; padding: 10px 20px; border-radius: 30px; border: none; color: white; cursor: pointer; }
         .history-item { font-size: 13px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         
-        /* Видео-приветствие */
         .welcome-video-container {
             position: fixed;
             top: 0;
@@ -446,7 +446,6 @@
     <div class="sand-texture"></div>
     <div class="wind-ripple"></div>
 
-    <!-- ВИДЕО-ПРИВЕТСТВИЕ -->
     <div id="welcomeVideoContainer" class="welcome-video-container" style="display: none;">
         <video id="welcomeVideo" class="welcome-video" autoplay muted playsinline>
             <source src="welcome.mp4" type="video/mp4">
@@ -544,7 +543,6 @@
     </div>
 
     <script>
-        // ========== НОЧНАЯ ТЕМА ==========
         function updateTimeTheme() {
             const hour = new Date().getHours();
             if (hour >= 18 || hour < 6) {
@@ -556,7 +554,6 @@
         updateTimeTheme();
         setInterval(updateTimeTheme, 60000);
         
-        // ========== ВИДЕО-ПРИВЕТСТВИЕ ==========
         const welcomeShown = localStorage.getItem('welcome_animation_shown');
         const welcomeContainer = document.getElementById('welcomeVideoContainer');
         const welcomeVideo = document.getElementById('welcomeVideo');
@@ -564,8 +561,6 @@
         function showWelcomeVideo() {
             welcomeContainer.style.display = 'flex';
             welcomeVideo.play().catch(e => console.log('Video autoplay error:', e));
-            
-            // Озвучка
             setTimeout(() => {
                 speak("Мяу! Привет, я Люцик! Нажми на микрофон, и мы подружимся!");
             }, 500);
@@ -585,7 +580,6 @@
             welcomeContainer.style.display = 'none';
         }
         
-        // ========== ДАННЫЕ ==========
         let childName = localStorage.getItem('childName');
         let childAge = localStorage.getItem('childAge');
         let savedPin = localStorage.getItem('parentPin');
@@ -907,7 +901,6 @@
             if (Math.abs(diff) > 50) switchCharacter(diff > 0 ? -1 : 1);
         });
         
-        // ========== ПРАВИЛЬНЫЙ ВХОД В ШТАБ ==========
         function showCreatePinModal() {
             const pin = prompt('Создайте пароль для входа в Штаб (4-6 цифр):');
             if (pin && pin.length >= 4 && /^\d+$/.test(pin)) {
@@ -944,7 +937,7 @@
                 localStorage.setItem('parentPin', newPin);
                 savedPin = newPin;
                 alert('Пароль сохранён!');
-                document.getElementById('pinStatus').innerText = '✅ Пароль установлен.';
+                document.getElementById('pinStatus').innerHTML = '✅ Пароль установлен.';
                 document.getElementById('pinInput').value = '';
             } else { alert('Пароль должен содержать минимум 4 цифры'); }
         });
@@ -976,7 +969,6 @@
             }
         });
         
-        // ========== КНОПКА НАЗАД ==========
         let backPressCount = 0;
         let backPressTimer = null;
         
