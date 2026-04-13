@@ -13,7 +13,6 @@
             position: relative;
             overflow-x: hidden;
         }
-        
         .sand-dunes {
             position: fixed;
             top: 0;
@@ -35,32 +34,6 @@
             opacity: 0.5;
             pointer-events: none;
         }
-        .dune-shadow {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 40%;
-            background: linear-gradient(0deg, rgba(0,0,0,0.08) 0%, transparent 100%);
-            z-index: -1;
-            pointer-events: none;
-        }
-        .wind-ripple {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(200,170,120,0.08) 80px, rgba(200,170,120,0.08) 120px, transparent 120px, transparent 200px);
-            pointer-events: none;
-            z-index: -1;
-            animation: windMove 20s linear infinite;
-        }
-        @keyframes windMove {
-            0% { background-position: 0 0; }
-            100% { background-position: 200px 0; }
-        }
-        
         .container {
             max-width: 900px;
             margin: 0 auto;
@@ -68,7 +41,6 @@
             position: relative;
             z-index: 1;
         }
-        
         .glass-card {
             background: rgba(255, 248, 235, 0.15);
             backdrop-filter: blur(8px);
@@ -77,13 +49,10 @@
             border: 1px solid rgba(255,255,255,0.35);
             box-shadow: 0 15px 35px rgba(0,0,0,0.05);
         }
-        
         h1 { font-size: 36px; color: #6b3a1f; margin-bottom: 20px; }
         h2 { font-size: 24px; color: #6b3a1f; margin: 25px 0 15px; border-left: 4px solid #c8a86c; padding-left: 15px; }
         p { line-height: 1.6; margin-bottom: 15px; color: #3a2a1a; }
         a { color: #6b3a1f; text-decoration: none; border-bottom: 1px solid #c8a86c; }
-        a:hover { color: #a8844a; }
-        
         @media (max-width: 768px) {
             .glass-card { padding: 25px; }
             h1 { font-size: 28px; }
@@ -94,31 +63,28 @@
 <body>
     <div class="sand-dunes"></div>
     <div class="sand-texture"></div>
-    <div class="dune-shadow"></div>
-    <div class="wind-ripple"></div>
-    
     <div class="container">
         <div class="glass-card">
             <h1>🔒 Политика конфиденциальности</h1>
             <p><strong>Дата последнего обновления:</strong> 13 апреля 2026 г.</p>
             
             <h2>1. Какие данные мы собираем</h2>
-            <p>Приложение «Герой Сказок» <strong>НЕ собирает</strong> персональные данные. Вся информация хранится только на вашем устройстве.</p>
+            <p>Приложение «Герой Сказок» собирает минимум данных: email для регистрации, имя и возраст ребёнка (с согласия родителя). Вся информация хранится на защищённых серверах.</p>
             
             <h2>2. Где хранятся данные</h2>
-            <p>Имя ребёнка, возраст, настройки, история диалогов — всё это хранится в локальном хранилище вашего браузера (localStorage). Мы не имеем к ним доступа.</p>
+            <p>Данные аккаунта (email, пароль) хранятся в защищённой базе данных. История диалогов хранится только на устройстве (localStorage) или в облаке по выбору пользователя.</p>
             
             <h2>3. Диалоги с Люциком</h2>
-            <p>Для генерации сказок текст отправляется в DeepSeek API. DeepSeek не сохраняет данные и использует их только для ответа. <a href="https://platform.deepseek.com/privacy" target="_blank">Политика DeepSeek</a></p>
+            <p>Для генерации сказок текст отправляется в DeepSeek API. DeepSeek не сохраняет данные и использует их только для ответа.</p>
             
-            <h2>4. Статистика</h2>
+            <h2>4. Безопасность детей и цензура</h2>
+            <p>Приложение автоматически фильтрует нежелательные слова и выражения. Люцик не отвечает на вопросы, содержащие грубости, и мягко просит говорить добрые слова. Мы не собираем и не храним данные о нарушениях.</p>
+            
+            <h2>5. Статистика</h2>
             <p>Мы используем Vercel Analytics для подсчёта количества посещений. Это не привязано к конкретным пользователям.</p>
             
-            <h2>5. Безопасность детей</h2>
-            <p>Приложение фильтрует плохие слова и ограничивает длину запросов. Люцик настроен на доброе и поддерживающее общение.</p>
-            
             <h2>6. Ваши права</h2>
-            <p>Вы можете в любой момент удалить все данные, очистив историю браузера или удалив PWA-приложение.</p>
+            <p>Вы можете удалить все данные, очистив историю браузера, или удалив аккаунт через личный кабинет (функция в разработке).</p>
             
             <h2>7. Контакты</h2>
             <p>По вопросам: <a href="mailto:support@geroy-skazki.ru">support@geroy-skazki.ru</a></p>
