@@ -92,7 +92,6 @@
             z-index: 1;
         }
         
-        /* Прозрачное стекло */
         .glass-card {
             background: rgba(255, 248, 235, 0.15);
             backdrop-filter: blur(8px);
@@ -169,18 +168,6 @@
         .feature-card h3 { margin-bottom: 12px; color: #6b3a1f; font-size: 22px; }
         .feature-card p { color: #4a2a1a; }
         
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 25px;
-            margin: 45px 0;
-        }
-        .stat-card {
-            padding: 25px 20px;
-            text-align: center;
-        }
-        .stat-number { font-size: 52px; font-weight: bold; color: #c8a86c; text-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        
         .reviews {
             padding: 30px;
             margin: 40px 0;
@@ -202,6 +189,23 @@
             text-align: center;
         }
         
+        /* Форма регистрации на главной */
+        .auth-form {
+            max-width: 400px;
+            margin: 30px auto;
+        }
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,248,235,0.15);
+            color: #3a2a1a;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .input-field:focus { outline: none; border-color: #c8a86c; }
+        
         footer {
             text-align: center;
             margin-top: 60px;
@@ -214,7 +218,6 @@
         @media (max-width: 768px) {
             h1 { font-size: 32px; }
             .hero p { font-size: 16px; }
-            .stat-number { font-size: 38px; }
             .glass-card { border-radius: 25px; }
             .top-nav { border-radius: 30px; padding: 10px 15px; }
         }
@@ -250,22 +253,15 @@
             <a href="/app.html" class="btn btn-blue">🎮 Открыть в браузере</a>
         </div>
 
-        <div class="stat-grid">
-            <div class="stat-card glass-card">
-                <div class="stat-number" id="statFears">0</div>
-                <div>страхов выявлено</div>
-                <small style="font-size: 10px; opacity: 0.6;">(с момента установки)</small>
-            </div>
-            <div class="stat-card glass-card">
-                <div class="stat-number" id="statTales">0</div>
-                <div>сказок рассказано</div>
-                <small style="font-size: 10px; opacity: 0.6;">(с момента установки)</small>
-            </div>
-            <div class="stat-card glass-card">
-                <div class="stat-number" id="statHours">0</div>
-                <div>часов общения</div>
-                <small style="font-size: 10px; opacity: 0.6;">(с момента установки)</small>
-            </div>
+        <!-- Форма регистрации -->
+        <div class="glass-card auth-form">
+            <h2 style="margin: 0 0 15px 0; font-size: 24px;">🔐 Вход / Регистрация</h2>
+            <p style="margin-bottom: 15px;">Введите email, чтобы сохранить прогресс и управлять подпиской</p>
+            <input type="email" id="loginEmail" class="input-field" placeholder="Ваш email">
+            <input type="password" id="loginPassword" class="input-field" placeholder="Пароль">
+            <button class="btn" id="registerBtn" style="width: 48%;">Зарегистрироваться</button>
+            <button class="btn btn-blue" id="loginBtn" style="width: 48%;">Войти</button>
+            <div id="loginStatus" style="margin-top: 10px; font-size: 14px; color: #6b3a1f;"></div>
         </div>
 
         <h2>✨ Что умеет Люцик?</h2>
@@ -313,20 +309,6 @@
     <script>
         let deferredPrompt = null;
         
-        function loadStats() {
-            const fearStats = JSON.parse(localStorage.getItem('fearStats') || '{}');
-            const totalFears = Object.values(fearStats).reduce((a, b) => a + b, 0);
-            document.getElementById('statFears').innerText = totalFears;
-            
-            const history = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-            const talesCount = history.filter(item => item.includes('Люцик:')).length;
-            document.getElementById('statTales').innerText = talesCount;
-            
-            const totalTime = parseInt(localStorage.getItem('totalAppTime')) || 0;
-            const hours = Math.floor(totalTime / 3600);
-            document.getElementById('statHours').innerText = hours;
-        }
-        
         function installPWA() {
             if (window.matchMedia('(display-mode: standalone)').matches) {
                 alert('Приложение уже установлено и открыто!');
@@ -352,8 +334,36 @@
         });
         
         document.getElementById('installBtn').addEventListener('click', installPWA);
-        loadStats();
-        setInterval(loadStats, 5000);
+        
+        // Регистрация
+        document.getElementById('registerBtn').addEventListener('click', () => {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            if (email && password) {
+                localStorage.setItem('userEmail', email);
+                document.getElementById('loginStatus').innerHTML = '✅ Регистрация успешна! Теперь войдите.';
+                setTimeout(() => document.getElementById('loginStatus').innerHTML = '', 3000);
+            } else {
+                document.getElementById('loginStatus').innerHTML = '❌ Введите email и пароль';
+            }
+        });
+        
+        // Вход
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            const email = document.getElementById('loginEmail').value;
+            if (email) {
+                localStorage.setItem('userEmail', email);
+                document.getElementById('loginStatus').innerHTML = '✅ Вход выполнен!';
+                setTimeout(() => document.getElementById('loginStatus').innerHTML = '', 2000);
+            } else {
+                document.getElementById('loginStatus').innerHTML = '❌ Введите email';
+            }
+        });
+        
+        const savedEmail = localStorage.getItem('userEmail');
+        if (savedEmail) {
+            document.getElementById('loginEmail').value = savedEmail;
+        }
     </script>
 </body>
 </html>
