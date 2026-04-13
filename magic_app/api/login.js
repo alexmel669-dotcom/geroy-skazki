@@ -1,3 +1,4 @@
+// api/login.js
 import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
@@ -28,12 +29,11 @@ export default async function handler(req, res) {
             return res.status(401).json({ error: 'Неверный email или пароль' });
         }
         
-        // Простой токен
         const token = Buffer.from(`${email}:${Date.now()}`).toString('base64');
         
         res.status(200).json({ success: true, token, email: user.email });
     } catch (error) {
         console.error('Ошибка:', error);
-        res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
+        res.status(500).json({ error: 'Ошибка сервера' });
     }
 }
