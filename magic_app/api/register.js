@@ -1,3 +1,4 @@
+// api/register.js
 import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
@@ -12,7 +13,6 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Email и пароль обязательны' });
         }
         
-        // Проверка, существует ли пользователь
         const existing = await sql`
             SELECT * FROM users WHERE email = ${email}
         `;
@@ -21,7 +21,6 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Пользователь с таким email уже существует' });
         }
         
-        // Простое хеширование (без дополнительных пакетов)
         const crypto = require('crypto');
         const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
         
@@ -33,6 +32,6 @@ export default async function handler(req, res) {
         res.status(200).json({ success: true });
     } catch (error) {
         console.error('Ошибка:', error);
-        res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
+        res.status(500).json({ error: 'Ошибка сервера' });
     }
 }
