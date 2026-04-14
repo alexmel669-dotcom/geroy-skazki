@@ -14,54 +14,12 @@
             color: #3a2a1a;
             position: relative;
             overflow-x: hidden;
-            background: #d4c4a4;
-        }
-        
-        /* Песочный фон */
-        .sand-dunes {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -2;
             background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
-            transition: background 0.5s ease;
-        }
-        body.night .sand-dunes {
-            background: linear-gradient(135deg, #1a2a3a 0%, #2a3a4a 30%, #1a2a3a 100%);
-        }
-        
-        .sand-texture {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.12'/%3E%3C/svg%3E");
-            background-repeat: repeat;
-            opacity: 0.5;
-            pointer-events: none;
-        }
-        
-        .wind-ripple {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(200,170,120,0.08) 80px, rgba(200,170,120,0.08) 120px, transparent 120px, transparent 200px);
-            pointer-events: none;
-            z-index: -1;
-            animation: windMove 20s linear infinite;
-        }
-        body.night .wind-ripple {
-            background: repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(100,120,140,0.06) 80px, rgba(100,120,140,0.06) 120px, transparent 120px, transparent 200px);
-        }
-        @keyframes windMove {
-            0% { background-position: 0 0; }
-            100% { background-position: 200px 0; }
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px;
         }
         
         .glass {
@@ -86,6 +44,12 @@
         .avatar.listening { animation: pulse 1s infinite; filter: drop-shadow(0 0 15px #4CAF50); }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         
+        .mic-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin: 20px 0;
+        }
         .mic-btn {
             width: 85px;
             height: 85px;
@@ -93,7 +57,6 @@
             border: none;
             border-radius: 50%;
             font-size: 45px;
-            margin: 20px auto;
             cursor: pointer;
         }
         .mic-btn.recording { background: #4CAF50; }
@@ -103,6 +66,7 @@
             gap: 20px;
             justify-content: center;
             flex-wrap: wrap;
+            margin: 20px 0;
         }
         .action-btn {
             width: 60px;
@@ -190,9 +154,6 @@
     </style>
 </head>
 <body>
-    <div class="sand-dunes"></div>
-    <div class="sand-texture"></div>
-    <div class="wind-ripple"></div>
 
     <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
 
@@ -203,7 +164,7 @@
         <div class="stat">⭐ <span id="braveryVal">0</span></div>
     </div>
 
-    <div class="avatar" id="avatar"></div>
+    <div class="avatar" id="avatar" style="background-image: url('avatar.png');"></div>
     
     <div class="character-select">
         <button class="char-btn" id="charLucik">🦁</button>
@@ -212,7 +173,9 @@
         <button class="char-btn" id="charKid">🧒</button>
     </div>
 
-    <button class="mic-btn" id="micBtn">🎤</button>
+    <div class="mic-container">
+        <button class="mic-btn" id="micBtn">🎤</button>
+    </div>
 
     <div class="action-buttons">
         <button class="action-btn" id="feedBtn">🍎</button>
@@ -249,7 +212,6 @@
         let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
         let isListening = false, isWaiting = false;
         
-        // Персонажи
         const characters = {
             lucik: { name: 'Люцик', icon: 'avatar.png' },
             mom: { name: 'Мама', icon: 'mom.png' },
@@ -329,7 +291,6 @@
             } finally { isWaiting = false; }
         }
 
-        // Микрофон
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         let rec = null;
         if (SpeechRec) {
@@ -376,7 +337,6 @@
             };
         }
 
-        // Кнопки действий
         document.getElementById('feedBtn').onclick = () => {
             hunger = Math.min(100, hunger + 15);
             mood = Math.min(100, mood + 5);
@@ -411,7 +371,6 @@
             saveHistory(`🤚 Погладил ${characters[currentChar].name}`);
         };
 
-        // Персонажи
         function changeCharacter(charId) {
             currentChar = charId;
             document.getElementById('avatar').style.backgroundImage = `url('${characters[charId].icon}')`;
@@ -426,7 +385,6 @@
         document.getElementById('charDad').onclick = () => changeCharacter('dad');
         document.getElementById('charKid').onclick = () => changeCharacter('kid');
         
-        // Свайп
         let touchStart = 0;
         const avatarEl = document.getElementById('avatar');
         avatarEl.addEventListener('touchstart', (e) => { touchStart = e.changedTouches[0].screenX; });
@@ -441,7 +399,6 @@
             }
         });
         
-        // Загрузка сохранённого персонажа
         const savedChar = localStorage.getItem('currentCharacter');
         if (savedChar && characters[savedChar]) changeCharacter(savedChar);
         
@@ -449,65 +406,86 @@
         let gameActive = false;
         let gameScore = 0;
         let gameInterval = null;
+        let gameTimerInterval = null;
 
         function startGame() {
+            if (gameActive) return;
             gameActive = true;
             gameScore = 0;
             let timeLeft = 30;
+            
             const gameContainer = document.createElement('div');
+            gameContainer.id = 'gameContainer';
             gameContainer.style.position = 'fixed';
             gameContainer.style.top = '0';
             gameContainer.style.left = '0';
             gameContainer.style.width = '100%';
             gameContainer.style.height = '100%';
             gameContainer.style.zIndex = '2000';
-            gameContainer.style.background = 'rgba(0,0,0,0.8)';
+            gameContainer.style.background = 'rgba(0,0,0,0.85)';
             gameContainer.style.display = 'flex';
             gameContainer.style.flexDirection = 'column';
             gameContainer.style.alignItems = 'center';
-            gameContainer.style.justifyContent = 'center';
+            gameContainer.style.justifyContent = 'space-between';
+            
+            const fishArea = document.createElement('div');
+            fishArea.style.flex = '1';
+            fishArea.style.position = 'relative';
+            fishArea.style.width = '100%';
             
             const fish = document.createElement('div');
             fish.innerText = '🐟';
             fish.style.fontSize = '60px';
             fish.style.position = 'absolute';
             fish.style.cursor = 'pointer';
-            fish.style.transition = '0.05s linear';
+            
+            const bottomBar = document.createElement('div');
+            bottomBar.style.padding = '20px';
+            bottomBar.style.textAlign = 'center';
+            bottomBar.style.width = '100%';
             
             const scoreDiv = document.createElement('div');
             scoreDiv.style.color = 'white';
             scoreDiv.style.fontSize = '24px';
-            scoreDiv.style.marginBottom = '20px';
-            scoreDiv.innerText = `Счёт: 0 | Осталось: ${timeLeft} сек`;
+            scoreDiv.style.marginBottom = '10px';
+            scoreDiv.innerText = `🐟 Счёт: 0 | ⏱️ Осталось: ${timeLeft} сек`;
             
             const closeBtn = document.createElement('button');
             closeBtn.innerText = 'Закрыть';
-            closeBtn.style.marginTop = '20px';
             closeBtn.style.padding = '10px 20px';
             closeBtn.style.borderRadius = '30px';
             closeBtn.style.border = 'none';
+            closeBtn.style.background = '#ff4081';
+            closeBtn.style.color = 'white';
+            closeBtn.style.fontSize = '16px';
+            closeBtn.style.cursor = 'pointer';
             closeBtn.onclick = () => {
                 clearInterval(gameInterval);
+                clearInterval(gameTimerInterval);
                 document.body.removeChild(gameContainer);
                 gameActive = false;
             };
             
-            gameContainer.appendChild(scoreDiv);
-            gameContainer.appendChild(fish);
-            gameContainer.appendChild(closeBtn);
+            bottomBar.appendChild(scoreDiv);
+            bottomBar.appendChild(closeBtn);
+            fishArea.appendChild(fish);
+            gameContainer.appendChild(fishArea);
+            gameContainer.appendChild(bottomBar);
             document.body.appendChild(gameContainer);
             
             function moveFish() {
-                const maxX = window.innerWidth - 80;
-                const maxY = window.innerHeight - 150;
-                fish.style.left = Math.random() * maxX + 'px';
-                fish.style.top = Math.random() * maxY + 'px';
+                const maxX = fishArea.clientWidth - 80;
+                const maxY = fishArea.clientHeight - 80;
+                if (maxX > 0 && maxY > 0) {
+                    fish.style.left = Math.random() * maxX + 'px';
+                    fish.style.top = Math.random() * maxY + 'px';
+                }
             }
             
             fish.onclick = () => {
                 if (!gameActive) return;
                 gameScore++;
-                scoreDiv.innerText = `Счёт: ${gameScore} | Осталось: ${timeLeft} сек`;
+                scoreDiv.innerText = `🐟 Счёт: ${gameScore} | ⏱️ Осталось: ${timeLeft} сек`;
                 moveFish();
                 purr();
                 hunger = Math.min(100, hunger + 3);
@@ -517,17 +495,18 @@
             
             moveFish();
             
-            const timer = setInterval(() => {
+            gameTimerInterval = setInterval(() => {
+                if (!gameActive) return;
                 timeLeft--;
                 if (timeLeft <= 0) {
-                    clearInterval(timer);
+                    clearInterval(gameTimerInterval);
                     clearInterval(gameInterval);
                     gameActive = false;
-                    scoreDiv.innerText = `Игра окончена! Ты поймал ${gameScore} рыбок!`;
+                    scoreDiv.innerText = `🎉 Игра окончена! Ты поймал ${gameScore} рыбок! 🎉`;
                     fish.style.display = 'none';
                     speak(`Игра окончена! Ты поймал ${gameScore} рыбок! Молодец!`);
                 } else {
-                    scoreDiv.innerText = `Счёт: ${gameScore} | Осталось: ${timeLeft} сек`;
+                    scoreDiv.innerText = `🐟 Счёт: ${gameScore} | ⏱️ Осталось: ${timeLeft} сек`;
                 }
             }, 1000);
             
@@ -536,7 +515,10 @@
             }, 1500);
         }
         
-        document.getElementById('gameBtn').onclick = startGame;
+        document.getElementById('gameBtn').onclick = () => {
+            if (gameActive) return;
+            startGame();
+        };
 
         // Штаб
         const parentPanel = document.getElementById('parentPanel');
@@ -563,18 +545,6 @@
             if (document.getElementById('pinInput').value === savedPin) alert('Вход выполнен!');
             else alert('Неверный пароль!');
         };
-
-        // Ночная тема
-        function updateTimeTheme() {
-            const hour = new Date().getHours();
-            if (hour >= 18 || hour < 6) {
-                document.body.classList.add('night');
-            } else {
-                document.body.classList.remove('night');
-            }
-        }
-        updateTimeTheme();
-        setInterval(updateTimeTheme, 60000);
 
         updateUI();
         speak(`Мяу! Привет, ${childName}! Расскажи, как дела?`);
