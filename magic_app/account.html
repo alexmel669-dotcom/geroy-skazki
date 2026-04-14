@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Личный кабинет — Герой Сказок</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', sans-serif;
             background: linear-gradient(135deg, #e8d5a8, #d4c08c, #c8b078);
@@ -20,7 +21,8 @@
             max-width: 600px;
             margin: 0 auto;
         }
-        h1 { color: #6b3a1f; text-align: center; }
+        h1 { color: #6b3a1f; text-align: center; margin-bottom: 20px; }
+        h2 { color: #6b3a1f; margin: 20px 0 15px; font-size: 20px; border-left: 3px solid #c8a86c; padding-left: 15px; }
         .btn {
             background: #c8a86c;
             color: white;
@@ -28,9 +30,28 @@
             border-radius: 30px;
             border: none;
             cursor: pointer;
-            margin-top: 20px;
+            margin-top: 10px;
         }
         .btn-red { background: #ff4081; }
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            border-radius: 30px;
+            border: none;
+            background: rgba(255,248,235,0.3);
+            margin: 10px 0;
+        }
+        .setting-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+        }
+        .setting-item label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
         .logout { margin-top: 30px; text-align: center; }
         a { color: #6b3a1f; text-decoration: none; }
     </style>
@@ -38,21 +59,74 @@
 <body>
     <div class="glass">
         <h1>🦁 Личный кабинет</h1>
+        
         <div id="userInfo"></div>
-        <div id="stats"></div>
+        
+        <h2>👶 Данные ребёнка</h2>
+        <div class="setting-item">
+            <label>Имя ребёнка</label>
+            <input type="text" id="childNameInput" class="input-field" placeholder="Имя">
+            <label>Возраст</label>
+            <input type="number" id="childAgeInput" class="input-field" placeholder="Возраст">
+            <button class="btn" id="saveChildBtn">Сохранить</button>
+        </div>
+        
+        <h2>🔐 Пароль для входа в Штаб</h2>
+        <div class="setting-item">
+            <label>Создайте или измените пароль (4-6 цифр)</label>
+            <input type="password" id="pinInput" class="input-field" placeholder="Пароль" maxlength="6">
+            <button class="btn" id="savePinBtn">Сохранить пароль</button>
+        </div>
+        
+        <h2>📊 Статистика</h2>
+        <div class="setting-item" id="stats">
+            Загрузка...
+        </div>
+        
         <div class="logout">
             <button class="btn btn-red" id="logoutBtn">Выйти</button>
             <br><br>
             <a href="/">← На главную</a>
         </div>
     </div>
+    
     <script>
         const token = localStorage.getItem('userToken');
         const email = localStorage.getItem('userEmail');
+        
         if (!token || !email) {
             window.location.href = '/';
-        } else {
-            document.getElementById('userInfo').innerHTML = `<p>👋 Вы вошли как: <strong>${email}</strong></p>`;
+        }
+        
+        document.getElementById('userInfo').innerHTML = `<p>👋 Вы вошли как: <strong>${email}</strong></p>`;
+        
+        // Загрузка данных ребёнка
+        document.getElementById('childNameInput').value = localStorage.getItem('childName') || '';
+        document.getElementById('childAgeInput').value = localStorage.getItem('childAge') || '';
+        
+        // Сохранение данных ребёнка
+        document.getElementById('saveChildBtn').onclick = () => {
+            const name = document.getElementById('childNameInput').value;
+            const age = document.getElementById('childAgeInput').value;
+            if (name) localStorage.setItem('childName', name);
+            if (age) localStorage.setItem('childAge', age);
+            alert('Данные сохранены!');
+        };
+        
+        // Сохранение пароля для Штаба
+        document.getElementById('savePinBtn').onclick = () => {
+            const pin = document.getElementById('pinInput').value;
+            if (pin.length >= 4 && /^\d+$/.test(pin)) {
+                localStorage.setItem('parentPin', pin);
+                alert('Пароль для Штаба сохранён!');
+                document.getElementById('pinInput').value = '';
+            } else {
+                alert('Пароль должен содержать 4-6 цифр');
+            }
+        };
+        
+        // Статистика
+        function loadStats() {
             const fearStats = JSON.parse(localStorage.getItem('fearStats') || '{}');
             const totalFears = Object.values(fearStats).reduce((a,b) => a + b, 0);
             const history = JSON.parse(localStorage.getItem('storyHistory') || '[]');
@@ -60,13 +134,15 @@
             const totalTime = parseInt(localStorage.getItem('totalAppTime')) || 0;
             const hours = Math.floor(totalTime / 3600);
             document.getElementById('stats').innerHTML = `
-                <h3>📊 Статистика</h3>
                 <p>😨 Страхов выявлено: ${totalFears}</p>
                 <p>📖 Сказок рассказано: ${talesCount}</p>
                 <p>⏱️ Часов общения: ${hours}</p>
                 <p>🎁 Промокод: <strong>TEST2025</strong> (активирует премиум в приложении)</p>
             `;
         }
+        loadStats();
+        
+        // Выход
         document.getElementById('logoutBtn').onclick = () => {
             localStorage.removeItem('userToken');
             localStorage.removeItem('userEmail');
