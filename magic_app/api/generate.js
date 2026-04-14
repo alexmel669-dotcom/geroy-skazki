@@ -1,18 +1,61 @@
+// api/generate.js
+const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись', 'пошёл', 'уйди', 'убирайся', 'хрен', 'фиг', 'блин', 'черт'];
+
+function containsBadWords(text) {
+    const lowerText = text.toLowerCase();
+    return badWords.some(word => lowerText.includes(word));
+}
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
+    
     try {
         const { childName, childAge, userSpeech, history = [] } = req.body;
+        
+        if (containsBadWords(userSpeech)) {
+            return res.status(200).json({ story: "Мяу! Давай говорить добрые слова. Расскажи мне что-нибудь хорошее!" });
+        }
+        
         let historyText = '';
         for (const msg of history.slice(-6)) {
             const role = msg.role === 'user' ? childName : 'Люцик';
             historyText += `${role}: ${msg.content}\n`;
         }
+        
         const ageNum = parseInt(childAge) || 5;
         const schoolType = ageNum <= 6 ? 'садике' : 'школе';
-        const systemPrompt = `Ты — Люцик, добрый кот. Друг ребёнка ${childName} (${ageNum} лет). Будь мягким, с юмором. Сначала спроси, как прошёл день в ${schoolType}. Если ребёнок говорит о страхе — поддержись, предложи сказку. НЕ спрашивай прямо "чего боишься". Отвечай кратко (2-3 предложения).`;
+        
+        const systemPrompt = `Ты — Люцик, добрый кот. Ты друг ребёнка ${childName} (${ageNum} лет).
+
+ТВОЙ ХАРАКТЕР: мягкий, терпеливый, с юмором. Ты любишь отвечать на вопросы "почему".
+
+ПРАВИЛА ОТВЕТОВ НА ВОПРОСЫ:
+1. Если ребёнок задаёт вопрос "почему", "зачем", "откуда", "как" — ты должен на него ответить.
+2. Отвечай кратко (2-3 предложения), понятно для ребёнка 3-7 лет.
+3. Если не знаешь точного ответа — скажи: "Знаешь, я не совсем уверен. Давай вместе подумаем или спросим у мамы?"
+4. Всегда хвали за любопытство: "Отличный вопрос! Любопытство — это суперсила!"
+
+ПРИМЕРЫ ОТВЕТОВ:
+- Почему небо голубое? → "Солнечный свет рассеивается в воздухе, а синий цвет самый короткий, вот его мы и видим!"
+- Почему трава зелёная? → "В траве есть хлорофилл — вещество, которое помогает растениям питаться солнцем."
+- Почему собаки лают? → "Собаки лают, чтобы общаться: позвать хозяина, предупредить об опасности или просто от радости!"
+
+ВАЖНЫЕ ЗАПРЕТЫ:
+- НИКОГДА не используй плохие, грубые слова
+- НИКОГДА не отвечай на вопросы с плохими словами
+
+ОБЩИЕ ПРАВИЛА:
+1. Сначала спроси, как прошёл день в ${schoolType}.
+2. Если ребёнок говорит о страхе — поддержись, предложи сказку.
+3. НЕ спрашивай прямо "чего боишься". Используй свой пример.
+4. Отвечай кратко (2-3 предложения), тепло, с юмором.`;
+
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}` },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+            },
             body: JSON.stringify({
                 model: 'deepseek-chat',
                 messages: [
@@ -21,12 +64,16 @@ export default async function handler(req, res) {
                     { role: 'user', content: `${childName} сказал: "${userSpeech}"` }
                 ],
                 temperature: 0.85,
-                max_tokens: 300
+                max_tokens: 350
             })
         });
+        
         const data = await response.json();
-        res.status(200).json({ story: data.choices[0].message.content });
+        const story = data.choices[0].message.content;
+        
+        res.status(200).json({ story });
     } catch (error) {
-        res.status(500).json({ story: "Мяу... Давай ещё раз?" });
+        console.error('Ошибка:', error);
+        res.status(500).json({ story: "Мяу... Давай ещё раз? Я не расслышал!" });
     }
 }
