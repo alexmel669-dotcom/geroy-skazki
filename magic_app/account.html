@@ -23,7 +23,6 @@
             z-index: -2;
             background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
         }
-        
         .sand-texture {
             position: fixed;
             top: 0;
@@ -36,7 +35,6 @@
             opacity: 0.5;
             pointer-events: none;
         }
-        
         .wind-ripple {
             position: fixed;
             top: 0;
@@ -206,7 +204,7 @@
         </div>
         
         <!-- Состояние: не залогинен -->
-        <div id="notLoggedIn" class="glass-card" style="display: none;">
+        <div id="notLoggedIn" class="glass-card" style="display: block;">
             <h2>🔐 Вход в личный кабинет</h2>
             <p>Введите email и пароль, чтобы управлять подпиской и смотреть статистику</p>
             <input type="email" id="loginEmail" class="input-field" placeholder="Ваш email">
@@ -296,7 +294,7 @@
                     <input type="text" id="settingsChildAge" class="input-field" placeholder="Возраст" inputmode="numeric">
                 </div>
                 <div class="setting-item">
-                    <label>🔐 Пароль для Штаба (4-6 цифр)</label>
+                    <label>🔐 Пароль для входа в Штаб (4-6 цифр)</label>
                     <input type="password" id="settingsParentPin" class="input-field" placeholder="Пароль" maxlength="6">
                     <button class="btn" id="savePinBtn">Сохранить пароль</button>
                 </div>
@@ -374,13 +372,14 @@
             if (childName) localStorage.setItem('childName', childName);
             if (childAge) localStorage.setItem('childAge', childAge);
             
-            const parentPin = document.getElementById('settingsParentPin').value;
-            if (parentPin && parentPin.length >= 4 && /^\d+$/.test(parentPin)) {
-                localStorage.setItem('parentPin', parentPin);
+            const pin = document.getElementById('settingsParentPin').value;
+            if (pin && pin.length >= 4 && /^\d+$/.test(pin)) {
+                localStorage.setItem('parentPin', pin);
                 alert('Пароль для Штаба сохранён!');
-            } else if (parentPin) {
+            } else if (pin) {
                 alert('Пароль должен содержать 4-6 цифр');
             }
+            
             alert('Настройки сохранены!');
             loadStats();
         }
