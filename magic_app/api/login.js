@@ -1,5 +1,8 @@
 import { sql } from '@vercel/postgres';
-import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-me';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -22,14 +25,13 @@ export default async function handler(req, res) {
         }
         
         const user = result.rows[0];
-        const hashedInput = crypto.createHash('sha256').update(password).digest('hex');
+        const valid = await bcrypt.compare(password, user.password_hash);
         
-        if (hashedInput !== user.password_hash) {
+        if (!valid) {
             return res.status(401).json({ error: 'Неверный email или пароль' });
         }
         
-        // Простой токен
-        const token = Buffer.from(`${email}:${Date.now()}`).toString('base64');
+        const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
         
         res.status(200).json({ success: true, token, email: user.email });
     } catch (error) {
