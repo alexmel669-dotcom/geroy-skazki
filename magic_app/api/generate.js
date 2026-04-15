@@ -12,10 +12,12 @@ export default async function handler(req, res) {
     try {
         const { childName, childAge, userSpeech, history = [] } = req.body;
         
+        // Фильтрация мата
         if (containsBadWords(userSpeech)) {
             return res.status(200).json({ story: "Мяу! Давай говорить добрые слова. Расскажи мне что-нибудь хорошее!" });
         }
         
+        // История диалога
         let historyText = '';
         for (const msg of history.slice(-6)) {
             const role = msg.role === 'user' ? childName : 'Люцик';
