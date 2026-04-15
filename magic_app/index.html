@@ -258,6 +258,7 @@
             e.preventDefault();
             deferredPrompt = e;
             installBtn.style.display = 'inline-block';
+            installBtn.innerText = '📱 Установить приложение';
         });
 
         installBtn.addEventListener('click', async () => {
@@ -282,7 +283,7 @@
         });
 
         if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-            installBtn.innerText = '📱 Нажми "Поделиться" → "На экран Домой"';
+            installBtn.innerText = '📱 Инструкция для iPhone';
             installBtn.style.background = '#555';
             installBtn.onclick = () => {
                 alert('Нажмите "Поделиться" → "На экран Домой"');
