@@ -270,9 +270,9 @@
                 installBtn.style.display = 'none';
             } else {
                 if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-                    alert('Нажмите "Поделиться" → "На экран Домой"');
+                    alert('📱 Нажмите "Поделиться" → "На экран Домой"');
                 } else {
-                    alert('Нажмите на три точки в браузере → "Установить приложение"');
+                    alert('📱 Нажмите на три точки (⋮) в правом верхнем углу → "Установить приложение"');
                 }
             }
         });
@@ -282,11 +282,15 @@
             installBtn.style.display = 'none';
         });
 
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            installBtn.style.display = 'none';
+        }
+
         if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
             installBtn.innerText = '📱 Инструкция для iPhone';
             installBtn.style.background = '#555';
             installBtn.onclick = () => {
-                alert('Нажмите "Поделиться" → "На экран Домой"');
+                alert('📱 Нажмите "Поделиться" → "На экран Домой"');
             };
         }
 
