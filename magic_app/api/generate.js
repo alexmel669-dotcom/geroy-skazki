@@ -2,6 +2,7 @@
 const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись', 'пошёл', 'уйди', 'убирайся', 'хрен', 'фиг', 'блин', 'черт'];
 
 function containsBadWords(text) {
+    if (!text) return false;
     const lowerText = text.toLowerCase();
     return badWords.some(word => lowerText.includes(word));
 }
@@ -11,6 +12,10 @@ export default async function handler(req, res) {
     
     try {
         const { childName, childAge, userSpeech, history = [] } = req.body;
+        
+        if (!userSpeech) {
+            return res.status(200).json({ story: "Мяу! Скажи что-нибудь, я тебя слушаю!" });
+        }
         
         if (containsBadWords(userSpeech)) {
             return res.status(200).json({ story: "Мяу! Давай говорить добрые слова. Расскажи мне что-нибудь хорошее!" });
