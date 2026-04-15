@@ -1,5 +1,5 @@
 import { sql } from '@vercel/postgres';
-import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -22,8 +22,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Пользователь с таким email уже существует' });
         }
         
-        // Хеширование пароля
-        const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+        const hashedPassword = await bcrypt.hash(password, 10);
         
         await sql`
             INSERT INTO users (email, password_hash, created_at)
