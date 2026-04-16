@@ -19,8 +19,7 @@
             min-height: 100vh;
             font-family: 'Segoe UI', 'Comic Neue', system-ui, sans-serif;
             color: #3a2a1a;
-            position: relative;
-            overflow-x: hidden;
+            background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -28,78 +27,30 @@
             padding: 20px;
         }
         
-        /* Песочный фон */
-        .sand-dunes {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -2;
-            background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
-            transition: background 0.5s ease;
-        }
-        
-        body.night .sand-dunes {
+        body.night {
             background: linear-gradient(135deg, #1a2a3a 0%, #2a3a4a 30%, #1a2a3a 100%);
         }
         
-        .sand-texture {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.12'/%3E%3C/svg%3E");
-            background-repeat: repeat;
-            opacity: 0.5;
-            pointer-events: none;
-        }
-        
-        .wind-ripple {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(200,170,120,0.08) 80px, rgba(200,170,120,0.08) 120px, transparent 120px, transparent 200px);
-            pointer-events: none;
-            z-index: -1;
-            animation: windMove 20s linear infinite;
-        }
-        
-        body.night .wind-ripple {
-            background: repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(100,120,140,0.06) 80px, rgba(100,120,140,0.06) 120px, transparent 120px, transparent 200px);
-        }
-        
-        @keyframes windMove {
-            0% { background-position: 0 0; }
-            100% { background-position: 200px 0; }
-        }
-        
-        /* Главный контейнер */
+        /* Главный контейнер — на весь экран */
         .app-container {
             max-width: 500px;
             width: 100%;
-            background: rgba(255, 248, 235, 0.25);
-            backdrop-filter: blur(10px);
-            border-radius: 56px;
-            padding: 24px 20px;
-            border: 1px solid rgba(255,255,255,0.3);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            min-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         
-        /* Линейные шкалы (вариант Б) */
+        /* Линейные шкалы */
         .stats {
             display: flex;
             justify-content: space-around;
             background: rgba(0,0,0,0.2);
-            padding: 10px 12px;
-            border-radius: 40px;
-            margin-bottom: 30px;
+            padding: 12px 16px;
+            border-radius: 60px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 12px;
         }
         
         .stat {
@@ -111,9 +62,13 @@
             color: #3a2a1a;
         }
         
+        body.night .stat {
+            color: #ffd966;
+        }
+        
         .stat-bar {
-            width: 60px;
-            height: 8px;
+            width: 65px;
+            height: 10px;
             background: rgba(0,0,0,0.25);
             border-radius: 10px;
             overflow: hidden;
@@ -134,13 +89,13 @@
         .avatar-container {
             display: flex;
             justify-content: center;
-            margin: 20px 0;
+            margin: 10px 0;
             position: relative;
         }
         
         .avatar {
-            width: 200px;
-            height: 200px;
+            width: 220px;
+            height: 220px;
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
@@ -180,47 +135,49 @@
             pointer-events: none;
         }
         
-        /* 4 кнопки в ряд */
+        /* 4 кнопки в ряд — центрированы */
         .action-buttons {
             display: flex;
-            justify-content: space-around;
-            gap: 12px;
-            margin: 30px 0 25px;
+            justify-content: center;
+            gap: 16px;
+            margin: 25px 0;
+            flex-wrap: wrap;
         }
         
         .action-btn {
-            flex: 1;
-            background: rgba(255,255,255,0.3);
+            width: 70px;
+            height: 70px;
+            background: rgba(255,255,255,0.35);
             border: none;
-            border-radius: 60px;
-            padding: 12px 0;
-            font-size: 28px;
+            border-radius: 50%;
+            font-size: 32px;
             cursor: pointer;
             transition: 0.2s;
             backdrop-filter: blur(4px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
         
         .action-btn:active {
-            transform: scale(0.96);
+            transform: scale(0.94);
         }
         
-        /* Микрофон */
+        /* Микрофон — центрирован */
         .mic-container {
             display: flex;
             justify-content: center;
             width: 100%;
-            margin: 10px 0 5px;
+            margin: 15px 0;
         }
         
         .mic-btn {
-            width: 100px;
-            height: 100px;
+            width: 110px;
+            height: 110px;
             background: #ff4081;
             border: none;
             border-radius: 50%;
-            font-size: 52px;
+            font-size: 56px;
             cursor: pointer;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
             transition: 0.2s;
         }
         
@@ -242,7 +199,7 @@
             background: rgba(0,0,0,0.95);
             backdrop-filter: blur(12px);
             border-radius: 40px;
-            padding: 20px;
+            padding: 25px;
             z-index: 2000;
             min-width: 280px;
             text-align: center;
@@ -295,13 +252,6 @@
             margin-top: 20px;
         }
         
-        .footer {
-            font-size: 10px;
-            margin-top: 20px;
-            opacity: 0.5;
-            text-align: center;
-        }
-        
         .parent-btn {
             position: fixed;
             top: 20px;
@@ -316,19 +266,16 @@
         }
         
         @media (max-width: 480px) {
-            .app-container { padding: 16px; }
-            .avatar { width: 160px; height: 160px; }
-            .action-btn { font-size: 22px; padding: 10px 0; }
-            .mic-btn { width: 80px; height: 80px; font-size: 44px; }
-            .stat-bar { width: 45px; }
+            body { padding: 12px; }
+            .avatar { width: 170px; height: 170px; }
+            .action-btn { width: 60px; height: 60px; font-size: 28px; }
+            .mic-btn { width: 90px; height: 90px; font-size: 48px; }
+            .stat-bar { width: 50px; }
+            .stat { font-size: 12px; }
         }
     </style>
 </head>
 <body>
-    <div class="sand-dunes"></div>
-    <div class="sand-texture"></div>
-    <div class="wind-ripple"></div>
-    
     <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
     
     <div class="app-container">
@@ -358,11 +305,6 @@
         <div class="mic-container">
             <button class="mic-btn" id="micBtn">🎤</button>
         </div>
-        
-        <div class="footer">
-            <a href="/privacy.html" style="color:#3a2a1a;">Политика</a> | 
-            <a href="/terms.html" style="color:#3a2a1a;">Соглашение</a>
-        </div>
     </div>
     
     <!-- Родительский штаб -->
@@ -373,16 +315,30 @@
         <button id="pinCheckBtn">Войти в Штаб</button>
         <button id="pinSaveBtn">Сохранить пароль</button>
         <hr>
-        <h3>🎭 Смена персонажа (без свайпа)</h3>
-        <button id="changeCharLucik">🦁 Люцик</button>
-        <button id="changeCharMom">👩 Мама</button>
-        <button id="changeCharDad">👨 Папа</button>
-        <button id="changeCharKid">🧒 Ребёнок</button>
+        <h3>🎭 Смена персонажа</h3>
+        <button id="changeCharLucik">🦁 Люцик (всегда доступен)</button>
+        <button id="changeCharMom">👩 Мама (Premium)</button>
+        <button id="changeCharDad">👨 Папа (Premium)</button>
+        <button id="changeCharKid">🧒 Ребёнок (Premium)</button>
         <hr>
         <h3>📊 Дневник страхов</h3>
         <div id="fearStats">😨 Темнота: 0<br>🏥 Врачи: 0<br>🧸 Одиночество: 0<br>🌟 Новое: 0<br>💔 Обиды: 0<br>🐕 Животные: 0</div>
         <h3>📒 История разговоров</h3>
         <div id="historyList">Пока тишина...</div>
+        
+        <!-- Кнопка ПОДЕЛИТЬСЯ -->
+        <hr>
+        <h3>📢 Расскажите о нас!</h3>
+        <div style="background: rgba(255,215,0,0.2); padding: 20px; border-radius: 25px; margin: 15px 0; text-align: center;">
+            <p style="font-size: 16px; margin-bottom: 15px;">✨ <strong>«Люцик победил страх темноты за 3 дня!»</strong> ✨</p>
+            <p style="font-size: 14px; margin-bottom: 20px;">Помогите другим детям стать смелее! Поделитесь историей успеха вашего ребёнка.</p>
+            <button id="shareBtn" style="background: #25D366; font-size: 18px; padding: 14px 28px;">📤 Поделиться успехом</button>
+        </div>
+        
+        <h3>📜 Документы</h3>
+        <p><a href="/privacy.html" target="_blank" style="color:#00d2ff;">Политика конфиденциальности</a></p>
+        <p><a href="/terms.html" target="_blank" style="color:#00d2ff;">Пользовательское соглашение</a></p>
+        
         <div style="margin-top: 20px;">
             <button onclick="window.location.href='/account.html'" style="background:#00d2ff;">👤 Личный кабинет</button>
         </div>
@@ -406,10 +362,10 @@
         if (conversationHistory.length > 30) conversationHistory = conversationHistory.slice(0, 30);
         
         const characters = {
-            lucik: { name: 'Люцик', icon: 'avatar.png' },
-            mom: { name: 'Мама', icon: 'mom.png' },
-            dad: { name: 'Папа', icon: 'dad.png' },
-            kid: { name: 'Ребёнок', icon: 'kid.png' }
+            lucik: { name: 'Люцик', icon: 'avatar.png', free: true },
+            mom: { name: 'Мама', icon: 'mom.png', free: false },
+            dad: { name: 'Папа', icon: 'dad.png', free: false },
+            kid: { name: 'Ребёнок', icon: 'kid.png', free: false }
         };
         let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
         
@@ -451,11 +407,13 @@
             }
         }
         
-        // ========== АВАТАР И ПОДПИСКА ==========
+        // ========== АВАТАР (Люцик всегда бесплатный) ==========
         function updateAvatarLock() {
             const avatar = document.getElementById('avatar');
             const lockOverlay = document.getElementById('lockOverlay');
-            if (!isPremium) {
+            const isCurrentCharFree = characters[currentChar]?.free;
+            
+            if (!isCurrentCharFree && !isPremium) {
                 avatar.classList.add('premium-locked');
                 lockOverlay.style.display = 'flex';
             } else {
@@ -465,17 +423,19 @@
         }
         
         function changeCharacter(charId) {
-            if (!isPremium) {
+            const char = characters[charId];
+            if (!char.free && !isPremium) {
                 alert('🌟 Оформите подписку, чтобы менять персонажа!');
                 return;
             }
             currentChar = charId;
-            document.getElementById('avatar').style.backgroundImage = `url('${characters[charId].icon}')`;
+            document.getElementById('avatar').style.backgroundImage = `url('${char.icon}')`;
             localStorage.setItem('currentCharacter', charId);
-            speak(`Теперь я ${characters[charId].name}!`);
+            updateAvatarLock();
+            speak(`Теперь я ${char.name}!`);
         }
         
-        // Свайп (только с подпиской)
+        // Свайп (только для премиум)
         let touchStart = 0;
         const avatarEl = document.getElementById('avatar');
         avatarEl.addEventListener('touchstart', (e) => {
@@ -818,6 +778,23 @@
         document.getElementById('gamesBtn').onclick = () => showGameMenu();
         document.getElementById('roomBtn').onclick = () => showRoomMenu();
         
+        // ========== КНОПКА ПОДЕЛИТЬСЯ (В ШТАБЕ) ==========
+        function shareSuccess() {
+            const shareText = "🎉 Мой ребёнок больше не боится темноты! 🎉\n\nЛюцик — волшебный кот, который помогает детям 3-7 лет справляться со страхами. Всего за несколько дней страх уходит!\n\n🐱 Сказки на ночь\n🎮 Игры\n🎤 Голосовое общение\n📊 Дневник страхов для родителей\n\nПопробуйте бесплатно: https://geroy-skazki.vercel.app\n\n❤️ Спасибо Люцику за смелость моего ребёнка!";
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Герой Сказок — Люцик',
+                    text: shareText
+                }).catch(e => console.log('Share cancelled'));
+            } else {
+                navigator.clipboard.writeText(shareText);
+                alert('📋 Текст скопирован! Отправьте его друзьям в WhatsApp, Telegram или VK.\n\n' + shareText);
+            }
+        }
+        
+        document.getElementById('shareBtn').onclick = shareSuccess;
+        
         // ========== МИКРОФОН ==========
         let isListening = false;
         let isWaiting = false;
@@ -873,7 +850,6 @@
         // ========== РОДИТЕЛЬСКИЙ ШТАБ ==========
         const parentPanel = document.getElementById('parentPanel');
         
-        // Функция для создания пароля (первый вход)
         function showFirstTimePinSetup() {
             const modal = document.createElement('div');
             modal.className = 'modal';
@@ -901,7 +877,6 @@
             };
         }
         
-        // Проверка: есть ли пароль? Если нет — показать создание
         if (!savedPin) {
             setTimeout(() => {
                 showFirstTimePinSetup();
@@ -952,7 +927,6 @@
             navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error', e));
         }
         
-        // Ночная тема
         function updateTimeTheme() {
             const hour = new Date().getHours();
             if (hour >= 18 || hour < 6) {
