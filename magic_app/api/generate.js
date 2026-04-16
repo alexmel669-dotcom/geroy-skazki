@@ -11,11 +11,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
     
     try {
-        const { childName, childAge, userSpeech, history = [] } = req.body;
-        
-        if (!userSpeech) {
-            return res.status(200).json({ story: "Мяу! Скажи что-нибудь, я тебя слушаю!" });
-        }
+        const { childName, childAge, userSpeech, history = [], isLong = false } = req.body;
         
         if (containsBadWords(userSpeech)) {
             return res.status(200).json({ story: "Мяу! Давай говорить добрые слова. Расскажи мне что-нибудь хорошее!" });
@@ -30,13 +26,28 @@ export default async function handler(req, res) {
         const ageNum = parseInt(childAge) || 5;
         const schoolType = ageNum <= 6 ? 'садике' : 'школе';
         
-        const systemPrompt = `Ты — Люцик, добрый кот. Ты друг ребёнка ${childName} (${ageNum} лет).
+        // Разные промпты для обычной и длинной сказки
+        let storyType = '';
+        let maxTokens = 350;
+        
+        if (isLong) {
+            storyType = `Сочини длинную, уютную сказку на ночь для ребёнка ${childName} (${ageNum} лет). 
+            Сказка должна быть спокойной, с хорошим концом, подходящей для засыпания. 
+            Длина: 5-7 минут чтения (примерно 800-1000 слов). 
+            Используй мягкие, успокаивающие образы. Пусть в сказке будет добрый герой, который помогает другим.`;
+            maxTokens = 1000;
+        } else {
+            storyType = `Ты — Люцик, добрый кот. Ты друг ребёнка ${childName} (${ageNum} лет).
+            Отвечай кратко (2-3 предложения), тепло, с юмором.`;
+        }
+        
+        const systemPrompt = `${storyType}
 
 ТВОЙ ХАРАКТЕР: мягкий, терпеливый, с юмором. Ты любишь отвечать на вопросы "почему".
 
 ПРАВИЛА ОТВЕТОВ НА ВОПРОСЫ:
 1. Если ребёнок задаёт вопрос "почему", "зачем", "откуда", "как" — ты должен на него ответить.
-2. Отвечай кратко (2-3 предложения), понятно для ребёнка 3-7 лет.
+2. Отвечай понятно для ребёнка 3-7 лет.
 3. Если не знаешь точного ответа — скажи: "Знаешь, я не совсем уверен. Давай вместе подумаем или спросим у мамы?"
 4. Всегда хвали за любопытство: "Отличный вопрос! Любопытство — это суперсила!"
 
@@ -47,8 +58,7 @@ export default async function handler(req, res) {
 ОБЩИЕ ПРАВИЛА:
 1. Сначала спроси, как прошёл день в ${schoolType}.
 2. Если ребёнок говорит о страхе — поддержись, предложи сказку.
-3. НЕ спрашивай прямо "чего боишься". Используй свой пример.
-4. Отвечай кратко (2-3 предложения), тепло, с юмором.`;
+3. НЕ спрашивай прямо "чего боишься". Используй свой пример.`;
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
@@ -63,8 +73,8 @@ export default async function handler(req, res) {
                     { role: 'user', content: historyText },
                     { role: 'user', content: `${childName} сказал: "${userSpeech}"` }
                 ],
-                temperature: 0.85,
-                max_tokens: 350
+                temperature: isLong ? 0.7 : 0.85,
+                max_tokens: maxTokens
             })
         });
         
