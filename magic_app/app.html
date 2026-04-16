@@ -509,6 +509,33 @@
         updateMoonButton();
         setInterval(updateMoonButton, 60000);
         
+        // ========== ФУНКЦИЯ ДЛЯ DEEPSEEK ==========
+        async function askDeepSeek(text, isLong = false) {
+            if (containsBadWords(text)) {
+                return "Мяу! Давай говорить добрые слова!";
+            }
+            try {
+                const historyForAPI = conversationHistory.slice(-6).map(item => {
+                    const isUser = item.includes(`👶 ${childName}:`);
+                    const cleanContent = item.replace(/^[^:]+:/, '').trim();
+                    return { role: isUser ? "user" : "assistant", content: cleanContent };
+                });
+                const res = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        childName, childAge, userSpeech: text, isLong,
+                        history: historyForAPI
+                    })
+                });
+                const data = await res.json();
+                return data.story;
+            } catch(e) {
+                console.error(e);
+                return "Мяу! Давай ещё раз?";
+            }
+        }
+        
         // ========== КНОПКА ИГРЫ (меню) ==========
         function showGameMenu() {
             const modal = document.createElement('div');
@@ -729,31 +756,6 @@
         }
         
         // ========== КНОПКА ЛУНЫ (сказка на ночь) ==========
-        async function askDeepSeek(text, isLong = false) {
-            if (containsBadWords(text)) {
-                return "Мяу! Давай говорить добрые слова!";
-            }
-            try {
-                const historyForAPI = conversationHistory.slice(-6).map(item => {
-                    const isUser = item.includes(`👶 ${childName}:`);
-                    const cleanContent = item.replace(/^[^:]+:/, '').trim();
-                    return { role: isUser ? "user" : "assistant", content: cleanContent };
-                });
-                const res = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        childName, childAge, userSpeech: text, isLong,
-                        history: historyForAPI
-                    })
-                });
-                const data = await res.json();
-                return data.story;
-            } catch(e) {
-                return "Мяу! Давай ещё раз?";
-            }
-        }
-        
         document.getElementById('nightStoryBtn').onclick = async () => {
             const modal = document.createElement('div');
             modal.className = 'modal';
@@ -870,18 +872,56 @@
         
         // ========== РОДИТЕЛЬСКИЙ ШТАБ ==========
         const parentPanel = document.getElementById('parentPanel');
+        
+        // Функция для создания пароля (первый вход)
+        function showFirstTimePinSetup() {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <h3>🔐 Добро пожаловать!</h3>
+                <p style="margin: 15px 0;">Создайте пароль для входа в<br>родительский Штаб</p>
+                <input type="password" id="firstPinInput" placeholder="Введите 4-6 цифр" style="width: 80%; padding: 12px; border-radius: 30px; border: none; text-align: center; font-size: 18px; margin: 10px 0;">
+                <div style="margin-top: 15px;">
+                    <button id="confirmFirstPin" style="background: #4CAF50;">✅ Создать пароль</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            document.getElementById('confirmFirstPin').onclick = () => {
+                const pin = document.getElementById('firstPinInput').value;
+                if (pin && pin.length >= 4 && /^\d+$/.test(pin)) {
+                    localStorage.setItem('parentPin', pin);
+                    savedPin = pin;
+                    modal.remove();
+                    alert('🎉 Пароль создан! Теперь вы можете зайти в Штаб по кнопке ⚙️ Родителям');
+                    speak("Пароль создан! Родители могут нажать на шестерёнку в углу.");
+                } else {
+                    alert('Пароль должен содержать 4-6 цифр!');
+                }
+            };
+        }
+        
+        // Проверка: есть ли пароль? Если нет — показать создание
+        if (!savedPin) {
+            setTimeout(() => {
+                showFirstTimePinSetup();
+            }, 2000);
+        }
+        
         document.getElementById('parentBtn').onclick = () => {
             if (!savedPin) {
-                alert('Сначала создайте пароль в личном кабинете');
-            } else {
-                const pin = prompt('Введите пароль для входа в Штаб:');
-                if (pin === savedPin) {
-                    parentPanel.style.display = 'block';
-                } else if (pin !== null) {
-                    alert('Неверный пароль!');
-                }
+                showFirstTimePinSetup();
+                return;
+            }
+            const pin = prompt('Введите пароль для входа в Штаб:');
+            if (pin === savedPin) {
+                parentPanel.style.display = 'block';
+                updateUI();
+            } else if (pin !== null) {
+                alert('Неверный пароль!');
             }
         };
+        
         document.getElementById('closePanelBtn').onclick = () => parentPanel.style.display = 'none';
         document.getElementById('pinSaveBtn').onclick = () => {
             const pin = document.getElementById('pinInput').value;
@@ -889,6 +929,7 @@
                 localStorage.setItem('parentPin', pin);
                 savedPin = pin;
                 alert('Пароль сохранён!');
+                document.getElementById('pinInput').value = '';
             } else alert('4-6 цифр');
         };
         document.getElementById('pinCheckBtn').onclick = () => {
