@@ -223,7 +223,6 @@
             z-index: 2001;
         }
         
-        /* Стили для фоновых звуков и сказки на ночь */
         .sound-selector {
             position: fixed;
             bottom: 120px;
@@ -248,6 +247,16 @@
         .sound-btn.active {
             background: rgba(255,255,255,0.3);
             transform: scale(1.1);
+        }
+        
+        #story-box {
+            margin: 20px;
+            padding: 20px;
+            display: none;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 16px;
+            line-height: 1.5;
         }
         
         @media (max-width: 480px) {
@@ -302,7 +311,6 @@
         <button class="action-btn" id="nightStoryBtn">🌙</button>
     </div>
 
-    <!-- Панель выбора фонового звука -->
     <div class="sound-selector">
         <button class="sound-btn" data-sound="rain">🌧️</button>
         <button class="sound-btn" data-sound="fire">🔥</button>
@@ -310,6 +318,9 @@
         <button class="sound-btn" data-sound="wind">💨</button>
         <button class="sound-btn" data-sound="off">🔇</button>
     </div>
+
+    <!-- Блок для отображения длинных сказок -->
+    <div id="story-box" class="glass"></div>
 
     <div class="footer">
         <a href="/privacy.html">Политика</a> | <a href="/terms.html">Соглашение</a>
@@ -519,6 +530,7 @@
             audio.play().catch(e => console.log('no purr'));
         }
 
+        // ========== ИСПРАВЛЕННАЯ ФУНКЦИЯ askDeepSeek ==========
         let isWaiting = false;
         async function askDeepSeek(text, isLong = false) {
             if (containsBadWords(text)) {
@@ -527,6 +539,12 @@
             if (isWaiting) return "Мяу! Подожди чуть-чуть...";
             isWaiting = true;
             try {
+                const historyForAPI = conversationHistory.slice(-6).map(item => {
+                    const isUser = item.includes(`👶 ${childName}:`);
+                    const cleanContent = item.replace(/^[^:]+:/, '').trim();
+                    return { role: isUser ? "user" : "assistant", content: cleanContent };
+                });
+                
                 const res = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -535,14 +553,17 @@
                         childAge: childAge,
                         userSpeech: text,
                         isLong: isLong,
-                        history: conversationHistory.slice(-6).map(item => ({ role: "assistant", content: item }))
+                        history: historyForAPI
                     })
                 });
                 const data = await res.json();
                 return data.story;
             } catch(e) {
+                console.error(e);
                 return "Мяу! Давай ещё раз?";
-            } finally { isWaiting = false; }
+            } finally { 
+                isWaiting = false; 
+            }
         }
 
         // Микрофон
@@ -594,19 +615,22 @@
             };
         }
 
-        // ========== СКАЗКА НА НОЧЬ ==========
+        // ========== ИСПРАВЛЕННАЯ СКАЗКА НА НОЧЬ ==========
         document.getElementById('nightStoryBtn').onclick = async () => {
             const storyBox = document.getElementById('story-box');
             if (storyBox) {
-                storyBox.innerHTML = "🌙 Люцик готовит длинную сказку...";
+                storyBox.style.display = 'block';
+                storyBox.innerHTML = "🌙 Люцик готовит длинную сказку... Пожалуйста, подожди немного...";
             }
+            
             speak("Мяу! Сейчас я расскажу тебе длинную, уютную сказку на ночь. Устраивайся поудобнее и слушай...");
             
             const longStory = await askDeepSeek("Расскажи длинную, спокойную сказку на ночь для ребёнка 3-7 лет. Сказка должна быть уютной, с хорошим концом, подходить для засыпания. Длина: 5-7 минут чтения.", true);
             
             if (storyBox) {
-                storyBox.innerHTML = longStory;
+                storyBox.innerHTML = longStory.replace(/\n/g, '<br>');
             }
+            
             speak(longStory);
             saveHistory(`🌙 Люцик рассказал длинную сказку на ночь`);
         };
