@@ -299,7 +299,6 @@
                     <button class="btn" id="savePinBtn">Сохранить пароль</button>
                 </div>
                 
-                <!-- НАПОМИНАНИЕ ПЕРЕД СНОМ -->
                 <div class="setting-item">
                     <label>🌙 Напоминание перед сном</label>
                     <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
@@ -400,7 +399,6 @@
                 alert('Пароль должен содержать 4-6 цифр');
             }
             
-            // Сохраняем настройки напоминания
             const reminderEnabled = document.getElementById('bedtimeReminder').checked;
             const reminderTime = document.getElementById('bedtimeTime').value;
             localStorage.setItem('bedtimeReminder', reminderEnabled);
@@ -460,8 +458,10 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    statusDiv.innerHTML = '✅ Регистрация успешна! Теперь войдите.';
-                    document.getElementById('loginPassword').value = '';
+                    localStorage.setItem('userToken', data.token);
+                    localStorage.setItem('userEmail', data.email);
+                    statusDiv.innerHTML = '✅ Регистрация успешна! Перенаправление...';
+                    setTimeout(() => location.reload(), 1000);
                 } else {
                     statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка регистрации');
                 }
