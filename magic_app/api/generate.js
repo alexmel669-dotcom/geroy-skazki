@@ -1,4 +1,3 @@
-// api/generate.js
 const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись', 'пошёл', 'уйди', 'убирайся', 'хрен', 'фиг', 'блин', 'черт'];
 
 function containsBadWords(text) {
@@ -26,7 +25,6 @@ export default async function handler(req, res) {
         const ageNum = parseInt(childAge) || 5;
         const schoolType = ageNum <= 6 ? 'садике' : 'школе';
         
-        // Разные промпты для обычной и длинной сказки
         let storyType = '';
         let maxTokens = 350;
         
