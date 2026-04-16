@@ -237,7 +237,6 @@
             </div>
             <div id="loginStatus" style="margin-top: 10px; font-size: 14px; text-align: center;"></div>
             
-            <!-- Кнопки быстрого входа -->
             <div class="social-buttons">
                 <button class="btn btn-small" id="guestBtn" style="background: #888;">👤 Гостевой вход</button>
                 <button class="btn btn-small" id="vkBtn" style="background: #4c75a3;">ВКонтакте</button>
@@ -350,6 +349,11 @@
                 return;
             }
             
+            if (password.length < 4) {
+                statusDiv.innerHTML = '❌ Пароль должен быть не менее 4 символов';
+                return;
+            }
+            
             statusDiv.innerHTML = '⏳ Регистрация...';
             
             try {
@@ -361,8 +365,11 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    statusDiv.innerHTML = '✅ Регистрация успешна! Теперь войдите.';
-                    document.getElementById('loginPassword').value = '';
+                    localStorage.setItem('userToken', data.token);
+                    localStorage.setItem('userEmail', data.email);
+                    localStorage.removeItem('guestMode');
+                    statusDiv.innerHTML = '✅ Регистрация успешна! Перенаправление...';
+                    setTimeout(() => { window.location.href = '/app.html'; }, 1000);
                 } else {
                     statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка регистрации');
                 }
@@ -397,7 +404,7 @@
                     localStorage.setItem('userEmail', data.email);
                     localStorage.removeItem('guestMode');
                     statusDiv.innerHTML = '✅ Вход выполнен! Перенаправление...';
-                    setTimeout(() => { window.location.href = '/account.html'; }, 1000);
+                    setTimeout(() => { window.location.href = '/app.html'; }, 1000);
                 } else {
                     statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка входа');
                 }
