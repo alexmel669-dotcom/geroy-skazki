@@ -21,7 +21,6 @@
             padding: 20px;
         }
         
-        /* Песочный фон */
         .sand-dunes {
             position: fixed;
             top: 0;
@@ -192,7 +191,6 @@
             transform: scale(1.05);
         }
         
-        /* Видео-приветствие */
         .welcome-video-container {
             position: fixed;
             top: 0;
@@ -225,10 +223,39 @@
             z-index: 2001;
         }
         
+        /* Стили для фоновых звуков и сказки на ночь */
+        .sound-selector {
+            position: fixed;
+            bottom: 120px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 8px 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 25;
+        }
+        .sound-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+        .sound-btn.active {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+        
         @media (max-width: 480px) {
             .avatar { width: 180px; height: 180px; }
             .mic-btn { width: 75px; height: 75px; font-size: 40px; }
             .action-btn { width: 55px; height: 55px; font-size: 24px; }
+            .sound-selector { bottom: 100px; left: 10px; padding: 5px 10px; }
+            .sound-btn { font-size: 20px; }
         }
     </style>
 </head>
@@ -237,7 +264,6 @@
     <div class="sand-texture"></div>
     <div class="wind-ripple"></div>
 
-    <!-- ВИДЕО-ПРИВЕТСТВИЕ -->
     <div id="welcomeVideoContainer" class="welcome-video-container" style="display: none;">
         <video id="welcomeVideo" class="welcome-video" autoplay muted playsinline>
             <source src="welcome.mp4" type="video/mp4">
@@ -273,6 +299,16 @@
         <button class="action-btn" id="dressBtn">🧸</button>
         <button class="action-btn" id="roomBtn">🏠</button>
         <button class="action-btn" id="gameBtn">🐟</button>
+        <button class="action-btn" id="nightStoryBtn">🌙</button>
+    </div>
+
+    <!-- Панель выбора фонового звука -->
+    <div class="sound-selector">
+        <button class="sound-btn" data-sound="rain">🌧️</button>
+        <button class="sound-btn" data-sound="fire">🔥</button>
+        <button class="sound-btn" data-sound="purr">🐱</button>
+        <button class="sound-btn" data-sound="wind">💨</button>
+        <button class="sound-btn" data-sound="off">🔇</button>
     </div>
 
     <div class="footer">
@@ -357,6 +393,77 @@
         };
         let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
         
+        // ========== ФОНОВЫЕ ЗВУКИ ==========
+        let currentAudio = null;
+        let currentSound = null;
+        
+        const sounds = {
+            rain: { url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', name: 'Дождь' },
+            fire: { url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', name: 'Костёр' },
+            purr: { url: 'purr.mp3', name: 'Мурчание' },
+            wind: { url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', name: 'Ветер' }
+        };
+        
+        function playSound(soundId) {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            if (soundId === 'off') {
+                currentSound = null;
+                return;
+            }
+            const sound = sounds[soundId];
+            if (sound) {
+                currentAudio = new Audio(sound.url);
+                currentAudio.loop = true;
+                currentAudio.volume = 0.2;
+                currentAudio.play().catch(e => console.log('Sound error:', e));
+                currentSound = soundId;
+            }
+        }
+        
+        document.querySelectorAll('.sound-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const sound = btn.dataset.sound;
+                playSound(sound);
+                document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('active'));
+                if (sound !== 'off') btn.classList.add('active');
+            });
+        });
+        
+        // ========== НАПОМИНАНИЕ ПЕРЕД СНОМ ==========
+        function checkBedtimeReminder() {
+            const reminderTime = localStorage.getItem('bedtimeTime');
+            const reminderEnabled = localStorage.getItem('bedtimeReminder') === 'true';
+            if (!reminderEnabled || !reminderTime) return;
+            
+            const now = new Date();
+            const [hours, minutes] = reminderTime.split(':');
+            const bedtime = new Date();
+            bedtime.setHours(parseInt(hours), parseInt(minutes), 0);
+            
+            const diff = bedtime - now;
+            const reminderSent = localStorage.getItem('reminder_sent_today');
+            const today = new Date().toDateString();
+            
+            if (diff > 0 && diff < 15 * 60000 && reminderSent !== today) {
+                if (Notification.permission === 'granted') {
+                    new Notification('🌙 Герой Сказок', {
+                        body: 'Скоро время сказки на ночь! Люцик ждёт тебя.',
+                        icon: 'avatar.png'
+                    });
+                    localStorage.setItem('reminder_sent_today', today);
+                }
+            }
+        }
+        
+        if ('Notification' in window && Notification.permission !== 'denied') {
+            Notification.requestPermission();
+        }
+        setInterval(checkBedtimeReminder, 60000);
+        
+        // ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
         function updateUI() {
             document.getElementById('moodVal').innerText = mood;
             document.getElementById('hungerVal').innerText = hunger;
@@ -390,7 +497,6 @@
             }
         }
 
-        // Фильтрация мата
         const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись', 'пошёл', 'уйди', 'убирайся', 'хрен', 'фиг', 'блин', 'черт'];
         function containsBadWords(text) {
             if (!text) return false;
@@ -414,7 +520,7 @@
         }
 
         let isWaiting = false;
-        async function askDeepSeek(text) {
+        async function askDeepSeek(text, isLong = false) {
             if (containsBadWords(text)) {
                 return "Мяу! Давай говорить добрые слова. Расскажи мне что-нибудь хорошее!";
             }
@@ -428,6 +534,7 @@
                         childName: childName,
                         childAge: childAge,
                         userSpeech: text,
+                        isLong: isLong,
                         history: conversationHistory.slice(-6).map(item => ({ role: "assistant", content: item }))
                     })
                 });
@@ -487,6 +594,23 @@
             };
         }
 
+        // ========== СКАЗКА НА НОЧЬ ==========
+        document.getElementById('nightStoryBtn').onclick = async () => {
+            const storyBox = document.getElementById('story-box');
+            if (storyBox) {
+                storyBox.innerHTML = "🌙 Люцик готовит длинную сказку...";
+            }
+            speak("Мяу! Сейчас я расскажу тебе длинную, уютную сказку на ночь. Устраивайся поудобнее и слушай...");
+            
+            const longStory = await askDeepSeek("Расскажи длинную, спокойную сказку на ночь для ребёнка 3-7 лет. Сказка должна быть уютной, с хорошим концом, подходить для засыпания. Длина: 5-7 минут чтения.", true);
+            
+            if (storyBox) {
+                storyBox.innerHTML = longStory;
+            }
+            speak(longStory);
+            saveHistory(`🌙 Люцик рассказал длинную сказку на ночь`);
+        };
+
         // Кнопки действий
         document.getElementById('feedBtn').onclick = () => {
             hunger = Math.min(100, hunger + 15);
@@ -537,7 +661,6 @@
         document.getElementById('charDad').onclick = () => changeCharacter('dad');
         document.getElementById('charKid').onclick = () => changeCharacter('kid');
         
-        // Свайп
         let touchStart = 0;
         const avatarEl = document.getElementById('avatar');
         avatarEl.addEventListener('touchstart', (e) => { touchStart = e.changedTouches[0].screenX; });
@@ -676,11 +799,14 @@
         const parentPanel = document.getElementById('parentPanel');
         document.getElementById('parentBtn').onclick = () => {
             if (!savedPin) {
-                parentPanel.style.display = 'block';
+                alert('Сначала создайте пароль в личном кабинете');
             } else {
-                const pin = prompt('Введите пароль:');
-                if (pin === savedPin) parentPanel.style.display = 'block';
-                else if (pin !== null) alert('Неверный пароль!');
+                const pin = prompt('Введите пароль для входа в Штаб:');
+                if (pin === savedPin) {
+                    parentPanel.style.display = 'block';
+                } else if (pin !== null) {
+                    alert('Неверный пароль!');
+                }
             }
         };
         document.getElementById('closePanelBtn').onclick = () => parentPanel.style.display = 'none';
