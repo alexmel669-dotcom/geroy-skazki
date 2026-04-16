@@ -23,6 +23,7 @@
             z-index: -2;
             background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
         }
+        
         .sand-texture {
             position: fixed;
             top: 0;
@@ -35,6 +36,7 @@
             opacity: 0.5;
             pointer-events: none;
         }
+        
         .wind-ripple {
             position: fixed;
             top: 0;
@@ -203,8 +205,7 @@
             </div>
         </div>
         
-        <!-- Состояние: не залогинен -->
-        <div id="notLoggedIn" class="glass-card" style="display: block;">
+        <div id="notLoggedIn" class="glass-card" style="display: none;">
             <h2>🔐 Вход в личный кабинет</h2>
             <p>Введите email и пароль, чтобы управлять подпиской и смотреть статистику</p>
             <input type="email" id="loginEmail" class="input-field" placeholder="Ваш email">
@@ -214,7 +215,6 @@
             <div id="loginStatus" style="margin-top: 10px; font-size: 14px; color: #6b3a1f;"></div>
         </div>
         
-        <!-- Состояние: залогинен -->
         <div id="loggedIn" style="display: none;">
             <div class="glass-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
@@ -298,6 +298,19 @@
                     <input type="password" id="settingsParentPin" class="input-field" placeholder="Пароль" maxlength="6">
                     <button class="btn" id="savePinBtn">Сохранить пароль</button>
                 </div>
+                
+                <!-- НАПОМИНАНИЕ ПЕРЕД СНОМ -->
+                <div class="setting-item">
+                    <label>🌙 Напоминание перед сном</label>
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="bedtimeReminder"> Включить
+                        </label>
+                        <input type="time" id="bedtimeTime" value="21:00" style="padding: 8px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,248,235,0.15); color: #3a2a1a;">
+                    </div>
+                    <p style="font-size: 12px; opacity: 0.7; margin-top: 8px;">Люцик напомнит за 15 минут до указанного времени</p>
+                </div>
+                
                 <button class="btn" id="saveSettingsBtn">Сохранить настройки</button>
                 <button class="btn btn-red" id="logoutBtn">Выйти из аккаунта</button>
             </div>
@@ -327,6 +340,7 @@
                 document.getElementById('userEmailDisplay').innerText = email;
                 loadStats();
                 loadUserData();
+                loadSettings();
             } else {
                 document.getElementById('notLoggedIn').style.display = 'block';
                 document.getElementById('loggedIn').style.display = 'none';
@@ -366,19 +380,31 @@
             document.getElementById('settingsParentPin').value = '';
         }
         
+        function loadSettings() {
+            document.getElementById('bedtimeReminder').checked = localStorage.getItem('bedtimeReminder') === 'true';
+            document.getElementById('bedtimeTime').value = localStorage.getItem('bedtimeTime') || '21:00';
+        }
+        
         function saveSettings() {
             const childName = document.getElementById('settingsChildName').value;
             const childAge = document.getElementById('settingsChildAge').value;
             if (childName) localStorage.setItem('childName', childName);
             if (childAge) localStorage.setItem('childAge', childAge);
             
-            const pin = document.getElementById('settingsParentPin').value;
-            if (pin && pin.length >= 4 && /^\d+$/.test(pin)) {
-                localStorage.setItem('parentPin', pin);
+            const parentPin = document.getElementById('settingsParentPin').value;
+            if (parentPin && parentPin.length >= 4 && /^\d+$/.test(parentPin)) {
+                localStorage.setItem('parentPin', parentPin);
                 alert('Пароль для Штаба сохранён!');
-            } else if (pin) {
+                document.getElementById('settingsParentPin').value = '';
+            } else if (parentPin) {
                 alert('Пароль должен содержать 4-6 цифр');
             }
+            
+            // Сохраняем настройки напоминания
+            const reminderEnabled = document.getElementById('bedtimeReminder').checked;
+            const reminderTime = document.getElementById('bedtimeTime').value;
+            localStorage.setItem('bedtimeReminder', reminderEnabled);
+            localStorage.setItem('bedtimeTime', reminderTime);
             
             alert('Настройки сохранены!');
             loadStats();
