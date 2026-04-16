@@ -1,6 +1,7 @@
-const CACHE_NAME = 'lucik-v11';
+const CACHE_NAME = 'lucik-v12';
 const ASSETS = [
     './',
+    './index.html',
     './app.html',
     './avatar.png',
     './mom.png',
