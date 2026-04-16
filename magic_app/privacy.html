@@ -1,4 +1,100 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Политика конфиденциальности</title><style>body{font-family:Segoe UI,sans-serif;background:#d4c4a4;padding:40px;color:#3a2a1a;}.glass{background:rgba(255,248,235,0.2);backdrop-filter:blur(10px);border-radius:30px;padding:30px;max-width:800px;margin:0 auto;}h1{color:#6b3a1f;}</style></head>
-<body><div class="glass"><h1>🔒 Политика конфиденциальности</h1><p>Приложение «Герой Сказок» собирает только email и зашифрованный пароль для входа в аккаунт. Вся остальная информация (статистика страхов, история разговоров, настройки) хранится на устройстве пользователя.</p><p>Для генерации сказок текст отправляется в DeepSeek API. DeepSeek не сохраняет данные.</p><p>Мы используем Vercel Analytics для подсчёта посещений. Это не привязано к конкретным пользователям.</p><a href="/">← На главную</a></div></body></html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Политика конфиденциальности — Герой Сказок</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
+            padding: 40px 20px;
+            color: #3a2a1a;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255,248,235,0.95);
+            border-radius: 40px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 { color: #6b3a1f; margin-bottom: 25px; font-size: 32px; }
+        h2 { color: #6b3a1f; margin: 25px 0 15px; font-size: 24px; border-left: 4px solid #c8a86c; padding-left: 15px; }
+        p { margin: 15px 0; line-height: 1.5; }
+        ul { margin: 15px 0 15px 30px; }
+        li { margin: 8px 0; }
+        .back-btn {
+            display: inline-block;
+            margin-top: 30px;
+            background: #c8a86c;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 40px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        hr { margin: 25px 0; border-color: rgba(0,0,0,0.1); }
+        @media (max-width: 600px) {
+            .container { padding: 25px; }
+            h1 { font-size: 26px; }
+            h2 { font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 Политика конфиденциальности</h1>
+        <p><strong>Дата последнего обновления:</strong> 17 апреля 2026 г.</p>
+        
+        <p>Приложение «Герой Сказок» (далее — «Мы», «Приложение») уважает конфиденциальность пользователей. Настоящая Политика объясняет, какие данные мы собираем и как их используем.</p>
+        
+        <h2>1. Какие данные мы собираем</h2>
+        <ul>
+            <li><strong>Email и пароль</strong> — для создания аккаунта и входа в приложение. Пароль хранится в зашифрованном виде.</li>
+            <li><strong>Имя и возраст ребёнка</strong> — для персонализации сказок и игр.</li>
+            <li><strong>Статистика страхов</strong> — для отслеживания прогресса ребёнка (хранится на устройстве).</li>
+            <li><strong>История разговоров</strong> — для улучшения работы ИИ (хранится на устройстве).</li>
+            <li><strong>Данные об использовании</strong> — анонимная статистика через Vercel Analytics.</li>
+        </ul>
+        
+        <h2>2. Как мы используем данные</h2>
+        <ul>
+            <li>Для работы аккаунта и синхронизации настроек.</li>
+            <li>Для генерации персонализированных сказок через DeepSeek API.</li>
+            <li>Для улучшения приложения и анализа популярности функций.</li>
+        </ul>
+        
+        <h2>3. Передача данных третьим лицам</h2>
+        <ul>
+            <li><strong>DeepSeek API</strong> — текст запросов отправляется для генерации сказок. DeepSeek не сохраняет данные.</li>
+            <li><strong>Vercel</strong> — хостинг и анонимная аналитика.</li>
+            <li><strong>Neon PostgreSQL</strong> — хранение email и зашифрованных паролей.</li>
+        </ul>
+        <p>Мы НЕ передаём ваши данные рекламным сетям или другим третьим лицам.</p>
+        
+        <h2>4. Безопасность</h2>
+        <p>Мы используем современные методы шифрования (bcrypt для паролей, JWT для токенов). Все данные передаются по защищённому протоколу HTTPS.</p>
+        
+        <h2>5. Права пользователей</h2>
+        <ul>
+            <li>Вы можете удалить свой аккаунт, написав нам на support@geroy-skazki.ru</li>
+            <li>Вы можете очистить историю разговоров и статистику через настройки приложения.</li>
+            <li>Вы можете отказаться от уведомлений в любой момент.</li>
+        </ul>
+        
+        <h2>6. Дети</h2>
+        <p>Приложение предназначено для детей 3-7 лет под контролем родителей. Мы настоятельно рекомендуем родителям контролировать использование приложения и не оставлять детей без присмотра.</p>
+        
+        <h2>7. Контакты</h2>
+        <p>По всем вопросам, связанным с конфиденциальностью, пишите:<br>
+        📧 <strong>support@geroy-skazki.ru</strong></p>
+        
+        <hr>
+        <p><small>© 2026 Герой Сказок. Все права защищены.</small></p>
+        <a href="/" class="back-btn">← На главную</a>
+    </div>
+</body>
+</html>
