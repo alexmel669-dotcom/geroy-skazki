@@ -31,7 +31,6 @@
             background: linear-gradient(135deg, #1a2a3a 0%, #2a3a4a 30%, #1a2a3a 100%);
         }
         
-        /* Главный контейнер — на весь экран */
         .app-container {
             max-width: 500px;
             width: 100%;
@@ -41,7 +40,6 @@
             justify-content: space-between;
         }
         
-        /* Линейные шкалы */
         .stats {
             display: flex;
             justify-content: space-around;
@@ -89,7 +87,6 @@
         #energyFill { background: #00d2ff; }
         #braveryFill { background: #ffd700; }
         
-        /* Аватар */
         .avatar-container {
             display: flex;
             justify-content: center;
@@ -139,7 +136,6 @@
             pointer-events: none;
         }
         
-        /* 4 кнопки в ряд — отцентрованы */
         .action-buttons {
             display: flex;
             justify-content: center;
@@ -169,7 +165,6 @@
             background: rgba(0,0,0,0.4);
         }
         
-        /* Микрофон */
         .mic-container {
             display: flex;
             justify-content: center;
@@ -197,7 +192,6 @@
             animation: pulse 1s infinite;
         }
         
-        /* Модальные окна */
         .modal {
             position: fixed;
             top: 50%;
@@ -228,148 +222,6 @@
             color: white;
         }
         
-        /* ========== ЛЕСНАЯ ТЕМА ДЛЯ ШТАБА ========== */
-        .parent-panel {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(145deg, #0a2a1a 0%, #0d301f 25%, #0f3522 50%, #0a2a1a 100%);
-            z-index: 3000;
-            padding: 30px;
-            overflow-y: auto;
-            color: #f0e6d0;
-            position: relative;
-        }
-        
-        /* Силуэты деревьев */
-        .parent-panel::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                repeating-linear-gradient(90deg, 
-                    transparent 0px, transparent 60px,
-                    rgba(20, 50, 30, 0.3) 60px, rgba(20, 50, 30, 0.3) 65px,
-                    transparent 65px, transparent 120px,
-                    rgba(15, 40, 25, 0.2) 120px, rgba(15, 40, 25, 0.2) 125px);
-            background-size: 150px 100%;
-            background-repeat: repeat-y;
-            pointer-events: none;
-            z-index: 0;
-        }
-        
-        /* Кроны деревьев */
-        .parent-panel::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 20% 15%, rgba(30, 80, 40, 0.2) 0%, transparent 40%),
-                        radial-gradient(circle at 80% 25%, rgba(25, 70, 35, 0.15) 0%, transparent 50%),
-                        radial-gradient(circle at 40% 60%, rgba(20, 60, 30, 0.1) 0%, transparent 60%);
-            pointer-events: none;
-            z-index: 0;
-        }
-        
-        /* Туман */
-        .parent-panel .fog {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(ellipse at 50% 80%, rgba(200, 220, 180, 0.08) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 1;
-        }
-        
-        /* Контент Штаба (выше фона) */
-        .parent-panel > * {
-            position: relative;
-            z-index: 2;
-        }
-        
-        .parent-panel h2, .parent-panel h3 {
-            color: #d4e6c3;
-            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-        
-        .parent-panel button {
-            background: #2d5a3b;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 30px;
-            margin: 10px 5px;
-            cursor: pointer;
-            color: white;
-            transition: 0.2s;
-        }
-        
-        .parent-panel button:hover {
-            background: #3d7a4b;
-            transform: scale(1.02);
-        }
-        
-        .close-panel {
-            background: #8b3a3a;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 30px;
-            margin-top: 20px;
-            cursor: pointer;
-            color: white;
-        }
-        
-        /* Мини-аватарки для смены персонажа */
-        .char-selector {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin: 15px 0;
-            flex-wrap: wrap;
-        }
-        .char-option {
-            text-align: center;
-            cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 40px;
-            background: rgba(0,0,0,0.3);
-            transition: 0.2s;
-        }
-        .char-option.active {
-            background: #ff9f4a;
-            transform: scale(1.05);
-        }
-        .char-avatar {
-            width: 50px;
-            height: 50px;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-            margin: 0 auto 5px;
-            border-radius: 50%;
-        }
-        .char-name {
-            font-size: 12px;
-        }
-        
-        /* Уведомление */
-        .alert-card {
-            background: rgba(255, 215, 0, 0.15);
-            border-left: 4px solid #ffd700;
-            padding: 12px 15px;
-            border-radius: 20px;
-            margin-bottom: 20px;
-        }
-        
         .parent-btn {
             position: fixed;
             top: 20px;
@@ -398,7 +250,6 @@
     <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
     
     <div class="app-container">
-        <!-- Линейные шкалы -->
         <div class="stats">
             <div class="stat">😊 <div class="stat-bar"><div class="stat-fill" id="moodFill" style="width: 70%"></div></div></div>
             <div class="stat">🍽️ <div class="stat-bar"><div class="stat-fill" id="hungerFill" style="width: 60%"></div></div></div>
@@ -406,13 +257,11 @@
             <div class="stat">⭐ <div class="stat-bar"><div class="stat-fill" id="braveryFill" style="width: 0%"></div></div></div>
         </div>
         
-        <!-- Аватар -->
         <div class="avatar-container" id="avatarContainer">
             <div class="avatar" id="avatar" style="background-image: url('avatar.png');"></div>
             <div id="lockOverlay" class="lock-overlay" style="display: none;">🔒</div>
         </div>
         
-        <!-- 4 кнопки действий -->
         <div class="action-buttons">
             <button class="action-btn" id="feedBtn">🍎</button>
             <button class="action-btn" id="gamesBtn">🎮</button>
@@ -420,86 +269,14 @@
             <button class="action-btn" id="nightStoryBtn" style="display: none;">🌙</button>
         </div>
         
-        <!-- Микрофон -->
         <div class="mic-container">
             <button class="mic-btn" id="micBtn">🎤</button>
         </div>
     </div>
     
-    <!-- Родительский штаб (лесная тема) -->
-    <div id="parentPanel" class="parent-panel">
-        <div class="fog"></div>
-        
-        <h2>🌲 Штаб Создателя</h2>
-        
-        <!-- Уведомление о страхе (если есть) -->
-        <div id="fearAlert" class="alert-card" style="display: none;">
-            <div id="alertContent"></div>
-            <button id="alertHelpBtn" style="margin-top: 10px; background: #ff9f4a;">💬 Помочь поговорить</button>
-        </div>
-        
-        <!-- Смена персонажа (мини-аватарки) -->
-        <h3>🎭 Смена персонажа</h3>
-        <div class="char-selector">
-            <div class="char-option" data-char="lucik">
-                <div class="char-avatar" style="background-image: url('avatar.png');"></div>
-                <div class="char-name">🦁 Люцик</div>
-            </div>
-            <div class="char-option" data-char="mom">
-                <div class="char-avatar" style="background-image: url('mom.png');"></div>
-                <div class="char-name">👩 Мама</div>
-            </div>
-            <div class="char-option" data-char="dad">
-                <div class="char-avatar" style="background-image: url('dad.png');"></div>
-                <div class="char-name">👨 Папа</div>
-            </div>
-            <div class="char-option" data-char="kid">
-                <div class="char-avatar" style="background-image: url('kid.png');"></div>
-                <div class="char-name">🧒 Ребёнок</div>
-            </div>
-        </div>
-        <p style="font-size:12px; opacity:0.7;">⭐ Мама, Папа, Ребёнок доступны по премиум-подписке</p>
-        
-        <hr>
-        
-        <!-- Дневник страхов и история (компактно) -->
-        <h3>📊 Дневник страхов</h3>
-        <div id="fearStats">😨 Темнота: 0<br>🏥 Врачи: 0<br>🧸 Одиночество: 0<br>🌟 Новое: 0<br>💔 Обиды: 0<br>🐕 Животные: 0</div>
-        
-        <h3>📒 История разговоров</h3>
-        <div id="historyList" style="max-height: 150px; overflow-y: auto;">Пока тишина...</div>
-        
-        <hr>
-        
-        <!-- Помощь родителям (компактная кнопка) -->
-        <button id="parentHelpBtn" style="background: #4a6a4a; width: 100%;">🧠 Получить совет психолога</button>
-        
-        <hr>
-        
-        <!-- Поделиться (в самом низу) -->
-        <h3>📤 Поделиться успехами</h3>
-        <button id="shareBtn" style="background:#25D366;">📱 WhatsApp</button>
-        <button id="shareVkBtn" style="background:#4c75a3;">📱 VK</button>
-        <button id="shareTgBtn" style="background:#26A5E4;">📱 Telegram</button>
-        <p style="font-size:12px; margin-top:10px;">🎉 Расскажите друзьям о Люцике!</p>
-        
-        <hr>
-        
-        <h3>📜 Документы</h3>
-        <p><a href="/privacy.html" target="_blank" style="color:#a4d4a4;">Политика конфиденциальности</a></p>
-        <p><a href="/terms.html" target="_blank" style="color:#a4d4a4;">Пользовательское соглашение</a></p>
-        
-        <div style="margin-top: 20px;">
-            <button onclick="window.location.href='/account.html'" style="background:#00d2ff;">👤 Личный кабинет</button>
-        </div>
-        <button class="close-panel" id="closePanelBtn">Закрыть</button>
-    </div>
-    
     <script>
-        // ========== ПОДПИСКА ==========
         let isPremium = localStorage.getItem('isPremium') === 'true';
         
-        // ========== ДАННЫЕ ==========
         let childName = localStorage.getItem('childName') || 'малыш';
         let childAge = localStorage.getItem('childAge') || 5;
         let savedPin = localStorage.getItem('parentPin');
@@ -509,9 +286,6 @@
         let bravery = parseInt(localStorage.getItem('lucik_bravery')) || 0;
         let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
         let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-        let pendingFearAlert = localStorage.getItem('pendingFearAlert');
-        let pendingFearText = localStorage.getItem('pendingFearText') || '';
-        
         if (conversationHistory.length > 30) conversationHistory = conversationHistory.slice(0, 30);
         
         const characters = {
@@ -522,7 +296,6 @@
         };
         let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
         
-        // ========== ОБНОВЛЕНИЕ ШКАЛ ==========
         function updateStatsUI() {
             document.getElementById('moodFill').style.width = mood + '%';
             document.getElementById('hungerFill').style.width = hunger + '%';
@@ -532,32 +305,12 @@
         
         function updateUI() {
             updateStatsUI();
-            document.getElementById('fearStats').innerHTML = `
-                😨 Темнота: ${fearStats.темноты}<br>
-                🏥 Врачи: ${fearStats.врачей}<br>
-                🧸 Одиночество: ${fearStats.одиночества}<br>
-                🌟 Новое: ${fearStats.нового}<br>
-                💔 Обиды: ${fearStats.обиды}<br>
-                🐕 Животные: ${fearStats.животных}
-            `;
-            document.getElementById('historyList').innerHTML = conversationHistory.slice(-10).map(i => `<div style="padding:5px; border-bottom:1px solid rgba(255,255,255,0.1);">${i}</div>`).join('') || "Пока тишина...";
-            
-            // Проверяем уведомление
-            if (pendingFearAlert === 'true' && pendingFearText) {
-                const alertDiv = document.getElementById('fearAlert');
-                const alertContent = document.getElementById('alertContent');
-                alertContent.innerHTML = `📢 <strong>Люцик заметил:</strong><br>Ребёнок сказал: "${pendingFearText}"<br><span style="font-size:12px;">Хотите получить совет, как мягко поговорить?</span>`;
-                alertDiv.style.display = 'block';
-            } else {
-                document.getElementById('fearAlert').style.display = 'none';
-            }
         }
         
         function saveHistory(text) {
             conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + text);
             if (conversationHistory.length > 30) conversationHistory.pop();
             localStorage.setItem('storyHistory', JSON.stringify(conversationHistory));
-            updateUI();
         }
         
         function updateFear(fear) {
@@ -567,7 +320,6 @@
                 bravery = Math.min(100, bravery + 10);
                 localStorage.setItem('lucik_bravery', bravery);
                 
-                // Создаём уведомление для родителей
                 const fearMessages = {
                     темноты: 'боюсь темноты',
                     врачей: 'боюсь врачей и уколов',
@@ -584,7 +336,6 @@
             }
         }
         
-        // ========== АВАТАР ==========
         function updateAvatarLock() {
             const avatar = document.getElementById('avatar');
             const lockOverlay = document.getElementById('lockOverlay');
@@ -610,7 +361,6 @@
             speak(`Теперь я ${characters[charId].name}!`);
         }
         
-        // Свайп
         let touchStart = 0;
         const avatarEl = document.getElementById('avatar');
         avatarEl.addEventListener('touchstart', (e) => {
@@ -632,15 +382,6 @@
             }
         });
         
-        // Смена персонажа через мини-аватарки
-        document.querySelectorAll('.char-option').forEach(opt => {
-            opt.addEventListener('click', () => {
-                const charId = opt.dataset.char;
-                changeCharacter(charId);
-            });
-        });
-        
-        // ========== КНОПКА ЛУНЫ ==========
         function updateMoonButton() {
             const hour = new Date().getHours();
             const moonBtn = document.getElementById('nightStoryBtn');
@@ -653,7 +394,6 @@
         updateMoonButton();
         setInterval(updateMoonButton, 60000);
         
-        // ========== DEEPSEEK ==========
         async function askDeepSeek(text, isLong = false) {
             if (containsBadWords(text)) {
                 return "Мяу! Давай говорить добрые слова!";
@@ -679,83 +419,23 @@
             }
         }
         
-        // ========== ПОМОЩЬ РОДИТЕЛЯМ (модальное окно) ==========
-        function showParentHelpModal(fear = null) {
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <h3>🧠 Помощь психолога</h3>
-                <p style="margin: 15px 0;">Выберите страх ребёнка:</p>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
-                    <button id="helpDarkness" style="background:#4a4a6a;">😨 Темнота</button>
-                    <button id="helpDoctors" style="background:#4a4a6a;">🏥 Врачи</button>
-                    <button id="helpAlone" style="background:#4a4a6a;">🧸 Одиночество</button>
-                    <button id="helpAnimals" style="background:#4a4a6a;">🐕 Животные</button>
-                    <button id="helpNew" style="background:#4a4a6a;">🌟 Новое</button>
-                    <button id="helpOffense" style="background:#4a4a6a;">💔 Обиды</button>
-                </div>
-                <div style="margin-top: 15px;">
-                    <input type="text" id="helpCustomFear" placeholder="Или напишите свой..." style="width: 80%; padding: 10px; border-radius: 30px; border: none;">
-                    <button id="helpCustomBtn" style="background:#ff9f4a;">👉</button>
-                </div>
-                <div id="helpResult" style="margin-top: 15px; max-height: 300px; overflow-y: auto; text-align: left; background: rgba(255,255,255,0.1); border-radius: 20px; padding: 10px; display: none;"></div>
-                <div style="margin-top: 20px;">
-                    <button class="close-btn" id="closeHelpModal">Закрыть</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            
-            async function getAdvice(fear) {
-                const resultDiv = document.getElementById('helpResult');
-                resultDiv.style.display = 'block';
-                resultDiv.innerHTML = '⏳ Люцик советуется с психологами...';
-                
-                try {
-                    const response = await fetch('/api/parent-advice', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ fear, childAge, childName })
-                    });
-                    const data = await response.json();
-                    if (data.advice) {
-                        let formatted = data.advice.replace(/\n/g, '<br>');
-                        resultDiv.innerHTML = `<strong>😟 Страх: "${fear}"</strong><br><br>${formatted}<br><br><small>💡 Совет сгенерирован ИИ</small>`;
-                    } else {
-                        resultDiv.innerHTML = '❌ Не удалось получить совет. Попробуйте позже.';
-                    }
-                } catch(e) {
-                    resultDiv.innerHTML = '❌ Ошибка соединения.';
-                }
-            }
-            
-            document.getElementById('helpDarkness').onclick = () => getAdvice('темнота');
-            document.getElementById('helpDoctors').onclick = () => getAdvice('врачи, уколы, больница');
-            document.getElementById('helpAlone').onclick = () => getAdvice('одиночество, оставаться без мамы');
-            document.getElementById('helpAnimals').onclick = () => getAdvice('животные (собаки, кошки, насекомые)');
-            document.getElementById('helpNew').onclick = () => getAdvice('новое, незнакомое, перемены');
-            document.getElementById('helpOffense').onclick = () => getAdvice('обиды, ссоры, конфликты');
-            document.getElementById('helpCustomBtn').onclick = () => {
-                const custom = document.getElementById('helpCustomFear').value.trim();
-                if (custom) getAdvice(custom);
-            };
-            document.getElementById('closeHelpModal').onclick = () => modal.remove();
-            
-            if (fear) getAdvice(fear);
-        }
-        
-        // ========== КНОПКИ ИГР ==========
         function showGameMenu() {
             const modal = document.createElement('div');
             modal.className = 'modal';
             modal.innerHTML = `
-                <h3>🎮 Выбери игру</h3>
+                <h3 style="margin-bottom: 20px;">🎮 Выбери игру</h3>
                 <button id="fishGameBtn" style="background:#4aa3df;">🐟 Поймай рыбку</button>
                 <button id="playGameBtn" style="background:#ff9f4a;">🎾 Поиграть с Люциком</button>
-                <div><button class="close-btn" id="closeGameMenu">Закрыть</button></div>
+                <div style="margin-top: 20px;">
+                    <button class="close-btn" id="closeGameMenu">Закрыть</button>
+                </div>
             `;
             document.body.appendChild(modal);
             
-            document.getElementById('fishGameBtn').onclick = () => { modal.remove(); startFishGame(); };
+            document.getElementById('fishGameBtn').onclick = () => {
+                modal.remove();
+                startFishGame();
+            };
             document.getElementById('playGameBtn').onclick = () => {
                 modal.remove();
                 if (energy >= 20) {
@@ -774,7 +454,6 @@
             document.getElementById('closeGameMenu').onclick = () => modal.remove();
         }
         
-        // Игра "Поймай рыбку"
         let gameActive = false, gameInterval = null, gameTimerInterval = null;
         function startFishGame() {
             if (gameActive) return;
@@ -846,15 +525,16 @@
             gameInterval = setInterval(() => { if (gameActive) moveFish(); }, 1500);
         }
         
-        // ========== КОМНАТА ==========
         function showRoomMenu() {
             const modal = document.createElement('div');
             modal.className = 'modal';
             modal.innerHTML = `
-                <h3>🏠 Моя комната</h3>
+                <h3 style="margin-bottom: 20px;">🏠 Моя комната</h3>
                 <button id="cleanRoomBtn" style="background:#4CAF50;">🧸 Уборка комнаты</button>
                 <button id="dressUpBtn" style="background:#ff9f4a;">👕 Переодеть персонажа</button>
-                <div><button class="close-btn" id="closeRoomMenu">Закрыть</button></div>
+                <div style="margin-top: 20px;">
+                    <button class="close-btn" id="closeRoomMenu">Закрыть</button>
+                </div>
             `;
             document.body.appendChild(modal);
             
@@ -883,7 +563,9 @@
                     <button id="dressHat">🎩 В шляпе</button>
                     <button id="dressGlasses">🕶️ В очках</button>
                     <button id="dressCrown">👑 С короной</button>
-                    <div><button class="close-btn" id="closeDressMenu">Закрыть</button></div>
+                    <div style="margin-top: 20px;">
+                        <button class="close-btn" id="closeDressMenu">Закрыть</button>
+                    </div>
                 `;
                 document.body.appendChild(dressModal);
                 document.getElementById('dressDefault').onclick = () => {
@@ -911,7 +593,6 @@
             document.getElementById('closeRoomMenu').onclick = () => modal.remove();
         }
         
-        // ========== СКАЗКА НА НОЧЬ ==========
         document.getElementById('nightStoryBtn').onclick = async () => {
             const modal = document.createElement('div');
             modal.className = 'modal';
@@ -931,19 +612,6 @@
             saveHistory(`🌙 Люцик рассказал длинную сказку на ночь`);
         };
         
-        // ========== ПОДЕЛИТЬСЯ ==========
-        function shareApp(platform) {
-            const text = "🎉 Мой ребёнок больше не боится темноты! Люцик — волшебный кот, который помогает детям 3-7 лет справляться со страхами. Бесплатно, без рекламы, только сказки и забота. Попробуйте и вы! 👉 https://geroy-skazki.vercel.app";
-            const shortText = "🐱 Люцик — друг, который лечит страхи сказкой. Мой ребёнок теперь спит без света! Спасибо, Люцик! ❤️ https://geroy-skazki.vercel.app";
-            const urls = {
-                whatsapp: `https://wa.me/?text=${encodeURIComponent(shortText)}`,
-                vk: `https://vk.com/share.php?url=https://geroy-skazki.vercel.app&title=Герой Сказок&description=${encodeURIComponent(text)}`,
-                telegram: `https://t.me/share/url?url=https://geroy-skazki.vercel.app&text=${encodeURIComponent(shortText)}`
-            };
-            if (urls[platform]) window.open(urls[platform], '_blank');
-        }
-        
-        // ========== ОБЩИЕ ФУНКЦИИ ==========
         function speak(text) {
             let clean = text.replace(/[\*\_\#]/g, '');
             const utter = new SpeechSynthesisUtterance(clean);
@@ -966,7 +634,6 @@
             return badWords.some(word => lowerText.includes(word));
         }
         
-        // ========== КНОПКИ ==========
         document.getElementById('feedBtn').onclick = () => {
             hunger = Math.min(100, hunger + 15);
             mood = Math.min(100, mood + 5);
@@ -978,16 +645,7 @@
         };
         document.getElementById('gamesBtn').onclick = () => showGameMenu();
         document.getElementById('roomBtn').onclick = () => showRoomMenu();
-        document.getElementById('parentHelpBtn').onclick = () => showParentHelpModal();
-        document.getElementById('alertHelpBtn').onclick = () => {
-            const fear = pendingFearText;
-            localStorage.removeItem('pendingFearAlert');
-            localStorage.removeItem('pendingFearText');
-            updateUI();
-            showParentHelpModal(fear);
-        };
         
-        // ========== МИКРОФОН ==========
         let isListening = false, isWaiting = false;
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         let rec = null;
@@ -1034,49 +692,29 @@
             };
         }
         
-        // ========== РОДИТЕЛЬСКИЙ ШТАБ ==========
-        const parentPanel = document.getElementById('parentPanel');
-        function showFirstTimePinSetup() {
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <h3>🔐 Добро пожаловать!</h3>
-                <p style="margin:15px 0;">Создайте пароль для входа в родительский Штаб</p>
-                <input type="password" id="firstPinInput" placeholder="Введите 4-6 цифр" style="width:80%; padding:12px; border-radius:30px; border:none; text-align:center; font-size:18px;">
-                <div><button id="confirmFirstPin" style="background:#4CAF50;">✅ Создать пароль</button></div>
-            `;
-            document.body.appendChild(modal);
-            document.getElementById('confirmFirstPin').onclick = () => {
-                const pin = document.getElementById('firstPinInput').value;
+        document.getElementById('parentBtn').onclick = () => {
+            if (!savedPin) {
+                const pin = prompt('Создайте пароль для входа в Штаб (4-6 цифр):');
                 if (pin && pin.length >= 4 && /^\d+$/.test(pin)) {
                     localStorage.setItem('parentPin', pin);
                     savedPin = pin;
-                    modal.remove();
-                    alert('🎉 Пароль создан!');
-                    speak("Пароль создан!");
-                } else alert('Пароль должен содержать 4-6 цифр!');
-            };
-        }
-        if (!savedPin) setTimeout(() => showFirstTimePinSetup(), 2000);
-        
-        document.getElementById('parentBtn').onclick = () => {
-            if (!savedPin) { showFirstTimePinSetup(); return; }
-            const pin = prompt('Введите пароль для входа в Штаб:');
-            if (pin === savedPin) {
-                parentPanel.style.display = 'block';
-                updateUI();
-            } else if (pin !== null) alert('Неверный пароль!');
+                    alert('Пароль создан! Теперь вы можете войти в Штаб.');
+                    window.location.href = '/parent.html';
+                } else {
+                    alert('Пароль должен содержать 4-6 цифр!');
+                }
+            } else {
+                const pin = prompt('Введите пароль для входа в Штаб:');
+                if (pin === savedPin) {
+                    window.location.href = '/parent.html';
+                } else if (pin !== null) {
+                    alert('Неверный пароль!');
+                }
+            }
         };
-        document.getElementById('closePanelBtn').onclick = () => parentPanel.style.display = 'none';
         
-        document.getElementById('shareBtn').onclick = () => shareApp('whatsapp');
-        document.getElementById('shareVkBtn').onclick = () => shareApp('vk');
-        document.getElementById('shareTgBtn').onclick = () => shareApp('telegram');
-        
-        // ========== ИНИЦИАЛИЗАЦИЯ ==========
         updateAvatarLock();
         updateStatsUI();
-        updateUI();
         changeCharacter(currentChar);
         
         if ('serviceWorker' in navigator) {
