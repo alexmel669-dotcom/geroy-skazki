@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-    // Только POST запросы
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Метод не поддерживается' });
     }
@@ -7,7 +6,6 @@ export default async function handler(req, res) {
     try {
         const { fear, childAge, childName } = req.body;
         
-        // Валидация
         if (!fear || fear.trim() === '') {
             return res.status(400).json({ error: 'Укажите страх ребёнка' });
         }
