@@ -323,12 +323,16 @@
                     <div class="char-avatar" style="background-image: url('dad.png');"></div>
                     <div class="char-name">👨 Папа</div>
                 </div>
-                <div class="char-option" data-char="kid">
-                    <div class="char-avatar" style="background-image: url('kid.png');"></div>
-                    <div class="char-name">🧒 Ребёнок</div>
+                <div class="char-option" data-char="kid1">
+                    <div class="char-avatar" style="background-image: url('kid1.png');"></div>
+                    <div class="char-name">🧒 Ребёнок 1</div>
+                </div>
+                <div class="char-option" data-char="kid2">
+                    <div class="char-avatar" style="background-image: url('kid2.png');"></div>
+                    <div class="char-name">👧 Ребёнок 2</div>
                 </div>
             </div>
-            <p style="font-size:12px; opacity:0.7; margin-top:10px;">⭐ Мама, Папа, Ребёнок доступны по премиум-подписке</p>
+            <p style="font-size:12px; opacity:0.7; margin-top:10px;">⭐ Мама, Папа, Ребёнок 1, Ребёнок 2 доступны по премиум-подписке</p>
         </div>
         
         <div class="card">
@@ -372,7 +376,6 @@
     </div>
     
     <script>
-        // Создаём светлячков
         for (let i = 0; i < 20; i++) {
             const firefly = document.createElement('div');
             firefly.className = 'firefly';
@@ -400,7 +403,8 @@
             lucik: { name: 'Люцик', icon: 'avatar.png', premium: false },
             mom: { name: 'Мама', icon: 'mom.png', premium: true },
             dad: { name: 'Папа', icon: 'dad.png', premium: true },
-            kid: { name: 'Ребёнок', icon: 'kid.png', premium: true }
+            kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: true },
+            kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: true }
         };
         
         function updateUI() {
@@ -426,7 +430,6 @@
                 else opt.classList.remove('active');
             });
             
-            // Достижения
             const achievements = JSON.parse(localStorage.getItem('achievements') || '{}');
             let html = '';
             for (const [id, ach] of Object.entries(achievements)) {
