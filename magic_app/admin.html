@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель — Герой Сказок</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #ff9f4a;
+        }
+        
+        h2 {
+            margin: 20px 0 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ff9f4a;
+            color: #ff9f4a;
+        }
+        
+        .login-form {
+            max-width: 400px;
+            margin: 100px auto;
+            background: #2a2a3e;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+        }
+        
+        .login-form input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 30px;
+            border: none;
+            font-size: 16px;
+        }
+        
+        .login-form button {
+            background: #ff9f4a;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #2a2a3e;
+            border-radius: 20px;
+            padding: 20px;
+            border-left: 4px solid #ff9f4a;
+        }
+        
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ff9f4a;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+        
+        table {
+            width: 100%;
+            background: #2a2a3e;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #3a3a4e;
+        }
+        
+        th {
+            background: #3a3a4e;
+            color: #ff9f4a;
+        }
+        
+        .chart-bar {
+            background: #ff9f4a;
+            height: 30px;
+            border-radius: 15px;
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+        
+        .error {
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 20px;
+        }
+        
+        .refresh-btn {
+            background: #ff9f4a;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            table { font-size: 12px; }
+            th, td { padding: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loginPanel" class="login-form">
+            <h1>🔐 Админ-панель</h1>
+            <input type="password" id="adminPassword" placeholder="Введите пароль">
+            <button onclick="login()">Войти</button>
+            <div id="loginError" style="color: #ff6b6b; margin-top: 10px;"></div>
+        </div>
+        
+        <div id="dashboard" style="display: none;">
+            <h1>📊 Аналитика — Герой Сказок</h1>
+            <button class="refresh-btn" onclick="loadStats()">🔄 Обновить</button>
+            
+            <div id="statsContainer">
+                <div class="loading">Загрузка статистики...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentPassword = '';
+        
+        async function login() {
+            const password = document.getElementById('adminPassword').value;
+            if (!password) {
+                document.getElementById('loginError').innerText = 'Введите пароль';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin-stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                if (response.ok) {
+                    currentPassword = password;
+                    document.getElementById('loginPanel').style.display = 'none';
+                    document.getElementById('dashboard').style.display = 'block';
+                    loadStats();
+                } else {
+                    document.getElementById('loginError').innerText = 'Неверный пароль';
+                }
+            } catch(e) {
+                document.getElementById('loginError').innerText = 'Ошибка соединения';
+            }
+        }
+        
+        async function loadStats() {
+            const container = document.getElementById('statsContainer');
+            container.innerHTML = '<div class="loading">Загрузка статистики...</div>';
+            
+            try {
+                const response = await fetch('/api/admin-stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: currentPassword })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    renderStats(data);
+                } else {
+                    container.innerHTML = `<div class="error">❌ ${data.error || 'Ошибка загрузки'}</div>`;
+                }
+            } catch(e) {
+                container.innerHTML = '<div class="error">❌ Ошибка соединения</div>';
+            }
+        }
+        
+        function renderStats(data) {
+            let html = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${data.total_events || 0}</div>
+                        <div class="stat-label">Всего событий</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.active_users?.length || 0}</div>
+                        <div class="stat-label">Активных пользователей (7 дней)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.event_stats?.find(e => e.event_type === 'fear_detected')?.count || 0}</div>
+                        <div class="stat-label">Выявлено страхов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.event_stats?.find(e => e.event_type === 'achievement_earned')?.count || 0}</div>
+                        <div class="stat-label">Получено достижений</div>
+                    </div>
+                </div>
+                
+                <h2>📈 Динамика за 30 дней</h2>
+                <div class="stats-grid">
+                    ${data.daily_stats?.slice(0, 14).map(day => `
+                        <div style="background:#2a2a3e; border-radius:15px; padding:10px;">
+                            <div style="font-size:12px;">${day.date}</div>
+                            <div class="chart-bar" style="width: ${Math.min(100, day.total_events / 5)}%;">📊 ${day.total_events} событий</div>
+                            <div style="font-size:11px; opacity:0.7;">👤 ${day.unique_users} пользователей</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <h2>🎮 Статистика по играм</h2>
+                <table>
+                    <tr><th>Игра</th><th>Количество</th><th>Средний счёт</th></tr>
+                    ${data.game_stats?.map(game => `
+                        <tr>
+                            <td>${getGameName(game.event_type)}</td>
+                            <td>${game.count}</td>
+                            <td>${Math.round(game.avg_score || 0)}</td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="3">Нет данных</td></tr>'}
+                </table>
+                
+                <h2>😨 Популярные страхи</h2>
+                <table>
+                    <tr><th>Страх</th><th>Количество</th></tr>
+                    ${data.fear_stats?.map(fear => `
+                        <tr>
+                            <td>${getFearName(fear.fear)}</td>
+                            <td>${fear.count}</td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="2">Нет данных</td></tr>'}
+                </table>
+                
+                <h2>🏆 Популярные достижения</h2>
+                <table>
+                    <tr><th>Достижение</th><th>Количество</th></tr>
+                    ${data.achievement_stats?.map(ach => `
+                        <tr>
+                            <td>${ach.achievement}</td>
+                            <td>${ach.count}</td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="2">Нет данных</td></tr>'}
+                </table>
+                
+                <h2>👥 Активные пользователи</h2>
+                <table>
+                    <tr><th>ID</th><th>Email</th><th>Ребёнок</th><th>Событий</th><th>Последняя активность</th></tr>
+                    ${data.active_users?.map(user => `
+                        <tr>
+                            <td>${user.user_id?.slice(-8) || '—'}</td>
+                            <td>${user.user_email || '—'}</td>
+                            <td>${user.child_name || '—'}</td>
+                            <td>${user.events_count}</td>
+                            <td>${new Date(user.last_active).toLocaleString()}</td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="5">Нет данных</td></tr>'}
+                </table>
+            `;
+            
+            document.getElementById('statsContainer').innerHTML = html;
+        }
+        
+        function getGameName(eventType) {
+            const names = {
+                'game_fish': '🐟 Поймай рыбку',
+                'game_memory': '🧠 Мемори',
+                'game_puzzle': '🧩 Пазл',
+                'game_color': '🎨 Раскраска',
+                'game_emotion': '😊 Угадай эмоцию'
+            };
+            return names[eventType] || eventType;
+        }
+        
+        function getFearName(fear) {
+            const names = {
+                'темноты': '😨 Темнота',
+                'врачей': '🏥 Врачи',
+                'одиночества': '🧸 Одиночество',
+                'нового': '🌟 Новое',
+                'обиды': '💔 Обиды',
+                'животных': '🐕 Животные'
+            };
+            return names[fear] || fear;
+        }
+    </script>
+</body>
+</html>
