@@ -5,36 +5,7 @@ const pool = new Pool({
     ssl: true
 });
 
-// Создание таблицы (если не существует)
-async function initTable() {
-    const client = await pool.connect();
-    try {
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS analytics (
-                id SERIAL PRIMARY KEY,
-                event_type VARCHAR(100) NOT NULL,
-                user_id VARCHAR(255),
-                user_email VARCHAR(255),
-                child_name VARCHAR(100),
-                child_age INTEGER,
-                event_data JSONB DEFAULT '{}',
-                created_at TIMESTAMP DEFAULT NOW()
-            );
-        `);
-        
-        // Создаём индексы для быстрого поиска
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON analytics(event_type)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics(created_at)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_analytics_user_id ON analytics(user_id)`);
-    } catch (err) {
-        console.error('Init table error:', err);
-    } finally {
-        client.release();
-    }
-}
-
 export default async function handler(req, res) {
-    // Разрешаем CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -47,8 +18,6 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Метод не поддерживается' });
     }
     
-    await initTable();
-    
     try {
         const { event_type, user_id, user_email, child_name, child_age, event_data } = req.body;
         
@@ -58,6 +27,20 @@ export default async function handler(req, res) {
         
         const client = await pool.connect();
         try {
+            // Создаём таблицу если нет
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS analytics (
+                    id SERIAL PRIMARY KEY,
+                    event_type VARCHAR(100) NOT NULL,
+                    user_id VARCHAR(255),
+                    user_email VARCHAR(255),
+                    child_name VARCHAR(100),
+                    child_age INTEGER,
+                    event_data JSONB DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+            `);
+            
             await client.query(
                 `INSERT INTO analytics (event_type, user_id, user_email, child_name, child_age, event_data) 
                  VALUES ($1, $2, $3, $4, $5, $6)`,
