@@ -6,52 +6,58 @@
     <title>Герой Сказок — виртуальный друг с ИИ для детей 3-7 лет</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
             font-family: 'Segoe UI', 'Roboto', 'Georgia', serif;
             min-height: 100vh;
             color: #3a2a1a;
             position: relative;
-            background: #d4c4a4;
+            background: #c2a366;
             overflow-x: hidden;
         }
         
-        .sand-dunes {
+        /* Реалистичная песочная текстура */
+        body::before {
+            content: '';
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: -2;
-            background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
+            background: 
+                radial-gradient(ellipse at 30% 40%, rgba(220, 190, 120, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(200, 170, 100, 0.15) 0%, transparent 50%),
+                repeating-linear-gradient(45deg, 
+                    rgba(210, 180, 110, 0.08) 0px, rgba(210, 180, 110, 0.08) 2px,
+                    transparent 2px, transparent 10px);
         }
         
-        .sand-texture {
+        /* Шум/зернистость песка */
+        body::after {
+            content: '';
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: -1;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.12'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.2'/%3E%3C/svg%3E");
             background-repeat: repeat;
-            opacity: 0.5;
             pointer-events: none;
         }
         
-        .wind-ripple {
+        /* Песчаные дюны */
+        .sand-dunes {
             position: fixed;
-            top: 0;
+            bottom: 0;
             left: 0;
             width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(200,170,120,0.08) 80px, rgba(200,170,120,0.08) 120px, transparent 120px, transparent 200px);
-            pointer-events: none;
+            height: 25%;
             z-index: -1;
-            animation: windMove 20s linear infinite;
-        }
-        @keyframes windMove {
-            0% { background-position: 0 0; }
-            100% { background-position: 200px 0; }
+            background: linear-gradient(180deg, transparent 0%, rgba(160, 130, 70, 0.25) 100%);
+            border-radius: 100% 100% 0 0 / 50px 50px 0 0;
+            pointer-events: none;
         }
         
         .container {
@@ -62,12 +68,13 @@
             z-index: 1;
         }
         
-        .glass-card {
-            background: rgba(255, 248, 235, 0.15);
-            backdrop-filter: blur(8px);
+        /* Прозрачные карточки */
+        .glass-card, .feature-card, .review, .auth-form, .install-instruction, .reviews-section {
+            background: rgba(255, 248, 235, 0.1);
+            backdrop-filter: blur(12px);
             border-radius: 30px;
-            border: 1px solid rgba(255,255,255,0.35);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
         }
         
         h1 { font-size: 48px; margin-bottom: 20px; color: #6b3a1f; text-align: center; }
@@ -83,7 +90,9 @@
             margin: 10px;
             cursor: pointer;
             border: none;
+            transition: transform 0.2s;
         }
+        .btn:hover { transform: scale(1.02); }
         .btn-blue { background: linear-gradient(90deg, #00d2ff, #3a7bd5); }
         .btn-small { padding: 10px 20px; font-size: 14px; }
         
@@ -121,32 +130,28 @@
             margin: 40px 0;
         }
         .feature-card {
-            background: rgba(255,248,235,0.15);
-            backdrop-filter: blur(8px);
             padding: 28px 22px;
-            border-radius: 30px;
             text-align: center;
         }
         .feature-card h3 { margin-bottom: 12px; color: #6b3a1f; }
         
         .reviews {
-            background: rgba(255,248,235,0.15);
+            background: rgba(255,248,235,0.1);
             backdrop-filter: blur(8px);
             border-radius: 30px;
             padding: 30px;
             margin: 40px 0;
         }
         .review {
-            background: rgba(255,248,235,0.15);
             padding: 20px 25px;
-            border-radius: 25px;
             margin: 15px 0;
         }
-        .review-stars { color: #c8a86c; font-size: 22px; }
+        .review-stars { color: #ffd700; font-size: 22px; }
         
         .auth-form {
             max-width: 450px;
             margin: 30px auto;
+            padding: 30px;
         }
         .input-field {
             width: 100%;
@@ -167,16 +172,8 @@
             margin: 15px 0;
             flex-wrap: wrap;
         }
-        .social-btn {
-            padding: 10px 20px;
-            font-size: 14px;
-            margin: 5px;
-        }
         
         .install-instruction {
-            background: rgba(255,248,235,0.15);
-            backdrop-filter: blur(8px);
-            border-radius: 30px;
             padding: 30px;
             margin: 40px 0;
             text-align: center;
@@ -199,8 +196,6 @@
 </head>
 <body>
     <div class="sand-dunes"></div>
-    <div class="sand-texture"></div>
-    <div class="wind-ripple"></div>
     
     <div class="container">
         <div class="top-nav">
@@ -255,6 +250,36 @@
             <div class="feature-card"><h3>🔐 Безопасно</h3><p>Родительский вход по паролю</p></div>
         </div>
 
+        <!-- Блок отзывов -->
+        <div class="reviews-section glass-card" style="margin-bottom: 40px; padding: 30px;">
+            <h2 style="text-align: center; margin-bottom: 20px;">💬 Отзывы родителей</h2>
+            
+            <div id="reviewsList" style="margin-bottom: 30px;">
+                <div style="text-align: center; padding: 20px;">Загрузка отзывов...</div>
+            </div>
+            
+            <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
+                <h3 style="margin-bottom: 15px;">📝 Оставить отзыв</h3>
+                <input type="text" id="reviewName" class="input-field" placeholder="Ваше имя" style="margin: 10px 0;">
+                
+                <div style="margin: 15px 0;">
+                    <span style="margin-right: 10px;">Ваша оценка: </span>
+                    <span id="starRating" style="font-size: 32px; cursor: pointer; display: inline-flex; gap: 5px;">
+                        <span data-rating="1" style="color: #ffd700;">★</span>
+                        <span data-rating="2" style="color: #ffd700;">★</span>
+                        <span data-rating="3" style="color: #ffd700;">★</span>
+                        <span data-rating="4" style="color: #ffd700;">★</span>
+                        <span data-rating="5" style="color: #ffd700;">★</span>
+                    </span>
+                </div>
+                
+                <textarea id="reviewText" class="input-field" rows="3" placeholder="Поделитесь впечатлениями..." style="resize: none;"></textarea>
+                
+                <button id="submitReviewBtn" class="btn" style="margin-top: 10px;">📤 Отправить отзыв</button>
+                <div id="reviewStatus" style="margin-top: 10px; font-size: 14px;"></div>
+            </div>
+        </div>
+
         <h2 style="text-align: center;">⭐ Отзывы родителей</h2>
         <div class="reviews">
             <div class="review"><div class="review-stars">★★★★★</div><p>«Сын боялся темноты 2 года. После сказок Люцика — сам выключает свет!»</p><small>— Екатерина, сын 5 лет</small></div>
@@ -262,7 +287,7 @@
             <div class="review"><div class="review-stars">★★★★☆</div><p>«Ребёнок в восторге. Ждём голос мамы и больше игр!»</p><small>— Дмитрий, сын 6 лет</small></div>
         </div>
 
-        <div class="install-instruction">
+        <div class="install-instruction glass-card">
             <h3>📲 Как установить приложение на телефон</h3>
             <p><strong>Android (Chrome):</strong> откройте сайт → нажмите «Установить приложение» → подтвердите</p>
             <p><strong>iPhone (Safari):</strong> откройте сайт → нажмите «Поделиться» → «На экран Домой»</p>
@@ -276,6 +301,7 @@
     </div>
 
     <script>
+        // PWA установка
         let deferredPrompt = null;
         const installBtn = document.getElementById('installBtn');
 
@@ -290,7 +316,6 @@
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                console.log('Установка:', outcome);
                 deferredPrompt = null;
                 installBtn.style.display = 'none';
             } else {
@@ -303,7 +328,6 @@
         });
 
         window.addEventListener('appinstalled', () => {
-            console.log('PWA установлено');
             installBtn.style.display = 'none';
         });
 
@@ -313,7 +337,6 @@
 
         if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
             installBtn.innerText = '📱 Инструкция для iPhone';
-            installBtn.style.background = '#555';
             installBtn.onclick = () => {
                 alert('📱 Нажмите "Поделиться" → "На экран Домой"');
             };
@@ -327,7 +350,7 @@
             window.location.href = '/app.html';
         });
 
-        // ========== КНОПКИ СОЦСЕТЕЙ (ЗАГЛУШКИ) ==========
+        // ========== КНОПКИ СОЦСЕТЕЙ ==========
         document.getElementById('vkBtn').addEventListener('click', () => {
             alert('Вход через ВКонтакте (в разработке). Пожалуйста, используйте email или гостевой вход.');
         });
@@ -412,6 +435,102 @@
                 statusDiv.innerHTML = '❌ Ошибка соединения';
             }
         });
+        
+        // ========== ОТЗЫВЫ ==========
+        function loadReviews() {
+            const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
+            const container = document.getElementById('reviewsList');
+            
+            if (reviews.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px;">🌟 Пока нет отзывов. Будьте первым!</div>';
+                return;
+            }
+            
+            container.innerHTML = reviews.slice(-6).reverse().map(review => `
+                <div class="review" style="background: rgba(255,248,235,0.1); border-radius: 25px; padding: 15px; margin-bottom: 15px;">
+                    <div style="color: #ffd700; font-size: 18px; margin-bottom: 5px;">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</div>
+                    <p style="margin: 10px 0;">${escapeHtml(review.text)}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; opacity: 0.7;">
+                        <span>— ${escapeHtml(review.name)}</span>
+                        <span>${new Date(review.date).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        let currentRating = 5;
+        const stars = document.querySelectorAll('#starRating span');
+        stars.forEach((star, i) => {
+            star.onclick = () => {
+                currentRating = i + 1;
+                stars.forEach((s, idx) => {
+                    s.style.color = idx < currentRating ? '#ffd700' : '#ccc';
+                });
+            };
+        });
+        
+        document.getElementById('submitReviewBtn').onclick = async () => {
+            const name = document.getElementById('reviewName').value.trim();
+            const text = document.getElementById('reviewText').value.trim();
+            const statusDiv = document.getElementById('reviewStatus');
+            
+            if (!name) {
+                statusDiv.innerHTML = '❌ Введите ваше имя';
+                statusDiv.style.color = '#ff6b6b';
+                return;
+            }
+            if (!text) {
+                statusDiv.innerHTML = '❌ Напишите отзыв';
+                statusDiv.style.color = '#ff6b6b';
+                return;
+            }
+            
+            statusDiv.innerHTML = '⏳ Отправка...';
+            statusDiv.style.color = '#ffd700';
+            
+            const review = {
+                name: name,
+                text: text,
+                rating: currentRating,
+                date: new Date().toISOString()
+            };
+            
+            const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
+            reviews.push(review);
+            localStorage.setItem('reviews', JSON.stringify(reviews));
+            
+            try {
+                const response = await fetch('/api/send-review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(review)
+                });
+                const data = await response.json();
+                if (data.telegram) {
+                    statusDiv.innerHTML = '✅ Спасибо за отзыв! Уведомление отправлено в Telegram.';
+                } else {
+                    statusDiv.innerHTML = '✅ Спасибо за отзыв!';
+                }
+                statusDiv.style.color = '#90ee90';
+            } catch(e) {
+                statusDiv.innerHTML = '✅ Спасибо за отзыв!';
+                statusDiv.style.color = '#90ee90';
+            }
+            
+            document.getElementById('reviewName').value = '';
+            document.getElementById('reviewText').value = '';
+            loadReviews();
+            
+            setTimeout(() => { statusDiv.innerHTML = ''; }, 3000);
+        };
+        
+        loadReviews();
         
         const savedEmail = localStorage.getItem('userEmail');
         if (savedEmail && !savedEmail.startsWith('guest_')) {
