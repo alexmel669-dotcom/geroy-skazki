@@ -5,16 +5,26 @@ const pool = new Pool({
     ssl: true
 });
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123456'; // Смените!
+// Пароль админа (можно задать в Vercel Environment Variables)
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
 export default async function handler(req, res) {
+    // Разрешаем CORS для админ-панели
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Метод не поддерживается' });
     }
     
     const { password } = req.body;
     
-    if (password !== ADMIN_PASSWORD) {
+    if (!password || password !== ADMIN_PASSWORD) {
         return res.status(401).json({ error: 'Неверный пароль' });
     }
     
@@ -96,19 +106,19 @@ export default async function handler(req, res) {
             `);
             
             res.status(200).json({
-                total_events: parseInt(totalEvents.rows[0].count),
-                daily_stats: dailyStats.rows,
-                event_stats: eventStats.rows,
-                fear_stats: fearStats.rows,
-                active_users: activeUsers.rows,
-                achievement_stats: achievementStats.rows,
-                game_stats: gameStats.rows
+                total_events: parseInt(totalEvents.rows[0]?.count || 0),
+                daily_stats: dailyStats.rows || [],
+                event_stats: eventStats.rows || [],
+                fear_stats: fearStats.rows || [],
+                active_users: activeUsers.rows || [],
+                achievement_stats: achievementStats.rows || [],
+                game_stats: gameStats.rows || []
             });
         } finally {
             client.release();
         }
     } catch (error) {
         console.error('Admin stats error:', error);
-        res.status(500).json({ error: 'Ошибка получения статистики' });
+        res.status(500).json({ error: 'Ошибка получения статистики: ' + error.message });
     }
 }
