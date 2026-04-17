@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Родительский штаб — Герой Сказок</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+            min-height: 100vh;
+            color: #f0e6d0;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        /* ========== ЛЕСНОЙ ФОН ========== */
+        .forest-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: linear-gradient(160deg, #0a2a1a 0%, #0d301f 30%, #0f3522 60%, #0a2818 100%);
+        }
+        
+        /* Силуэты деревьев (дальний план) */
+        .trees-back {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image: 
+                repeating-linear-gradient(90deg,
+                    transparent 0px, transparent 50px,
+                    rgba(10, 30, 15, 0.4) 50px, rgba(10, 30, 15, 0.4) 55px,
+                    transparent 55px, transparent 100px,
+                    rgba(8, 25, 12, 0.3) 100px, rgba(8, 25, 12, 0.3) 105px);
+            background-size: 150px 100%;
+            background-repeat: repeat-y;
+        }
+        
+        /* Силуэты деревьев (ближний план) */
+        .trees-front {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image: 
+                repeating-linear-gradient(90deg,
+                    transparent 0px, transparent 80px,
+                    rgba(20, 60, 30, 0.5) 80px, rgba(20, 60, 30, 0.5) 88px,
+                    transparent 88px, transparent 160px,
+                    rgba(15, 50, 25, 0.4) 160px, rgba(15, 50, 25, 0.4) 168px);
+            background-size: 250px 100%;
+            background-repeat: repeat-y;
+        }
+        
+        /* Анимированный туман */
+        .fog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: radial-gradient(ellipse at 50% 80%, rgba(160, 180, 140, 0.12) 0%, transparent 70%);
+            pointer-events: none;
+            animation: fogMove 12s ease-in-out infinite alternate;
+        }
+        
+        @keyframes fogMove {
+            0% { opacity: 0.4; transform: translateX(-3%); }
+            100% { opacity: 0.8; transform: translateX(3%); }
+        }
+        
+        /* Светлячки */
+        .firefly {
+            position: fixed;
+            width: 3px;
+            height: 3px;
+            background: #ffdd88;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #ffdd88, 0 0 3px #ffaa44;
+            pointer-events: none;
+            z-index: 0;
+            animation: fly 10s infinite ease-in-out;
+        }
+        
+        @keyframes fly {
+            0% { transform: translate(0, 0); opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translate(var(--tx, 150px), var(--ty, -120px)); opacity: 0; }
+        }
+        
+        /* Основной контейнер */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        /* Карточки */
+        .card {
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(8px);
+            border-radius: 30px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(160, 180, 140, 0.2);
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #d4e6c3;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #c4d6a3;
+            border-left: 3px solid #8bc34a;
+            padding-left: 12px;
+        }
+        
+        h3 {
+            font-size: 18px;
+            margin: 15px 0 10px;
+            color: #b4c89a;
+        }
+        
+        button {
+            background: #2d5a3b;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            margin: 5px;
+            cursor: pointer;
+            color: white;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        
+        button:hover {
+            background: #3d7a4b;
+            transform: scale(1.02);
+        }
+        
+        .btn-primary {
+            background: #4a7a4a;
+        }
+        
+        .btn-warning {
+            background: #8b3a3a;
+        }
+        
+        .btn-share {
+            background: #25D366;
+        }
+        
+        .btn-share-vk {
+            background: #4c75a3;
+        }
+        
+        .btn-share-tg {
+            background: #26A5E4;
+        }
+        
+        /* Мини-аватарки */
+        .char-selector {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        
+        .char-option {
+            text-align: center;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 40px;
+            background: rgba(0,0,0,0.3);
+            transition: 0.2s;
+        }
+        
+        .char-option.active {
+            background: #ff9f4a;
+            transform: scale(1.05);
+        }
+        
+        .char-avatar {
+            width: 50px;
+            height: 50px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            margin: 0 auto 5px;
+            border-radius: 50%;
+        }
+        
+        .char-name {
+            font-size: 12px;
+        }
+        
+        /* Уведомление */
+        .alert-card {
+            background: rgba(255, 215, 0, 0.15);
+            border-left: 4px solid #ffd700;
+            padding: 12px 15px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-item {
+            background: rgba(0,0,0,0.3);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        .history-list {
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 10px;
+            font-size: 12px;
+        }
+        
+        .history-item {
+            padding: 5px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        hr {
+            border-color: rgba(160, 180, 140, 0.2);
+            margin: 15px 0;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #a4d4a4;
+            text-decoration: none;
+        }
+        
+        .lock-icon {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 15px;
+            border-radius: 30px;
+            font-size: 12px;
+            z-index: 10;
+        }
+        
+        @media (max-width: 480px) {
+            .container { padding: 20px 15px; }
+            h1 { font-size: 24px; }
+            .char-avatar { width: 40px; height: 40px; }
+            .char-name { font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="forest-bg"></div>
+    <div class="trees-back"></div>
+    <div class="trees-front"></div>
+    <div class="fog"></div>
+    
+    <div class="lock-icon">🔒 Родительская зона</div>
+    
+    <div class="container">
+        <h1>🌲 Штаб Создателя</h1>
+        
+        <!-- Уведомление о страхе (если есть) -->
+        <div id="fearAlert" class="alert-card" style="display: none;">
+            <div id="alertContent"></div>
+            <button id="alertHelpBtn" style="margin-top: 10px; background: #ff9f4a;">💬 Помочь поговорить</button>
+        </div>
+        
+        <!-- Смена персонажа -->
+        <div class="card">
+            <h2>🎭 Смена персонажа</h2>
+            <div class="char-selector" id="charSelector">
+                <div class="char-option" data-char="lucik">
+                    <div class="char-avatar" style="background-image: url('avatar.png');"></div>
+                    <div class="char-name">🦁 Люцик</div>
+                </div>
+                <div class="char-option" data-char="mom">
+                    <div class="char-avatar" style="background-image: url('mom.png');"></div>
+                    <div class="char-name">👩 Мама</div>
+                </div>
+                <div class="char-option" data-char="dad">
+                    <div class="char-avatar" style="background-image: url('dad.png');"></div>
+                    <div class="char-name">👨 Папа</div>
+                </div>
+                <div class="char-option" data-char="kid">
+                    <div class="char-avatar" style="background-image: url('kid.png');"></div>
+                    <div class="char-name">🧒 Ребёнок</div>
+                </div>
+            </div>
+            <p style="font-size:12px; opacity:0.7; margin-top:10px;">⭐ Мама, Папа, Ребёнок доступны по премиум-подписке</p>
+        </div>
+        
+        <!-- Статистика и история -->
+        <div class="card">
+            <h2>📊 Дневник страхов</h2>
+            <div class="stats-grid" id="fearStats">
+                😨 Темнота: 0<br>🏥 Врачи: 0<br>🧸 Одиночество: 0<br>🌟 Новое: 0<br>💔 Обиды: 0<br>🐕 Животные: 0
+            </div>
+            
+            <h3>📒 История разговоров</h3>
+            <div class="history-list" id="historyList">Пока тишина...</div>
+        </div>
+        
+        <!-- Помощь психолога -->
+        <div class="card">
+            <h2>🧠 Помощь психолога</h2>
+            <button id="parentHelpBtn" class="btn-primary" style="width: 100%;">💬 Получить совет</button>
+        </div>
+        
+        <!-- Поделиться -->
+        <div class="card">
+            <h2>📤 Поделиться успехами</h2>
+            <button id="shareBtn" class="btn-share">📱 WhatsApp</button>
+            <button id="shareVkBtn" class="btn-share-vk">📱 VK</button>
+            <button id="shareTgBtn" class="btn-share-tg">📱 Telegram</button>
+            <p style="font-size:12px; margin-top:10px;">🎉 Расскажите друзьям о Люцике!</p>
+        </div>
+        
+        <!-- Документы -->
+        <div class="card">
+            <h2>📜 Документы</h2>
+            <p><a href="/privacy.html" target="_blank" style="color:#a4d4a4;">Политика конфиденциальности</a></p>
+            <p><a href="/terms.html" target="_blank" style="color:#a4d4a4;">Пользовательское соглашение</a></p>
+        </div>
+        
+        <!-- Кнопки навигации -->
+        <div style="text-align: center;">
+            <button onclick="window.location.href='/account.html'" style="background:#00d2ff;">👤 Личный кабинет</button>
+            <button onclick="window.location.href='/app.html'" style="background:#5a3a2a;">🏠 Вернуться к Люцику</button>
+        </div>
+        
+        <a href="/app.html" class="back-link">← На главный экран</a>
+    </div>
+    
+    <script>
+        // Создаём светлячков
+        function createFireflies() {
+            for (let i = 0; i < 20; i++) {
+                const firefly = document.createElement('div');
+                firefly.className = 'firefly';
+                const left = Math.random() * 100;
+                const top = Math.random() * 100;
+                const tx = (Math.random() - 0.5) * 200;
+                const ty = (Math.random() - 0.5) * 150 - 50;
+                firefly.style.left = left + '%';
+                firefly.style.top = top + '%';
+                firefly.style.setProperty('--tx', tx + 'px');
+                firefly.style.setProperty('--ty', ty + 'px');
+                firefly.style.animationDelay = Math.random() * 8 + 's';
+                firefly.style.animationDuration = (Math.random() * 8 + 6) + 's';
+                document.body.appendChild(firefly);
+            }
+        }
+        createFireflies();
+        
+        // ========== ДАННЫЕ ==========
+        let isPremium = localStorage.getItem('isPremium') === 'true';
+        let childName = localStorage.getItem('childName') || 'малыш';
+        let childAge = localStorage.getItem('childAge') || 5;
+        let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
+        let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+        let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
+        let pendingFearAlert = localStorage.getItem('pendingFearAlert');
+        let pendingFearText = localStorage.getItem('pendingFearText') || '';
+        
+        const characters = {
+            lucik: { name: 'Люцик', icon: 'avatar.png', premium: false },
+            mom: { name: 'Мама', icon: 'mom.png', premium: true },
+            dad: { name: 'Папа', icon: 'dad.png', premium: true },
+            kid: { name: 'Ребёнок', icon: 'kid.png', premium: true }
+        };
+        
+        function updateUI() {
+            document.getElementById('fearStats').innerHTML = `
+                <div class="stat-item">😨 Темнота: ${fearStats.темноты}</div>
+                <div class="stat-item">🏥 Врачи: ${fearStats.врачей}</div>
+                <div class="stat-item">🧸 Одиночество: ${fearStats.одиночества}</div>
+                <div class="stat-item">🌟 Новое: ${fearStats.нового}</div>
+                <div class="stat-item">💔 Обиды: ${fearStats.обиды}</div>
+                <div class="stat-item">🐕 Животные: ${fearStats.животных}</div>
+            `;
+            document.getElementById('historyList').innerHTML = conversationHistory.slice(-15).map(i => `<div class="history-item">${i}</div>`).join('') || "Пока тишина...";
+            
+            if (pendingFearAlert === 'true' && pendingFearText) {
+                document.getElementById('fearAlert').style.display = 'block';
+                document.getElementById('alertContent').innerHTML = `📢 <strong>Люцик заметил:</strong><br>Ребёнок сказал: "${pendingFearText}"<br><span style="font-size:12px;">Хотите получить совет, как мягко поговорить?</span>`;
+            } else {
+                document.getElementById('fearAlert').style.display = 'none';
+            }
+            
+            // Подсветка активного персонажа
+            document.querySelectorAll('.char-option').forEach(opt => {
+                if (opt.dataset.char === currentChar) {
+                    opt.classList.add('active');
+                } else {
+                    opt.classList.remove('active');
+                }
+            });
+        }
+        
+        function changeCharacter(charId) {
+            if (characters[charId].premium && !isPremium) {
+                alert('🌟 Оформите подписку, чтобы играть за этого персонажа!');
+                return;
+            }
+            currentChar = charId;
+            localStorage.setItem('currentCharacter', charId);
+            updateUI();
+            alert(`Персонаж изменён на ${characters[charId].name}`);
+        }
+        
+        // Смена персонажа через клик
+        document.querySelectorAll('.char-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                changeCharacter(opt.dataset.char);
+            });
+        });
+        
+        // ========== ПОМОЩЬ ПСИХОЛОГА ==========
+        async function getParentAdvice(fear) {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); backdrop-filter:blur(12px); border-radius:40px; padding:24px; z-index:3000; min-width:280px; max-width:90%; max-height:80%; overflow:auto; color:white; border:1px solid rgba(255,255,255,0.2);';
+            modal.innerHTML = `<h3>🧠 Совет психолога</h3><div id="adviceResult" style="margin:15px 0; line-height:1.5;">⏳ Люцик советуется...</div><button class="close-btn" style="background:#ff4081; padding:10px 20px; border-radius:30px; border:none; color:white; margin-top:15px;">Закрыть</button>`;
+            document.body.appendChild(modal);
+            
+            try {
+                const response = await fetch('/api/parent-advice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fear, childAge, childName })
+                });
+                const data = await response.json();
+                const resultDiv = document.getElementById('adviceResult');
+                if (data.advice) {
+                    resultDiv.innerHTML = `<strong>😟 Страх: "${fear}"</strong><br><br>${data.advice.replace(/\n/g, '<br>')}<br><br><small>💡 Совет сгенерирован ИИ</small>`;
+                } else {
+                    resultDiv.innerHTML = '❌ Не удалось получить совет. Попробуйте позже.';
+                }
+            } catch(e) {
+                document.getElementById('adviceResult').innerHTML = '❌ Ошибка соединения.';
+            }
+            
+            modal.querySelector('.close-btn').onclick = () => modal.remove();
+        }
+        
+        function showHelpModal() {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); backdrop-filter:blur(12px); border-radius:40px; padding:24px; z-index:3000; min-width:280px; max-width:90%; color:white; border:1px solid rgba(255,255,255,0.2);';
+            modal.innerHTML = `
+                <h3>🧠 Выберите страх</h3>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:15px 0;">
+                    <button id="helpDarkness" style="background:#4a4a6a;">😨 Темнота</button>
+                    <button id="helpDoctors" style="background:#4a4a6a;">🏥 Врачи</button>
+                    <button id="helpAlone" style="background:#4a4a6a;">🧸 Одиночество</button>
+                    <button id="helpAnimals" style="background:#4a4a6a;">🐕 Животные</button>
+                    <button id="helpNew" style="background:#4a4a6a;">🌟 Новое</button>
+                    <button id="helpOffense" style="background:#4a4a6a;">💔 Обиды</button>
+                </div>
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <input type="text" id="customFear" placeholder="Или напишите свой..." style="flex:1; padding:10px; border-radius:30px; border:none;">
+                    <button id="customBtn" style="background:#ff9f4a;">👉</button>
+                </div>
+                <button class="close-btn" style="background:#ff4081; padding:10px 20px; border-radius:30px; border:none; color:white; width:100%;">Закрыть</button>
+            `;
+            document.body.appendChild(modal);
+            
+            const getAdvice = (fear) => { modal.remove(); getParentAdvice(fear); };
+            document.getElementById('helpDarkness').onclick = () => getAdvice('темнота');
+            document.getElementById('helpDoctors').onclick = () => getAdvice('врачи, уколы, больница');
+            document.getElementById('helpAlone').onclick = () => getAdvice('одиночество, оставаться без мамы');
+            document.getElementById('helpAnimals').onclick = () => getAdvice('животные');
+            document.getElementById('helpNew').onclick = () => getAdvice('новое, незнакомое, перемены');
+            document.getElementById('helpOffense').onclick = () => getAdvice('обиды, ссоры');
+            document.getElementById('customBtn').onclick = () => {
+                const custom = document.getElementById('customFear').value.trim();
+                if (custom) getAdvice(custom);
+            };
+            modal.querySelector('.close-btn').onclick = () => modal.remove();
+        }
+        
+        document.getElementById('parentHelpBtn').onclick = showHelpModal;
+        document.getElementById('alertHelpBtn').onclick = () => {
+            const fear = pendingFearText;
+            localStorage.removeItem('pendingFearAlert');
+            localStorage.removeItem('pendingFearText');
+            updateUI();
+            getParentAdvice(fear);
+        };
+        
+        // ========== ПОДЕЛИТЬСЯ ==========
+        function shareApp(platform) {
+            const text = "🎉 Мой ребёнок больше не боится темноты! Люцик — волшебный кот, который помогает детям 3-7 лет справляться со страхами. Бесплатно, без рекламы, только сказки и забота. Попробуйте и вы! 👉 https://geroy-skazki.vercel.app";
+            const shortText = "🐱 Люцик — друг, который лечит страхи сказкой. Мой ребёнок теперь спит без света! Спасибо, Люцик! ❤️ https://geroy-skazki.vercel.app";
+            const urls = {
+                whatsapp: `https://wa.me/?text=${encodeURIComponent(shortText)}`,
+                vk: `https://vk.com/share.php?url=https://geroy-skazki.vercel.app&title=Герой Сказок&description=${encodeURIComponent(text)}`,
+                telegram: `https://t.me/share/url?url=https://geroy-skazki.vercel.app&text=${encodeURIComponent(shortText)}`
+            };
+            if (urls[platform]) window.open(urls[platform], '_blank');
+        }
+        
+        document.getElementById('shareBtn').onclick = () => shareApp('whatsapp');
+        document.getElementById('shareVkBtn').onclick = () => shareApp('vk');
+        document.getElementById('shareTgBtn').onclick = () => shareApp('telegram');
+        
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        updateUI();
+        
+        // Проверка авторизации (если нет токена — редирект)
+        const token = localStorage.getItem('userToken');
+        if (!token && !localStorage.getItem('guestMode')) {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>
