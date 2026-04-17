@@ -17,20 +17,32 @@ async function initTable() {
                 user_email VARCHAR(255),
                 child_name VARCHAR(100),
                 child_age INTEGER,
-                event_data JSONB,
+                event_data JSONB DEFAULT '{}',
                 created_at TIMESTAMP DEFAULT NOW()
             );
-            
-            CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON analytics(event_type);
-            CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics(created_at);
-            CREATE INDEX IF NOT EXISTS idx_analytics_user_id ON analytics(user_id);
         `);
+        
+        // Создаём индексы для быстрого поиска
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON analytics(event_type)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics(created_at)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_analytics_user_id ON analytics(user_id)`);
+    } catch (err) {
+        console.error('Init table error:', err);
     } finally {
         client.release();
     }
 }
 
 export default async function handler(req, res) {
+    // Разрешаем CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Метод не поддерживается' });
     }
@@ -58,6 +70,6 @@ export default async function handler(req, res) {
         }
     } catch (error) {
         console.error('Analytics error:', error);
-        res.status(500).json({ error: 'Ошибка сохранения аналитики' });
+        res.status(500).json({ error: 'Ошибка сохранения аналитики: ' + error.message });
     }
 }
