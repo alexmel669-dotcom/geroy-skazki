@@ -36,34 +36,6 @@
             color: #ff9f4a;
         }
         
-        .login-form {
-            max-width: 400px;
-            margin: 100px auto;
-            background: #2a2a3e;
-            padding: 30px;
-            border-radius: 20px;
-            text-align: center;
-        }
-        
-        .login-form input {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 30px;
-            border: none;
-            font-size: 16px;
-        }
-        
-        .login-form button {
-            background: #ff9f4a;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -120,12 +92,6 @@
             font-weight: bold;
         }
         
-        .error {
-            color: #ff6b6b;
-            text-align: center;
-            padding: 20px;
-        }
-        
         .loading {
             text-align: center;
             padding: 40px;
@@ -142,6 +108,12 @@
             font-weight: bold;
         }
         
+        .error {
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px;
+        }
+        
         @media (max-width: 768px) {
             .stats-grid { grid-template-columns: 1fr; }
             table { font-size: 12px; }
@@ -151,53 +123,15 @@
 </head>
 <body>
     <div class="container">
-        <div id="loginPanel" class="login-form">
-            <h1>🔐 Админ-панель</h1>
-            <input type="password" id="adminPassword" placeholder="Введите пароль">
-            <button onclick="login()">Войти</button>
-            <div id="loginError" style="color: #ff6b6b; margin-top: 10px;"></div>
-        </div>
+        <h1>📊 Админ-панель — Герой Сказок</h1>
+        <button class="refresh-btn" onclick="loadStats()">🔄 Обновить</button>
         
-        <div id="dashboard" style="display: none;">
-            <h1>📊 Аналитика — Герой Сказок</h1>
-            <button class="refresh-btn" onclick="loadStats()">🔄 Обновить</button>
-            
-            <div id="statsContainer">
-                <div class="loading">Загрузка статистики...</div>
-            </div>
+        <div id="statsContainer">
+            <div class="loading">Загрузка статистики...</div>
         </div>
     </div>
     
     <script>
-        let currentPassword = '';
-        
-        async function login() {
-            const password = document.getElementById('adminPassword').value;
-            if (!password) {
-                document.getElementById('loginError').innerText = 'Введите пароль';
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/admin-stats', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
-                });
-                
-                if (response.ok) {
-                    currentPassword = password;
-                    document.getElementById('loginPanel').style.display = 'none';
-                    document.getElementById('dashboard').style.display = 'block';
-                    loadStats();
-                } else {
-                    document.getElementById('loginError').innerText = 'Неверный пароль';
-                }
-            } catch(e) {
-                document.getElementById('loginError').innerText = 'Ошибка соединения';
-            }
-        }
-        
         async function loadStats() {
             const container = document.getElementById('statsContainer');
             container.innerHTML = '<div class="loading">Загрузка статистики...</div>';
@@ -206,7 +140,7 @@
                 const response = await fetch('/api/admin-stats', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: currentPassword })
+                    body: JSON.stringify({ password: 'temp' }) // временно
                 });
                 
                 const data = await response.json();
@@ -214,10 +148,10 @@
                 if (response.ok) {
                     renderStats(data);
                 } else {
-                    container.innerHTML = `<div class="error">❌ ${data.error || 'Ошибка загрузки'}</div>`;
+                    container.innerHTML = `<div class="error">❌ Ошибка: ${data.error || 'Неизвестная ошибка'}</div>`;
                 }
             } catch(e) {
-                container.innerHTML = '<div class="error">❌ Ошибка соединения</div>';
+                container.innerHTML = '<div class="error">❌ Ошибка соединения с сервером</div>';
             }
         }
         
@@ -327,6 +261,9 @@
             };
             return names[fear] || fear;
         }
+        
+        // Загружаем статистику при открытии страницы
+        loadStats();
     </script>
 </body>
 </html>
