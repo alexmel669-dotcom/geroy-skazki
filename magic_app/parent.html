@@ -19,7 +19,7 @@
             overflow-x: hidden;
         }
         
-        /* ========== ЛЕСНОЙ ФОН ========== */
+        /* ========== ФОН С ВАШЕЙ PNG КАРТИНКОЙ ========== */
         .forest-bg {
             position: fixed;
             top: 0;
@@ -27,81 +27,10 @@
             width: 100%;
             height: 100%;
             z-index: -2;
-            background: linear-gradient(160deg, #0a2a1a 0%, #0d301f 30%, #0f3522 60%, #0a2818 100%);
-        }
-        
-        /* Силуэты деревьев (дальний план) */
-        .trees-back {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background-image: 
-                repeating-linear-gradient(90deg,
-                    transparent 0px, transparent 50px,
-                    rgba(10, 30, 15, 0.4) 50px, rgba(10, 30, 15, 0.4) 55px,
-                    transparent 55px, transparent 100px,
-                    rgba(8, 25, 12, 0.3) 100px, rgba(8, 25, 12, 0.3) 105px);
-            background-size: 150px 100%;
-            background-repeat: repeat-y;
-        }
-        
-        /* Силуэты деревьев (ближний план) */
-        .trees-front {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background-image: 
-                repeating-linear-gradient(90deg,
-                    transparent 0px, transparent 80px,
-                    rgba(20, 60, 30, 0.5) 80px, rgba(20, 60, 30, 0.5) 88px,
-                    transparent 88px, transparent 160px,
-                    rgba(15, 50, 25, 0.4) 160px, rgba(15, 50, 25, 0.4) 168px);
-            background-size: 250px 100%;
-            background-repeat: repeat-y;
-        }
-        
-        /* Анимированный туман */
-        .fog {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            background: radial-gradient(ellipse at 50% 80%, rgba(160, 180, 140, 0.12) 0%, transparent 70%);
-            pointer-events: none;
-            animation: fogMove 12s ease-in-out infinite alternate;
-        }
-        
-        @keyframes fogMove {
-            0% { opacity: 0.4; transform: translateX(-3%); }
-            100% { opacity: 0.8; transform: translateX(3%); }
-        }
-        
-        /* Светлячки */
-        .firefly {
-            position: fixed;
-            width: 3px;
-            height: 3px;
-            background: #ffdd88;
-            border-radius: 50%;
-            box-shadow: 0 0 8px #ffdd88, 0 0 3px #ffaa44;
-            pointer-events: none;
-            z-index: 0;
-            animation: fly 10s infinite ease-in-out;
-        }
-        
-        @keyframes fly {
-            0% { transform: translate(0, 0); opacity: 0; }
-            20% { opacity: 1; }
-            80% { opacity: 1; }
-            100% { transform: translate(var(--tx, 150px), var(--ty, -120px)); opacity: 0; }
+            background-image: url('parent-bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
         
         /* Основной контейнер */
@@ -115,12 +44,12 @@
         
         /* Карточки */
         .card {
-            background: rgba(0, 0, 0, 0.45);
+            background: rgba(0, 0, 0, 0.55);
             backdrop-filter: blur(8px);
             border-radius: 30px;
             padding: 20px;
             margin-bottom: 20px;
-            border: 1px solid rgba(160, 180, 140, 0.2);
+            border: 1px solid rgba(160, 180, 140, 0.3);
         }
         
         h1 {
@@ -166,10 +95,6 @@
             background: #4a7a4a;
         }
         
-        .btn-warning {
-            background: #8b3a3a;
-        }
-        
         .btn-share {
             background: #25D366;
         }
@@ -196,7 +121,7 @@
             cursor: pointer;
             padding: 8px 12px;
             border-radius: 40px;
-            background: rgba(0,0,0,0.3);
+            background: rgba(0,0,0,0.4);
             transition: 0.2s;
         }
         
@@ -260,22 +185,17 @@
             margin: 15px 0;
         }
         
-        .back-link {
-            display: inline-block;
-            margin-top: 15px;
-            color: #a4d4a4;
-            text-decoration: none;
-        }
-        
         .lock-icon {
             position: fixed;
             top: 20px;
             right: 20px;
             background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
             padding: 8px 15px;
             border-radius: 30px;
             font-size: 12px;
             z-index: 10;
+            color: white;
         }
         
         @media (max-width: 480px) {
@@ -288,22 +208,17 @@
 </head>
 <body>
     <div class="forest-bg"></div>
-    <div class="trees-back"></div>
-    <div class="trees-front"></div>
-    <div class="fog"></div>
     
     <div class="lock-icon">🔒 Родительская зона</div>
     
     <div class="container">
         <h1>🌲 Штаб Создателя</h1>
         
-        <!-- Уведомление о страхе (если есть) -->
         <div id="fearAlert" class="alert-card" style="display: none;">
             <div id="alertContent"></div>
             <button id="alertHelpBtn" style="margin-top: 10px; background: #ff9f4a;">💬 Помочь поговорить</button>
         </div>
         
-        <!-- Смена персонажа -->
         <div class="card">
             <h2>🎭 Смена персонажа</h2>
             <div class="char-selector" id="charSelector">
@@ -327,7 +242,6 @@
             <p style="font-size:12px; opacity:0.7; margin-top:10px;">⭐ Мама, Папа, Ребёнок доступны по премиум-подписке</p>
         </div>
         
-        <!-- Статистика и история -->
         <div class="card">
             <h2>📊 Дневник страхов</h2>
             <div class="stats-grid" id="fearStats">
@@ -338,13 +252,11 @@
             <div class="history-list" id="historyList">Пока тишина...</div>
         </div>
         
-        <!-- Помощь психолога -->
         <div class="card">
             <h2>🧠 Помощь психолога</h2>
             <button id="parentHelpBtn" class="btn-primary" style="width: 100%;">💬 Получить совет</button>
         </div>
         
-        <!-- Поделиться -->
         <div class="card">
             <h2>📤 Поделиться успехами</h2>
             <button id="shareBtn" class="btn-share">📱 WhatsApp</button>
@@ -353,44 +265,23 @@
             <p style="font-size:12px; margin-top:10px;">🎉 Расскажите друзьям о Люцике!</p>
         </div>
         
-        <!-- Документы -->
         <div class="card">
             <h2>📜 Документы</h2>
             <p><a href="/privacy.html" target="_blank" style="color:#a4d4a4;">Политика конфиденциальности</a></p>
             <p><a href="/terms.html" target="_blank" style="color:#a4d4a4;">Пользовательское соглашение</a></p>
         </div>
         
-        <!-- Кнопки навигации -->
         <div style="text-align: center;">
             <button onclick="window.location.href='/account.html'" style="background:#00d2ff;">👤 Личный кабинет</button>
             <button onclick="window.location.href='/app.html'" style="background:#5a3a2a;">🏠 Вернуться к Люцику</button>
         </div>
         
-        <a href="/app.html" class="back-link">← На главный экран</a>
+        <a href="/app.html" style="display: block; text-align: center; margin-top: 15px; color: #a4d4a4;">← На главный экран</a>
     </div>
     
     <script>
-        // Создаём светлячков
-        function createFireflies() {
-            for (let i = 0; i < 20; i++) {
-                const firefly = document.createElement('div');
-                firefly.className = 'firefly';
-                const left = Math.random() * 100;
-                const top = Math.random() * 100;
-                const tx = (Math.random() - 0.5) * 200;
-                const ty = (Math.random() - 0.5) * 150 - 50;
-                firefly.style.left = left + '%';
-                firefly.style.top = top + '%';
-                firefly.style.setProperty('--tx', tx + 'px');
-                firefly.style.setProperty('--ty', ty + 'px');
-                firefly.style.animationDelay = Math.random() * 8 + 's';
-                firefly.style.animationDuration = (Math.random() * 8 + 6) + 's';
-                document.body.appendChild(firefly);
-            }
-        }
-        createFireflies();
+        // Создаём светлячков (только если нужны — убрал, так что пустой скрипт)
         
-        // ========== ДАННЫЕ ==========
         let isPremium = localStorage.getItem('isPremium') === 'true';
         let childName = localStorage.getItem('childName') || 'малыш';
         let childAge = localStorage.getItem('childAge') || 5;
@@ -425,7 +316,6 @@
                 document.getElementById('fearAlert').style.display = 'none';
             }
             
-            // Подсветка активного персонажа
             document.querySelectorAll('.char-option').forEach(opt => {
                 if (opt.dataset.char === currentChar) {
                     opt.classList.add('active');
@@ -446,14 +336,12 @@
             alert(`Персонаж изменён на ${characters[charId].name}`);
         }
         
-        // Смена персонажа через клик
         document.querySelectorAll('.char-option').forEach(opt => {
             opt.addEventListener('click', () => {
                 changeCharacter(opt.dataset.char);
             });
         });
         
-        // ========== ПОМОЩЬ ПСИХОЛОГА ==========
         async function getParentAdvice(fear) {
             const modal = document.createElement('div');
             modal.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); backdrop-filter:blur(12px); border-radius:40px; padding:24px; z-index:3000; min-width:280px; max-width:90%; max-height:80%; overflow:auto; color:white; border:1px solid rgba(255,255,255,0.2);';
@@ -524,7 +412,6 @@
             getParentAdvice(fear);
         };
         
-        // ========== ПОДЕЛИТЬСЯ ==========
         function shareApp(platform) {
             const text = "🎉 Мой ребёнок больше не боится темноты! Люцик — волшебный кот, который помогает детям 3-7 лет справляться со страхами. Бесплатно, без рекламы, только сказки и забота. Попробуйте и вы! 👉 https://geroy-skazki.vercel.app";
             const shortText = "🐱 Люцик — друг, который лечит страхи сказкой. Мой ребёнок теперь спит без света! Спасибо, Люцик! ❤️ https://geroy-skazki.vercel.app";
@@ -540,10 +427,8 @@
         document.getElementById('shareVkBtn').onclick = () => shareApp('vk');
         document.getElementById('shareTgBtn').onclick = () => shareApp('telegram');
         
-        // ========== ИНИЦИАЛИЗАЦИЯ ==========
         updateUI();
         
-        // Проверка авторизации (если нет токена — редирект)
         const token = localStorage.getItem('userToken');
         if (!token && !localStorage.getItem('guestMode')) {
             window.location.href = '/';
