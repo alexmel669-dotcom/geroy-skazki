@@ -286,7 +286,7 @@
         let bravery = parseInt(localStorage.getItem('lucik_bravery')) || 0;
         let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
         let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-        if (conversationHistory.length > 30) conversationHistory = conversationHistory.slice(0, 30);
+        if (conversationHistory.length > 50) conversationHistory = conversationHistory.slice(0, 50);
         
         const characters = {
             lucik: { name: 'Люцик', icon: 'avatar.png', premium: false },
@@ -295,6 +295,79 @@
             kid: { name: 'Ребёнок', icon: 'kid.png', premium: true }
         };
         let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
+        
+        // ========== НЕДЕЛЬНАЯ ПАМЯТЬ ==========
+        function getWeekStart(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff)).toISOString().split('T')[0];
+        }
+        
+        function getWeeklyMemory() {
+            let memory = localStorage.getItem('weeklyMemory');
+            if (!memory) {
+                const now = new Date();
+                const weekStart = getWeekStart(now);
+                memory = {
+                    weekStart: weekStart,
+                    fears: {},
+                    positiveTopics: {},
+                    mood: { happy: 0, sad: 0, scared: 0 },
+                    victories: [],
+                    lastUpdated: new Date().toISOString()
+                };
+                localStorage.setItem('weeklyMemory', JSON.stringify(memory));
+                return memory;
+            }
+            memory = JSON.parse(memory);
+            
+            const now = new Date();
+            const currentWeekStart = getWeekStart(now);
+            if (memory.weekStart !== currentWeekStart) {
+                localStorage.setItem(`weeklyMemory_${memory.weekStart}`, JSON.stringify(memory));
+                const newMemory = {
+                    weekStart: currentWeekStart,
+                    fears: {},
+                    positiveTopics: {},
+                    mood: { happy: 0, sad: 0, scared: 0 },
+                    victories: [],
+                    lastUpdated: new Date().toISOString()
+                };
+                localStorage.setItem('weeklyMemory', JSON.stringify(newMemory));
+                return newMemory;
+            }
+            
+            return memory;
+        }
+        
+        function updateWeeklyMemory(fear, topic, moodType, victory = null) {
+            const memory = getWeeklyMemory();
+            
+            if (fear && memory.fears) {
+                if (!memory.fears[fear]) {
+                    memory.fears[fear] = { count: 0, resolved: false };
+                }
+                memory.fears[fear].count++;
+                memory.fears[fear].lastMention = new Date().toISOString();
+            }
+            
+            if (topic && memory.positiveTopics) {
+                memory.positiveTopics[topic] = (memory.positiveTopics[topic] || 0) + 1;
+            }
+            
+            if (moodType && memory.mood) {
+                memory.mood[moodType] = (memory.mood[moodType] || 0) + 1;
+            }
+            
+            if (victory && memory.victories) {
+                memory.victories.push(victory);
+                if (memory.victories.length > 5) memory.victories.shift();
+            }
+            
+            memory.lastUpdated = new Date().toISOString();
+            localStorage.setItem('weeklyMemory', JSON.stringify(memory));
+        }
         
         function updateStatsUI() {
             document.getElementById('moodFill').style.width = mood + '%';
@@ -309,7 +382,7 @@
         
         function saveHistory(text) {
             conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + text);
-            if (conversationHistory.length > 30) conversationHistory.pop();
+            if (conversationHistory.length > 50) conversationHistory.pop();
             localStorage.setItem('storyHistory', JSON.stringify(conversationHistory));
         }
         
@@ -394,27 +467,52 @@
         updateMoonButton();
         setInterval(updateMoonButton, 60000);
         
+        // ========== ОСНОВНАЯ ФУНКЦИЯ С НЕДЕЛЬНОЙ ПАМЯТЬЮ ==========
         async function askDeepSeek(text, isLong = false) {
             if (containsBadWords(text)) {
-                return "Мяу! Давай говорить добрые слова!";
+                return "Мяу! Давай говорить добрые слова. Расскажи мне что-нибудь хорошее!";
             }
             try {
-                const historyForAPI = conversationHistory.slice(-6).map(item => {
+                const weeklyMemory = getWeeklyMemory();
+                
+                const historyForAPI = conversationHistory.slice(-12).map(item => {
                     const isUser = item.includes(`👶 ${childName}:`);
                     const cleanContent = item.replace(/^[^:]+:/, '').trim();
                     return { role: isUser ? "user" : "assistant", content: cleanContent };
                 });
+                
                 const res = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         childName, childAge, userSpeech: text, isLong,
-                        history: historyForAPI
+                        history: historyForAPI,
+                        weeklyMemory: weeklyMemory
                     })
                 });
                 const data = await res.json();
+                
+                if (data.detectedFear) {
+                    updateFear(data.detectedFear);
+                    updateWeeklyMemory(data.detectedFear, null, null);
+                }
+                
+                if (data.detectedTopic) {
+                    updateWeeklyMemory(null, data.detectedTopic, null);
+                }
+                
+                if (data.detectedMood) {
+                    updateWeeklyMemory(null, null, data.detectedMood);
+                }
+                
+                const lowerText = text.toLowerCase();
+                if (lowerText.includes('не бою') || lowerText.includes('перестал боя') || lowerText.includes('победил')) {
+                    updateWeeklyMemory(null, null, null, `${childName} сказал, что победил страх!`);
+                }
+                
                 return data.story;
             } catch(e) {
+                console.error(e);
                 return "Мяу! Давай ещё раз?";
             }
         }
@@ -663,6 +761,7 @@
             document.getElementById('avatar').classList.add('listening');
             rec.start();
         };
+        
         if (rec) {
             rec.onresult = async (e) => {
                 const text = e.results[0][0].transcript;
