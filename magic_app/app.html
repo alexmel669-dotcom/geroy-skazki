@@ -298,6 +298,27 @@
     </div>
     
     <script>
+        // ========== АНАЛИТИКА ==========
+        function sendAnalytics(eventType, eventData = {}) {
+            const userToken = localStorage.getItem('userToken');
+            const userEmail = localStorage.getItem('userEmail');
+            const guestMode = localStorage.getItem('guestMode') === 'true';
+            
+            fetch('/api/analytics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    event_type: eventType,
+                    user_id: userToken ? userToken.slice(0, 50) : (guestMode ? 'guest_' + Date.now() : null),
+                    user_email: userEmail && !userEmail.startsWith('guest_') ? userEmail : null,
+                    child_name: childName,
+                    child_age: parseInt(childAge),
+                    event_data: eventData
+                })
+            }).catch(e => console.log('Analytics error:', e));
+        }
+        
+        // ========== ЗВУКИ ==========
         let audioCtx = null;
         
         function initAudio() {
@@ -333,6 +354,7 @@
             } catch(e) { console.log('Audio error:', e); }
         }
         
+        // ========== ДОСТИЖЕНИЯ ==========
         function initAchievements() {
             let achievements = localStorage.getItem('achievements');
             if (!achievements) {
@@ -363,12 +385,14 @@
                         achievements[achievementId].date = new Date().toISOString();
                         playSound('achievement');
                         showAchievementNotification(achievements[achievementId].name);
+                        sendAnalytics('achievement_earned', { achievement: achievements[achievementId].name });
                     }
                 } else {
                     achievements[achievementId].earned = true;
                     achievements[achievementId].date = new Date().toISOString();
                     playSound('achievement');
                     showAchievementNotification(achievements[achievementId].name);
+                    sendAnalytics('achievement_earned', { achievement: achievements[achievementId].name });
                 }
                 localStorage.setItem('achievements', JSON.stringify(achievements));
             }
@@ -382,6 +406,7 @@
             setTimeout(() => notification.remove(), 3000);
         }
         
+        // ========== НЕДЕЛЬНАЯ ПАМЯТЬ ==========
         function getWeekStart(date) {
             const d = new Date(date);
             const day = d.getDay();
@@ -441,6 +466,7 @@
             localStorage.setItem('weeklyMemory', JSON.stringify(memory));
         }
         
+        // ========== ОСНОВНЫЕ ДАННЫЕ ==========
         let isPremium = localStorage.getItem('isPremium') === 'true';
         let childName = localStorage.getItem('childName') || 'малыш';
         let childAge = localStorage.getItem('childAge') || 5;
@@ -467,6 +493,14 @@
         
         initAchievements();
         
+        // Отправка открытия приложения
+        sendAnalytics('app_open');
+        
+        // Отправка при закрытии
+        window.addEventListener('beforeunload', () => {
+            sendAnalytics('session_end');
+        });
+        
         function updateStatsUI() {
             document.getElementById('moodFill').style.width = mood + '%';
             document.getElementById('hungerFill').style.width = hunger + '%';
@@ -489,6 +523,7 @@
                 bravery = Math.min(100, bravery + 10);
                 localStorage.setItem('lucik_bravery', bravery);
                 updateAchievement('brave_kid');
+                sendAnalytics('fear_detected', { fear: fear });
                 const fearMessages = { темноты: 'боюсь темноты', врачей: 'боюсь врачей', одиночества: 'боюсь оставаться один', нового: 'боюсь нового', обиды: 'меня обидели', животных: 'боюсь животных' };
                 const alertText = fearMessages[fear] || fear;
                 localStorage.setItem('pendingFearAlert', 'true');
@@ -572,10 +607,13 @@
             } catch(e) { return "Мяу! Давай ещё раз?"; }
         }
         
+        // ========== ИГРЫ ==========
+        
         let gameActive = false, gameInterval = null, gameTimerInterval = null;
         function startFishGame() {
             if (gameActive) return;
             gameActive = true;
+            sendAnalytics('game_fish');
             let gameScore = 0, timeLeft = 30;
             const gameContainer = document.createElement('div');
             gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:space-between;';
@@ -631,6 +669,7 @@
                     scoreDiv.innerText = `🎉 Игра окончена! Ты поймал ${gameScore} рыбок! 🎉`;
                     fish.style.display = 'none';
                     speak(`Игра окончена! Ты поймал ${gameScore} рыбок! Молодец!`);
+                    sendAnalytics('game_fish', { score: gameScore });
                 } else {
                     scoreDiv.innerText = `🐟 Счёт: ${gameScore} | ⏱️ Осталось: ${timeLeft} сек`;
                 }
@@ -640,6 +679,7 @@
         
         let memoryCards = [], memoryFlipped = [], memoryLocked = false, memoryMatches = 0;
         function startMemoryGame() {
+            sendAnalytics('game_memory');
             const emotions = ['😊', '😢', '😨', '😡', '😴', '😍'];
             memoryCards = [...emotions, ...emotions];
             for (let i = memoryCards.length - 1; i > 0; i--) {
@@ -719,6 +759,7 @@
         
         let puzzlePieces = [], puzzleEmptyIndex = 8;
         function startPuzzleGame() {
+            sendAnalytics('game_puzzle');
             const imageUrl = 'avatar.png';
             puzzlePieces = Array.from({ length: 9 }, (_, i) => i);
             for (let i = puzzlePieces.length - 1; i > 0; i--) {
@@ -788,6 +829,7 @@
         let currentColor = '#ff9f4a';
         const colors = ['#ff9f4a', '#ff4081', '#4CAF50', '#00d2ff', '#9b59b6', '#f1c40f'];
         function startColoringGame() {
+            sendAnalytics('game_color');
             const gameContainer = document.createElement('div');
             gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
             const title = document.createElement('h2');
@@ -888,6 +930,7 @@
         ];
         
         function startEmotionGame() {
+            sendAnalytics('game_emotion');
             emotionScore = 0;
             emotionQuestion = 0;
             showEmotionQuestion();
@@ -998,6 +1041,7 @@
             
             document.getElementById('cleanRoomBtn').onclick = () => {
                 modal.remove();
+                sendAnalytics('room_clean');
                 energy = Math.min(100, energy + 10);
                 mood = Math.min(100, mood + 5);
                 localStorage.setItem('lucik_energy', energy);
@@ -1009,6 +1053,7 @@
             };
             document.getElementById('dressUpBtn').onclick = () => {
                 modal.remove();
+                sendAnalytics('dress_up');
                 if (!isPremium) {
                     alert('🌟 Оформите подписку, чтобы переодевать персонажа!');
                     return;
@@ -1060,6 +1105,7 @@
             storyCount++;
             localStorage.setItem('storyCount', storyCount);
             updateAchievement('story_lover', 1);
+            sendAnalytics('story_night');
             const storyModal = document.createElement('div');
             storyModal.className = 'modal';
             storyModal.style.maxWidth = '90%';
@@ -1095,6 +1141,7 @@
         }
         
         document.getElementById('feedBtn').onclick = () => {
+            sendAnalytics('feed');
             hunger = Math.min(100, hunger + 15);
             mood = Math.min(100, mood + 5);
             localStorage.setItem('lucik_mood', mood);
@@ -1122,6 +1169,7 @@
             document.getElementById('micBtn').classList.add('recording');
             document.getElementById('avatar').classList.add('listening');
             rec.start();
+            sendAnalytics('talk_start');
         };
         
         if (rec) {
