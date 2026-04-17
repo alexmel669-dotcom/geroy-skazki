@@ -102,6 +102,12 @@
             background-position: center;
             cursor: pointer;
             transition: 0.2s;
+            animation: blink 4s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 90%, 100% { transform: scaleY(1); }
+            95% { transform: scaleY(0.1); }
         }
         
         .avatar.premium-locked {
@@ -110,12 +116,12 @@
         }
         
         .avatar.talking {
-            animation: pulse 0.5s infinite;
+            animation: pulse 0.5s infinite, blink 4s infinite;
             filter: drop-shadow(0 0 15px #00d2ff);
         }
         
         .avatar.listening {
-            animation: pulse 1s infinite;
+            animation: pulse 1s infinite, blink 4s infinite;
             filter: drop-shadow(0 0 15px #4CAF50);
         }
         
@@ -203,17 +209,20 @@
             padding: 24px;
             z-index: 2000;
             min-width: 280px;
+            max-width: 95%;
+            max-height: 85%;
+            overflow-y: auto;
             text-align: center;
             color: white;
             border: 1px solid rgba(255,255,255,0.2);
         }
         
         .modal button {
-            margin: 10px;
-            padding: 12px 24px;
+            margin: 8px;
+            padding: 12px 20px;
             border-radius: 60px;
             border: none;
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
         }
         
@@ -236,6 +245,13 @@
             font-size: 14px;
         }
         
+        /* Анимация для достижений */
+        @keyframes achievementPop {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            80% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        
         @media (max-width: 480px) {
             body { padding: 12px; }
             .avatar { width: 180px; height: 180px; }
@@ -243,6 +259,7 @@
             .mic-btn { width: 80px; height: 80px; font-size: 44px; }
             .stat-bar { width: 45px; }
             .stat { font-size: 12px; padding: 3px 10px; }
+            .modal button { padding: 8px 16px; font-size: 14px; }
         }
     </style>
 </head>
@@ -275,26 +292,96 @@
     </div>
     
     <script>
-        let isPremium = localStorage.getItem('isPremium') === 'true';
+        // ========== ЗВУКИ (Web Audio API) ==========
+        let audioCtx = null;
         
-        let childName = localStorage.getItem('childName') || 'малыш';
-        let childAge = localStorage.getItem('childAge') || 5;
-        let savedPin = localStorage.getItem('parentPin');
-        let mood = parseInt(localStorage.getItem('lucik_mood')) || 70;
-        let hunger = parseInt(localStorage.getItem('lucik_hunger')) || 60;
-        let energy = parseInt(localStorage.getItem('lucik_energy')) || 50;
-        let bravery = parseInt(localStorage.getItem('lucik_bravery')) || 0;
-        let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
-        let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-        if (conversationHistory.length > 50) conversationHistory = conversationHistory.slice(0, 50);
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioCtx;
+        }
         
-        const characters = {
-            lucik: { name: 'Люцик', icon: 'avatar.png', premium: false },
-            mom: { name: 'Мама', icon: 'mom.png', premium: true },
-            dad: { name: 'Папа', icon: 'dad.png', premium: true },
-            kid: { name: 'Ребёнок', icon: 'kid.png', premium: true }
-        };
-        let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
+        function playSound(soundName) {
+            try {
+                const ctx = initAudio();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                
+                const sounds = {
+                    'eat': { freq: 523.25, duration: 0.2, type: 'sine' },
+                    'purr': { freq: 130.81, duration: 0.5, type: 'sine' },
+                    'laugh': { freq: 659.25, duration: 0.15, type: 'square' },
+                    'click': { freq: 880, duration: 0.05, type: 'sine' },
+                    'success': { freq: 523.25, duration: 0.2, type: 'sine' },
+                    'fail': { freq: 220, duration: 0.3, type: 'sawtooth' },
+                    'victory': { freq: 783.99, duration: 0.3, type: 'sine' },
+                    'achievement': { freq: 1046.50, duration: 0.4, type: 'sine' },
+                    'paint': { freq: 440, duration: 0.03, type: 'sine' }
+                };
+                
+                const sound = sounds[soundName] || sounds['click'];
+                oscillator.type = sound.type;
+                oscillator.frequency.value = sound.freq;
+                gainNode.gain.value = 0.25;
+                oscillator.start();
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + sound.duration);
+                oscillator.stop(ctx.currentTime + sound.duration);
+            } catch(e) { console.log('Audio error:', e); }
+        }
+        
+        // ========== ДОСТИЖЕНИЯ ==========
+        function initAchievements() {
+            let achievements = localStorage.getItem('achievements');
+            if (!achievements) {
+                const defaultAchievements = {
+                    'first_talk': { name: '🎤 Первый разговор', desc: 'Первый разговор с Люциком', earned: false, date: null },
+                    'brave_kid': { name: '🦁 Храбрый малыш', desc: 'Победил первый страх', earned: false, date: null },
+                    'story_lover': { name: '🌙 Сказочник', desc: '10 сказок на ночь', earned: false, date: null, progress: 0, target: 10 },
+                    'game_master': { name: '🎮 Игроман', desc: 'Сыграл во все игры', earned: false, date: null },
+                    'fish_catcher': { name: '🐟 Рыболов', desc: 'Поймал 30 рыбок', earned: false, date: null, progress: 0, target: 30 },
+                    'memory_champion': { name: '🧠 Чемпион памяти', desc: 'Выиграл в Мемори', earned: false, date: null },
+                    'puzzle_solver': { name: '🧩 Собиратель пазлов', desc: 'Собрал пазл', earned: false, date: null },
+                    'artist': { name: '🎨 Художник', desc: 'Раскрасил Люцика', earned: false, date: null },
+                    'emotion_master': { name: '😊 Мастер эмоций', desc: 'Угадал все эмоции', earned: false, date: null },
+                    '7_days': { name: '📅 Друг на неделю', desc: '7 дней с Люциком', earned: false, date: null }
+                };
+                localStorage.setItem('achievements', JSON.stringify(defaultAchievements));
+            }
+            return JSON.parse(localStorage.getItem('achievements'));
+        }
+        
+        function updateAchievement(achievementId, progress = null) {
+            const achievements = JSON.parse(localStorage.getItem('achievements'));
+            if (achievements[achievementId] && !achievements[achievementId].earned) {
+                if (progress !== null) {
+                    achievements[achievementId].progress = (achievements[achievementId].progress || 0) + progress;
+                    if (achievements[achievementId].progress >= achievements[achievementId].target) {
+                        achievements[achievementId].earned = true;
+                        achievements[achievementId].date = new Date().toISOString();
+                        playSound('achievement');
+                        showAchievementNotification(achievements[achievementId].name);
+                    }
+                } else {
+                    achievements[achievementId].earned = true;
+                    achievements[achievementId].date = new Date().toISOString();
+                    playSound('achievement');
+                    showAchievementNotification(achievements[achievementId].name);
+                }
+                localStorage.setItem('achievements', JSON.stringify(achievements));
+            }
+        }
+        
+        function showAchievementNotification(achievementName) {
+            const notification = document.createElement('div');
+            notification.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#ffd700,#ff9f4a); color:#3a2a1a; padding:20px 30px; border-radius:60px; z-index:5000; text-align:center; animation:achievementPop 0.5s ease-out; box-shadow:0 0 30px rgba(0,0,0,0.3); font-weight:bold;';
+            notification.innerHTML = `<strong>🏆 НАГРАДА!</strong><br>${achievementName}`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
         
         // ========== НЕДЕЛЬНАЯ ПАМЯТЬ ==========
         function getWeekStart(date) {
@@ -321,7 +408,6 @@
                 return memory;
             }
             memory = JSON.parse(memory);
-            
             const now = new Date();
             const currentWeekStart = getWeekStart(now);
             if (memory.weekStart !== currentWeekStart) {
@@ -337,37 +423,51 @@
                 localStorage.setItem('weeklyMemory', JSON.stringify(newMemory));
                 return newMemory;
             }
-            
             return memory;
         }
         
         function updateWeeklyMemory(fear, topic, moodType, victory = null) {
             const memory = getWeeklyMemory();
-            
             if (fear && memory.fears) {
-                if (!memory.fears[fear]) {
-                    memory.fears[fear] = { count: 0, resolved: false };
-                }
+                if (!memory.fears[fear]) memory.fears[fear] = { count: 0, resolved: false };
                 memory.fears[fear].count++;
                 memory.fears[fear].lastMention = new Date().toISOString();
             }
-            
-            if (topic && memory.positiveTopics) {
-                memory.positiveTopics[topic] = (memory.positiveTopics[topic] || 0) + 1;
-            }
-            
-            if (moodType && memory.mood) {
-                memory.mood[moodType] = (memory.mood[moodType] || 0) + 1;
-            }
-            
+            if (topic && memory.positiveTopics) memory.positiveTopics[topic] = (memory.positiveTopics[topic] || 0) + 1;
+            if (moodType && memory.mood) memory.mood[moodType] = (memory.mood[moodType] || 0) + 1;
             if (victory && memory.victories) {
                 memory.victories.push(victory);
                 if (memory.victories.length > 5) memory.victories.shift();
             }
-            
             memory.lastUpdated = new Date().toISOString();
             localStorage.setItem('weeklyMemory', JSON.stringify(memory));
         }
+        
+        // ========== ДАННЫЕ ==========
+        let isPremium = localStorage.getItem('isPremium') === 'true';
+        let childName = localStorage.getItem('childName') || 'малыш';
+        let childAge = localStorage.getItem('childAge') || 5;
+        let savedPin = localStorage.getItem('parentPin');
+        let mood = parseInt(localStorage.getItem('lucik_mood')) || 70;
+        let hunger = parseInt(localStorage.getItem('lucik_hunger')) || 60;
+        let energy = parseInt(localStorage.getItem('lucik_energy')) || 50;
+        let bravery = parseInt(localStorage.getItem('lucik_bravery')) || 0;
+        let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+        let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
+        let fishScore = parseInt(localStorage.getItem('fishScore')) || 0;
+        let storyCount = parseInt(localStorage.getItem('storyCount')) || 0;
+        
+        if (conversationHistory.length > 50) conversationHistory = conversationHistory.slice(0, 50);
+        
+        const characters = {
+            lucik: { name: 'Люцик', icon: 'avatar.png', premium: false },
+            mom: { name: 'Мама', icon: 'mom.png', premium: true },
+            dad: { name: 'Папа', icon: 'dad.png', premium: true },
+            kid: { name: 'Ребёнок', icon: 'kid.png', premium: true }
+        };
+        let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
+        
+        initAchievements();
         
         function updateStatsUI() {
             document.getElementById('moodFill').style.width = mood + '%';
@@ -376,9 +476,7 @@
             document.getElementById('braveryFill').style.width = bravery + '%';
         }
         
-        function updateUI() {
-            updateStatsUI();
-        }
+        function updateUI() { updateStatsUI(); }
         
         function saveHistory(text) {
             conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + text);
@@ -392,19 +490,11 @@
                 localStorage.setItem('fearStats', JSON.stringify(fearStats));
                 bravery = Math.min(100, bravery + 10);
                 localStorage.setItem('lucik_bravery', bravery);
-                
-                const fearMessages = {
-                    темноты: 'боюсь темноты',
-                    врачей: 'боюсь врачей и уколов',
-                    одиночества: 'боюсь оставаться один',
-                    нового: 'боюсь нового',
-                    обиды: 'меня обидели',
-                    животных: 'боюсь животных'
-                };
+                updateAchievement('brave_kid');
+                const fearMessages = { темноты: 'боюсь темноты', врачей: 'боюсь врачей', одиночества: 'боюсь оставаться один', нового: 'боюсь нового', обиды: 'меня обидели', животных: 'боюсь животных' };
                 const alertText = fearMessages[fear] || fear;
                 localStorage.setItem('pendingFearAlert', 'true');
                 localStorage.setItem('pendingFearText', alertText);
-                
                 updateUI();
             }
         }
@@ -436,9 +526,7 @@
         
         let touchStart = 0;
         const avatarEl = document.getElementById('avatar');
-        avatarEl.addEventListener('touchstart', (e) => {
-            touchStart = e.changedTouches[0].screenX;
-        });
+        avatarEl.addEventListener('touchstart', (e) => { touchStart = e.changedTouches[0].screenX; });
         avatarEl.addEventListener('touchend', (e) => {
             const diff = e.changedTouches[0].screenX - touchStart;
             if (Math.abs(diff) > 50) {
@@ -458,115 +546,50 @@
         function updateMoonButton() {
             const hour = new Date().getHours();
             const moonBtn = document.getElementById('nightStoryBtn');
-            if (hour >= 20 || hour < 6) {
-                moonBtn.style.display = 'flex';
-            } else {
-                moonBtn.style.display = 'none';
-            }
+            moonBtn.style.display = (hour >= 20 || hour < 6) ? 'flex' : 'none';
         }
         updateMoonButton();
         setInterval(updateMoonButton, 60000);
         
-        // ========== ОСНОВНАЯ ФУНКЦИЯ С НЕДЕЛЬНОЙ ПАМЯТЬЮ ==========
+        // ========== ОСНОВНАЯ ФУНКЦИЯ ДЛЯ ДИАЛОГА ==========
         async function askDeepSeek(text, isLong = false) {
-            if (containsBadWords(text)) {
-                return "Мяу! Давай говорить добрые слова. Расскажи мне что-нибудь хорошее!";
-            }
+            if (containsBadWords(text)) return "Мяу! Давай говорить добрые слова!";
             try {
                 const weeklyMemory = getWeeklyMemory();
-                
                 const historyForAPI = conversationHistory.slice(-12).map(item => {
                     const isUser = item.includes(`👶 ${childName}:`);
                     const cleanContent = item.replace(/^[^:]+:/, '').trim();
                     return { role: isUser ? "user" : "assistant", content: cleanContent };
                 });
-                
                 const res = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        childName, childAge, userSpeech: text, isLong,
-                        history: historyForAPI,
-                        weeklyMemory: weeklyMemory
-                    })
+                    body: JSON.stringify({ childName, childAge, userSpeech: text, isLong, history: historyForAPI, weeklyMemory })
                 });
                 const data = await res.json();
-                
-                if (data.detectedFear) {
-                    updateFear(data.detectedFear);
-                    updateWeeklyMemory(data.detectedFear, null, null);
-                }
-                
-                if (data.detectedTopic) {
-                    updateWeeklyMemory(null, data.detectedTopic, null);
-                }
-                
-                if (data.detectedMood) {
-                    updateWeeklyMemory(null, null, data.detectedMood);
-                }
-                
-                const lowerText = text.toLowerCase();
-                if (lowerText.includes('не бою') || lowerText.includes('перестал боя') || lowerText.includes('победил')) {
-                    updateWeeklyMemory(null, null, null, `${childName} сказал, что победил страх!`);
-                }
-                
+                if (data.detectedFear) updateFear(data.detectedFear);
+                if (data.detectedTopic) updateWeeklyMemory(null, data.detectedTopic, null);
+                if (data.detectedMood) updateWeeklyMemory(null, null, data.detectedMood);
+                if (text.toLowerCase().includes('не бою') || text.toLowerCase().includes('победил')) updateWeeklyMemory(null, null, null, `${childName} победил страх!`);
                 return data.story;
-            } catch(e) {
-                console.error(e);
-                return "Мяу! Давай ещё раз?";
-            }
+            } catch(e) { return "Мяу! Давай ещё раз?"; }
         }
         
-        function showGameMenu() {
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <h3 style="margin-bottom: 20px;">🎮 Выбери игру</h3>
-                <button id="fishGameBtn" style="background:#4aa3df;">🐟 Поймай рыбку</button>
-                <button id="playGameBtn" style="background:#ff9f4a;">🎾 Поиграть с Люциком</button>
-                <div style="margin-top: 20px;">
-                    <button class="close-btn" id="closeGameMenu">Закрыть</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            
-            document.getElementById('fishGameBtn').onclick = () => {
-                modal.remove();
-                startFishGame();
-            };
-            document.getElementById('playGameBtn').onclick = () => {
-                modal.remove();
-                if (energy >= 20) {
-                    energy -= 20;
-                    mood = Math.min(100, mood + 15);
-                    localStorage.setItem('lucik_energy', energy);
-                    localStorage.setItem('lucik_mood', mood);
-                    updateStatsUI();
-                    speak("Ура! Весело играть!");
-                } else {
-                    speak("Я устал. Дай отдохнуть.");
-                }
-                purr();
-                saveHistory(`🎾 Поиграл с ${characters[currentChar].name}`);
-            };
-            document.getElementById('closeGameMenu').onclick = () => modal.remove();
-        }
+        // ========== ИГРЫ ==========
         
+        // Игра "Поймай рыбку"
         let gameActive = false, gameInterval = null, gameTimerInterval = null;
         function startFishGame() {
             if (gameActive) return;
             gameActive = true;
             let gameScore = 0, timeLeft = 30;
-            
             const gameContainer = document.createElement('div');
             gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:space-between;';
-            
             const fishArea = document.createElement('div');
             fishArea.style.cssText = 'flex:1; position:relative; width:100%;';
             const fish = document.createElement('div');
             fish.innerText = '🐟';
             fish.style.cssText = 'font-size:60px; position:absolute; cursor:pointer;';
-            
             const bottomBar = document.createElement('div');
             bottomBar.style.cssText = 'padding:20px; text-align:center; width:100%;';
             const scoreDiv = document.createElement('div');
@@ -575,12 +598,7 @@
             const closeBtn = document.createElement('button');
             closeBtn.innerText = 'Закрыть';
             closeBtn.style.cssText = 'padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-            closeBtn.onclick = () => {
-                clearInterval(gameInterval); clearInterval(gameTimerInterval);
-                document.body.removeChild(gameContainer);
-                gameActive = false;
-            };
-            
+            closeBtn.onclick = () => { clearInterval(gameInterval); clearInterval(gameTimerInterval); document.body.removeChild(gameContainer); gameActive = false; };
             bottomBar.appendChild(scoreDiv);
             bottomBar.appendChild(closeBtn);
             fishArea.appendChild(fish);
@@ -599,9 +617,12 @@
             fish.onclick = () => {
                 if (!gameActive) return;
                 gameScore++;
+                fishScore++;
+                localStorage.setItem('fishScore', fishScore);
+                updateAchievement('fish_catcher', 1);
                 scoreDiv.innerText = `🐟 Счёт: ${gameScore} | ⏱️ Осталось: ${timeLeft} сек`;
                 moveFish();
-                purr();
+                playSound('click');
                 hunger = Math.min(100, hunger + 3);
                 mood = Math.min(100, mood + 3);
                 updateStatsUI();
@@ -623,6 +644,357 @@
             gameInterval = setInterval(() => { if (gameActive) moveFish(); }, 1500);
         }
         
+        // Игра "Мемори"
+        let memoryCards = [], memoryFlipped = [], memoryLocked = false, memoryMatches = 0;
+        function startMemoryGame() {
+            const emotions = ['😊', '😢', '😨', '😡', '😴', '😍'];
+            memoryCards = [...emotions, ...emotions];
+            for (let i = memoryCards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [memoryCards[i], memoryCards[j]] = [memoryCards[j], memoryCards[i]];
+            }
+            memoryFlipped = new Array(memoryCards.length).fill(false);
+            memoryMatches = 0;
+            
+            const gameContainer = document.createElement('div');
+            gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
+            const title = document.createElement('h2');
+            title.textContent = '🧠 Найди пару';
+            title.style.color = 'white';
+            title.style.marginBottom = '20px';
+            const board = document.createElement('div');
+            board.style.cssText = 'display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; max-width:400px; width:90%; margin:0 auto;';
+            const cards = [];
+            for (let i = 0; i < memoryCards.length; i++) {
+                const card = document.createElement('div');
+                card.style.cssText = 'aspect-ratio:1; background:#4a4a6a; border-radius:15px; display:flex; align-items:center; justify-content:center; font-size:40px; cursor:pointer; transition:0.3s;';
+                card.dataset.index = i;
+                card.onclick = () => flipCard(i, card, cards);
+                cards.push(card);
+                board.appendChild(card);
+            }
+            const scoreDiv = document.createElement('div');
+            scoreDiv.style.cssText = 'color:white; margin-top:20px; font-size:20px;';
+            scoreDiv.textContent = `Найдено пар: ${memoryMatches} / 6`;
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Закрыть';
+            closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
+            closeBtn.onclick = () => document.body.removeChild(gameContainer);
+            gameContainer.appendChild(title);
+            gameContainer.appendChild(board);
+            gameContainer.appendChild(scoreDiv);
+            gameContainer.appendChild(closeBtn);
+            document.body.appendChild(gameContainer);
+            
+            let firstIndex = null, firstCard = null;
+            function flipCard(idx, card, cardsArray) {
+                if (memoryLocked || memoryFlipped[idx]) return;
+                memoryFlipped[idx] = true;
+                card.textContent = memoryCards[idx];
+                card.style.background = '#6c6caa';
+                if (firstIndex === null) {
+                    firstIndex = idx;
+                    firstCard = card;
+                } else {
+                    if (memoryCards[firstIndex] === memoryCards[idx]) {
+                        memoryMatches++;
+                        scoreDiv.textContent = `Найдено пар: ${memoryMatches} / 6`;
+                        firstIndex = null;
+                        firstCard = null;
+                        playSound('success');
+                        if (memoryMatches === 6) {
+                            updateAchievement('memory_champion');
+                            setTimeout(() => { alert('🎉 Поздравляю! Ты нашёл все пары!'); playSound('victory'); gameContainer.remove(); }, 500);
+                        }
+                    } else {
+                        memoryLocked = true;
+                        setTimeout(() => {
+                            memoryFlipped[firstIndex] = false;
+                            memoryFlipped[idx] = false;
+                            firstCard.textContent = '?';
+                            card.textContent = '?';
+                            firstCard.style.background = '#4a4a6a';
+                            card.style.background = '#4a4a6a';
+                            firstIndex = null;
+                            firstCard = null;
+                            memoryLocked = false;
+                        }, 1000);
+                    }
+                }
+            }
+        }
+        
+        // Игра "Пазл"
+        let puzzlePieces = [], puzzleEmptyIndex = 8;
+        function startPuzzleGame() {
+            const imageUrl = 'avatar.png';
+            puzzlePieces = Array.from({ length: 9 }, (_, i) => i);
+            for (let i = puzzlePieces.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [puzzlePieces[i], puzzlePieces[j]] = [puzzlePieces[j], puzzlePieces[i]];
+            }
+            puzzleEmptyIndex = puzzlePieces.indexOf(8);
+            
+            const gameContainer = document.createElement('div');
+            gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
+            const title = document.createElement('h2');
+            title.textContent = '🧩 Собери пазл';
+            title.style.color = 'white';
+            title.style.marginBottom = '20px';
+            const board = document.createElement('div');
+            board.style.cssText = 'display:grid; grid-template-columns:repeat(3, 1fr); gap:5px; width:300px; height:300px; background:#333; border-radius:10px; overflow:hidden;';
+            
+            function renderBoard() {
+                board.innerHTML = '';
+                for (let i = 0; i < 9; i++) {
+                    const piece = document.createElement('div');
+                    piece.style.cssText = 'background-size:300% 300%; cursor:pointer; border:1px solid #555;';
+                    if (puzzlePieces[i] === 8) {
+                        piece.style.background = '#2a2a2a';
+                    } else {
+                        const row = Math.floor(puzzlePieces[i] / 3);
+                        const col = puzzlePieces[i] % 3;
+                        piece.style.backgroundImage = `url('${imageUrl}')`;
+                        piece.style.backgroundPosition = `${-col * 100}% ${-row * 100}%`;
+                        piece.style.backgroundSize = '300% 300%';
+                    }
+                    piece.onclick = () => movePiece(i);
+                    board.appendChild(piece);
+                }
+            }
+            
+            function movePiece(idx) {
+                const emptyRow = Math.floor(puzzleEmptyIndex / 3);
+                const emptyCol = puzzleEmptyIndex % 3;
+                const clickedRow = Math.floor(idx / 3);
+                const clickedCol = idx % 3;
+                if (Math.abs(emptyRow - clickedRow) + Math.abs(emptyCol - clickedCol) === 1) {
+                    [puzzlePieces[idx], puzzlePieces[puzzleEmptyIndex]] = [puzzlePieces[puzzleEmptyIndex], puzzlePieces[idx]];
+                    puzzleEmptyIndex = idx;
+                    renderBoard();
+                    playSound('click');
+                    let win = true;
+                    for (let i = 0; i < 8; i++) if (puzzlePieces[i] !== i) win = false;
+                    if (win && puzzlePieces[8] === 8) {
+                        updateAchievement('puzzle_solver');
+                        setTimeout(() => { alert('🎉 Ура! Ты собрал пазл!'); playSound('victory'); gameContainer.remove(); }, 500);
+                    }
+                }
+            }
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Закрыть';
+            closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
+            closeBtn.onclick = () => document.body.removeChild(gameContainer);
+            gameContainer.appendChild(title);
+            gameContainer.appendChild(board);
+            gameContainer.appendChild(closeBtn);
+            document.body.appendChild(gameContainer);
+            renderBoard();
+        }
+        
+        // Игра "Раскраска"
+        let currentColor = '#ff9f4a';
+        const colors = ['#ff9f4a', '#ff4081', '#4CAF50', '#00d2ff', '#9b59b6', '#f1c40f'];
+        function startColoringGame() {
+            const gameContainer = document.createElement('div');
+            gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
+            const title = document.createElement('h2');
+            title.textContent = '🎨 Раскрась Люцика';
+            title.style.color = 'white';
+            title.style.marginBottom = '10px';
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 300;
+            canvas.style.border = '3px solid white';
+            canvas.style.borderRadius = '20px';
+            canvas.style.cursor = 'pointer';
+            canvas.style.backgroundColor = '#f0e6d0';
+            const ctx = canvas.getContext('2d');
+            
+            function drawOutline() {
+                ctx.clearRect(0, 0, 300, 300);
+                ctx.fillStyle = '#f0e6d0';
+                ctx.fillRect(0, 0, 300, 300);
+                ctx.fillStyle = currentColor;
+                ctx.beginPath();
+                ctx.arc(150, 130, 60, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(120, 110, 12, 0, Math.PI * 2);
+                ctx.arc(180, 110, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#3a2a1a';
+                ctx.beginPath();
+                ctx.arc(120, 110, 6, 0, Math.PI * 2);
+                ctx.arc(180, 110, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ff6b6b';
+                ctx.beginPath();
+                ctx.ellipse(150, 140, 8, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(100, 145);
+                ctx.lineTo(70, 140);
+                ctx.moveTo(100, 150);
+                ctx.lineTo(65, 155);
+                ctx.moveTo(200, 145);
+                ctx.lineTo(230, 140);
+                ctx.moveTo(200, 150);
+                ctx.lineTo(235, 155);
+                ctx.stroke();
+            }
+            drawOutline();
+            
+            let isDrawing = false;
+            canvas.onmousedown = () => isDrawing = true;
+            canvas.onmouseup = () => { isDrawing = false; updateAchievement('artist'); };
+            canvas.onmousemove = (e) => {
+                if (!isDrawing) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+                const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+                ctx.fillStyle = currentColor;
+                ctx.beginPath();
+                ctx.arc(x, y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                playSound('paint');
+            };
+            
+            const palette = document.createElement('div');
+            palette.style.cssText = 'display:flex; gap:10px; margin:15px 0;';
+            colors.forEach(color => {
+                const colorBtn = document.createElement('div');
+                colorBtn.style.cssText = `width:40px; height:40px; background:${color}; border-radius:50%; cursor:pointer; border:2px solid white;`;
+                colorBtn.onclick = () => { currentColor = color; playSound('click'); };
+                palette.appendChild(colorBtn);
+            });
+            const clearBtn = document.createElement('button');
+            clearBtn.textContent = '🧽 Очистить';
+            clearBtn.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#e67e22; color:white; border:none;';
+            clearBtn.onclick = () => { drawOutline(); playSound('click'); };
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Закрыть';
+            closeBtn.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
+            closeBtn.onclick = () => document.body.removeChild(gameContainer);
+            gameContainer.appendChild(title);
+            gameContainer.appendChild(canvas);
+            gameContainer.appendChild(palette);
+            gameContainer.appendChild(clearBtn);
+            gameContainer.appendChild(closeBtn);
+            document.body.appendChild(gameContainer);
+        }
+        
+        // Игра "Угадай эмоцию"
+        let emotionScore = 0, emotionQuestion = 0;
+        const emotionsList = [
+            { emoji: '😊', name: 'радость', desc: 'Когда тебе весело и хорошо' },
+            { emoji: '😢', name: 'грусть', desc: 'Когда тебе немного грустно' },
+            { emoji: '😨', name: 'страх', desc: 'Когда тебе страшно' },
+            { emoji: '😡', name: 'злость', desc: 'Когда ты сердишься' },
+            { emoji: '😴', name: 'сонливость', desc: 'Когда ты хочешь спать' },
+            { emoji: '😍', name: 'любовь', desc: 'Когда ты кого-то очень любишь' }
+        ];
+        
+        function startEmotionGame() {
+            emotionScore = 0;
+            emotionQuestion = 0;
+            showEmotionQuestion();
+        }
+        
+        function showEmotionQuestion() {
+            if (emotionQuestion >= 6) {
+                alert(`🎉 Молодец! Ты угадал ${emotionScore} из 6 эмоций!`);
+                if (emotionScore >= 5) {
+                    updateAchievement('emotion_master');
+                    playSound('victory');
+                }
+                return;
+            }
+            const emotion = emotionsList[emotionQuestion];
+            const options = emotionsList.map(e => e.name);
+            for (let i = options.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [options[i], options[j]] = [options[j], options[i]];
+            }
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <h3>😊 Угадай эмоцию</h3>
+                <div style="font-size:80px; margin:20px;">${emotion.emoji}</div>
+                <p style="margin-bottom:15px;">${emotion.desc}</p>
+                <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
+                    ${options.map(opt => `<button class="emotion-option" data-emotion="${opt}">${opt}</button>`).join('')}
+                </div>
+                <div style="margin-top:20px;">
+                    <button class="close-btn" id="closeEmotionGame">Закрыть</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.querySelectorAll('.emotion-option').forEach(btn => {
+                btn.onclick = () => {
+                    const selected = btn.dataset.emotion;
+                    if (selected === emotion.name) {
+                        emotionScore++;
+                        playSound('success');
+                        alert('✅ Правильно! Молодец!');
+                    } else {
+                        playSound('fail');
+                        alert(`❌ Неправильно. Это ${emotion.name}. Запомни!`);
+                    }
+                    modal.remove();
+                    emotionQuestion++;
+                    showEmotionQuestion();
+                };
+            });
+            document.getElementById('closeEmotionGame').onclick = () => modal.remove();
+        }
+        
+        // ========== МЕНЮ ИГР ==========
+        function showGameMenu() {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <h3 style="margin-bottom: 20px;">🎮 Выбери игру</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+                    <button id="gameFishBtn" style="background:#4aa3df;">🐟 Поймай рыбку</button>
+                    <button id="gameMemoryBtn" style="background:#9b59b6;">🧠 Мемори</button>
+                    <button id="gamePuzzleBtn" style="background:#e67e22;">🧩 Пазл</button>
+                    <button id="gameColorBtn" style="background:#2ecc71;">🎨 Раскраска</button>
+                    <button id="gameEmotionBtn" style="background:#f1c40f;">😊 Угадай эмоцию</button>
+                    <button id="gamePlayBtn" style="background:#ff9f4a;">🎾 Поиграть с Люциком</button>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button class="close-btn" id="closeGameMenu">Закрыть</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            document.getElementById('gameFishBtn').onclick = () => { modal.remove(); startFishGame(); updateAchievement('game_master'); };
+            document.getElementById('gameMemoryBtn').onclick = () => { modal.remove(); startMemoryGame(); updateAchievement('game_master'); };
+            document.getElementById('gamePuzzleBtn').onclick = () => { modal.remove(); startPuzzleGame(); updateAchievement('game_master'); };
+            document.getElementById('gameColorBtn').onclick = () => { modal.remove(); startColoringGame(); updateAchievement('game_master'); };
+            document.getElementById('gameEmotionBtn').onclick = () => { modal.remove(); startEmotionGame(); updateAchievement('game_master'); };
+            document.getElementById('gamePlayBtn').onclick = () => {
+                modal.remove();
+                if (energy >= 20) {
+                    energy -= 20;
+                    mood = Math.min(100, mood + 15);
+                    localStorage.setItem('lucik_energy', energy);
+                    localStorage.setItem('lucik_mood', mood);
+                    updateStatsUI();
+                    speak("Ура! Весело играть!");
+                    playSound('laugh');
+                } else {
+                    speak("Я устал. Дай отдохнуть.");
+                }
+                saveHistory(`🎾 Поиграл с ${characters[currentChar].name}`);
+            };
+            document.getElementById('closeGameMenu').onclick = () => modal.remove();
+        }
+        
+        // ========== КОМНАТА ==========
         function showRoomMenu() {
             const modal = document.createElement('div');
             modal.className = 'modal';
@@ -644,7 +1016,7 @@
                 localStorage.setItem('lucik_mood', mood);
                 updateStatsUI();
                 speak("Мурр! Комната стала чистой!");
-                purr();
+                playSound('purr');
                 saveHistory(`🧸 Убрал комнату ${characters[currentChar].name}`);
             };
             document.getElementById('dressUpBtn').onclick = () => {
@@ -661,9 +1033,7 @@
                     <button id="dressHat">🎩 В шляпе</button>
                     <button id="dressGlasses">🕶️ В очках</button>
                     <button id="dressCrown">👑 С короной</button>
-                    <div style="margin-top: 20px;">
-                        <button class="close-btn" id="closeDressMenu">Закрыть</button>
-                    </div>
+                    <div><button class="close-btn" id="closeDressMenu">Закрыть</button></div>
                 `;
                 document.body.appendChild(dressModal);
                 document.getElementById('dressDefault').onclick = () => {
@@ -691,14 +1061,18 @@
             document.getElementById('closeRoomMenu').onclick = () => modal.remove();
         }
         
+        // ========== СКАЗКА НА НОЧЬ ==========
         document.getElementById('nightStoryBtn').onclick = async () => {
             const modal = document.createElement('div');
             modal.className = 'modal';
             modal.innerHTML = `<h3>🌙 Люцик готовит сказку...</h3><p>Пожалуйста, подожди</p>`;
             document.body.appendChild(modal);
             speak("Мяу! Сейчас я расскажу тебе длинную, уютную сказку на ночь...");
-            const longStory = await askDeepSeek("Расскажи длинную, спокойную сказку на ночь для ребёнка 3-7 лет. Сказка должна быть уютной, с хорошим концом.", true);
+            const longStory = await askDeepSeek("Расскажи длинную, спокойную сказку на ночь для ребёнка 3-7 лет.", true);
             modal.remove();
+            storyCount++;
+            localStorage.setItem('storyCount', storyCount);
+            updateAchievement('story_lover', 1);
             const storyModal = document.createElement('div');
             storyModal.className = 'modal';
             storyModal.style.maxWidth = '90%';
@@ -710,6 +1084,7 @@
             saveHistory(`🌙 Люцик рассказал длинную сказку на ночь`);
         };
         
+        // ========== ОБЩИЕ ФУНКЦИИ ==========
         function speak(text) {
             let clean = text.replace(/[\*\_\#]/g, '');
             const utter = new SpeechSynthesisUtterance(clean);
@@ -721,6 +1096,7 @@
         }
         
         function purr() {
+            playSound('purr');
             const audio = new Audio('purr.mp3');
             audio.play().catch(e => console.log('no purr'));
         }
@@ -732,18 +1108,20 @@
             return badWords.some(word => lowerText.includes(word));
         }
         
+        // ========== КНОПКИ ДЕЙСТВИЙ ==========
         document.getElementById('feedBtn').onclick = () => {
             hunger = Math.min(100, hunger + 15);
             mood = Math.min(100, mood + 5);
             localStorage.setItem('lucik_mood', mood);
             localStorage.setItem('lucik_hunger', hunger);
             updateStatsUI();
-            purr();
+            playSound('eat');
             saveHistory(`🍎 Покормил ${characters[currentChar].name}`);
         };
         document.getElementById('gamesBtn').onclick = () => showGameMenu();
         document.getElementById('roomBtn').onclick = () => showRoomMenu();
         
+        // ========== МИКРОФОН ==========
         let isListening = false, isWaiting = false;
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         let rec = null;
@@ -769,6 +1147,7 @@
                 document.getElementById('avatar').classList.remove('listening');
                 isListening = false;
                 saveHistory(`👶 ${childName}: ${text}`);
+                updateAchievement('first_talk');
                 const lower = text.toLowerCase();
                 if (lower.includes('темнот')) updateFear('темноты');
                 else if (lower.includes('врач')) updateFear('врачей');
@@ -791,6 +1170,7 @@
             };
         }
         
+        // ========== РОДИТЕЛЬСКАЯ ЗОНА ==========
         document.getElementById('parentBtn').onclick = () => {
             if (!savedPin) {
                 const pin = prompt('Создайте пароль для входа в Штаб (4-6 цифр):');
@@ -812,6 +1192,7 @@
             }
         };
         
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
         updateAvatarLock();
         updateStatsUI();
         changeCharacter(currentChar);
