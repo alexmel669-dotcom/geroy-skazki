@@ -4,7 +4,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Метод не поддерживается' });
     }
     
-    const { text, voice = 'oksana', emotion = 'neutral', speed = 1.0 } = req.body;
+    const { text, voice = 'alexander', emotion = 'good', speed = 1.0 } = req.body;
     
     if (!text || text.trim() === '') {
         return res.status(400).json({ error: 'Текст обязателен' });
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     try {
         // Формируем тело запроса для SpeechKit API v3
         const requestBody = {
-            text: text.slice(0, 5000), // ограничение 5000 символов
+            text: text.slice(0, 5000),
             hints: [
                 { voice: voice },
                 { role: emotion },
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
             ],
             outputAudioSpec: {
                 containerAudio: {
-                    containerAudioType: 'OGG_OPUS' // оптимальный формат для веба
+                    containerAudioType: 'OGG_OPUS'
                 }
             }
         };
@@ -49,12 +49,10 @@ export default async function handler(req, res) {
             return res.status(response.status).json({ error: 'Ошибка синтеза речи' });
         }
         
-        // Получаем аудио как бинарные данные
         const audioBuffer = await response.arrayBuffer();
         
-        // Возвращаем аудио с правильными заголовками
         res.setHeader('Content-Type', 'audio/ogg');
-        res.setHeader('Cache-Control', 'public, max-age=86400'); // кэш на 24 часа
+        res.setHeader('Cache-Control', 'public, max-age=86400');
         res.send(Buffer.from(audioBuffer));
         
     } catch (error) {
