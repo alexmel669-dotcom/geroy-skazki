@@ -1,6 +1,9 @@
 export default async function handler(req, res) {
-    // Разрешаем CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const allowedOrigins = ['https://geroy-skazki.vercel.app'];
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
@@ -14,27 +17,34 @@ export default async function handler(req, res) {
     
     const { name, text, rating } = req.body;
     
-    if (!name || !text) {
-        return res.status(400).json({ error: 'Имя и отзыв обязательны' });
+    if (!name || typeof name !== 'string' || name.length > 50) {
+        return res.status(400).json({ error: 'Некорректное имя' });
     }
     
-    // Токен и Chat ID (должны быть в переменных Vercel)
+    if (!text || typeof text !== 'string' || text.length > 1000) {
+        return res.status(400).json({ error: 'Некорректный отзыв' });
+    }
+    
+    const validRating = Math.min(5, Math.max(1, parseInt(rating) || 5));
+    
     const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
     const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
     
     let telegramSent = false;
-    let telegramError = null;
     
     if (BOT_TOKEN && CHAT_ID) {
-        const stars = '⭐'.repeat(rating) + '☆'.repeat(5 - (rating || 5));
+        const stars = '⭐'.repeat(validRating) + '☆'.repeat(5 - validRating);
+        
+        const safeName = name.replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
+        const safeText = text.replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
         
         const message = `📝 **НОВЫЙ ОТЗЫВ!**
         
-👤 **От:** ${name}
-⭐ **Оценка:** ${stars} (${rating || 5}/5)
+👤 **От:** ${safeName}
+⭐ **Оценка:** ${stars}
 
 💬 **Текст:**
-${text}
+${safeText}
 
 🕐 ${new Date().toLocaleString()}`;
         
@@ -44,29 +54,20 @@ ${text}
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     chat_id: CHAT_ID,
-                    text: message,
+                    text: message.slice(0, 4096),
                     parse_mode: 'Markdown'
                 })
             });
             
             const data = await response.json();
-            
-            if (data.ok) {
-                telegramSent = true;
-            } else {
-                telegramError = data.description;
-            }
+            telegramSent = data.ok;
         } catch (error) {
-            telegramError = error.message;
+            console.error('Telegram error:', error);
         }
-    } else {
-        telegramError = 'TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID не настроены в Vercel';
     }
     
     res.status(200).json({ 
         success: true, 
-        telegram: telegramSent,
-        error: telegramError,
-        message: telegramSent ? '✅ Отзыв отправлен в Telegram' : '❌ Отзыв сохранён, но Telegram не настроен'
+        telegram: telegramSent
     });
 }
