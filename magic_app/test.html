@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тест голоса</title>
+</head>
+<body>
+    <h1>🎤 Тест Яндекс SpeechKit</h1>
+    <button id="playBtn">🔊 Нажми, чтобы услышать Люцика</button>
+    <div id="status"></div>
+    
+    <script>
+        const playBtn = document.getElementById('playBtn');
+        const status = document.getElementById('status');
+        
+        playBtn.onclick = async () => {
+            status.innerHTML = '⏳ Запрос к API...';
+            
+            const response = await fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: 'Привет! Я Люцик, твой пушистый друг!',
+                    voice: 'alexander',
+                    emotion: 'good'
+                })
+            });
+            
+            const blob = await response.blob();
+            status.innerHTML = '✅ Аудио получено, размер: ' + blob.size + ' байт';
+            
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audio.play();
+            status.innerHTML += '<br>🔊 Воспроизведение...';
+        };
+    </script>
+</body>
+</html>
