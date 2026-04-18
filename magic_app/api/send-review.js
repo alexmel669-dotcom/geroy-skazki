@@ -1,4 +1,13 @@
 export default async function handler(req, res) {
+    // Разрешаем CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Метод не поддерживается' });
     }
@@ -9,10 +18,12 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Имя и отзыв обязательны' });
     }
     
+    // Токен и Chat ID (должны быть в переменных Vercel)
     const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
     const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
     
     let telegramSent = false;
+    let telegramError = null;
     
     if (BOT_TOKEN && CHAT_ID) {
         const stars = '⭐'.repeat(rating) + '☆'.repeat(5 - (rating || 5));
@@ -39,15 +50,23 @@ ${text}
             });
             
             const data = await response.json();
-            telegramSent = data.ok;
+            
+            if (data.ok) {
+                telegramSent = true;
+            } else {
+                telegramError = data.description;
+            }
         } catch (error) {
-            console.error('Telegram error:', error);
+            telegramError = error.message;
         }
+    } else {
+        telegramError = 'TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID не настроены в Vercel';
     }
     
     res.status(200).json({ 
         success: true, 
         telegram: telegramSent,
-        message: telegramSent ? 'Отзыв отправлен в Telegram' : 'Отзыв сохранён'
+        error: telegramError,
+        message: telegramSent ? '✅ Отзыв отправлен в Telegram' : '❌ Отзыв сохранён, но Telegram не настроен'
     });
 }
