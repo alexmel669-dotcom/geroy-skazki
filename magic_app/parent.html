@@ -33,11 +33,6 @@
             background-repeat: no-repeat;
         }
         
-        /* Убираем лишние слои */
-        .trees-back, .trees-front, .fog {
-            display: none;
-        }
-        
         .container {
             max-width: 600px;
             margin: 0 auto;
@@ -312,6 +307,40 @@
     </div>
     
     <script>
+        // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
+        async function checkAuthAndRedirect() {
+            const token = localStorage.getItem('userToken');
+            const guestMode = localStorage.getItem('guestMode') === 'true';
+            
+            if (guestMode) return true;
+            
+            if (!token) {
+                window.location.href = '/';
+                return false;
+            }
+            
+            try {
+                const response = await fetch('/api/verify-token', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (!data.valid) {
+                    localStorage.removeItem('userToken');
+                    localStorage.removeItem('userEmail');
+                    localStorage.removeItem('guestMode');
+                    window.location.href = '/';
+                    return false;
+                }
+                return true;
+            } catch (error) {
+                return true;
+            }
+        }
+        
+        checkAuthAndRedirect();
+        
         let isPremium = localStorage.getItem('isPremium') === 'true';
         let childName = localStorage.getItem('childName') || 'малыш';
         let childAge = localStorage.getItem('childAge') || 5;
