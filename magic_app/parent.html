@@ -19,6 +19,7 @@
             overflow-x: hidden;
         }
         
+        /* ФОН ИЗ КАРТИНКИ */
         .forest-bg {
             position: fixed;
             top: 0;
@@ -26,77 +27,15 @@
             width: 100%;
             height: 100%;
             z-index: -2;
-            background: linear-gradient(160deg, #0a2a1a 0%, #0d301f 30%, #0f3522 60%, #0a2818 100%);
+            background-image: url('parent-bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
         
-        .trees-back {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background-image: repeating-linear-gradient(90deg, transparent 0px, transparent 50px, rgba(10,30,15,0.4) 50px, rgba(10,30,15,0.4) 55px, transparent 55px, transparent 100px, rgba(8,25,12,0.3) 100px, rgba(8,25,12,0.3) 105px);
-            background-size: 150px 100%;
-            animation: swayBack 8s ease-in-out infinite alternate;
-        }
-        
-        @keyframes swayBack {
-            0% { transform: translateX(-2%); background-size: 150px 100%; }
-            100% { transform: translateX(2%); background-size: 160px 100%; }
-        }
-        
-        .trees-front {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background-image: repeating-linear-gradient(90deg, transparent 0px, transparent 80px, rgba(20,60,30,0.5) 80px, rgba(20,60,30,0.5) 88px, transparent 88px, transparent 160px, rgba(15,50,25,0.4) 160px, rgba(15,50,25,0.4) 168px);
-            background-size: 250px 100%;
-            animation: swayFront 10s ease-in-out infinite alternate;
-        }
-        
-        @keyframes swayFront {
-            0% { transform: translateX(-3%); background-size: 250px 100%; }
-            100% { transform: translateX(3%); background-size: 260px 100%; }
-        }
-        
-        .fog {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            background: radial-gradient(ellipse at 50% 80%, rgba(160,180,140,0.15) 0%, transparent 70%);
-            pointer-events: none;
-            animation: fogMove 12s ease-in-out infinite alternate;
-        }
-        
-        @keyframes fogMove {
-            0% { opacity: 0.3; transform: translateX(-2%); }
-            100% { opacity: 0.6; transform: translateX(2%); }
-        }
-        
-        .firefly {
-            position: fixed;
-            width: 3px;
-            height: 3px;
-            background: #ffdd88;
-            border-radius: 50%;
-            box-shadow: 0 0 8px #ffdd88;
-            pointer-events: none;
-            z-index: 0;
-            animation: flyFirefly 10s infinite ease-in-out;
-        }
-        
-        @keyframes flyFirefly {
-            0% { transform: translate(0, 0); opacity: 0; }
-            20% { opacity: 1; }
-            80% { opacity: 1; }
-            100% { transform: translate(var(--tx, 100px), var(--ty, -80px)); opacity: 0; }
+        /* Убираем лишние слои */
+        .trees-back, .trees-front, .fog {
+            display: none;
         }
         
         .container {
@@ -108,7 +47,7 @@
         }
         
         .card {
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.55);
             backdrop-filter: blur(8px);
             border-radius: 30px;
             padding: 20px;
@@ -294,9 +233,6 @@
 </head>
 <body>
     <div class="forest-bg"></div>
-    <div class="trees-back"></div>
-    <div class="trees-front"></div>
-    <div class="fog"></div>
     
     <div class="lock-icon">🔒 Родительская зона</div>
     
@@ -376,20 +312,6 @@
     </div>
     
     <script>
-        for (let i = 0; i < 20; i++) {
-            const firefly = document.createElement('div');
-            firefly.className = 'firefly';
-            const tx = (Math.random() - 0.5) * 200;
-            const ty = (Math.random() - 0.5) * 150 - 50;
-            firefly.style.left = Math.random() * 100 + '%';
-            firefly.style.top = Math.random() * 100 + '%';
-            firefly.style.setProperty('--tx', tx + 'px');
-            firefly.style.setProperty('--ty', ty + 'px');
-            firefly.style.animationDelay = Math.random() * 8 + 's';
-            firefly.style.animationDuration = (Math.random() * 8 + 6) + 's';
-            document.body.appendChild(firefly);
-        }
-        
         let isPremium = localStorage.getItem('isPremium') === 'true';
         let childName = localStorage.getItem('childName') || 'малыш';
         let childAge = localStorage.getItem('childAge') || 5;
