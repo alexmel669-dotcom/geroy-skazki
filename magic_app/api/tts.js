@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     }
     
     try {
-        // Используем формат LPCM (raw audio) - самый совместимый
+        // Используем формат LPCM (raw audio) с частотой 48000
         const requestBody = {
             text: text.slice(0, 500),
             hints: [
@@ -48,18 +48,18 @@ export default async function handler(req, res) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Yandex TTS error:', response.status, errorText);
-            return res.status(response.status).json({ error: 'Ошибка синтеза речи: ' + errorText });
+            return res.status(response.status).json({ error: 'Ошибка синтеза речи' });
         }
         
         const audioBuffer = await response.arrayBuffer();
         console.log('Audio received, size:', audioBuffer.byteLength);
         
-        // Добавляем WAV заголовок к raw PCM данным
-        const wavBuffer = createWavHeader(audioBuffer, 48000);
+        // Конвертируем LINEAR16 PCM в WAV (правильный заголовок)
+        const wavBuffer = pcmToWav(audioBuffer, 48000, 1);
         
         res.setHeader('Content-Type', 'audio/wav');
         res.setHeader('Cache-Control', 'public, max-age=86400');
-        res.send(Buffer.from(wavBuffer));
+        res.status(200).send(Buffer.from(wavBuffer));
         
     } catch (error) {
         console.error('TTS error:', error);
@@ -67,17 +67,15 @@ export default async function handler(req, res) {
     }
 }
 
-// Функция для создания WAV заголовка
-function createWavHeader(pcmData, sampleRate) {
-    const numChannels = 1;
+function pcmToWav(pcmData, sampleRate, numChannels) {
     const bitsPerSample = 16;
-    const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
     const blockAlign = numChannels * (bitsPerSample / 8);
+    const byteRate = sampleRate * blockAlign;
     const dataSize = pcmData.byteLength;
     const headerSize = 44;
     const totalSize = headerSize + dataSize;
     
-    const buffer = new ArrayBuffer(headerSize + dataSize);
+    const buffer = new ArrayBuffer(totalSize);
     const view = new DataView(buffer);
     
     // RIFF chunk
@@ -87,8 +85,8 @@ function createWavHeader(pcmData, sampleRate) {
     
     // fmt subchunk
     writeString(view, 12, 'fmt ');
-    view.setUint32(16, 16, true); // Subchunk size
-    view.setUint16(20, 1, true);  // Audio format (PCM)
+    view.setUint32(16, 16, true);      // Subchunk size (16 for PCM)
+    view.setUint16(20, 1, true);       // Audio format (1 = PCM)
     view.setUint16(22, numChannels, true);
     view.setUint32(24, sampleRate, true);
     view.setUint32(28, byteRate, true);
