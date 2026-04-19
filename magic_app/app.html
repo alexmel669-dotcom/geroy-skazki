@@ -656,75 +656,79 @@
         document.addEventListener('click', unlockAudio, { once: true });
         document.getElementById('micBtn').addEventListener('click', unlockAudio, { once: true });
         
-        // ========== НАДЁЖНОЕ ВОСПРОИЗВЕДЕНИЕ АУДИО ==========
+        // ========== ОЗВУЧКА ЧЕРЕЗ YANDEX SPEECHKIT (ГОЛОС ALICE) ==========
         let currentAudio = null;
         let isAudioPlaying = false;
         
-        async function playAudioBlob(blob) {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.src = '';
-                currentAudio.load();
-                currentAudio = null;
-            }
-            
-            const audioUrl = URL.createObjectURL(blob);
-            const audio = new Audio(audioUrl);
-            currentAudio = audio;
-            
-            return new Promise((resolve, reject) => {
-                audio.oncanplaythrough = () => {
-                    audio.play()
-                        .then(() => {
-                            isAudioPlaying = true;
-                            document.getElementById('avatar').classList.add('talking');
-                            resolve();
-                        })
-                        .catch(reject);
-                };
-                audio.onended = () => {
-                    isAudioPlaying = false;
-                    document.getElementById('avatar').classList.remove('talking');
-                    URL.revokeObjectURL(audioUrl);
-                    if (currentAudio === audio) currentAudio = null;
-                    resolve();
-                };
-                audio.onerror = (e) => {
-                    console.error('Audio error:', e);
-                    reject(new Error('Playback failed'));
-                };
-                audio.load();
-            });
-        }
-        
-        async function speakWithYandex(text, voice = 'ermil', emotion = 'good') {
-            try {
-                if (!audioUnlocked) {
-                    await new Promise(r => setTimeout(r, 500));
+        async function speakWithYandex(text, voice = 'alice', emotion = 'good') {
+            return new Promise(async (resolve, reject) => {
+                try {
                     if (!audioUnlocked) {
-                        fallbackSpeak(text);
-                        return;
+                        console.log('Waiting for audio unlock...');
+                        await new Promise(r => setTimeout(r, 500));
+                        if (!audioUnlocked) {
+                            fallbackSpeak(text);
+                            resolve();
+                            return;
+                        }
                     }
-                }
-                
-                const response = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text, voice, emotion, speed: 1.0 })
-                });
-                
-                if (!response.ok) throw new Error(`TTS error: ${response.status}`);
-                
-                const audioBlob = await response.blob();
-                if (audioBlob.size < 100) throw new Error('Audio too small');
-                
-                await playAudioBlob(audioBlob);
-            } catch (error) {
-                console.error('Yandex TTS error:', error);
-                if (!currentAudio || currentAudio.paused) {
+                    
+                    if (currentAudio) {
+                        currentAudio.pause();
+                        currentAudio.src = '';
+                        currentAudio.load();
+                        currentAudio = null;
+                    }
+                    
+                    const response = await fetch('/api/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, voice, emotion, speed: 1.0 })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('TTS API error: ' + response.status);
+                    }
+                    
+                    const audioBlob = await response.blob();
+                    
+                    if (audioBlob.size < 100) {
+                        throw new Error('Audio too small');
+                    }
+                    
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audio = new Audio(audioUrl);
+                    currentAudio = audio;
+                    
+                    audio.onplay = () => {
+                        isAudioPlaying = true;
+                        document.getElementById('avatar').classList.add('talking');
+                    };
+                    
+                    audio.onended = () => {
+                        isAudioPlaying = false;
+                        document.getElementById('avatar').classList.remove('talking');
+                        URL.revokeObjectURL(audioUrl);
+                        if (currentAudio === audio) currentAudio = null;
+                        resolve();
+                    };
+                    
+                    audio.onerror = (e) => {
+                        console.error('Audio play error:', e);
+                        isAudioPlaying = false;
+                        document.getElementById('avatar').classList.remove('talking');
+                        URL.revokeObjectURL(audioUrl);
+                        fallbackSpeak(text);
+                        resolve();
+                    };
+                    
+                    await audio.play();
+                } catch (error) {
+                    console.error('Yandex TTS error:', error);
                     fallbackSpeak(text);
+                    resolve();
                 }
-            }
+            });
         }
         
         function fallbackSpeak(text) {
@@ -740,7 +744,7 @@
         async function speak(text) {
             const cleanText = text.replace(/[\*\_\#]/g, '');
             try {
-                await speakWithYandex(cleanText, 'ermil', 'good');
+                await speakWithYandex(cleanText, 'alice', 'good');
             } catch (e) {
                 fallbackSpeak(cleanText);
             }
@@ -748,15 +752,15 @@
         
         function purr() {
             unlockAudio();
-            speakWithYandex("Муррр!", 'ermil', 'friendly').catch(() => {
+            speakWithYandex("Муррр!", 'alice', 'friendly').catch(() => {
                 const audio = new Audio('purr.mp3');
                 audio.play().catch(e => console.log('no purr'));
             });
         }
         
-        // ========== ИГРЫ (сокращённо, полные версии есть в предыдущих кодах) ==========
-        let gameActive = false, gameInterval = null, gameTimerInterval = null;
+        // ========== ИГРЫ ==========
         
+        let gameActive = false, gameInterval = null, gameTimerInterval = null;
         function startFishGame() {
             if (gameActive) return;
             gameActive = true;
@@ -838,6 +842,7 @@
                 </div>
             `;
             document.body.appendChild(modal);
+            
             document.getElementById('gameFishBtn').onclick = () => { modal.remove(); startFishGame(); updateAchievement('game_master'); };
             document.getElementById('gamePlayBtn').onclick = () => {
                 modal.remove();
