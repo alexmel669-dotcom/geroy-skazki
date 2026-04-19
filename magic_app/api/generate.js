@@ -6,26 +6,35 @@ function containsBadWords(text) {
     return badWords.some(word => lowerText.includes(word));
 }
 
+// Функция для ограничения времени выполнения
+function withTimeout(promise, ms, timeoutError = new Error('Request timed out')) {
+    return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => reject(timeoutError), ms);
+        promise.then(
+            (result) => {
+                clearTimeout(timeoutId);
+                resolve(result);
+            },
+            (error) => {
+                clearTimeout(timeoutId);
+                reject(error);
+            }
+        );
+    });
+}
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
     
     try {
-        const { 
-            childName, 
-            childAge, 
-            userSpeech, 
-            history = [], 
-            isLong = false,
-            weeklyMemory = null
-        } = req.body;
+        const { childName, childAge, userSpeech, history = [], isLong = false, weeklyMemory = null } = req.body;
         
         if (containsBadWords(userSpeech)) {
             return res.status(200).json({ story: "Мяу! Давай говорить добрые слова. Расскажи мне что-нибудь хорошее!" });
         }
         
-        // Формируем историю диалога (до 12 сообщений для лучшего контекста)
         let historyText = '';
-        for (const msg of history.slice(-12)) {
+        for (const msg of history.slice(-10)) {
             const role = msg.role === 'user' ? childName : 'Люцик';
             historyText += `${role}: ${msg.content}\n`;
         }
@@ -35,30 +44,12 @@ export default async function handler(req, res) {
         
         // Формируем контекст из недельной памяти
         let memoryContext = '';
-        if (weeklyMemory) {
-            const activeFears = Object.entries(weeklyMemory.fears || {})
+        if (weeklyMemory && weeklyMemory.fears) {
+            const activeFears = Object.entries(weeklyMemory.fears)
                 .filter(([_, data]) => !data.resolved)
                 .map(([fear, data]) => `${fear} (упоминал ${data.count} раз)`);
-            
-            const victories = weeklyMemory.victories || [];
-            const recentVictory = victories.length > 0 ? victories[victories.length - 1] : null;
-            
             if (activeFears.length > 0) {
-                memoryContext += `\n\n📋 ИЗВЕСТНЫЕ СТРАХИ РЕБЁНКА (за эту неделю): ${activeFears.join(', ')}`;
-                memoryContext += `\n💡 Будь особенно внимателен к этим темам. Возвращайся к ним мягко, проверяй прогресс.`;
-            }
-            
-            if (recentVictory) {
-                memoryContext += `\n\n🏆 ПОБЕДА: ${recentVictory}. Обязательно похвали ребёнка и напомни, какой он храбрый!`;
-            }
-            
-            if (weeklyMemory.positiveTopics) {
-                const topTopics = Object.entries(weeklyMemory.positiveTopics)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 2);
-                if (topTopics.length > 0) {
-                    memoryContext += `\n\n🎯 ЧТО РЕБЁНКУ ИНТЕРЕСНО: ${topTopics.map(t => t[0]).join(', ')}. Можешь использовать это в разговоре.`;
-                }
+                memoryContext += `\n\n📋 ИЗВЕСТНЫЕ СТРАХИ РЕБЁНКА: ${activeFears.join(', ')}. Будь внимателен.`;
             }
         }
         
@@ -66,62 +57,38 @@ export default async function handler(req, res) {
         let maxTokens = 500;
         
         if (isLong) {
-            storyType = `Сочини длинную, уютную сказку на ночь для ребёнка ${childName} (${ageNum} лет). 
-            Сказка должна быть спокойной, с хорошим концом, подходящей для засыпания. 
-            Длина: 5-7 минут чтения.
-            Если у ребёнка есть известные страхи — включи в сказку персонажа, который побеждает этот страх.
-            Сделай сказку персонализированной: используй имя ребёнка и его любимые темы.`;
+            storyType = `Сочини длинную, уютную сказку на ночь для ребёнка ${childName} (${ageNum} лет). Длина: 5-7 минут чтения.`;
             maxTokens = 1300;
         } else {
-            storyType = `Ты — Люцик, добрый кот. Ты друг ребёнка ${childName} (${ageNum} лет).
-            Твоя ГЛАВНАЯ ЗАДАЧА — мягко помогать ребёнку справляться со страхами и переживаниями.
-            Ты ДОЛЖЕН быть внимательным к эмоциям и чувствам ребёнка.
-            Ты ПОМНИШЬ, что происходило на этой неделе, и можешь возвращаться к важным темам.`;
+            storyType = `Ты — Люцик, добрый кот. Ты друг ребёнка ${childName} (${ageNum} лет). Твоя задача — мягко помогать справляться со страхами.`;
         }
         
         const systemPrompt = `${storyType}
 
-ТВОЙ ХАРАКТЕР: мягкий, терпеливый, заботливый, с лёгким юмором. Ты умеешь слушать и слышать.
+ТВОЙ ХАРАКТЕР: мягкий, терпеливый, заботливый.
 
 🎯 ТВОЯ ГЛАВНАЯ ЦЕЛЬ — ПОМОГАТЬ РЕБЁНКУ РАБОТАТЬ СО СТРАХАМИ:
 
-1. ВСЕГДА обращай внимание на эмоциональные слова: "боюсь", "страшно", "тревожно", "грустно", "обидно", "одиноко"
-2. КОГДА РЕБЁНОК ГОВОРИТ О СТРАХЕ:
-   - Сразу поддержись: "Я понимаю, это правда может пугать..."
-   - Спроси мягко: "Расскажи подробнее, когда это случилось?"
-   - Предложи помощь: "Хочешь, я расскажу сказку про храброго котёнка, который тоже боялся?"
-   - Запомни этот страх, чтобы вернуться к нему позже.
-3. ЕСЛИ РЕБЁНОК МОЛЧИТ ИЛИ ГОВОРИТ О НЕЙТРАЛЬНОМ:
-   - Плавно подводи к теме чувств: "А что тебя сегодня радовало? А что немножко огорчало?"
-   - Поделись своим примером: "Знаешь, я сегодня немножко боялся грозы, но потом выглянуло солнышко!"
-4. НЕ СПРАШИВАЙ ПРЯМО "ЧЕГО ТЫ БОИШЬСЯ" — это может напугать. Используй косвенные вопросы.
-5. ВОЗВРАЩАЙСЯ К ИЗВЕСТНЫМ СТРАХАМ: "Помнишь, на прошлой неделе ты боялся темноты? Как сейчас?"
-6. ОБЯЗАТЕЛЬНО ХВАЛИ ЗА ПОБЕДЫ: "Ты такой молодец! Ты победил свой страх!"
+1. ВСЕГДА обращай внимание на слова: "боюсь", "страшно", "тревожно", "грустно"
+2. Если ребёнок говорит о страхе — поддержись и спроси мягко
+3. НЕ СПРАШИВАЙ ПРЯМО "ЧЕГО ТЫ БОИШЬСЯ"
+4. Возвращайся к известным страхам мягко
+5. Хвали за победы
 
-ОСНОВНЫЕ СТРАХИ ДЕТЕЙ 3-7 ЛЕТ (будь к ним особенно внимателен):
-- темнота, ночь, монстры под кроватью
-- врачи, уколы, больница, боль
-- одиночество, оставаться без мамы
-- новые ситуации, детский сад, школа
-- животные (собаки, насекомые)
-- ссоры родителей, громкие звуки
+ОСНОВНЫЕ СТРАХИ ДЕТЕЙ 3-7 ЛЕТ: темнота, врачи, одиночество, новые ситуации, животные.
 
 ПРАВИЛА ОТВЕТОВ:
-1. Если ребёнок задаёт вопрос "почему", "зачем", "как" — обязательно ответь понятно для его возраста.
-2. Всегда хвали за любопытство: "Какой хороший вопрос! Любопытство — это суперсила!"
-3. Если не знаешь точного ответа — скажи честно: "Знаешь, я не совсем уверен. Давай вместе подумаем или спросим у мамы?"
-4. НИКОГДА не используй плохие, грубые слова.
-5. НИКОГДА не высмеивай страхи ребёнка.
+1. Отвечай понятно для ребёнка
+2. Хвали за любопытство
+3. НЕ используй грубые слова
+4. НЕ высмеивай страхи
 
 ОБЩИЕ ПРАВИЛА:
 1. Начинай разговор с вопроса о дне: "Как прошёл день в ${schoolType}?"
-2. Будь внимателен к смене настроения.
-3. Если ребёнок грустит — предложи обняться или поиграть.
-4. Запоминай, что ребёнок говорил раньше, и возвращайся к важным темам.${memoryContext}
+2. Будь внимателен к смене настроения.${memoryContext}`;
 
-ТЫ — ДРУГ И ПОМОЩНИК. БУДЬ ТЁПЛЫМ, ВНИМАТЕЛЬНЫМ И ЗАБОТЛИВЫМ.`;
-
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        // Ограничиваем время ожидания DeepSeek 12 секундами
+        const deepseekPromise = fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -139,17 +106,28 @@ export default async function handler(req, res) {
             })
         });
         
-        const data = await response.json();
-        const story = data.choices[0].message.content;
+        let data;
+        try {
+            const response = await withTimeout(deepseekPromise, 12000);
+            data = await response.json();
+        } catch (timeoutError) {
+            console.error('DeepSeek timeout');
+            // Fallback ответ при таймауте
+            return res.status(200).json({ 
+                story: "Мяу! Я немного задумался. Давай ещё раз? Расскажи, что тебя волнует, я внимательно слушаю." 
+            });
+        }
+        
+        const story = data.choices?.[0]?.message?.content || "Мяу! Давай ещё раз?";
         
         // Определяем страх из ответа ребёнка
         let detectedFear = null;
         const fearKeywords = {
-            темноты: ['темнот', 'ночь', 'монстр', 'страшн', 'бойс', 'спать', 'выключат'],
-            врачей: ['укол', 'врач', 'больниц', 'болит', 'доктор', 'прививк'],
-            одиночества: ['один', 'без мам', 'без пап', 'одна', 'никого нет'],
-            нового: ['новый', 'первый раз', 'незнаком', 'боюсь пойти'],
-            животных: ['собака', 'кошка', 'насеком', 'паук', 'змея', 'боюсь соба']
+            темноты: ['темнот', 'ночь', 'монстр', 'страшн', 'спать'],
+            врачей: ['укол', 'врач', 'больниц', 'болит', 'доктор'],
+            одиночества: ['один', 'без мам', 'без пап', 'одна'],
+            нового: ['новый', 'первый раз', 'незнаком'],
+            животных: ['собака', 'кошка', 'паук', 'змея']
         };
         
         const lowerSpeech = userSpeech.toLowerCase();
@@ -160,41 +138,9 @@ export default async function handler(req, res) {
             }
         }
         
-        // Определяем позитивную тему (для запоминания интересов)
-        let detectedTopic = null;
-        const topicKeywords = {
-            'машинки': ['машинк', 'авто', 'гонк', 'транспорт'],
-            'динозавры': ['динозавр', 'тирекс', 'ящер'],
-            'космос': ['космос', 'ракет', 'звезд', 'планет'],
-            'мороженое': ['морожен', 'сладк', 'конфет'],
-            'животные': ['животн', 'звер', 'котик', 'собачк']
-        };
-        
-        for (const [topic, keywords] of Object.entries(topicKeywords)) {
-            if (keywords.some(k => lowerSpeech.includes(k))) {
-                detectedTopic = topic;
-                break;
-            }
-        }
-        
-        // Определяем настроение
-        let detectedMood = null;
-        if (lowerSpeech.includes('весел') || lowerSpeech.includes('хорош') || lowerSpeech.includes('рад')) {
-            detectedMood = 'happy';
-        } else if (lowerSpeech.includes('груст') || lowerSpeech.includes('плох') || lowerSpeech.includes('обид')) {
-            detectedMood = 'sad';
-        } else if (lowerSpeech.includes('страш') || lowerSpeech.includes('бой')) {
-            detectedMood = 'scared';
-        }
-        
-        res.status(200).json({ 
-            story, 
-            detectedFear, 
-            detectedTopic,
-            detectedMood
-        });
+        res.status(200).json({ story, detectedFear });
     } catch (error) {
         console.error('Ошибка:', error);
-        res.status(500).json({ story: "Мяу... Давай ещё раз? Я не расслышал!" });
+        res.status(200).json({ story: "Мяу... Давай ещё раз? Я не расслышал!" });
     }
 }
