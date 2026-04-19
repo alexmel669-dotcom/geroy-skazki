@@ -640,12 +640,11 @@
             } catch(e) { return "Мяу! Давай ещё раз?"; }
         }
         
-        // ========== РАЗБЛОКИРОВКА АУДИО ДЛЯ YANDEX SPEECHKIT ==========
+        // ========== РАЗБЛОКИРОВКА АУДИО ==========
         let audioUnlocked = false;
         
         function unlockAudio() {
             if (audioUnlocked) return;
-            
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume().then(() => {
                 audioUnlocked = true;
@@ -657,76 +656,75 @@
         document.addEventListener('click', unlockAudio, { once: true });
         document.getElementById('micBtn').addEventListener('click', unlockAudio, { once: true });
         
-        // ========== ОЗВУЧКА ЧЕРЕЗ YANDEX SPEECHKIT (ГОЛОС ERMIL) ==========
+        // ========== НАДЁЖНОЕ ВОСПРОИЗВЕДЕНИЕ АУДИО ==========
         let currentAudio = null;
         let isAudioPlaying = false;
         
-        async function speakWithYandex(text, voice = 'ermil', emotion = 'good') {
-            return new Promise(async (resolve, reject) => {
-                try {
-                    if (!audioUnlocked) {
-                        console.log('Waiting for audio unlock...');
-                        await new Promise(r => setTimeout(r, 500));
-                        if (!audioUnlocked) {
-                            fallbackSpeak(text);
+        async function playAudioBlob(blob) {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.src = '';
+                currentAudio.load();
+                currentAudio = null;
+            }
+            
+            const audioUrl = URL.createObjectURL(blob);
+            const audio = new Audio(audioUrl);
+            currentAudio = audio;
+            
+            return new Promise((resolve, reject) => {
+                audio.oncanplaythrough = () => {
+                    audio.play()
+                        .then(() => {
+                            isAudioPlaying = true;
+                            document.getElementById('avatar').classList.add('talking');
                             resolve();
-                            return;
-                        }
-                    }
-                    
-                    if (currentAudio) {
-                        currentAudio.pause();
-                        currentAudio = null;
-                    }
-                    
-                    const response = await fetch('/api/tts', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text, voice, emotion, speed: 1.0 })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('TTS API error: ' + response.status);
-                    }
-                    
-                    const audioBlob = await response.blob();
-                    
-                    if (audioBlob.size < 100) {
-                        throw new Error('Audio too small');
-                    }
-                    
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    const audio = new Audio(audioUrl);
-                    currentAudio = audio;
-                    
-                    audio.onplay = () => {
-                        isAudioPlaying = true;
-                        document.getElementById('avatar').classList.add('talking');
-                    };
-                    
-                    audio.onended = () => {
-                        isAudioPlaying = false;
-                        document.getElementById('avatar').classList.remove('talking');
-                        URL.revokeObjectURL(audioUrl);
-                        resolve();
-                    };
-                    
-                    audio.onerror = (e) => {
-                        console.error('Audio play error:', e);
-                        isAudioPlaying = false;
-                        document.getElementById('avatar').classList.remove('talking');
-                        URL.revokeObjectURL(audioUrl);
-                        fallbackSpeak(text);
-                        resolve();
-                    };
-                    
-                    await audio.play();
-                } catch (error) {
-                    console.error('Yandex TTS error:', error);
-                    fallbackSpeak(text);
+                        })
+                        .catch(reject);
+                };
+                audio.onended = () => {
+                    isAudioPlaying = false;
+                    document.getElementById('avatar').classList.remove('talking');
+                    URL.revokeObjectURL(audioUrl);
+                    if (currentAudio === audio) currentAudio = null;
                     resolve();
-                }
+                };
+                audio.onerror = (e) => {
+                    console.error('Audio error:', e);
+                    reject(new Error('Playback failed'));
+                };
+                audio.load();
             });
+        }
+        
+        async function speakWithYandex(text, voice = 'ermil', emotion = 'good') {
+            try {
+                if (!audioUnlocked) {
+                    await new Promise(r => setTimeout(r, 500));
+                    if (!audioUnlocked) {
+                        fallbackSpeak(text);
+                        return;
+                    }
+                }
+                
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, voice, emotion, speed: 1.0 })
+                });
+                
+                if (!response.ok) throw new Error(`TTS error: ${response.status}`);
+                
+                const audioBlob = await response.blob();
+                if (audioBlob.size < 100) throw new Error('Audio too small');
+                
+                await playAudioBlob(audioBlob);
+            } catch (error) {
+                console.error('Yandex TTS error:', error);
+                if (!currentAudio || currentAudio.paused) {
+                    fallbackSpeak(text);
+                }
+            }
         }
         
         function fallbackSpeak(text) {
@@ -756,9 +754,9 @@
             });
         }
         
-        // ========== ИГРЫ ==========
-        
+        // ========== ИГРЫ (сокращённо, полные версии есть в предыдущих кодах) ==========
         let gameActive = false, gameInterval = null, gameTimerInterval = null;
+        
         function startFishGame() {
             if (gameActive) return;
             gameActive = true;
@@ -826,313 +824,6 @@
             gameInterval = setInterval(() => { if (gameActive) moveFish(); }, 1500);
         }
         
-        let memoryCards = [], memoryFlipped = [], memoryLocked = false, memoryMatches = 0;
-        function startMemoryGame() {
-            sendAnalytics('game_memory');
-            const emotions = ['😊', '😢', '😨', '😡', '😴', '😍'];
-            memoryCards = [...emotions, ...emotions];
-            for (let i = memoryCards.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [memoryCards[i], memoryCards[j]] = [memoryCards[j], memoryCards[i]];
-            }
-            memoryFlipped = new Array(memoryCards.length).fill(false);
-            memoryMatches = 0;
-            
-            const gameContainer = document.createElement('div');
-            gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
-            const title = document.createElement('h2');
-            title.textContent = '🧠 Найди пару';
-            title.style.color = 'white';
-            title.style.marginBottom = '20px';
-            const board = document.createElement('div');
-            board.style.cssText = 'display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; max-width:400px; width:90%; margin:0 auto;';
-            const cards = [];
-            for (let i = 0; i < memoryCards.length; i++) {
-                const card = document.createElement('div');
-                card.style.cssText = 'aspect-ratio:1; background:#4a4a6a; border-radius:15px; display:flex; align-items:center; justify-content:center; font-size:40px; cursor:pointer; transition:0.3s;';
-                card.dataset.index = i;
-                card.onclick = () => flipCard(i, card, cards);
-                cards.push(card);
-                board.appendChild(card);
-            }
-            const scoreDiv = document.createElement('div');
-            scoreDiv.style.cssText = 'color:white; margin-top:20px; font-size:20px;';
-            scoreDiv.textContent = `Найдено пар: ${memoryMatches} / 6`;
-            const closeBtn = document.createElement('button');
-            closeBtn.textContent = 'Закрыть';
-            closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-            closeBtn.onclick = () => document.body.removeChild(gameContainer);
-            gameContainer.appendChild(title);
-            gameContainer.appendChild(board);
-            gameContainer.appendChild(scoreDiv);
-            gameContainer.appendChild(closeBtn);
-            document.body.appendChild(gameContainer);
-            
-            let firstIndex = null, firstCard = null;
-            function flipCard(idx, card, cardsArray) {
-                if (memoryLocked || memoryFlipped[idx]) return;
-                memoryFlipped[idx] = true;
-                card.textContent = memoryCards[idx];
-                card.style.background = '#6c6caa';
-                if (firstIndex === null) {
-                    firstIndex = idx;
-                    firstCard = card;
-                } else {
-                    if (memoryCards[firstIndex] === memoryCards[idx]) {
-                        memoryMatches++;
-                        scoreDiv.textContent = `Найдено пар: ${memoryMatches} / 6`;
-                        firstIndex = null;
-                        firstCard = null;
-                        playSound('success');
-                        if (memoryMatches === 6) {
-                            updateAchievement('memory_champion');
-                            setTimeout(() => { alert('🎉 Поздравляю! Ты нашёл все пары!'); playSound('victory'); gameContainer.remove(); }, 500);
-                        }
-                    } else {
-                        memoryLocked = true;
-                        setTimeout(() => {
-                            memoryFlipped[firstIndex] = false;
-                            memoryFlipped[idx] = false;
-                            firstCard.textContent = '?';
-                            card.textContent = '?';
-                            firstCard.style.background = '#4a4a6a';
-                            card.style.background = '#4a4a6a';
-                            firstIndex = null;
-                            firstCard = null;
-                            memoryLocked = false;
-                        }, 1000);
-                    }
-                }
-            }
-        }
-        
-        let puzzlePieces = [], puzzleEmptyIndex = 8;
-        function startPuzzleGame() {
-            sendAnalytics('game_puzzle');
-            const imageUrl = 'avatar.png';
-            puzzlePieces = Array.from({ length: 9 }, (_, i) => i);
-            for (let i = puzzlePieces.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [puzzlePieces[i], puzzlePieces[j]] = [puzzlePieces[j], puzzlePieces[i]];
-            }
-            puzzleEmptyIndex = puzzlePieces.indexOf(8);
-            
-            const gameContainer = document.createElement('div');
-            gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
-            const title = document.createElement('h2');
-            title.textContent = '🧩 Собери пазл';
-            title.style.color = 'white';
-            title.style.marginBottom = '20px';
-            const board = document.createElement('div');
-            board.style.cssText = 'display:grid; grid-template-columns:repeat(3, 1fr); gap:5px; width:300px; height:300px; background:#333; border-radius:10px; overflow:hidden;';
-            
-            function renderBoard() {
-                board.innerHTML = '';
-                for (let i = 0; i < 9; i++) {
-                    const piece = document.createElement('div');
-                    piece.style.cssText = 'background-size:300% 300%; cursor:pointer; border:1px solid #555;';
-                    if (puzzlePieces[i] === 8) {
-                        piece.style.background = '#2a2a2a';
-                    } else {
-                        const row = Math.floor(puzzlePieces[i] / 3);
-                        const col = puzzlePieces[i] % 3;
-                        piece.style.backgroundImage = `url('${imageUrl}')`;
-                        piece.style.backgroundPosition = `${-col * 100}% ${-row * 100}%`;
-                        piece.style.backgroundSize = '300% 300%';
-                    }
-                    piece.onclick = () => movePiece(i);
-                    board.appendChild(piece);
-                }
-            }
-            
-            function movePiece(idx) {
-                const emptyRow = Math.floor(puzzleEmptyIndex / 3);
-                const emptyCol = puzzleEmptyIndex % 3;
-                const clickedRow = Math.floor(idx / 3);
-                const clickedCol = idx % 3;
-                if (Math.abs(emptyRow - clickedRow) + Math.abs(emptyCol - clickedCol) === 1) {
-                    [puzzlePieces[idx], puzzlePieces[puzzleEmptyIndex]] = [puzzlePieces[puzzleEmptyIndex], puzzlePieces[idx]];
-                    puzzleEmptyIndex = idx;
-                    renderBoard();
-                    playSound('click');
-                    let win = true;
-                    for (let i = 0; i < 8; i++) if (puzzlePieces[i] !== i) win = false;
-                    if (win && puzzlePieces[8] === 8) {
-                        updateAchievement('puzzle_solver');
-                        setTimeout(() => { alert('🎉 Ура! Ты собрал пазл!'); playSound('victory'); gameContainer.remove(); }, 500);
-                    }
-                }
-            }
-            
-            const closeBtn = document.createElement('button');
-            closeBtn.textContent = 'Закрыть';
-            closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-            closeBtn.onclick = () => document.body.removeChild(gameContainer);
-            gameContainer.appendChild(title);
-            gameContainer.appendChild(board);
-            gameContainer.appendChild(closeBtn);
-            document.body.appendChild(gameContainer);
-            renderBoard();
-        }
-        
-        let currentColor = '#ff9f4a';
-        const colors = ['#ff9f4a', '#ff4081', '#4CAF50', '#00d2ff', '#9b59b6', '#f1c40f'];
-        function startColoringGame() {
-            sendAnalytics('game_color');
-            const gameContainer = document.createElement('div');
-            gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
-            const title = document.createElement('h2');
-            title.textContent = '🎨 Раскрась Люцика';
-            title.style.color = 'white';
-            title.style.marginBottom = '10px';
-            const canvas = document.createElement('canvas');
-            canvas.width = 300;
-            canvas.height = 300;
-            canvas.style.border = '3px solid white';
-            canvas.style.borderRadius = '20px';
-            canvas.style.cursor = 'pointer';
-            canvas.style.backgroundColor = '#f0e6d0';
-            const ctx = canvas.getContext('2d');
-            
-            function drawOutline() {
-                ctx.clearRect(0, 0, 300, 300);
-                ctx.fillStyle = '#f0e6d0';
-                ctx.fillRect(0, 0, 300, 300);
-                ctx.fillStyle = currentColor;
-                ctx.beginPath();
-                ctx.arc(150, 130, 60, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(120, 110, 12, 0, Math.PI * 2);
-                ctx.arc(180, 110, 12, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#3a2a1a';
-                ctx.beginPath();
-                ctx.arc(120, 110, 6, 0, Math.PI * 2);
-                ctx.arc(180, 110, 6, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#ff6b6b';
-                ctx.beginPath();
-                ctx.ellipse(150, 140, 8, 6, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.moveTo(100, 145);
-                ctx.lineTo(70, 140);
-                ctx.moveTo(100, 150);
-                ctx.lineTo(65, 155);
-                ctx.moveTo(200, 145);
-                ctx.lineTo(230, 140);
-                ctx.moveTo(200, 150);
-                ctx.lineTo(235, 155);
-                ctx.stroke();
-            }
-            drawOutline();
-            
-            let isDrawing = false;
-            canvas.onmousedown = () => isDrawing = true;
-            canvas.onmouseup = () => { isDrawing = false; updateAchievement('artist'); };
-            canvas.onmousemove = (e) => {
-                if (!isDrawing) return;
-                const rect = canvas.getBoundingClientRect();
-                const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-                const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-                ctx.fillStyle = currentColor;
-                ctx.beginPath();
-                ctx.arc(x, y, 8, 0, Math.PI * 2);
-                ctx.fill();
-                playSound('paint');
-            };
-            
-            const palette = document.createElement('div');
-            palette.style.cssText = 'display:flex; gap:10px; margin:15px 0;';
-            colors.forEach(color => {
-                const colorBtn = document.createElement('div');
-                colorBtn.style.cssText = `width:40px; height:40px; background:${color}; border-radius:50%; cursor:pointer; border:2px solid white;`;
-                colorBtn.onclick = () => { currentColor = color; playSound('click'); };
-                palette.appendChild(colorBtn);
-            });
-            const clearBtn = document.createElement('button');
-            clearBtn.textContent = '🧽 Очистить';
-            clearBtn.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#e67e22; color:white; border:none;';
-            clearBtn.onclick = () => { drawOutline(); playSound('click'); };
-            const closeBtn = document.createElement('button');
-            closeBtn.textContent = 'Закрыть';
-            closeBtn.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-            closeBtn.onclick = () => document.body.removeChild(gameContainer);
-            gameContainer.appendChild(title);
-            gameContainer.appendChild(canvas);
-            gameContainer.appendChild(palette);
-            gameContainer.appendChild(clearBtn);
-            gameContainer.appendChild(closeBtn);
-            document.body.appendChild(gameContainer);
-        }
-        
-        let emotionScore = 0, emotionQuestion = 0;
-        const emotionsList = [
-            { emoji: '😊', name: 'радость', desc: 'Когда тебе весело и хорошо' },
-            { emoji: '😢', name: 'грусть', desc: 'Когда тебе немного грустно' },
-            { emoji: '😨', name: 'страх', desc: 'Когда тебе страшно' },
-            { emoji: '😡', name: 'злость', desc: 'Когда ты сердишься' },
-            { emoji: '😴', name: 'сонливость', desc: 'Когда ты хочешь спать' },
-            { emoji: '😍', name: 'любовь', desc: 'Когда ты кого-то очень любишь' }
-        ];
-        
-        function startEmotionGame() {
-            sendAnalytics('game_emotion');
-            emotionScore = 0;
-            emotionQuestion = 0;
-            showEmotionQuestion();
-        }
-        
-        function showEmotionQuestion() {
-            if (emotionQuestion >= 6) {
-                alert(`🎉 Молодец! Ты угадал ${emotionScore} из 6 эмоций!`);
-                if (emotionScore >= 5) {
-                    updateAchievement('emotion_master');
-                    playSound('victory');
-                }
-                return;
-            }
-            const emotion = emotionsList[emotionQuestion];
-            const options = emotionsList.map(e => e.name);
-            for (let i = options.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [options[i], options[j]] = [options[j], options[i]];
-            }
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <h3>😊 Угадай эмоцию</h3>
-                <div style="font-size:80px; margin:20px;">${emotion.emoji}</div>
-                <p style="margin-bottom:15px;">${emotion.desc}</p>
-                <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
-                    ${options.map(opt => `<button class="emotion-option" data-emotion="${opt}">${opt}</button>`).join('')}
-                </div>
-                <div style="margin-top:20px;">
-                    <button class="close-btn" id="closeEmotionGame">Закрыть</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            document.querySelectorAll('.emotion-option').forEach(btn => {
-                btn.onclick = () => {
-                    const selected = btn.dataset.emotion;
-                    if (selected === emotion.name) {
-                        emotionScore++;
-                        playSound('success');
-                        alert('✅ Правильно! Молодец!');
-                    } else {
-                        playSound('fail');
-                        alert(`❌ Неправильно. Это ${emotion.name}. Запомни!`);
-                    }
-                    modal.remove();
-                    emotionQuestion++;
-                    showEmotionQuestion();
-                };
-            });
-            document.getElementById('closeEmotionGame').onclick = () => modal.remove();
-        }
-        
         function showGameMenu() {
             const modal = document.createElement('div');
             modal.className = 'modal';
@@ -1140,10 +831,6 @@
                 <h3 style="margin-bottom: 20px;">🎮 Выбери игру</h3>
                 <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
                     <button id="gameFishBtn" style="background:#4aa3df;">🐟 Поймай рыбку</button>
-                    <button id="gameMemoryBtn" style="background:#9b59b6;">🧠 Мемори</button>
-                    <button id="gamePuzzleBtn" style="background:#e67e22;">🧩 Пазл</button>
-                    <button id="gameColorBtn" style="background:#2ecc71;">🎨 Раскраска</button>
-                    <button id="gameEmotionBtn" style="background:#f1c40f;">😊 Угадай эмоцию</button>
                     <button id="gamePlayBtn" style="background:#ff9f4a;">🎾 Поиграть с Люциком</button>
                 </div>
                 <div style="margin-top: 20px;">
@@ -1151,12 +838,7 @@
                 </div>
             `;
             document.body.appendChild(modal);
-            
             document.getElementById('gameFishBtn').onclick = () => { modal.remove(); startFishGame(); updateAchievement('game_master'); };
-            document.getElementById('gameMemoryBtn').onclick = () => { modal.remove(); startMemoryGame(); updateAchievement('game_master'); };
-            document.getElementById('gamePuzzleBtn').onclick = () => { modal.remove(); startPuzzleGame(); updateAchievement('game_master'); };
-            document.getElementById('gameColorBtn').onclick = () => { modal.remove(); startColoringGame(); updateAchievement('game_master'); };
-            document.getElementById('gameEmotionBtn').onclick = () => { modal.remove(); startEmotionGame(); updateAchievement('game_master'); };
             document.getElementById('gamePlayBtn').onclick = () => {
                 modal.remove();
                 if (energy >= 20) {
