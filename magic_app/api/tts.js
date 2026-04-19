@@ -3,7 +3,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Метод не поддерживается' });
     }
     
-    const { text, voice = 'ermil', emotion = 'good', speed = 1.0 } = req.body;
+    const { text, voice = 'alice' } = req.body;
     
     if (!text || text.trim() === '') {
         return res.status(400).json({ error: 'Текст обязателен' });
@@ -13,35 +13,35 @@ export default async function handler(req, res) {
     const FOLDER_ID = process.env.YANDEX_FOLDER_ID;
     
     if (!API_KEY || !FOLDER_ID) {
-        return res.status(500).json({ error: 'Yandex Cloud не настроен' });
+        console.error('Yandex Cloud не настроен');
+        return res.status(500).json({ error: 'Сервис временно недоступен' });
     }
     
     try {
-        // Запрашиваем RAW PCM (несжатый аудио)
-        const requestBody = {
-            text: text.slice(0, 500),
-            hints: [{ voice: voice }, { role: emotion }, { speed: speed }],
-            outputAudioSpec: {
-                rawAudio: {
-                    audioEncoding: 'LINEAR16_PCM',
-                    sampleRateHertz: 48000
-                }
-            }
-        };
+        // API v1 — самый стабильный, голос alice
+        const url = `https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize?folderId=${FOLDER_ID}`;
         
-        const response = await fetch('https://tts.api.cloud.yandex.net/tts/v3/utteranceSynthesis', {
+        const formData = new URLSearchParams();
+        formData.append('text', text.slice(0, 500));
+        formData.append('voice', voice);      // alice
+        formData.append('emotion', 'good');
+        formData.append('speed', '1.0');
+        formData.append('format', 'lpcm');
+        formData.append('sampleRateHertz', '48000');
+        
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Authorization': `Api-Key ${API_KEY}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/x-www-form-urlencoded'
             },
-            body: JSON.stringify(requestBody)
+            body: formData.toString()
         });
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Yandex error:', errorText);
-            return res.status(response.status).json({ error: 'Ошибка синтеза' });
+            console.error('Yandex TTS error:', response.status, errorText);
+            return res.status(response.status).json({ error: 'Ошибка синтеза речи' });
         }
         
         const pcmBuffer = await response.arrayBuffer();
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
         
     } catch (error) {
         console.error('TTS error:', error);
-        res.status(500).json({ error: 'Ошибка сервера' });
+        res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
 }
 
@@ -70,12 +70,9 @@ function pcmToWav(pcmData, sampleRate, numChannels) {
     const buffer = new ArrayBuffer(totalSize);
     const view = new DataView(buffer);
     
-    // RIFF chunk
     writeString(view, 0, 'RIFF');
     view.setUint32(4, totalSize - 8, true);
     writeString(view, 8, 'WAVE');
-    
-    // fmt subchunk
     writeString(view, 12, 'fmt ');
     view.setUint32(16, 16, true);
     view.setUint16(20, 1, true);
@@ -84,12 +81,9 @@ function pcmToWav(pcmData, sampleRate, numChannels) {
     view.setUint32(28, byteRate, true);
     view.setUint16(32, blockAlign, true);
     view.setUint16(34, bitsPerSample, true);
-    
-    // data subchunk
     writeString(view, 36, 'data');
     view.setUint32(40, dataSize, true);
     
-    // Copy PCM data
     const pcmView = new Uint8Array(pcmData);
     const wavView = new Uint8Array(buffer);
     wavView.set(pcmView, headerSize);
