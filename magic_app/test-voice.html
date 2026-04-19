@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>Тест голоса Алиса</title></head>
+<body>
+    <button id="btn">🔊 Проверить голос (Алиса)</button>
+    <div id="status"></div>
+    <script>
+        const btn = document.getElementById('btn');
+        const status = document.getElementById('status');
+        
+        btn.onclick = async () => {
+            status.innerHTML = '⏳ Запрос...';
+            const response = await fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: 'Привет! Я Алиса, голос от Яндекса. Рада познакомиться!', voice: 'alice' })
+            });
+            const blob = await response.blob();
+            status.innerHTML = '✅ Размер: ' + blob.size + ' байт';
+            const audio = new Audio(URL.createObjectURL(blob));
+            audio.play();
+        };
+    </script>
+</body>
+</html>
