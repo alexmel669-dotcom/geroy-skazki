@@ -646,7 +646,6 @@
         function unlockAudio() {
             if (audioUnlocked) return;
             
-            // Создаём пустой аудиоконтекст для разблокировки
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume().then(() => {
                 audioUnlocked = true;
@@ -654,19 +653,17 @@
             }).catch(e => console.log('Audio unlock error:', e));
         }
         
-        // Разблокируем аудио при первом касании/клике
         document.addEventListener('touchstart', unlockAudio, { once: true });
         document.addEventListener('click', unlockAudio, { once: true });
         document.getElementById('micBtn').addEventListener('click', unlockAudio, { once: true });
         
-        // ========== ОЗВУЧКА ЧЕРЕЗ YANDEX SPEECHKIT (ГОЛОС АЛЕКСАНДРА) ==========
+        // ========== ОЗВУЧКА ЧЕРЕЗ YANDEX SPEECHKIT (ГОЛОС ERMIL) ==========
         let currentAudio = null;
         let isAudioPlaying = false;
         
-        async function speakWithYandex(text, voice = 'alexander', emotion = 'good') {
+        async function speakWithYandex(text, voice = 'ermil', emotion = 'good') {
             return new Promise(async (resolve, reject) => {
                 try {
-                    // Ждём разблокировки аудио
                     if (!audioUnlocked) {
                         console.log('Waiting for audio unlock...');
                         await new Promise(r => setTimeout(r, 500));
@@ -695,7 +692,7 @@
                     const audioBlob = await response.blob();
                     
                     if (audioBlob.size < 100) {
-                        throw new Error('Audio too small, maybe error response');
+                        throw new Error('Audio too small');
                     }
                     
                     const audioUrl = URL.createObjectURL(audioBlob);
@@ -719,7 +716,8 @@
                         isAudioPlaying = false;
                         document.getElementById('avatar').classList.remove('talking');
                         URL.revokeObjectURL(audioUrl);
-                        reject(e);
+                        fallbackSpeak(text);
+                        resolve();
                     };
                     
                     await audio.play();
@@ -744,7 +742,7 @@
         async function speak(text) {
             const cleanText = text.replace(/[\*\_\#]/g, '');
             try {
-                await speakWithYandex(cleanText, 'alexander', 'good');
+                await speakWithYandex(cleanText, 'ermil', 'good');
             } catch (e) {
                 fallbackSpeak(cleanText);
             }
@@ -752,8 +750,7 @@
         
         function purr() {
             unlockAudio();
-            
-            speakWithYandex("Муррр!", 'alexander', 'friendly').catch(() => {
+            speakWithYandex("Муррр!", 'ermil', 'friendly').catch(() => {
                 const audio = new Audio('purr.mp3');
                 audio.play().catch(e => console.log('no purr'));
             });
