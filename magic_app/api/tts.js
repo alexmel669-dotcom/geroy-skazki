@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-    // Только POST запросы
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Метод не поддерживается' });
     }
@@ -19,7 +18,6 @@ export default async function handler(req, res) {
     }
     
     try {
-        // Формируем тело запроса для SpeechKit API v3
         const requestBody = {
             text: text.slice(0, 5000),
             hints: [
@@ -29,7 +27,7 @@ export default async function handler(req, res) {
             ],
             outputAudioSpec: {
                 containerAudio: {
-                    containerAudioType: 'OGG_OPUS'
+                    containerAudioType: 'MP3'  // ИЗМЕНЕНО НА MP3
                 }
             }
         };
@@ -51,7 +49,7 @@ export default async function handler(req, res) {
         
         const audioBuffer = await response.arrayBuffer();
         
-        res.setHeader('Content-Type', 'audio/ogg');
+        res.setHeader('Content-Type', 'audio/mpeg');
         res.setHeader('Cache-Control', 'public, max-age=86400');
         res.send(Buffer.from(audioBuffer));
         
