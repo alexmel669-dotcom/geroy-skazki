@@ -3,85 +3,66 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Метод не поддерживается' });
     }
     
-    const { text, voice = 'alexander' } = req.body;
+    const { text, voice = 'alexander', emotion = 'good', speed = 1.0 } = req.body;
     
     if (!text || text.trim() === '') {
         return res.status(400).json({ error: 'Текст обязателен' });
     }
     
     const API_KEY = process.env.YANDEX_API_KEY;
+    const FOLDER_ID = process.env.YANDEX_FOLDER_ID;
     
-    if (!API_KEY) {
-        return res.status(500).json({ error: 'Yandex Cloud не настроен' });
+    if (!API_KEY || !FOLDER_ID) {
+        console.error('Yandex Cloud не настроен');
+        return res.status(500).json({ error: 'Сервис временно недоступен' });
     }
     
     try {
-        // Старый добрый API v1 (совместимый формат)
-        const url = `https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize?format=lpcm&sampleRateHertz=48000&voice=${voice}&emotion=good&speed=1.0`;
+        // Формируем тело запроса для SpeechKit API v3
+        const requestBody = {
+            text: text.slice(0, 500),
+            hints: [
+                { voice: voice },
+                { role: emotion },
+                { speed: speed }
+            ],
+            outputAudioSpec: {
+                containerAudio: {
+                    containerAudioType: 'MP3'
+                }
+            }
+        };
         
-        const response = await fetch(url, {
+        console.log('Sending request to Yandex TTS...', JSON.stringify(requestBody));
+        
+        const response = await fetch('https://tts.api.cloud.yandex.net/tts/v3/utteranceSynthesis', {
             method: 'POST',
             headers: {
                 'Authorization': `Api-Key ${API_KEY}`,
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'Content-Type': 'application/json'
             },
-            body: `text=${encodeURIComponent(text.slice(0, 500))}`
+            body: JSON.stringify(requestBody)
         });
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Yandex TTS error:', errorText);
-            return res.status(response.status).json({ error: 'Ошибка синтеза' });
+            console.error('Yandex TTS error:', response.status, errorText);
+            return res.status(response.status).json({ error: 'Ошибка синтеза речи: ' + errorText });
         }
         
         const audioBuffer = await response.arrayBuffer();
+        console.log('Audio received, size:', audioBuffer.byteLength);
         
-        // Конвертируем LPCM в WAV
-        const wavBuffer = pcmToWav(audioBuffer, 48000, 1);
+        // Проверяем, что это действительно MP3 (начинается с ID3 или 0xFF)
+        const firstByte = new Uint8Array(audioBuffer)[0];
+        console.log('First byte:', firstByte.toString(16));
         
-        res.setHeader('Content-Type', 'audio/wav');
-        res.send(Buffer.from(wavBuffer));
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.status(200).send(Buffer.from(audioBuffer));
         
     } catch (error) {
         console.error('TTS error:', error);
-        res.status(500).json({ error: 'Ошибка сервера' });
-    }
-}
-
-function pcmToWav(pcmData, sampleRate, numChannels) {
-    const bitsPerSample = 16;
-    const blockAlign = numChannels * (bitsPerSample / 8);
-    const byteRate = sampleRate * blockAlign;
-    const dataSize = pcmData.byteLength;
-    const headerSize = 44;
-    const totalSize = headerSize + dataSize;
-    
-    const buffer = new ArrayBuffer(totalSize);
-    const view = new DataView(buffer);
-    
-    writeString(view, 0, 'RIFF');
-    view.setUint32(4, totalSize - 8, true);
-    writeString(view, 8, 'WAVE');
-    writeString(view, 12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, numChannels, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, byteRate, true);
-    view.setUint16(32, blockAlign, true);
-    view.setUint16(34, bitsPerSample, true);
-    writeString(view, 36, 'data');
-    view.setUint32(40, dataSize, true);
-    
-    const pcmView = new Uint8Array(pcmData);
-    const wavView = new Uint8Array(buffer);
-    wavView.set(pcmView, headerSize);
-    
-    return buffer;
-}
-
-function writeString(view, offset, str) {
-    for (let i = 0; i < str.length; i++) {
-        view.setUint8(offset + i, str.charCodeAt(i));
+        res.status(500).json({ error: 'Внутренняя ошибка сервера: ' + error.message });
     }
 }
