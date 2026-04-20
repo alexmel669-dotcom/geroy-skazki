@@ -7,14 +7,15 @@ export default async function handler(req, res) {
 
   let text = '';
   let voice = 'oksana';
+  let speed = 0.9;
 
   try {
-    // Парсим тело запроса
     const body = req.body;
     text = body.text || '';
     voice = body.voice || 'oksana';
+    speed = body.speed || 0.9;
     
-    // Убираем лишние символы
+    // Очищаем текст от эмодзи и спецсимволов
     text = text.replace(/[^\w\s\.,!?а-яА-ЯёЁ-]/g, '').trim();
     
     if (!text) {
@@ -31,24 +32,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Правильный запрос к Яндекс SpeechKit
-    const requestBody = {
-      text: text,
-      voice: voice,
-      format: 'wav',
-      sampleRateHertz: 48000,
-      speed: 0.9
-    };
+    // ⚠️ ВАЖНО: Яндекс SpeechKit v1 НЕ принимает JSON!
+    // Используем URLSearchParams для x-www-form-urlencoded
+    const params = new URLSearchParams();
+    params.append('text', text);
+    params.append('voice', voice);
+    params.append('format', 'wav');
+    params.append('sampleRateHertz', '48000');
+    params.append('speed', speed.toString());
 
-    console.log('🎤 Отправляем в Яндекс:', { text: text.substring(0, 50), voice });
+    console.log('🎤 Отправляем в Яндекс (form-urlencoded):', { text: text.substring(0, 50), voice, speed });
 
     const response = await fetch('https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize', {
       method: 'POST',
       headers: {
         'Authorization': `Api-Key ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/x-www-form-urlencoded'  // ← КЛЮЧЕВОЙ МОМЕНТ!
       },
-      body: JSON.stringify(requestBody)
+      body: params.toString()  // ← НЕ JSON, а form-urlencoded
     });
 
     if (!response.ok) {
@@ -56,6 +57,7 @@ export default async function handler(req, res) {
       console.error('❌ Яндекс ошибка:', response.status, errorText);
       return res.status(response.status).json({ 
         error: 'Ошибка SpeechKit',
+        status: response.status,
         details: errorText 
       });
     }
