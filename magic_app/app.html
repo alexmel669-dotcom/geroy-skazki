@@ -318,15 +318,12 @@
         async function checkDeveloperStatus() {
             const userEmail = localStorage.getItem('userEmail');
             if (userEmail === 'alexmel669@gmail.com') {
-                // Проверка личности: просто введите число (без подсказки)
                 const userNumber = prompt('Введите число для подтверждения:');
                 if (userNumber === '13') {
                     isDevMode = true;
                     localStorage.setItem('developerMode', 'true');
                     console.log('⭐ Режим разработчика активирован');
                     alert('⭐ Режим разработчика включён!');
-                } else {
-                    console.log('❌ Неверный ответ, режим разработчика не активирован');
                 }
             } else if (localStorage.getItem('developerMode') === 'true') {
                 isDevMode = true;
@@ -397,7 +394,7 @@
         checkAuthAndRedirect();
         checkDeveloperStatus();
         
-        // ========== ПЕРВЫЙ ВХОД (показываем информацию о подписках) ==========
+        // ========== ПЕРВЫЙ ВХОД ==========
         const isFirstVisit = !localStorage.getItem('hasSeenSubscriptionInfo');
         if (isFirstVisit && !isDeveloperMode()) {
             setTimeout(() => {
@@ -425,15 +422,6 @@
                     localStorage.setItem('hasSeenSubscriptionInfo', 'true');
                 };
             }, 1000);
-        }
-        
-        // ========== АНАЛИТИКА ==========
-        function sendAnalytics(eventType, eventData = {}) {
-            fetch('/api/analytics', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ event_type: eventType, event_data: eventData })
-            }).catch(e => console.log('Analytics error:', e));
         }
         
         // ========== ЗВУКИ ==========
@@ -486,11 +474,9 @@
         let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
         let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
         let fishScore = parseInt(localStorage.getItem('fishScore')) || 0;
-        let storyCount = parseInt(localStorage.getItem('storyCount')) || 0;
         let todayStoriesCount = parseInt(localStorage.getItem('todayStoriesCount') || '0');
         let lastStoryDate = localStorage.getItem('lastStoryDate') || '';
         
-        // Сброс счётчика сказок на новый день
         const today = new Date().toDateString();
         if (lastStoryDate !== today) {
             todayStoriesCount = 0;
@@ -503,15 +489,43 @@
             return 15;
         }
         
-        // ========== ПЕРСОНАЖИ (ГОЛОСА И ЛОГИКА) ==========
-        // Люцик — Zahar (мужской, уверенный), Папа — Ermil (мужской, мягкий)
+        // ========== ПЕРСОНАЖИ (ГОЛОСА) ==========
         const characterVoiceMap = {
-            lucik: 'zahar',    // Люцик — Zahar (мужской, уверенный)
-            mom: 'jane',       // Мама — Jane (женский, мягкий)
-            dad: 'ermil',      // Папа — Ermil (мужской, мягкий)
-            kid1: 'oksana',    // Ребёнок — Oksana (женский, детский)
+            lucik: 'zahar',
+            mom: 'jane',
+            dad: 'ermil',
+            kid1: 'oksana',
             kid2: 'oksana'
         };
+        
+        // ========== ЛОГИКА ПЕРСОНАЖЕЙ (УНИКАЛЬНАЯ ДЛЯ КАЖДОГО) ==========
+        function getCharacterPrompt(charId, childName, childAge, weeklyMemory) {
+            const prompts = {
+                lucik: `Ты Люцик — дружелюбный волшебный котик. Ты помогаешь ребёнку чувствовать себя смелее, но никогда не навязываешься.
+
+Твои правила:
+1. Если ребёнок САМ говорит о страхе или тревоге — поддержись: "Мурр... Я с тобой", "Ты молодец, что рассказал", "Мы вместе справимся".
+2. Время от времени (не в каждой реплике) можешь мягко поинтересоваться: "А что тебя иногда пугает?", "Мурр... Бывает тебе грустно?", "А что бы тебе помогло чувствовать себя смелее?"
+3. Если ребёнок не хочет говорить — сразу переключайся: "Хочешь, поиграем?", "Рассказать сказку?"
+4. Никогда не говори "не бойся". Вместо этого: "Я рядом", "Ты не один", "Мы вместе".
+5. Отвечай кратко, по-доброму, иногда мурлыкай. Используй имя ребёнка.`,
+
+                mom: `Ты мама ребёнка. Ты заботливая, нежная, успокаивающая. Если ребёнок сам говорит о страхе — поддержи: "Я рядом, милый", "Расскажи, что ты чувствуешь", "Вместе мы всё сможем". Никогда не дави и не спрашивай прямо о страхах, если ребёнок не хочет говорить. Главное — дать чувство безопасности и любви. Используй фразы: "солнышко", "я тебя люблю".`,
+
+                dad: `Ты папа ребёнка. Ты уверенный, добрый, защищающий. Если ребёнок сам говорит о страхе — поддержи: "Ты смелый, я знаю", "Я горжусь тобой", "Мы справимся вместе". Не дави и не спрашивай прямо, если ребёнок не хочет говорить. Подбадривай, будь надёжным.`,
+
+                kid1: `Ты друг ребёнка, такого же возраста. Вы играете вместе, делитесь игрушками. О страхах говори только если ребёнок сам начнёт. Твоя задача — дружить, веселиться, предлагать игры. Говори просто, по-детски.`,
+
+                kid2: `Ты друг ребёнка, такого же возраста. Вы играете вместе, делитесь игрушками. О страхах говори только если ребёнок сам начнёт. Твоя задача — дружить, веселиться, предлагать игры. Говори просто, по-детски.`
+            };
+            
+            const basePrompt = prompts[charId] || prompts.lucik;
+            
+            return `${basePrompt}
+Ребёнка зовут ${childName}, ему ${childAge} лет.
+Вот что я знаю о его страхах за эту неделю: ${JSON.stringify(weeklyMemory.fears)}
+Помни: ты помогаешь, а не пугаешь. Если ребёнок не хочет говорить — не настаивай, предложи игру.`;
+        }
         
         const characters = {
             lucik: { name: 'Люцик', icon: 'avatar.png', premium: false },
@@ -526,7 +540,6 @@
             return characterVoiceMap[charId] || 'oksana';
         }
         
-        // Загрузка детей из localStorage
         loadChildren();
         
         function updateStatsUI() {
@@ -552,16 +565,10 @@
             }
         }
         
-        function updateAvatarLock() {
-            const isLocked = characters[currentChar].premium && false;
-        }
-        
         function changeCharacter(charId) {
             currentChar = charId;
             document.getElementById('avatar').style.backgroundImage = `url('${characters[charId].icon}')`;
             localStorage.setItem('currentCharacter', charId);
-            updateAvatarLock();
-            // Небольшая озвучка при смене персонажа
             setTimeout(() => {
                 speakWithYandex(`Теперь я ${characters[charId].name}!`, getVoiceForCharacter(charId));
             }, 500);
@@ -610,15 +617,14 @@
             return memory;
         }
         
-        // ========== ДИАЛОГ (логика как у кота, но с голосами) ==========
+        // ========== DEEPSEEK С ПРАВИЛЬНОЙ ЛОГИКОЙ ПЕРСОНАЖА ==========
         async function askDeepSeek(text, isLong = false) {
             if (containsBadWords(text)) return "Мяу! Давай говорить добрые слова!";
             
-            // Проверка лимита сказок
             const todayStories = parseInt(localStorage.getItem('todayStoriesCount') || '0');
             const limit = getDailyStoryLimit();
             if (!isDeveloperMode() && todayStories >= limit) {
-                return "Люцик немного устал. Давай поиграем в рыбку или вернёмся завтра?";
+                return "Я немного устал. Давай поиграем или вернёмся завтра?";
             }
             
             try {
@@ -629,16 +635,7 @@
                     return { role: isUser ? "user" : "assistant", content: cleanContent };
                 });
                 
-                const systemPrompt = `Ты ${characters[currentChar].name}. Ребёнка зовут ${currentChild || childName}, ему ${childAge} лет.
-Вот что я знаю о его страхах за эту неделю: ${JSON.stringify(weeklyMemory.fears)}
-Правила:
-1. Будь мягким и тактичным. Не спрашивай прямо "чего ты боишься".
-2. Если ребёнок сам упоминает страх — поддержи и предложи помощь: "Я с тобой", "Вместе мы справимся".
-3. Направляй диалог к позитиву: "А что тебя радует?", "А что бы ты хотел?".
-4. Никогда не говори "не бойся". Вместо этого: "Я рядом", "Мы вместе".
-5. Если ребёнок не хочет говорить — предложи игру или сказку.
-6. Отвечай кратко, 1-3 предложения, как в реальном разговоре.
-7. Используй имя ребёнка в разговоре.`;
+                const systemPrompt = getCharacterPrompt(currentChar, currentChild || childName, childAge, weeklyMemory);
                 
                 const res = await fetch('/api/generate', {
                     method: 'POST',
@@ -656,7 +653,6 @@
                 const data = await res.json();
                 if (data.detectedFear) updateFear(data.detectedFear);
                 
-                // Увеличиваем счётчик сказок
                 const newCount = todayStories + 1;
                 localStorage.setItem('todayStoriesCount', newCount.toString());
                 
@@ -667,7 +663,7 @@
             }
         }
         
-        // ========== РАЗБЛОКИРОВКА АУДИО ==========
+        // ========== АУДИО ==========
         let audioUnlocked = false;
         function unlockAudio() {
             if (audioUnlocked) return;
@@ -681,14 +677,12 @@
         document.addEventListener('touchstart', unlockAudio, { once: true });
         document.addEventListener('click', unlockAudio, { once: true });
         
-        // ========== ОЗВУЧКА ЧЕРЕЗ YANDEX SPEECHKIT ==========
         let currentAudio = null;
         let isSpeaking = false;
         
         async function speakWithYandex(text, voice = 'oksana') {
             return new Promise(async (resolve) => {
                 if (isSpeaking) {
-                    console.log('Уже говорю, жду');
                     resolve();
                     return;
                 }
@@ -758,7 +752,7 @@
             await speakWithYandex(text, voice);
         }
         
-        // ========== СВАЙП ДЛЯ СМЕНЫ ПЕРСОНАЖА ==========
+        // ========== СВАЙП ==========
         let touchStartX = 0;
         let touchEndX = 0;
         
@@ -885,7 +879,7 @@
             modal.className = 'modal';
             modal.innerHTML = `<h3>🌙 Люцик готовит сказку...</h3><p>Подожди немного</p>`;
             document.body.appendChild(modal);
-            speak("Мяу! Сейчас расскажу сказку на ночь...");
+            speak("Сейчас расскажу сказку на ночь...");
             const longStory = await askDeepSeek("Расскажи длинную, спокойную сказку на ночь для ребёнка 3-7 лет.", true);
             modal.remove();
             const storyModal = document.createElement('div');
@@ -991,7 +985,6 @@
             }
         };
         
-        updateAvatarLock();
         updateStatsUI();
         changeCharacter(currentChar);
         
@@ -1007,13 +1000,22 @@
         updateTimeTheme();
         setInterval(updateTimeTheme, 60000);
         
-        // Приветствие через Яндекс (не робот)
         setTimeout(() => {
             if (childrenNames.length > 1 && !currentChild) {
                 showChildSelector();
             } else {
                 const greetingVoice = getVoiceForCharacter(currentChar);
-                speakWithYandex(`Мяу! Привет, ${currentChild || childName}! Нажми на микрофон, и мы подружимся!`, greetingVoice);
+                let greetingText = '';
+                if (currentChar === 'lucik') {
+                    greetingText = `Мяу! Привет, ${currentChild || childName}! Я Люцик, твой друг. Нажми на микрофон, и мы подружимся!`;
+                } else if (currentChar === 'mom') {
+                    greetingText = `Привет, ${currentChild || childName}! Это мама. Я всегда рядом, если я нужна. Расскажи, как твои дела?`;
+                } else if (currentChar === 'dad') {
+                    greetingText = `Привет, ${currentChild || childName}! Это папа. Как настроение? Что сегодня делал?`;
+                } else {
+                    greetingText = `Привет, ${currentChild || childName}! Давай дружить и играть вместе!`;
+                }
+                speakWithYandex(greetingText, greetingVoice);
             }
         }, 1000);
     </script>
