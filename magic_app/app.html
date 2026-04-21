@@ -234,7 +234,6 @@
             100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
         
-        /* Визуальные эффекты для действий */
         .visual-effect {
             position: fixed;
             font-size: 48px;
@@ -248,7 +247,6 @@
             100% { opacity: 0; transform: translate(-50%, -50%) translateY(-100px) scale(1); }
         }
         
-        /* Выбор ребёнка */
         .child-selector {
             display: flex;
             flex-wrap: wrap;
@@ -314,23 +312,29 @@
     </div>
     
     <script>
-        // ========== РЕЖИМ РАЗРАБОТЧИКА (по Gmail) ==========
-        function isDeveloper() {
-            const userEmail = localStorage.getItem('userEmail');
-            // ЗАМЕНИТЕ НА ВАШ EMAIL
-            const developerEmails = [
-                'your-email@gmail.com'   // ← СЮДА ВАШ GMAIL
-            ];
-            return developerEmails.includes(userEmail);
-        }
+        // ========== РЕЖИМ РАЗРАБОТЧИКА (по Gmail с проверкой) ==========
+        let isDevMode = false;
         
-        if (isDeveloper()) {
-            localStorage.setItem('developerMode', 'true');
-            console.log('⭐ Режим разработчика активирован');
+        async function checkDeveloperStatus() {
+            const userEmail = localStorage.getItem('userEmail');
+            if (userEmail === 'alexmel669@gmail.com') {
+                // Проверка личности: вопрос с числом
+                const userNumber = prompt('Подтверждение: введите число 13');
+                if (userNumber === '13') {
+                    isDevMode = true;
+                    localStorage.setItem('developerMode', 'true');
+                    console.log('⭐ Режим разработчика активирован');
+                    alert('⭐ Режим разработчика включён!');
+                } else {
+                    console.log('❌ Неверный ответ, режим разработчика не активирован');
+                }
+            } else if (localStorage.getItem('developerMode') === 'true') {
+                isDevMode = true;
+            }
         }
         
         function isDeveloperMode() {
-            return localStorage.getItem('developerMode') === 'true';
+            return isDevMode || localStorage.getItem('developerMode') === 'true';
         }
         
         // ========== НЕСКОЛЬКО ДЕТЕЙ ==========
@@ -370,7 +374,7 @@
                     currentChild = name;
                     localStorage.setItem('currentChild', currentChild);
                     selector.style.display = 'none';
-                    speakWithYandex(`Привет, ${name}! Я по тебе скучал!`, 'oksana');
+                    speakWithYandex(`Привет, ${name}! Я по тебе скучал!`, getVoiceForCharacter(currentChar));
                 };
                 selector.appendChild(btn);
             });
@@ -391,6 +395,7 @@
         }
         
         checkAuthAndRedirect();
+        checkDeveloperStatus();
         
         // ========== ПЕРВЫЙ ВХОД (показываем информацию о подписках) ==========
         const isFirstVisit = !localStorage.getItem('hasSeenSubscriptionInfo');
@@ -498,14 +503,39 @@
             return 15;
         }
         
+        // ========== ПЕРСОНАЖИ (ГОЛОСА И ЛОГИКА) ==========
+        const characterVoiceMap = {
+            lucik: 'ermil',    // Люцик — Ermil (мужской, мягкий)
+            mom: 'jane',       // Мама — Jane (женский, мягкий)
+            dad: 'zahar',      // Папа — Zahar (мужской, уверенный)
+            kid1: 'oksana',    // Ребёнок — Oksana (женский, детский)
+            kid2: 'oksana'
+        };
+        
+        const characterPrompts = {
+            lucik: `Ты Люцик — добрый волшебный котик-друг. Ты говоришь мягким мужским голосом. Иногда мурлыкай. Будь игривым и заботливым.`,
+            mom: `Ты мама ребёнка. Говори заботливо, нежно, успокаивающе. Используй фразы: "милый", "солнышко", "я рядом". Ты говоришь женским мягким голосом.`,
+            dad: `Ты папа ребёнка. Говори уверенно, но мягко. Подбадривай: "ты смелый", "я горжусь тобой". Ты говоришь мужским уверенным голосом.`,
+            kid1: `Ты друг ребёнка. Говори по-детски, весело, используй простые слова. Ты говоришь детским голосом.`,
+            kid2: `Ты друг ребёнка. Говори по-детски, весело, используй простые слова. Ты говоришь детским голосом.`
+        };
+        
         const characters = {
-            lucik: { name: 'Люцик', icon: 'avatar.png', premium: false, voice: 'oksana' },
-            mom: { name: 'Мама', icon: 'mom.png', premium: true, voice: 'oksana' },
-            dad: { name: 'Папа', icon: 'dad.png', premium: true, voice: 'zahar' },
-            kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: true, voice: 'oksana' },
-            kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: true, voice: 'oksana' }
+            lucik: { name: 'Люцик', icon: 'avatar.png', premium: false },
+            mom: { name: 'Мама', icon: 'mom.png', premium: true },
+            dad: { name: 'Папа', icon: 'dad.png', premium: true },
+            kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: true },
+            kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: true }
         };
         let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
+        
+        function getVoiceForCharacter(charId) {
+            return characterVoiceMap[charId] || 'oksana';
+        }
+        
+        function getPromptForCharacter(charId) {
+            return characterPrompts[charId] || characterPrompts.lucik;
+        }
         
         // Загрузка детей из localStorage
         loadChildren();
@@ -534,7 +564,7 @@
         }
         
         function updateAvatarLock() {
-            const isLocked = characters[currentChar].premium && false; // пока всё бесплатно
+            const isLocked = characters[currentChar].premium && false;
         }
         
         function changeCharacter(charId) {
@@ -542,6 +572,53 @@
             document.getElementById('avatar').style.backgroundImage = `url('${characters[charId].icon}')`;
             localStorage.setItem('currentCharacter', charId);
             updateAvatarLock();
+            // Небольшая озвучка при смене персонажа
+            setTimeout(() => {
+                speakWithYandex(`Теперь я ${characters[charId].name}!`, getVoiceForCharacter(charId));
+            }, 500);
+        }
+        
+        // ========== НЕДЕЛЬНАЯ ПАМЯТЬ ==========
+        function getWeekStart(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff)).toISOString().split('T')[0];
+        }
+        
+        function getWeeklyMemory() {
+            let memory = localStorage.getItem('weeklyMemory');
+            if (!memory) {
+                const now = new Date();
+                const weekStart = getWeekStart(now);
+                memory = {
+                    weekStart: weekStart,
+                    fears: {},
+                    positiveTopics: {},
+                    mood: { happy: 0, sad: 0, scared: 0 },
+                    victories: [],
+                    lastUpdated: new Date().toISOString()
+                };
+                localStorage.setItem('weeklyMemory', JSON.stringify(memory));
+                return memory;
+            }
+            memory = JSON.parse(memory);
+            const now = new Date();
+            const currentWeekStart = getWeekStart(now);
+            if (memory.weekStart !== currentWeekStart) {
+                localStorage.setItem(`weeklyMemory_${memory.weekStart}`, JSON.stringify(memory));
+                const newMemory = {
+                    weekStart: currentWeekStart,
+                    fears: {},
+                    positiveTopics: {},
+                    mood: { happy: 0, sad: 0, scared: 0 },
+                    victories: [],
+                    lastUpdated: new Date().toISOString()
+                };
+                localStorage.setItem('weeklyMemory', JSON.stringify(newMemory));
+                return newMemory;
+            }
+            return memory;
         }
         
         // ========== УЛУЧШЕННЫЙ PROMPT ДЛЯ DEEPSEEK ==========
@@ -556,20 +633,26 @@
             }
             
             try {
+                const weeklyMemory = getWeeklyMemory();
                 const historyForAPI = conversationHistory.slice(-8).map(item => {
                     const isUser = item.includes(`👶 ${currentChild || childName}:`);
                     const cleanContent = item.replace(/^[^:]+:/, '').trim();
                     return { role: isUser ? "user" : "assistant", content: cleanContent };
                 });
                 
-                const systemPrompt = `Ты Люцик — добрый волшебный котик-друг для ребёнка ${childAge} лет по имени ${currentChild || childName}.
+                const characterPrompt = getPromptForCharacter(currentChar);
+                
+                const systemPrompt = `${characterPrompt}
+Ребёнка зовут ${currentChild || childName}, ему ${childAge} лет.
+Вот что я знаю о его страхах за эту неделю: ${JSON.stringify(weeklyMemory.fears)}
 Правила:
 1. Будь мягким и тактичным. Не спрашивай прямо "чего ты боишься".
 2. Если ребёнок сам упоминает страх — поддержи и предложи помощь: "Я с тобой", "Вместе мы справимся".
 3. Направляй диалог к позитиву: "А что тебя радует?", "А что бы ты хотел?".
 4. Никогда не говори "не бойся". Вместо этого: "Я рядом", "Мы вместе".
 5. Если ребёнок не хочет говорить — предложи игру или сказку.
-6. Отвечай кратко, 1-2 предложения.`;
+6. Отвечай кратко, 1-3 предложения, как в реальном разговоре.
+7. Используй имя ребёнка в разговоре.`;
                 
                 const res = await fetch('/api/generate', {
                     method: 'POST',
@@ -580,6 +663,7 @@
                         userSpeech: text, 
                         isLong, 
                         history: historyForAPI,
+                        weeklyMemory,
                         systemPrompt
                     })
                 });
@@ -614,7 +698,6 @@
         // ========== ОЗВУЧКА ЧЕРЕЗ YANDEX SPEECHKIT ==========
         let currentAudio = null;
         let isSpeaking = false;
-        let pendingMicAfterSpeak = false;
         
         async function speakWithYandex(text, voice = 'oksana') {
             return new Promise(async (resolve) => {
@@ -685,9 +768,36 @@
         }
         
         async function speak(text) {
-            const voice = characters[currentChar]?.voice || 'oksana';
+            const voice = getVoiceForCharacter(currentChar);
             await speakWithYandex(text, voice);
         }
+        
+        // ========== СВАЙП ДЛЯ СМЕНЫ ПЕРСОНАЖА ==========
+        let touchStartX = 0;
+        let touchEndX = 0;
+        
+        const avatarForSwipe = document.getElementById('avatar');
+        
+        avatarForSwipe.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+        
+        avatarForSwipe.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchEndX - touchStartX;
+            
+            if (Math.abs(diff) > 50) {
+                const chars = ['lucik', 'mom', 'dad', 'kid1', 'kid2'];
+                let idx = chars.indexOf(currentChar);
+                if (diff > 0) {
+                    idx = (idx - 1 + chars.length) % chars.length;
+                } else {
+                    idx = (idx + 1) % chars.length;
+                }
+                const newChar = chars[idx];
+                changeCharacter(newChar);
+            }
+        });
         
         // ========== ИГРЫ ==========
         let gameActive = false;
@@ -771,7 +881,7 @@
                 modal.remove();
                 showVisualEffect('🧹✨');
                 speak("Мурр! Комната стала чистой!");
-                playSound('purr');
+                playSound('click');
                 energy = Math.min(100, energy + 10);
                 localStorage.setItem('lucik_energy', energy);
                 updateStatsUI();
@@ -837,7 +947,6 @@
             if (!rec) { speak("Голос не поддерживается"); return; }
             if (isListening) return;
             if (isSpeaking) {
-                pendingMicAfterSpeak = true;
                 speak("Мурр?");
                 return;
             }
@@ -917,7 +1026,8 @@
             if (childrenNames.length > 1 && !currentChild) {
                 showChildSelector();
             } else {
-                speakWithYandex(`Мяу! Привет, ${currentChild || childName}! Нажми на микрофон, и мы подружимся!`, 'oksana');
+                const greetingVoice = getVoiceForCharacter(currentChar);
+                speakWithYandex(`Мяу! Привет, ${currentChild || childName}! Нажми на микрофон, и мы подружимся!`, greetingVoice);
             }
         }, 1000);
     </script>
