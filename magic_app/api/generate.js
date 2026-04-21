@@ -21,18 +21,14 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: 'API ключ не настроен' });
         }
 
-        // Используем systemPrompt из фронтенда, если нет — дефолтный
-        let finalPrompt = systemPrompt;
-        if (!finalPrompt) {
-            finalPrompt = `Ты Люцик — добрый волшебный котик. Говори кратко, по-доброму.`;
-        }
+        // Используем systemPrompt из фронтенда
+        let finalPrompt = systemPrompt || `Ты Люцик — добрый волшебный котик. Говори кратко, по-доброму.`;
 
         // Для длинной сказки добавляем инструкцию
         if (isLong) {
             finalPrompt += ` Расскажи длинную, спокойную сказку на ночь. Сказка должна быть доброй, уютной, без страшных моментов. Используй имя ребёнка: ${childName}.`;
         }
 
-        // Формируем историю диалога (последние 8 сообщений)
         const historyMessages = (history || []).slice(-8).map(msg => ({
             role: msg.role,
             content: msg.content
