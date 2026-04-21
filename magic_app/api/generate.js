@@ -12,21 +12,23 @@ export default async function handler(req, res) {
             isLong, 
             history = [], 
             weeklyMemory = {},
-            systemPrompt  // ← ПОЛУЧАЕМ ИЗ ФРОНТЕНДА
+            systemPrompt
         } = req.body;
 
         const apiKey = process.env.DEEPSEEK_API_KEY;
         if (!apiKey) {
             console.error('❌ Нет DEEPSEEK_API_KEY');
-            return res.status(500).json({ error: 'API ключ не настроен' });
+            return res.status(200).json({ 
+                story: "Мурр... Что-то я задумался. Давай ещё раз?",
+                detectedFear: null
+            });
         }
 
         // Используем systemPrompt из фронтенда
         let finalPrompt = systemPrompt || `Ты Люцик — добрый волшебный котик. Говори кратко, по-доброму.`;
 
-        // Для длинной сказки добавляем инструкцию
         if (isLong) {
-            finalPrompt += ` Расскажи длинную, спокойную сказку на ночь. Сказка должна быть доброй, уютной, без страшных моментов. Используй имя ребёнка: ${childName}.`;
+            finalPrompt += ` Расскажи длинную, спокойную сказку на ночь.`;
         }
 
         const historyMessages = (history || []).slice(-8).map(msg => ({
@@ -44,7 +46,8 @@ export default async function handler(req, res) {
             childName, 
             isLong, 
             promptLength: finalPrompt.length,
-            historyCount: historyMessages.length 
+            historyCount: historyMessages.length,
+            userSpeech: userSpeech?.substring(0, 50)
         });
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -64,25 +67,50 @@ export default async function handler(req, res) {
 
         const data = await response.json();
         
+        // ПОДРОБНОЕ ЛОГИРОВАНИЕ ОТВЕТА
+        console.log('📡 Полный ответ от DeepSeek:', JSON.stringify(data, null, 2));
+        
         if (data.error) {
             console.error('❌ DeepSeek API error:', data.error);
-            return res.status(500).json({ error: 'Ошибка генерации: ' + data.error.message });
+            return res.status(200).json({ 
+                story: "Мурр... Я немного устал. Давай поиграем?",
+                detectedFear: null
+            });
         }
 
-        const story = data.choices[0].message.content;
+        // Получаем ответ — ПРОВЕРЯЕМ ВСЕ ВОЗМОЖНЫЕ ПОЛЯ
+        let story = "Мурр... Я тебя слушаю!";
         
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+            story = data.choices[0].message.content;
+        } else if (data.story) {
+            story = data.story;
+        } else if (data.response) {
+            story = data.response;
+        }
+        
+        // Убираем возможные цифры из начала ответа
+        story = story.replace(/^\d+\s*/, '').trim();
+        
+        // Если ответ пустой — заменяем
+        if (!story || story.length === 0) {
+            story = "Мурр... Я тебя слушаю! Расскажи ещё что-нибудь?";
+        }
+        
+        console.log('✅ Ответ после обработки:', story.substring(0, 100));
+
         // Анализ страхов
         let detectedFear = null;
         const fearKeywords = {
-            'темноты': ['темнот', 'страшно темно', 'боюсь темноты', 'монстры'],
-            'врачей': ['врач', 'укол', 'больница', 'доктор', 'поликлиника'],
-            'одиночества': ['один', 'одна', 'никого нет', 'бросили', 'одиноко'],
-            'нового': ['новое', 'незнаком', 'первый раз', 'новый'],
-            'обиды': ['обидели', 'обидно', 'несправедливо', 'обижают'],
-            'животных': ['собака', 'кошка', 'животное', 'укусит', 'боюсь собак']
+            'темноты': ['темнот', 'боюсь темноты', 'монстры', 'страшно темно'],
+            'врачей': ['врач', 'укол', 'больница', 'доктор'],
+            'одиночества': ['один', 'одна', 'никого нет', 'бросили'],
+            'обиды': ['обидели', 'обидно', 'несправедливо'],
+            'нового': ['новое', 'незнаком', 'первый раз'],
+            'животных': ['собака', 'кошка', 'боюсь собак', 'укусит']
         };
         
-        const lowerText = userSpeech.toLowerCase();
+        const lowerText = (userSpeech || '').toLowerCase();
         for (const [fear, keywords] of Object.entries(fearKeywords)) {
             if (keywords.some(kw => lowerText.includes(kw))) {
                 detectedFear = fear;
@@ -92,13 +120,14 @@ export default async function handler(req, res) {
         
         res.status(200).json({ 
             story: story,
-            detectedFear: detectedFear,
-            detectedTopic: null,
-            detectedMood: null
+            detectedFear: detectedFear
         });
         
     } catch (error) {
-        console.error('❌ Generate error:', error);
-        res.status(500).json({ error: 'Внутренняя ошибка сервера: ' + error.message });
+        console.error('❌ Ошибка в generate.js:', error);
+        res.status(200).json({ 
+            story: "Мурр... Что-то пошло не так. Давай ещё раз?",
+            detectedFear: null
+        });
     }
 }
