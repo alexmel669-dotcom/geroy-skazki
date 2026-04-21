@@ -1,4 +1,4 @@
-// api/tts.js — Яндекс SpeechKit TTS (MP3 формат)
+// api/tts.js — Яндекс SpeechKit TTS (голос Оксана и Zahar)
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -17,15 +17,18 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API ключ не настроен' });
     }
 
+    // Очищаем текст
+    const cleanText = text.replace(/[^\w\s\.,!?а-яА-ЯёЁ-]/g, '').substring(0, 500);
+    
     // Используем form-urlencoded как требует v1 API
     const params = new URLSearchParams();
-    params.append('text', text);
+    params.append('text', cleanText);
     params.append('voice', voice);
-    params.append('format', 'mp3');        // ← МЕНЯЕМ НА MP3
+    params.append('format', 'mp3');
     params.append('sampleRateHertz', '48000');
     params.append('speed', speed.toString());
 
-    console.log('🎤 Отправляем в Яндекс (mp3):', { text: text.substring(0, 50), voice });
+    console.log('🎤 Отправляем в Яндекс:', { text: cleanText.substring(0, 50), voice });
 
     const response = await fetch('https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize', {
       method: 'POST',
@@ -44,7 +47,6 @@ export default async function handler(req, res) {
 
     const audioBuffer = await response.arrayBuffer();
     
-    // Отправляем как MP3
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'no-cache');
     res.status(200).send(Buffer.from(audioBuffer));
