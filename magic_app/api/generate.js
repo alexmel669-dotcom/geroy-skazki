@@ -1,4 +1,4 @@
-// api/generate.js — DeepSeek API с поддержкой systemPrompt
+// api/generate.js — DeepSeek API с поддержкой персонажей
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -17,23 +17,39 @@ export default async function handler(req, res) {
 
         const apiKey = process.env.DEEPSEEK_API_KEY;
         if (!apiKey) {
+            console.error('❌ Нет DEEPSEEK_API_KEY');
             return res.status(500).json({ error: 'API ключ не настроен' });
         }
 
-        // Формируем промпт
-        let finalPrompt = systemPrompt || `Ты Люцик — добрый волшебный котик.`;
-
-        // Добавляем инструкцию для длинной сказки
-        if (isLong) {
-            finalPrompt += ` Расскажи длинную, спокойную сказку на ночь. Сказка должна быть доброй, уютной, без страшных моментов.`;
+        // Используем systemPrompt из фронтенда, если нет — дефолтный
+        let finalPrompt = systemPrompt;
+        if (!finalPrompt) {
+            finalPrompt = `Ты Люцик — добрый волшебный котик. Говори кратко, по-доброму.`;
         }
 
-        // Собираем историю диалога
+        // Для длинной сказки добавляем инструкцию
+        if (isLong) {
+            finalPrompt += ` Расскажи длинную, спокойную сказку на ночь. Сказка должна быть доброй, уютной, без страшных моментов. Используй имя ребёнка: ${childName}.`;
+        }
+
+        // Формируем историю диалога (последние 8 сообщений)
+        const historyMessages = (history || []).slice(-8).map(msg => ({
+            role: msg.role,
+            content: msg.content
+        }));
+
         const messages = [
             { role: "system", content: finalPrompt },
-            ...history.slice(-10),
+            ...historyMessages,
             { role: "user", content: userSpeech }
         ];
+
+        console.log('🎤 Отправляем в DeepSeek:', { 
+            childName, 
+            isLong, 
+            promptLength: finalPrompt.length,
+            historyCount: historyMessages.length 
+        });
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
@@ -45,7 +61,7 @@ export default async function handler(req, res) {
                 model: 'deepseek-chat',
                 messages: messages,
                 temperature: 0.7,
-                max_tokens: isLong ? 1000 : 250,
+                max_tokens: isLong ? 1000 : 200,
                 stream: false
             })
         });
@@ -53,25 +69,26 @@ export default async function handler(req, res) {
         const data = await response.json();
         
         if (data.error) {
-            console.error('DeepSeek API error:', data.error);
-            return res.status(500).json({ error: 'Ошибка генерации' });
+            console.error('❌ DeepSeek API error:', data.error);
+            return res.status(500).json({ error: 'Ошибка генерации: ' + data.error.message });
         }
 
         const story = data.choices[0].message.content;
         
-        // Простой анализ страхов (можно расширить)
+        // Анализ страхов
         let detectedFear = null;
         const fearKeywords = {
-            'темноты': ['темнот', 'страшно темно', 'боюсь темноты'],
-            'врачей': ['врач', 'укол', 'больница', 'доктор'],
-            'одиночества': ['один', 'одна', 'никого нет', 'бросили'],
-            'нового': ['новое', 'незнаком', 'первый раз'],
-            'обиды': ['обидели', 'обидно', 'несправедливо'],
-            'животных': ['собака', 'кошка', 'животное', 'укусит']
+            'темноты': ['темнот', 'страшно темно', 'боюсь темноты', 'монстры'],
+            'врачей': ['врач', 'укол', 'больница', 'доктор', 'поликлиника'],
+            'одиночества': ['один', 'одна', 'никого нет', 'бросили', 'одиноко'],
+            'нового': ['новое', 'незнаком', 'первый раз', 'новый'],
+            'обиды': ['обидели', 'обидно', 'несправедливо', 'обижают'],
+            'животных': ['собака', 'кошка', 'животное', 'укусит', 'боюсь собак']
         };
         
+        const lowerText = userSpeech.toLowerCase();
         for (const [fear, keywords] of Object.entries(fearKeywords)) {
-            if (keywords.some(kw => userSpeech.toLowerCase().includes(kw))) {
+            if (keywords.some(kw => lowerText.includes(kw))) {
                 detectedFear = fear;
                 break;
             }
@@ -85,7 +102,7 @@ export default async function handler(req, res) {
         });
         
     } catch (error) {
-        console.error('Generate error:', error);
-        res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+        console.error('❌ Generate error:', error);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера: ' + error.message });
     }
 }
