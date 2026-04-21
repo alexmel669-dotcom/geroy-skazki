@@ -318,8 +318,8 @@
         async function checkDeveloperStatus() {
             const userEmail = localStorage.getItem('userEmail');
             if (userEmail === 'alexmel669@gmail.com') {
-                // Проверка личности: вопрос с числом
-                const userNumber = prompt('Подтверждение: введите число 13');
+                // Проверка личности: просто введите число (без подсказки)
+                const userNumber = prompt('Введите число для подтверждения:');
                 if (userNumber === '13') {
                     isDevMode = true;
                     localStorage.setItem('developerMode', 'true');
@@ -504,20 +504,13 @@
         }
         
         // ========== ПЕРСОНАЖИ (ГОЛОСА И ЛОГИКА) ==========
+        // Люцик — Zahar (мужской, уверенный), Папа — Ermil (мужской, мягкий)
         const characterVoiceMap = {
-            lucik: 'ermil',    // Люцик — Ermil (мужской, мягкий)
+            lucik: 'zahar',    // Люцик — Zahar (мужской, уверенный)
             mom: 'jane',       // Мама — Jane (женский, мягкий)
-            dad: 'zahar',      // Папа — Zahar (мужской, уверенный)
+            dad: 'ermil',      // Папа — Ermil (мужской, мягкий)
             kid1: 'oksana',    // Ребёнок — Oksana (женский, детский)
             kid2: 'oksana'
-        };
-        
-        const characterPrompts = {
-            lucik: `Ты Люцик — добрый волшебный котик-друг. Ты говоришь мягким мужским голосом. Иногда мурлыкай. Будь игривым и заботливым.`,
-            mom: `Ты мама ребёнка. Говори заботливо, нежно, успокаивающе. Используй фразы: "милый", "солнышко", "я рядом". Ты говоришь женским мягким голосом.`,
-            dad: `Ты папа ребёнка. Говори уверенно, но мягко. Подбадривай: "ты смелый", "я горжусь тобой". Ты говоришь мужским уверенным голосом.`,
-            kid1: `Ты друг ребёнка. Говори по-детски, весело, используй простые слова. Ты говоришь детским голосом.`,
-            kid2: `Ты друг ребёнка. Говори по-детски, весело, используй простые слова. Ты говоришь детским голосом.`
         };
         
         const characters = {
@@ -531,10 +524,6 @@
         
         function getVoiceForCharacter(charId) {
             return characterVoiceMap[charId] || 'oksana';
-        }
-        
-        function getPromptForCharacter(charId) {
-            return characterPrompts[charId] || characterPrompts.lucik;
         }
         
         // Загрузка детей из localStorage
@@ -621,7 +610,7 @@
             return memory;
         }
         
-        // ========== УЛУЧШЕННЫЙ PROMPT ДЛЯ DEEPSEEK ==========
+        // ========== ДИАЛОГ (логика как у кота, но с голосами) ==========
         async function askDeepSeek(text, isLong = false) {
             if (containsBadWords(text)) return "Мяу! Давай говорить добрые слова!";
             
@@ -640,10 +629,7 @@
                     return { role: isUser ? "user" : "assistant", content: cleanContent };
                 });
                 
-                const characterPrompt = getPromptForCharacter(currentChar);
-                
-                const systemPrompt = `${characterPrompt}
-Ребёнка зовут ${currentChild || childName}, ему ${childAge} лет.
+                const systemPrompt = `Ты ${characters[currentChar].name}. Ребёнка зовут ${currentChild || childName}, ему ${childAge} лет.
 Вот что я знаю о его страхах за эту неделю: ${JSON.stringify(weeklyMemory.fears)}
 Правила:
 1. Будь мягким и тактичным. Не спрашивай прямо "чего ты боишься".
