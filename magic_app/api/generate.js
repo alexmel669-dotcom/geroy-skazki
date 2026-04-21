@@ -24,11 +24,10 @@ export default async function handler(req, res) {
             });
         }
 
-        // Используем systemPrompt из фронтенда
         let finalPrompt = systemPrompt || `Ты Люцик — добрый волшебный котик. Говори кратко, по-доброму.`;
 
         if (isLong) {
-            finalPrompt += ` Расскажи длинную, спокойную сказку на ночь.`;
+            finalPrompt += ` Расскажи длинную, спокойную сказку на ночь. Сказка должна быть доброй, уютной, без страшных моментов. Используй имя ребёнка: ${childName}.`;
         }
 
         const historyMessages = (history || []).slice(-8).map(msg => ({
@@ -46,8 +45,7 @@ export default async function handler(req, res) {
             childName, 
             isLong, 
             promptLength: finalPrompt.length,
-            historyCount: historyMessages.length,
-            userSpeech: userSpeech?.substring(0, 50)
+            historyCount: historyMessages.length
         });
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -67,9 +65,6 @@ export default async function handler(req, res) {
 
         const data = await response.json();
         
-        // ПОДРОБНОЕ ЛОГИРОВАНИЕ ОТВЕТА
-        console.log('📡 Полный ответ от DeepSeek:', JSON.stringify(data, null, 2));
-        
         if (data.error) {
             console.error('❌ DeepSeek API error:', data.error);
             return res.status(200).json({ 
@@ -78,26 +73,16 @@ export default async function handler(req, res) {
             });
         }
 
-        // Получаем ответ — ПРОВЕРЯЕМ ВСЕ ВОЗМОЖНЫЕ ПОЛЯ
-        let story = "Мурр... Я тебя слушаю!";
+        let story = data.choices?.[0]?.message?.content || "Мурр... Я тебя слушаю!";
         
-        if (data.choices && data.choices[0] && data.choices[0].message) {
-            story = data.choices[0].message.content;
-        } else if (data.story) {
-            story = data.story;
-        } else if (data.response) {
-            story = data.response;
-        }
-        
-        // Убираем возможные цифры из начала ответа
+        // Убираем цифры из начала ответа
         story = story.replace(/^\d+\s*/, '').trim();
         
-        // Если ответ пустой — заменяем
         if (!story || story.length === 0) {
             story = "Мурр... Я тебя слушаю! Расскажи ещё что-нибудь?";
         }
         
-        console.log('✅ Ответ после обработки:', story.substring(0, 100));
+        console.log('✅ Ответ:', story.substring(0, 100));
 
         // Анализ страхов
         let detectedFear = null;
@@ -124,7 +109,7 @@ export default async function handler(req, res) {
         });
         
     } catch (error) {
-        console.error('❌ Ошибка в generate.js:', error);
+        console.error('❌ Ошибка:', error);
         res.status(200).json({ 
             story: "Мурр... Что-то пошло не так. Давай ещё раз?",
             detectedFear: null
