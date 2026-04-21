@@ -1,4 +1,4 @@
-// api/tts.js — Яндекс SpeechKit TTS (голос Оксана и Zahar)
+// api/tts.js — Яндекс SpeechKit TTS
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -17,10 +17,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'API ключ не настроен' });
     }
 
-    // Очищаем текст
     const cleanText = text.replace(/[^\w\s\.,!?а-яА-ЯёЁ-]/g, '').substring(0, 500);
     
-    // Используем form-urlencoded как требует v1 API
     const params = new URLSearchParams();
     params.append('text', cleanText);
     params.append('voice', voice);
