@@ -635,6 +635,7 @@
                     return { role: isUser ? "user" : "assistant", content: cleanContent };
                 });
                 
+                // ПОЛУЧАЕМ ПРОМПТ ДЛЯ ТЕКУЩЕГО ПЕРСОНАЖА
                 const systemPrompt = getCharacterPrompt(currentChar, currentChild || childName, childAge, weeklyMemory);
                 
                 const res = await fetch('/api/generate', {
@@ -647,7 +648,7 @@
                         isLong, 
                         history: historyForAPI,
                         weeklyMemory,
-                        systemPrompt
+                        systemPrompt  // ← ОТПРАВЛЯЕМ В API
                     })
                 });
                 const data = await res.json();
