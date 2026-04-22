@@ -19,7 +19,6 @@
             padding: 20px;
         }
         
-        /* Стеклянная карточка */
         .glass-card {
             background: rgba(255, 248, 235, 0.2);
             backdrop-filter: blur(10px);
@@ -186,7 +185,6 @@
             .fear-item { flex-direction: column; align-items: flex-start; }
         }
         
-        /* Эмодзи для страхов */
         .fear-emoji { font-size: 24px; margin-right: 10px; }
     </style>
 </head>
@@ -248,7 +246,7 @@
                 </div>
             </div>
             
-            <!-- Статистика страхов (ГЛАВНОЕ) -->
+            <!-- Статистика страхов -->
             <div class="glass-card">
                 <h2>📊 Статистика страхов</h2>
                 <div id="fearsList">
@@ -260,7 +258,7 @@
             <div class="glass-card">
                 <h2>🫂 Помощь психолога</h2>
                 <p>Выберите страх, чтобы получить рекомендации:</p>
-                <div id="fearButtons"></div>
+                <div id="fearButtons" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
                 <div id="adviceBox" class="advice-box">
                     <div id="adviceContent"></div>
                     <button class="btn btn-small btn-outline" onclick="closeAdvice()" style="margin-top: 15px;">Закрыть</button>
@@ -302,7 +300,7 @@
                         <input type="time" id="bedtimeTime" value="21:00" style="padding: 8px 15px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,248,235,0.2);">
                     </div>
                 </div>
-                <button class="btn" id="saveSettingsBtn">💾 Сохранить настройки</button>
+                <button class="btn" id="saveSettingsBtn" style="margin-top: 15px;">💾 Сохранить настройки</button>
             </div>
         </div>
         
@@ -359,11 +357,15 @@
             loadGeneralStats();
         }
         
-        // Загрузка статистики страхов из localStorage
+        // Загрузка статистики страхов (ИСПРАВЛЕНО)
         function loadFearStats() {
             const saved = localStorage.getItem('fearStats');
             if (saved) {
-                fearStats = JSON.parse(saved);
+                try {
+                    fearStats = JSON.parse(saved);
+                } catch {
+                    fearStats = {};
+                }
             } else {
                 fearStats = {};
             }
@@ -371,31 +373,36 @@
             const fearsList = document.getElementById('fearsList');
             const fearButtons = document.getElementById('fearButtons');
             
-            if (Object.keys(fearStats).length === 0) {
+            // Проверяем, есть ли данные
+            const hasData = Object.values(fearStats).some(v => v > 0);
+            
+            if (!hasData) {
                 fearsList.innerHTML = '<p style="opacity: 0.7;">✨ Пока нет данных. Поговорите с ребёнком через приложение!</p>';
                 fearButtons.innerHTML = '<p style="opacity: 0.7;">Нет страхов для анализа</p>';
                 return;
             }
             
-            // Сортируем по количеству
-            const sortedFears = Object.entries(fearStats).sort((a, b) => b[1].count - a[1].count);
+            // Преобразуем в массив и сортируем по количеству
+            const fearsArray = Object.entries(fearStats)
+                .filter(([_, count]) => count > 0)
+                .sort((a, b) => b[1] - a[1]);
             
             // Отображаем список страхов
-            fearsList.innerHTML = sortedFears.map(([fear, data]) => `
+            fearsList.innerHTML = fearsArray.map(([fear, count]) => `
                 <div class="fear-item">
                     <div>
                         <span class="fear-emoji">${fearEmojis[fear] || '😟'}</span>
                         <span class="fear-name">${fearNames[fear] || fear}</span>
                     </div>
                     <div>
-                        <span class="fear-count">${data.count} ${declension(data.count, 'сказка', 'сказки', 'сказок')}</span>
-                        <span class="fear-date">последний раз: ${data.lastDate || 'недавно'}</span>
+                        <span class="fear-count">${count} ${declension(count, 'сказка', 'сказки', 'сказок')}</span>
+                        <span class="fear-date">✨</span>
                     </div>
                 </div>
             `).join('');
             
             // Кнопки для получения советов психолога
-            fearButtons.innerHTML = sortedFears.map(([fear, data]) => `
+            fearButtons.innerHTML = fearsArray.map(([fear]) => `
                 <button class="btn btn-small btn-outline" onclick="getPsychologistAdvice('${fear}')">
                     ${fearEmojis[fear] || '🫂'} ${fearNames[fear] || fear}
                 </button>
@@ -412,39 +419,39 @@
             return five;
         }
         
-        // Загрузка общих настроек
+        // Загрузка детей
         function loadChildren() {
             const children = localStorage.getItem('childrenNames') || '';
             document.getElementById('childrenNames').value = children;
             
-            const activeChild = localStorage.getItem('activeChild') || '';
-            const childName = activeChild || children.split(',')[0] || '—';
+            const activeChild = localStorage.getItem('currentChild') || localStorage.getItem('activeChild') || '';
+            const childName = activeChild || children.split(',')[0]?.trim() || 'малыш';
             document.getElementById('childNameDisplay').innerText = childName;
+            
+            const childAge = localStorage.getItem('childAge') || '5';
+            document.getElementById('childAgeDisplay').innerText = childAge;
         }
         
+        // Загрузка настроек
         function loadSettings() {
-            const age = localStorage.getItem('childAge') || '';
+            const age = localStorage.getItem('childAge') || '5';
             document.getElementById('settingsAge').value = age;
             document.getElementById('bedtimeReminder').checked = localStorage.getItem('bedtimeReminder') === 'true';
             document.getElementById('bedtimeTime').value = localStorage.getItem('bedtimeTime') || '21:00';
         }
         
+        // Загрузка общей статистики (ИСПРАВЛЕНО)
         function loadGeneralStats() {
             const history = JSON.parse(localStorage.getItem('storyHistory') || '[]');
             const storiesCount = history.length;
             document.getElementById('totalStories').innerText = storiesCount;
             
-            const totalFears = Object.values(fearStats).reduce((sum, f) => sum + f.count, 0);
+            // Считаем сумму всех страхов
+            const totalFears = Object.values(fearStats).reduce((sum, count) => sum + (typeof count === 'number' ? count : 0), 0);
             document.getElementById('totalFears').innerText = totalFears;
             
             // Сказок сегодня
-            const today = new Date().toDateString();
-            const todayStories = history.filter(item => {
-                if (item.timestamp) {
-                    return new Date(item.timestamp).toDateString() === today;
-                }
-                return false;
-            }).length;
+            const todayStories = parseInt(localStorage.getItem('todayStoriesCount') || '0');
             document.getElementById('storiesToday').innerText = todayStories;
             
             // Премиум статус
@@ -465,8 +472,8 @@
             localStorage.setItem('childrenNames', children);
             
             const names = children.split(',').map(n => n.trim()).filter(n => n);
-            if (names.length > 0 && !localStorage.getItem('activeChild')) {
-                localStorage.setItem('activeChild', names[0]);
+            if (names.length > 0 && !localStorage.getItem('currentChild')) {
+                localStorage.setItem('currentChild', names[0]);
             }
             
             alert('✅ Имена детей сохранены!');
@@ -483,9 +490,10 @@
             
             alert('✅ Настройки сохранены!');
             loadGeneralStats();
+            loadChildren();
         }
         
-        // Получение совета психолога через API
+        // Получение совета психолога
         async function getPsychologistAdvice(fear) {
             const adviceBox = document.getElementById('adviceBox');
             const adviceContent = document.getElementById('adviceContent');
@@ -493,7 +501,7 @@
             adviceContent.innerHTML = '<div class="loader"></div> Загружаем рекомендации...';
             adviceBox.classList.add('show');
             
-            const childName = localStorage.getItem('activeChild') || 'малыш';
+            const childName = localStorage.getItem('currentChild') || localStorage.getItem('activeChild') || 'малыш';
             const childAge = localStorage.getItem('childAge') || 5;
             
             try {
@@ -543,7 +551,7 @@
         
         // Авторизация
         async function login() {
-            const email = document.getElementById('loginEmail').value;
+            const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             const statusDiv = document.getElementById('loginStatus');
             
@@ -576,7 +584,7 @@
         }
         
         async function register() {
-            const email = document.getElementById('loginEmail').value;
+            const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             const statusDiv = document.getElementById('loginStatus');
             
@@ -584,8 +592,8 @@
                 statusDiv.innerHTML = '❌ Введите email и пароль';
                 return;
             }
-            if (password.length < 4) {
-                statusDiv.innerHTML = '❌ Пароль должен быть не менее 4 символов';
+            if (password.length < 6) {
+                statusDiv.innerHTML = '❌ Пароль должен быть не менее 6 символов';
                 return;
             }
             
@@ -626,13 +634,14 @@
             }
         }, 10000);
         
-        // Обработчики
+        // Обработчики событий
         document.getElementById('loginBtn')?.addEventListener('click', login);
         document.getElementById('registerBtn')?.addEventListener('click', register);
         document.getElementById('logoutBtn')?.addEventListener('click', logout);
         document.getElementById('saveChildrenBtn')?.addEventListener('click', saveChildren);
         document.getElementById('saveSettingsBtn')?.addEventListener('click', saveSettings);
         
+        // Инициализация
         checkAuth();
     </script>
 </body>
