@@ -20,7 +20,8 @@ function sanitizeText(text) {
 }
 
 export default async function handler(req, res) {
-    const allowedOrigins = ['https://geroy-skazki.vercel.app'];
+    // CORS
+    const allowedOrigins = ['https://geroy-skazki.vercel.app', 'http://localhost:3000'];
     const origin = req.headers.origin;
     if (allowedOrigins.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
@@ -32,19 +33,22 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
 
     try {
-        // Проверка JWT
+        // Проверка JWT (опционально, пропускаем если гость)
         const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Требуется авторизация' });
-        }
-
-        const token = authHeader.split(' ')[1];
-        if (JWT_SECRET && JWT_SECRET !== 'your-secret-key-change-me') {
-            try {
-                jwt.verify(token, JWT_SECRET);
-            } catch {
-                return res.status(401).json({ error: 'Неверный токен' });
+        let isGuest = false;
+        
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            if (JWT_SECRET && JWT_SECRET !== 'your-secret-key-change-me') {
+                try {
+                    jwt.verify(token, JWT_SECRET);
+                } catch {
+                    // Токен невалидный, но мы можем разрешить гостевой режим
+                    isGuest = true;
+                }
             }
+        } else {
+            isGuest = true;
         }
 
         let { text, voice = 'lucik', speed = 0.9 } = req.body;
@@ -55,6 +59,7 @@ export default async function handler(req, res) {
 
         const yandexVoice = VOICE_MAP[voice] || 'zahar';
 
+        // Настройка скорости для разных персонажей
         if (voice === 'kid1' || voice === 'kid2') speed = 0.95;
         if (text.includes('сказка') || text.includes('спокойной ночи')) speed = 0.85;
 
@@ -65,6 +70,7 @@ export default async function handler(req, res) {
 
         const apiKey = process.env.YANDEX_API_KEY;
         if (!apiKey) {
+            console.error('YANDEX_API_KEY не настроен');
             return res.status(500).json({ error: 'API ключ не настроен' });
         }
 
@@ -74,6 +80,7 @@ export default async function handler(req, res) {
         params.append('format', 'mp3');
         params.append('sampleRateHertz', '48000');
         params.append('speed', speed.toString());
+        params.append('lang', 'ru-RU');
 
         const response = await fetch('https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize', {
             method: 'POST',
@@ -85,7 +92,9 @@ export default async function handler(req, res) {
         });
 
         if (!response.ok) {
-            return res.status(response.status).json({ error: 'Ошибка синтеза' });
+            const errorText = await response.text();
+            console.error('Yandex TTS error:', response.status, errorText);
+            return res.status(response.status).json({ error: 'Ошибка синтеза речи' });
         }
 
         const audioBuffer = await response.arrayBuffer();
@@ -96,6 +105,6 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('TTS ошибка:', error);
-        res.status(500).json({ error: 'Внутренняя ошибка' });
+        res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
 }
