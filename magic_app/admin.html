@@ -5,16 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ-панель — Герой Сказок</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
             padding: 20px;
         }
         
@@ -24,246 +21,455 @@
         }
         
         h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #ff9f4a;
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
         
         h2 {
-            margin: 20px 0 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #ff9f4a;
-            color: #ff9f4a;
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #a0a0c0;
+        }
+        
+        h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #c0c0e0;
+        }
+        
+        .login-panel {
+            max-width: 400px;
+            margin: 100px auto;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .login-panel input {
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            font-size: 16px;
+            margin: 15px 0;
+        }
+        
+        .login-panel input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .dashboard {
+            display: none;
+        }
+        
+        .dashboard.show {
+            display: block;
         }
         
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
         
         .stat-card {
-            background: #2a2a3e;
-            border-radius: 20px;
-            padding: 20px;
-            border-left: 4px solid #ff9f4a;
+            background: rgba(255,255,255,0.08);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
         }
         
-        .stat-number {
-            font-size: 36px;
+        .stat-value {
+            font-size: 48px;
             font-weight: bold;
-            color: #ff9f4a;
+            color: #667eea;
         }
         
         .stat-label {
             font-size: 14px;
-            opacity: 0.7;
+            color: #a0a0c0;
+            margin-top: 5px;
+        }
+        
+        .chart-container {
+            background: rgba(255,255,255,0.08);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .system-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .status-badge {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .status-ok {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+        
+        .status-error {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, 0.3);
         }
         
         table {
             width: 100%;
-            background: #2a2a3e;
-            border-radius: 20px;
-            overflow: hidden;
-            margin-bottom: 20px;
+            border-collapse: collapse;
         }
         
         th, td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #3a3a4e;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         
         th {
-            background: #3a3a4e;
-            color: #ff9f4a;
+            color: #a0a0c0;
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
         }
         
-        .chart-bar {
-            background: #ff9f4a;
-            height: 30px;
-            border-radius: 15px;
-            margin: 5px 0;
+        .fear-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+        }
+        
+        .top-bar {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            padding: 0 10px;
-            color: #1a1a2e;
-            font-weight: bold;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .refresh-info {
+            color: #a0a0c0;
+            font-size: 12px;
         }
         
         .loading {
             text-align: center;
-            padding: 40px;
-            font-size: 20px;
+            padding: 50px;
+            color: #a0a0c0;
         }
         
-        .refresh-btn {
-            background: #ff9f4a;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-        
-        .error {
-            color: #ff6b6b;
-            text-align: center;
-            padding: 20px;
-        }
-        
-        @media (max-width: 768px) {
-            .stats-grid { grid-template-columns: 1fr; }
-            table { font-size: 12px; }
-            th, td { padding: 8px; }
+        .error-message {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📊 Админ-панель — Герой Сказок</h1>
-        <button class="refresh-btn" onclick="loadStats()">🔄 Обновить</button>
+        <!-- Экран входа -->
+        <div id="loginScreen" class="login-panel">
+            <h2>🔐 Админ-панель</h2>
+            <p style="color: #a0a0c0; margin-bottom: 20px;">Герой Сказок</p>
+            <input type="password" id="adminKey" placeholder="Введите ключ доступа" autocomplete="off">
+            <button class="btn btn-primary" onclick="login()" style="width: 100%;">Войти</button>
+            <p id="loginError" style="color: #e74c3c; margin-top: 15px; font-size: 14px;"></p>
+            <p style="margin-top: 20px; font-size: 12px; color: #666;">
+                Используйте ADMIN_SECRET или войдите как alexmel669@gmail.com
+            </p>
+        </div>
         
-        <div id="statsContainer">
-            <div class="loading">Загрузка статистики...</div>
+        <!-- Дашборд -->
+        <div id="dashboard" class="dashboard">
+            <div class="top-bar">
+                <div>
+                    <h1>🐱 Герой Сказок <span style="font-size: 14px; color: #667eea; margin-left: 10px;">Админ-панель</span></h1>
+                    <p class="refresh-info" id="lastUpdate">Загрузка...</p>
+                </div>
+                <div>
+                    <button class="btn btn-small btn-danger" onclick="logout()">Выйти</button>
+                    <button class="btn btn-small btn-primary" onclick="refreshStats()" style="margin-left: 10px;">🔄 Обновить</button>
+                </div>
+            </div>
+            
+            <!-- Системный статус -->
+            <div class="system-status" id="systemStatus"></div>
+            
+            <!-- Основные метрики -->
+            <div class="stats-grid" id="mainStats"></div>
+            
+            <!-- График по дням -->
+            <div class="chart-container">
+                <h3>📊 Активность за последние 7 дней</h3>
+                <div id="dailyStats"></div>
+            </div>
+            
+            <!-- Топ страхов и последняя активность -->
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+                <div class="chart-container">
+                    <h3>😨 Топ страхов</h3>
+                    <div id="topFears"></div>
+                </div>
+                <div class="chart-container">
+                    <h3>📋 Последняя активность</h3>
+                    <div id="recentActivity" style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+            </div>
+            
+            <!-- Действия -->
+            <div class="chart-container">
+                <h3>⚙️ Действия</h3>
+                <button class="btn btn-small btn-primary" onclick="clearCache()">🧹 Очистить кеш</button>
+                <span style="color: #a0a0c0; margin-left: 15px; font-size: 12px;">Статистика обновляется автоматически каждые 30 секунд</span>
+            </div>
         </div>
     </div>
-    
+
     <script>
-        async function loadStats() {
-            const container = document.getElementById('statsContainer');
-            container.innerHTML = '<div class="loading">Загрузка статистики...</div>';
+        let adminKey = '';
+        let autoRefreshInterval = null;
+        
+        // Проверка сохранённого ключа
+        const savedKey = localStorage.getItem('adminKey');
+        if (savedKey) {
+            adminKey = savedKey;
+            checkAccess();
+        }
+        
+        async function login() {
+            const key = document.getElementById('adminKey').value.trim();
+            const errorDiv = document.getElementById('loginError');
+            
+            if (!key) {
+                errorDiv.textContent = 'Введите ключ доступа';
+                return;
+            }
+            
+            adminKey = key;
+            await checkAccess();
+        }
+        
+        async function checkAccess() {
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = 'Проверка доступа...';
             
             try {
-                const response = await fetch('/api/admin-stats', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: 'temp' }) // временно
-                });
-                
-                const data = await response.json();
+                const response = await fetch(`/api/admin-stats?key=${encodeURIComponent(adminKey)}`);
                 
                 if (response.ok) {
-                    renderStats(data);
+                    localStorage.setItem('adminKey', adminKey);
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('dashboard').classList.add('show');
+                    loadStats();
+                    autoRefreshInterval = setInterval(loadStats, 30000);
                 } else {
-                    container.innerHTML = `<div class="error">❌ Ошибка: ${data.error || 'Неизвестная ошибка'}</div>`;
+                    errorDiv.textContent = 'Неверный ключ доступа';
+                    localStorage.removeItem('adminKey');
                 }
-            } catch(e) {
-                container.innerHTML = '<div class="error">❌ Ошибка соединения с сервером</div>';
+            } catch (error) {
+                errorDiv.textContent = 'Ошибка соединения';
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('adminKey');
+            adminKey = '';
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            document.getElementById('loginScreen').style.display = 'block';
+            document.getElementById('dashboard').classList.remove('show');
+            document.getElementById('adminKey').value = '';
+        }
+        
+        async function refreshStats() {
+            await loadStats();
+        }
+        
+        async function loadStats() {
+            try {
+                const response = await fetch(`/api/admin-stats?key=${encodeURIComponent(adminKey)}`);
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        logout();
+                    }
+                    return;
+                }
+                
+                const data = await response.json();
+                renderStats(data);
+                document.getElementById('lastUpdate').textContent = `Обновлено: ${new Date().toLocaleTimeString()}`;
+                
+            } catch (error) {
+                console.error('Ошибка загрузки статистики:', error);
             }
         }
         
         function renderStats(data) {
-            let html = `
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number">${data.total_events || 0}</div>
-                        <div class="stat-label">Всего событий</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${data.active_users?.length || 0}</div>
-                        <div class="stat-label">Активных пользователей (7 дней)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${data.event_stats?.find(e => e.event_type === 'fear_detected')?.count || 0}</div>
-                        <div class="stat-label">Выявлено страхов</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${data.event_stats?.find(e => e.event_type === 'achievement_earned')?.count || 0}</div>
-                        <div class="stat-label">Получено достижений</div>
-                    </div>
+            // Системный статус
+            const systemDiv = document.getElementById('systemStatus');
+            systemDiv.innerHTML = Object.entries(data.system).map(([name, status]) => {
+                const isOk = status.includes('✅');
+                return `<div class="status-badge ${isOk ? 'status-ok' : 'status-error'}">${name}: ${status}</div>`;
+            }).join('');
+            
+            // Основные метрики
+            const mainDiv = document.getElementById('mainStats');
+            mainDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${data.totals.users || 0}</div>
+                    <div class="stat-label">👥 Всего пользователей</div>
                 </div>
-                
-                <h2>📈 Динамика за 30 дней</h2>
-                <div class="stats-grid">
-                    ${data.daily_stats?.slice(0, 14).map(day => `
-                        <div style="background:#2a2a3e; border-radius:15px; padding:10px;">
-                            <div style="font-size:12px;">${day.date}</div>
-                            <div class="chart-bar" style="width: ${Math.min(100, day.total_events / 5)}%;">📊 ${day.total_events} событий</div>
-                            <div style="font-size:11px; opacity:0.7;">👤 ${day.unique_users} пользователей</div>
-                        </div>
-                    `).join('')}
+                <div class="stat-card">
+                    <div class="stat-value">${data.totals.stories || 0}</div>
+                    <div class="stat-label">📖 Всего сказок</div>
                 </div>
-                
-                <h2>🎮 Статистика по играм</h2>
-                <table>
-                    <tr><th>Игра</th><th>Количество</th><th>Средний счёт</th></tr>
-                    ${data.game_stats?.map(game => `
-                        <tr>
-                            <td>${getGameName(game.event_type)}</td>
-                            <td>${game.count}</td>
-                            <td>${Math.round(game.avg_score || 0)}</td>
-                        </tr>
-                    `).join('') || '<tr><td colspan="3">Нет данных</td></tr>'}
-                </table>
-                
-                <h2>😨 Популярные страхи</h2>
-                <table>
-                    <tr><th>Страх</th><th>Количество</th></tr>
-                    ${data.fear_stats?.map(fear => `
-                        <tr>
-                            <td>${getFearName(fear.fear)}</td>
-                            <td>${fear.count}</td>
-                        </tr>
-                    `).join('') || '<tr><td colspan="2">Нет данных</td></tr>'}
-                </table>
-                
-                <h2>🏆 Популярные достижения</h2>
-                <table>
-                    <tr><th>Достижение</th><th>Количество</th></tr>
-                    ${data.achievement_stats?.map(ach => `
-                        <tr>
-                            <td>${ach.achievement}</td>
-                            <td>${ach.count}</td>
-                        </tr>
-                    `).join('') || '<tr><td colspan="2">Нет данных</td></tr>'}
-                </table>
-                
-                <h2>👥 Активные пользователи</h2>
-                <table>
-                    <tr><th>ID</th><th>Email</th><th>Ребёнок</th><th>Событий</th><th>Последняя активность</th></tr>
-                    ${data.active_users?.map(user => `
-                        <tr>
-                            <td>${user.user_id?.slice(-8) || '—'}</td>
-                            <td>${user.user_email || '—'}</td>
-                            <td>${user.child_name || '—'}</td>
-                            <td>${user.events_count}</td>
-                            <td>${new Date(user.last_active).toLocaleString()}</td>
-                        </tr>
-                    `).join('') || '<tr><td colspan="5">Нет данных</td></tr>'}
-                </table>
+                <div class="stat-card">
+                    <div class="stat-value">${data.online.unique_users_24h || 0}</div>
+                    <div class="stat-label">🟢 Активных за 24ч</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${data.online.active_sessions_24h || 0}</div>
+                    <div class="stat-label">💬 Сессий за 24ч</div>
+                </div>
             `;
             
-            document.getElementById('statsContainer').innerHTML = html;
+            // Статистика по дням
+            const dailyDiv = document.getElementById('dailyStats');
+            if (data.by_date && data.by_date.length > 0) {
+                dailyDiv.innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Сказок</th>
+                                <th>Пользователей</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.by_date.map(day => `
+                                <tr>
+                                    <td>${day.date}</td>
+                                    <td>${day.stories}</td>
+                                    <td>${day.users}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } else {
+                dailyDiv.innerHTML = '<p style="color: #a0a0c0;">Нет данных за последние 7 дней</p>';
+            }
+            
+            // Топ страхов
+            const fearsDiv = document.getElementById('topFears');
+            if (data.top_fears && data.top_fears.length > 0) {
+                fearsDiv.innerHTML = data.top_fears.map(fear => `
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <span><span class="fear-badge">${fear.fear || 'неизвестно'}</span></span>
+                        <span style="color: #667eea; font-weight: bold;">${fear.count}</span>
+                    </div>
+                `).join('');
+            } else {
+                fearsDiv.innerHTML = '<p style="color: #a0a0c0;">Нет данных о страхах</p>';
+            }
+            
+            // Последняя активность
+            const recentDiv = document.getElementById('recentActivity');
+            if (data.recent_activity && data.recent_activity.length > 0) {
+                recentDiv.innerHTML = data.recent_activity.map(activity => `
+                    <div style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                            <span style="color: #667eea;">${activity.event_type}</span>
+                            <span style="color: #a0a0c0;">${new Date(activity.created_at).toLocaleString()}</span>
+                        </div>
+                        <div style="color: #c0c0e0;">
+                            ${activity.user_email || 'гость'} • ${activity.child_name || '—'}
+                            ${activity.event_data ? `• ${JSON.stringify(activity.event_data).substring(0, 50)}` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                recentDiv.innerHTML = '<p style="color: #a0a0c0;">Нет данных об активности</p>';
+            }
         }
         
-        function getGameName(eventType) {
-            const names = {
-                'game_fish': '🐟 Поймай рыбку',
-                'game_memory': '🧠 Мемори',
-                'game_puzzle': '🧩 Пазл',
-                'game_color': '🎨 Раскраска',
-                'game_emotion': '😊 Угадай эмоцию'
-            };
-            return names[eventType] || eventType;
+        async function clearCache() {
+            try {
+                const response = await fetch(`/api/admin-stats?key=${encodeURIComponent(adminKey)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'clear_cache' })
+                });
+                
+                if (response.ok) {
+                    alert('✅ Кеш очищен');
+                    loadStats();
+                }
+            } catch (error) {
+                alert('❌ Ошибка очистки кеша');
+            }
         }
         
-        function getFearName(fear) {
-            const names = {
-                'темноты': '😨 Темнота',
-                'врачей': '🏥 Врачи',
-                'одиночества': '🧸 Одиночество',
-                'нового': '🌟 Новое',
-                'обиды': '💔 Обиды',
-                'животных': '🐕 Животные'
-            };
-            return names[fear] || fear;
-        }
-        
-        // Загружаем статистику при открытии страницы
-        loadStats();
+        // Горячие клавиши
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('dashboard').classList.contains('show')) {
+                logout();
+            }
+        });
     </script>
 </body>
 </html>
