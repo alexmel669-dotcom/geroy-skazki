@@ -1,6 +1,5 @@
 // api/generate.js
 export default async function handler(req, res) {
-    // Только POST запросы
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
@@ -12,11 +11,10 @@ export default async function handler(req, res) {
             userSpeech, 
             isLong, 
             history = [], 
-            weeklyMemory,
             systemPrompt 
         } = req.body;
 
-        // Проверка авторизации (опционально, если нужен JWT)
+        // Проверка авторизации (опционально)
         const token = req.headers.authorization?.split(' ')[1];
         let userEmail = null;
         
@@ -26,20 +24,31 @@ export default async function handler(req, res) {
                 const decoded = jwt.default.verify(token, process.env.JWT_SECRET);
                 userEmail = decoded.email;
             } catch (e) {
-                // Гостевой режим — продолжаем без email
+                // Гостевой режим
             }
         }
 
-        // Формируем промпт для DeepSeek
-        const baseSystemPrompt = systemPrompt || `Ты Люцик — дружелюбный волшебный котик. Ты помогаешь ребёнку ${childName}, ${childAge} лет, чувствовать себя смелее.`;
-        
-        const fullPrompt = `${baseSystemPrompt}
-        
-Ребёнок сказал: "${userSpeech}"
+        // Формируем сообщения для DeepSeek
+        const messages = [
+            { 
+                role: 'system', 
+                content: systemPrompt || `Ты Люцик — дружелюбный волшебный котик. Ты помогаешь ребёнку ${childName}, ${childAge} лет, чувствовать себя смелее. Отвечай кратко, по-доброму, иногда мурлыкай.` 
+            }
+        ];
 
-${isLong ? 'Расскажи длинную, спокойную сказку на ночь (примерно 300-500 слов).' : 'Ответь кратко, по-доброму, 1-3 предложения. Используй имя ребёнка.'}
+        // Добавляем историю диалога
+        if (history && history.length > 0) {
+            const recentHistory = history.slice(-10);
+            messages.push(...recentHistory);
+        }
 
-${history.length > 0 ? 'Предыдущий диалог:\n' + history.map(m => `${m.role}: ${m.content}`).join('\n') : ''}`;
+        // Добавляем текущее сообщение
+        messages.push({ 
+            role: 'user', 
+            content: isLong 
+                ? `Расскажи длинную, спокойную сказку на ночь для ${childName}. ${userSpeech}` 
+                : userSpeech 
+        });
 
         // Вызов DeepSeek API
         const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -50,12 +59,8 @@ ${history.length > 0 ? 'Предыдущий диалог:\n' + history.map(m =>
             },
             body: JSON.stringify({
                 model: 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: baseSystemPrompt },
-                    ...history,
-                    { role: 'user', content: userSpeech }
-                ],
-                max_tokens: isLong ? 800 : 150,
+                messages: messages,
+                max_tokens: isLong ? 800 : 200,
                 temperature: 0.7
             })
         });
@@ -69,7 +74,7 @@ ${history.length > 0 ? 'Предыдущий диалог:\n' + history.map(m =>
         const data = await deepseekResponse.json();
         const story = data.choices[0]?.message?.content || 'Мурр... Я задумался. Давай ещё раз?';
 
-        // Определение страха из текста
+        // Определение страха
         let detectedFear = null;
         const lowerSpeech = userSpeech.toLowerCase();
         const lowerStory = story.toLowerCase();
@@ -90,7 +95,7 @@ ${history.length > 0 ? 'Предыдущий диалог:\n' + history.map(m =>
             }
         }
 
-        // Сохраняем аналитику в БД (если есть подключение)
+        // Сохраняем в БД (опционально)
         if (userEmail && process.env.POSTGRES_URL) {
             try {
                 const { sql } = await import('@vercel/postgres');
@@ -98,8 +103,6 @@ ${history.length > 0 ? 'Предыдущий диалог:\n' + history.map(m =>
                     INSERT INTO analytics (event_type, user_email, child_name, child_age, event_data)
                     VALUES ('story_generated', ${userEmail}, ${childName}, ${childAge}, ${JSON.stringify({
                         fear: detectedFear,
-                        speechLength: userSpeech.length,
-                        storyLength: story.length,
                         isLong
                     })})
                 `;
