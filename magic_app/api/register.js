@@ -1,14 +1,11 @@
-// api/register.js — регистрация пользователя
+// api/register.js — регистрация с сохранением в БД
 import jwt from 'jsonwebtoken';
+import { Pool } from '@neondatabase/serverless';
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'hero-skazki-secret-key';
 
 export default async function handler(req, res) {
-  const allowedOrigins = ['https://geroy-skazki.vercel.app'];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
+  res.setHeader('Access-Control-Allow-Origin', 'https://geroy-skazki.vercel.app');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -26,41 +23,19 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Пароль должен быть не менее 6 символов' });
     }
 
-    // Email должен быть похож на email
     if (!email.includes('@') || !email.includes('.')) {
       return res.status(400).json({ error: 'Введите корректный email' });
     }
 
-    // Режим разработчика — сразу токен
+    // Dev-режим
     if (email === 'alexmel669@gmail.com') {
-      const devToken = jwt.sign(
-        { email, role: 'developer' },
-        JWT_SECRET || 'dev-secret',
-        { expiresIn: '30d' }
-      );
-      return res.status(200).json({ token: devToken, email });
+      const token = jwt.sign({ email, role: 'developer' }, JWT_SECRET, { expiresIn: '30d' });
+      return res.status(200).json({ token, email });
     }
 
-    const dbUrl = process.env.POSTGRES_URL;
-    
-    // Если БД нет — fallback-режим
-    if (!dbUrl) {
-      const fallbackToken = jwt.sign(
-        { email, role: 'user' },
-        JWT_SECRET || 'fallback-secret',
-        { expiresIn: '30d' }
-      );
-      return res.status(200).json({ token: fallbackToken, email });
-    }
+    const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
 
-    // Работа с PostgreSQL
-    const { Pool } = await import('pg');
-    const pool = new Pool({ 
-      connectionString: dbUrl, 
-      ssl: { rejectUnauthorized: false } 
-    });
-
-    // Проверяем, есть ли уже такой пользователь
+    // Проверка на существование
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (existing.rows.length > 0) {
       await pool.end();
@@ -75,28 +50,18 @@ export default async function handler(req, res) {
 
     await pool.end();
 
-    const token = jwt.sign(
-      { email, role: 'user' },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const token = jwt.sign({ email, role: 'user' }, JWT_SECRET, { expiresIn: '30d' });
 
     res.status(200).json({ token, email });
 
   } catch (error) {
     console.error('Register error:', error);
-    
-    // Fallback — если БД недоступна
+    // Fallback
     const { email } = req.body;
     if (email && email.includes('@')) {
-      const fallbackToken = jwt.sign(
-        { email, role: 'user' },
-        JWT_SECRET || 'fallback-secret',
-        { expiresIn: '1d' }
-      );
-      return res.status(200).json({ token: fallbackToken, email });
+      const token = jwt.sign({ email, role: 'user' }, JWT_SECRET, { expiresIn: '1d' });
+      return res.status(200).json({ token, email });
     }
-
-    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    res.status(500).json({ error: 'Ошибка регистрации' });
   }
 }
