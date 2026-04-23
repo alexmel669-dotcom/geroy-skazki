@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ-панель — Герой Сказок</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="data:,">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -13,11 +15,11 @@
             min-height: 100vh;
             padding: 20px;
         }
-        .container { max-width: 1000px; margin: 0 auto; }
-        h1 { text-align: center; margin-bottom: 30px; color: #e94560; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 30px; color: #e94560; font-size: 28px; }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-bottom: 30px;
         }
@@ -37,7 +39,7 @@
             margin-bottom: 20px;
             border: 1px solid #0f3460;
         }
-        h2 { margin-bottom: 15px; color: #e94560; }
+        h2 { margin-bottom: 15px; color: #e94560; font-size: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #0f3460; }
         th { opacity: 0.7; font-size: 12px; text-transform: uppercase; }
@@ -46,6 +48,7 @@
             padding: 4px 12px;
             border-radius: 20px;
             font-size: 12px;
+            display: inline-block;
         }
         .loader {
             text-align: center;
@@ -60,36 +63,137 @@
             border-radius: 30px;
             text-decoration: none;
             margin-bottom: 20px;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
         }
+        .back-btn:hover { background: #1a3a6e; }
+        .error-msg { color: #e94560; text-align: center; padding: 20px; }
+        .fear-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: #0f3460;
+            border-radius: 12px;
+            margin: 8px 0;
+        }
+        .fear-name { font-size: 16px; }
+        .fear-count { 
+            background: #e94560; 
+            padding: 4px 14px; 
+            border-radius: 20px; 
+            font-weight: bold;
+        }
+        .login-box {
+            max-width: 400px;
+            margin: 100px auto;
+            background: #16213e;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            border: 1px solid #0f3460;
+        }
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            margin: 10px 0;
+            background: #0f3460;
+            color: white;
+            font-size: 16px;
+        }
+        .login-box button {
+            background: #e94560;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .login-box button:hover { background: #c73a54; }
+        .hidden { display: none; }
+        .refresh-btn {
+            background: #0f3460;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            float: right;
+            margin-bottom: 10px;
+        }
+        .refresh-btn:hover { background: #1a3a6e; }
     </style>
 </head>
 <body>
     <div class="container">
         <a href="/" class="back-btn">← На главную</a>
-        <h1>🛡️ Админ-панель</h1>
-
-        <div id="loginBlock" class="section">
-            <h2>🔐 Вход администратора</h2>
-            <input type="email" id="adminEmail" placeholder="Email" style="width:100%;padding:12px;border-radius:10px;border:none;margin:10px 0;background:#0f3460;color:white;">
-            <input type="password" id="adminPassword" placeholder="Пароль" style="width:100%;padding:12px;border-radius:10px;border:none;margin:10px 0;background:#0f3460;color:white;">
-            <button onclick="adminLogin()" style="background:#e94560;color:white;padding:12px 30px;border:none;border-radius:10px;cursor:pointer;font-size:16px;">Войти</button>
-            <div id="loginError" style="color:#e94560;margin-top:10px;"></div>
+        
+        <!-- ЭКРАН ВХОДА -->
+        <div id="loginScreen" class="login-box">
+            <h2>🛡️ Админ-панель</h2>
+            <p style="opacity:0.7;margin-bottom:15px;">Доступ только для создателя</p>
+            <input type="email" id="adminEmail" placeholder="Email" value="alexmel669@gmail.com">
+            <input type="password" id="adminPassword" placeholder="Пароль">
+            <button onclick="adminLogin()">Войти</button>
+            <div id="loginError" class="error-msg" style="margin-top:10px;"></div>
         </div>
 
-        <div id="dashboard" style="display:none;">
-            <div class="stats-grid" id="statsCards"></div>
-            
-            <div class="section">
-                <h2>😨 Топ страхов</h2>
-                <div id="topFears"></div>
+        <!-- ДАШБОРД -->
+        <div id="dashboard" class="hidden">
+            <h1>🛡️ Админ-панель «Герой Сказок»</h1>
+            <button class="refresh-btn" onclick="loadStats()">🔄 Обновить</button>
+
+            <!-- КАРТОЧКИ -->
+            <div class="stats-grid" id="statsCards">
+                <div class="stat-card">
+                    <div class="stat-number">—</div>
+                    <div class="stat-label">👥 Пользователей</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">—</div>
+                    <div class="stat-label">📖 Всего сказок</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">—</div>
+                    <div class="stat-label">😨 Выявлено страхов</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">—</div>
+                    <div class="stat-label">📅 Сказок сегодня</div>
+                </div>
             </div>
 
+            <!-- ТОП СТРАХОВ -->
+            <div class="section">
+                <h2>😨 Топ страхов</h2>
+                <div id="topFearsList">
+                    <div class="loader">Загрузка...</div>
+                </div>
+            </div>
+
+            <!-- ПОСЛЕДНИЕ ПОЛЬЗОВАТЕЛИ -->
             <div class="section">
                 <h2>👥 Последние регистрации</h2>
-                <table id="recentUsers">
-                    <thead><tr><th>Email</th><th>Дата</th></tr></thead>
-                    <tbody></tbody>
+                <table>
+                    <thead>
+                        <tr><th>Email</th><th>Дата регистрации</th></tr>
+                    </thead>
+                    <tbody id="recentUsersBody">
+                        <tr><td colspan="2"><div class="loader">Загрузка...</div></td></tr>
+                    </tbody>
                 </table>
+            </div>
+
+            <!-- КНОПКА ВЫХОДА -->
+            <div style="text-align:center; margin-top:20px;">
+                <button class="back-btn" onclick="logout()" style="background:#e94560;">🚪 Выйти</button>
             </div>
         </div>
     </div>
@@ -97,15 +201,34 @@
     <script>
     const ADMIN_EMAIL = 'alexmel669@gmail.com';
 
+    // ========== ПРОВЕРКА ПРИ ЗАГРУЗКЕ ==========
+    const savedToken = localStorage.getItem('userToken');
+    const savedEmail = localStorage.getItem('userEmail');
+
+    if (savedToken && savedEmail === ADMIN_EMAIL) {
+        // Уже админ — показываем дашборд
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        loadStats();
+    }
+
+    // ========== ВХОД ==========
     async function adminLogin() {
-        const email = document.getElementById('adminEmail').value;
+        const email = document.getElementById('adminEmail').value.trim();
         const password = document.getElementById('adminPassword').value;
         const errorDiv = document.getElementById('loginError');
 
         if (email !== ADMIN_EMAIL) {
-            errorDiv.textContent = '❌ Доступ запрещён';
+            errorDiv.textContent = '❌ Доступ запрещён. Только для создателя.';
             return;
         }
+
+        if (!password) {
+            errorDiv.textContent = '❌ Введите пароль';
+            return;
+        }
+
+        errorDiv.textContent = '⏳ Вход...';
 
         try {
             const res = await fetch('/api/login', {
@@ -113,35 +236,68 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
+
             const data = await res.json();
-            
+
             if (data.token) {
                 localStorage.setItem('userToken', data.token);
                 localStorage.setItem('userEmail', data.email);
-                loadDashboard(data.token);
+                
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                loadStats();
             } else {
                 errorDiv.textContent = '❌ ' + (data.error || 'Ошибка входа');
             }
         } catch (e) {
-            errorDiv.textContent = '❌ Ошибка соединения';
+            errorDiv.textContent = '❌ Ошибка соединения с сервером';
         }
     }
 
-    async function loadDashboard(token) {
-        document.getElementById('loginBlock').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
+    // ========== ЗАГРУЗКА СТАТИСТИКИ ==========
+    async function loadStats() {
+        const token = localStorage.getItem('userToken');
+        if (!token) {
+            logout();
+            return;
+        }
+
+        // Показываем лоадеры
+        document.getElementById('statsCards').innerHTML = `
+            <div class="stat-card"><div class="stat-number">...</div><div class="stat-label">👥 Пользователей</div></div>
+            <div class="stat-card"><div class="stat-number">...</div><div class="stat-label">📖 Всего сказок</div></div>
+            <div class="stat-card"><div class="stat-number">...</div><div class="stat-label">😨 Выявлено страхов</div></div>
+            <div class="stat-card"><div class="stat-number">...</div><div class="stat-label">📅 Сказок сегодня</div></div>
+        `;
+        document.getElementById('topFearsList').innerHTML = '<div class="loader">Загрузка...</div>';
+        document.getElementById('recentUsersBody').innerHTML = '<tr><td colspan="2"><div class="loader">Загрузка...</div></td></tr>';
 
         try {
-            const res = await fetch('/api/get-stats', {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetch('/api/index', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
             });
+
+            if (res.status === 403) {
+                alert('Доступ запрещён. Только для создателя.');
+                logout();
+                return;
+            }
+
+            if (!res.ok) {
+                throw new Error('Ошибка сервера');
+            }
+
             const data = await res.json();
 
-            // Карточки статистики
+            // Карточки
             document.getElementById('statsCards').innerHTML = `
                 <div class="stat-card">
                     <div class="stat-number">${data.totalUsers || 0}</div>
-                    <div class="stat-label">👥 Всего пользователей</div>
+                    <div class="stat-label">👥 Пользователей</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">${data.totalStories || 0}</div>
@@ -158,31 +314,50 @@
             `;
 
             // Топ страхов
-            const fearsHtml = data.topFears?.map(f => 
-                `<div style="display:flex;justify-content:space-between;padding:10px;background:#0f3460;border-radius:10px;margin:5px 0;">
-                    <span>${f.fear || 'Неизвестно'}</span>
-                    <span class="badge">${f.count}</span>
-                </div>`
-            ).join('') || '<p>Нет данных</p>';
-            document.getElementById('topFears').innerHTML = fearsHtml;
+            if (data.topFears && data.topFears.length > 0) {
+                document.getElementById('topFearsList').innerHTML = data.topFears.map(f => `
+                    <div class="fear-row">
+                        <span class="fear-name">${f.fear || 'Неизвестно'}</span>
+                        <span class="fear-count">${f.count}</span>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('topFearsList').innerHTML = '<p style="opacity:0.7;text-align:center;padding:20px;">Пока нет данных о страхах</p>';
+            }
 
             // Последние пользователи
-            const usersHtml = data.recentUsers?.map(u =>
-                `<tr><td>${u.email}</td><td>${new Date(u.created_at).toLocaleDateString('ru-RU')}</td></tr>`
-            ).join('') || '<tr><td colspan="2">Нет данных</td></tr>';
-            document.querySelector('#recentUsers tbody').innerHTML = usersHtml;
+            if (data.recentUsers && data.recentUsers.length > 0) {
+                document.getElementById('recentUsersBody').innerHTML = data.recentUsers.map(u => `
+                    <tr>
+                        <td>${u.email}</td>
+                        <td>${new Date(u.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                    </tr>
+                `).join('');
+            } else {
+                document.getElementById('recentUsersBody').innerHTML = '<tr><td colspan="2" style="text-align:center;opacity:0.7;">Нет зарегистрированных пользователей</td></tr>';
+            }
 
         } catch (e) {
-            console.error('Ошибка загрузки:', e);
+            console.error('Ошибка загрузки статистики:', e);
+            document.getElementById('statsCards').innerHTML = '<div class="stat-card" style="grid-column:1/-1;"><div class="error-msg">Ошибка загрузки. Попробуйте обновить.</div></div>';
         }
     }
 
-    // Авто-вход если уже есть токен
-    const savedToken = localStorage.getItem('userToken');
-    const savedEmail = localStorage.getItem('userEmail');
-    if (savedToken && savedEmail === ADMIN_EMAIL) {
-        loadDashboard(savedToken);
+    // ========== ВЫХОД ==========
+    function logout() {
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userEmail');
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('dashboard').classList.add('hidden');
+        document.getElementById('loginError').textContent = '';
     }
+
+    // ========== АВТООБНОВЛЕНИЕ КАЖДЫЕ 30 СЕКУНД ==========
+    setInterval(() => {
+        if (document.getElementById('dashboard').classList.contains('hidden') === false) {
+            loadStats();
+        }
+    }, 30000);
     </script>
 </body>
 </html>
