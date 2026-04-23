@@ -1,4 +1,4 @@
-// api/tts.js — Яндекс SpeechKit со всеми голосами
+// api/tts.js — работает с гостевым режимом
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -20,7 +20,6 @@ function sanitizeText(text) {
 }
 
 export default async function handler(req, res) {
-    // CORS
     const allowedOrigins = ['https://geroy-skazki.vercel.app', 'http://localhost:3000'];
     const origin = req.headers.origin;
     if (allowedOrigins.includes(origin)) {
@@ -33,22 +32,15 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
 
     try {
-        // Проверка JWT (опционально, пропускаем если гость)
+        // JWT проверка — НЕ ОБЯЗАТЕЛЬНАЯ (гости тоже могут)
         const authHeader = req.headers.authorization;
-        let isGuest = false;
-        
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.split(' ')[1];
             if (JWT_SECRET && JWT_SECRET !== 'your-secret-key-change-me') {
                 try {
                     jwt.verify(token, JWT_SECRET);
-                } catch {
-                    // Токен невалидный, но мы можем разрешить гостевой режим
-                    isGuest = true;
-                }
+                } catch { /* Игнорируем, продолжаем как гость */ }
             }
-        } else {
-            isGuest = true;
         }
 
         let { text, voice = 'lucik', speed = 0.9 } = req.body;
@@ -59,7 +51,6 @@ export default async function handler(req, res) {
 
         const yandexVoice = VOICE_MAP[voice] || 'zahar';
 
-        // Настройка скорости для разных персонажей
         if (voice === 'kid1' || voice === 'kid2') speed = 0.95;
         if (text.includes('сказка') || text.includes('спокойной ночи')) speed = 0.85;
 
@@ -70,7 +61,6 @@ export default async function handler(req, res) {
 
         const apiKey = process.env.YANDEX_API_KEY;
         if (!apiKey) {
-            console.error('YANDEX_API_KEY не настроен');
             return res.status(500).json({ error: 'API ключ не настроен' });
         }
 
@@ -92,8 +82,6 @@ export default async function handler(req, res) {
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Yandex TTS error:', response.status, errorText);
             return res.status(response.status).json({ error: 'Ошибка синтеза речи' });
         }
 
