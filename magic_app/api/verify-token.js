@@ -32,7 +32,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Dev-режим без JWT_SECRET
     if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-me') {
       return res.status(200).json({ 
         valid: true, 
@@ -41,7 +40,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Проверка JWT
     const decoded = jwt.verify(token, JWT_SECRET);
     
     res.status(200).json({ 
@@ -51,7 +49,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Verify token error:', error.message);
     res.status(401).json({ 
       valid: false, 
       error: 'Токен недействителен или истёк' 
