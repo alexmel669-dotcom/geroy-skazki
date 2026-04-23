@@ -3,13 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Родительский кабинет — Герой Сказок</title>
+    <title>Штаб Создателя — Герой Сказок</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="data:,">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            font-family: 'Segoe UI', 'Roboto', 'Georgia', serif;
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
             min-height: 100vh;
-            background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
+            color: #3a2a1a;
+            background-image: url('parent-bg.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
             overflow-x: hidden;
         }
         
@@ -20,21 +27,16 @@
         }
         
         .glass-card {
-            background: rgba(255, 248, 235, 0.2);
-            backdrop-filter: blur(10px);
+            background: rgba(255, 248, 235, 0.25);
+            backdrop-filter: blur(12px);
             border-radius: 30px;
             padding: 25px;
             margin-bottom: 25px;
-            border: 1px solid rgba(255,255,255,0.4);
+            border: 1px solid rgba(255,255,255,0.3);
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
         }
         
-        .glass-card:hover {
-            transform: translateY(-2px);
-        }
-        
-        h1 { font-size: 32px; color: #5a2e1a; margin-bottom: 10px; }
+        h1 { font-size: 32px; color: #5a2e1a; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; }
         h2 { font-size: 24px; color: #5a2e1a; margin: 20px 0 15px; border-left: 4px solid #d4a373; padding-left: 15px; }
         h3 { font-size: 18px; color: #6b3a1f; margin: 10px 0; }
         
@@ -51,15 +53,25 @@
             transition: all 0.3s;
             font-size: 14px;
         }
-        
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-        
+        .btn-small { padding: 6px 12px; font-size: 12px; }
         .btn:hover { transform: scale(1.02); opacity: 0.95; }
         .btn-outline { background: transparent; border: 2px solid #c8a86c; color: #5a2e1a; }
         .btn-outline:hover { background: #c8a86c; color: white; }
+        
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+            background: rgba(255,248,235,0.15);
+            backdrop-filter: blur(8px);
+            border-radius: 50px;
+            padding: 12px 25px;
+        }
+        .nav-link { color: #5a2e1a; text-decoration: none; font-weight: 500; padding: 5px 10px; }
+        .nav-link:hover { color: #c8a86c; }
         
         .stat-grid {
             display: grid;
@@ -67,19 +79,13 @@
             gap: 15px;
             margin: 20px 0;
         }
-        
         .stat-card {
             background: rgba(255,255,255,0.15);
             border-radius: 20px;
-            padding: 15px;
+            padding: 20px;
             text-align: center;
         }
-        
-        .stat-number {
-            font-size: 36px;
-            font-weight: bold;
-            color: #d4a373;
-        }
+        .stat-number { font-size: 36px; font-weight: bold; color: #d4a373; }
         
         .fear-item {
             background: rgba(255,255,255,0.1);
@@ -90,25 +96,9 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 10px;
         }
-        
-        .fear-name {
-            font-weight: bold;
-            font-size: 18px;
-        }
-        
-        .fear-count {
-            background: #d4a373;
-            padding: 4px 12px;
-            border-radius: 20px;
-            color: white;
-        }
-        
-        .fear-date {
-            font-size: 12px;
-            opacity: 0.7;
-        }
+        .fear-name { font-weight: bold; font-size: 18px; }
+        .fear-count { background: #d4a373; padding: 4px 12px; border-radius: 20px; color: white; }
         
         .advice-box {
             background: rgba(255,255,255,0.15);
@@ -117,16 +107,7 @@
             margin-top: 15px;
             display: none;
         }
-        
-        .advice-box.show {
-            display: block;
-            animation: fadeIn 0.3s;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .advice-box.show { display: block; }
         
         .input-field {
             width: 100%;
@@ -138,31 +119,9 @@
             margin: 10px 0;
         }
         
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        
-        .badge {
-            padding: 5px 15px;
-            border-radius: 30px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .badge-premium {
-            background: linear-gradient(90deg, #fdbb2d, #d4a373);
-            color: #5a2e1a;
-        }
-        
-        .badge-free {
-            background: rgba(100,70,40,0.3);
-            color: #5a2e1a;
-        }
+        .badge { padding: 5px 15px; border-radius: 30px; font-size: 12px; font-weight: bold; }
+        .badge-premium { background: linear-gradient(90deg, #fdbb2d, #d4a373); color: #5a2e1a; }
+        .badge-free { background: rgba(100,70,40,0.3); color: #5a2e1a; }
         
         .loader {
             display: inline-block;
@@ -173,62 +132,96 @@
             border-top-color: transparent;
             animation: spin 1s linear infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .avatars-showcase {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .avatar-item {
+            text-align: center;
+        }
+        .avatar-item img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #d4a373;
         }
         
         @media (max-width: 768px) {
             .container { padding: 15px; }
             .glass-card { padding: 15px; }
             h1 { font-size: 24px; }
-            .fear-item { flex-direction: column; align-items: flex-start; }
         }
-        
-        .fear-emoji { font-size: 24px; margin-right: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Шапка -->
         <div class="top-bar">
             <div style="display: flex; align-items: center; gap: 15px;">
                 <img src="avatar.png" alt="Герой Сказок" style="height: 50px; width: 50px; border-radius: 50%; object-fit: cover;">
-                <h1 style="margin: 0;">👨‍👩‍👧 Родительский кабинет</h1>
+                <h1 style="margin: 0; font-size: 24px;">🏰 Штаб Создателя</h1>
             </div>
             <div>
-                <a href="/" style="color: #5a2e1a; text-decoration: none; margin: 0 10px;">🏠 Главная</a>
-                <a href="/app.html" style="color: #5a2e1a; text-decoration: none; margin: 0 10px;">🎮 Приложение</a>
+                <a href="/" class="nav-link">🏠 Главная</a>
+                <a href="/app.html" class="nav-link">🎮 Приложение</a>
                 <button class="btn btn-small" id="logoutBtn" style="background: #c2185b;">Выйти</button>
             </div>
         </div>
         
         <!-- Неавторизованный блок -->
         <div id="notLoggedIn" class="glass-card" style="text-align: center;">
-            <h2>🔐 Вход в родительский кабинет</h2>
-            <p style="margin: 15px 0;">Введите email и пароль, чтобы видеть статистику ребёнка</p>
-            <input type="email" id="loginEmail" class="input-field" placeholder="Email" style="max-width: 300px;">
-            <input type="password" id="loginPassword" class="input-field" placeholder="Пароль" style="max-width: 300px;">
-            <div>
-                <button class="btn" id="loginBtn">Войти</button>
-                <button class="btn btn-outline" id="registerBtn">Зарегистрироваться</button>
-            </div>
-            <div id="loginStatus" style="margin-top: 15px; font-size: 14px;"></div>
+            <h2>🔐 Вход в Штаб Создателя</h2>
+            <p style="margin: 15px 0;">Войдите или зарегистрируйтесь на главной странице</p>
+            <a href="/" class="btn">🏠 На главную</a>
+            <a href="/app.html" class="btn btn-outline">🎮 Гостевой режим</a>
         </div>
         
         <!-- Авторизованный блок -->
         <div id="loggedIn" style="display: none;">
-            <!-- Приветствие -->
+            <!-- Приветствие и статус -->
             <div class="glass-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                     <div>
-                        <h2>👋 Здравствуйте, <span id="userEmailDisplay">...</span>!</h2>
-                        <p>Ваш ребёнок: <strong id="childNameDisplay">—</strong>, <span id="childAgeDisplay">—</span> лет</p>
+                        <h2 style="margin: 0 0 10px 0;">👋 Здравствуйте, <span id="userEmailDisplay">...</span>!</h2>
+                        <p>Активный ребёнок: <strong id="childNameDisplay">—</strong>, <span id="childAgeDisplay">—</span> лет</p>
                     </div>
                     <div>
-                        <span id="premiumBadge" class="badge badge-free">Бесплатный аккаунт</span>
+                        <span id="premiumBadge" class="badge badge-free">📖 Бесплатный аккаунт</span>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Аватары персонажей -->
+            <div class="glass-card">
+                <h2>🎭 Персонажи</h2>
+                <div class="avatars-showcase">
+                    <div class="avatar-item">
+                        <img src="avatar.png" alt="Люцик">
+                        <p>Люцик 🐱</p>
+                    </div>
+                    <div class="avatar-item">
+                        <img src="mom.png" alt="Мама">
+                        <p>Мама 👩</p>
+                    </div>
+                    <div class="avatar-item">
+                        <img src="dad.png" alt="Папа">
+                        <p>Папа 👨</p>
+                    </div>
+                    <div class="avatar-item">
+                        <img src="kid1.png" alt="Ребёнок 1">
+                        <p>Друг 1 🧒</p>
+                    </div>
+                    <div class="avatar-item">
+                        <img src="kid2.png" alt="Ребёнок 2">
+                        <p>Друг 2 👧</p>
+                    </div>
+                </div>
+                <p style="text-align: center; opacity: 0.8;">Свайп по аватару в приложении меняет персонажа</p>
             </div>
             
             <!-- Настройка детей -->
@@ -236,32 +229,14 @@
                 <h2>👶 Настройка детей</h2>
                 <p>Введите имена детей через запятую (например: Саша, Миша, Катя)</p>
                 <input type="text" id="childrenNames" class="input-field" placeholder="Имена детей через запятую">
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn" id="saveChildrenBtn">💾 Сохранить</button>
-                    <button class="btn btn-outline" id="switchChildBtn" style="display: none;">🔄 Сменить активного ребёнка</button>
-                </div>
-                <div id="childSelector" style="margin-top: 15px; display: none;">
-                    <p>Выберите ребёнка:</p>
-                    <div id="childButtons" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
-                </div>
+                <button class="btn" id="saveChildrenBtn">💾 Сохранить</button>
             </div>
             
             <!-- Статистика страхов -->
             <div class="glass-card">
                 <h2>📊 Статистика страхов</h2>
                 <div id="fearsList">
-                    <p style="opacity: 0.7;">Нет данных о страхах. Поговорите с Люциком!</p>
-                </div>
-            </div>
-            
-            <!-- Помощь психолога -->
-            <div class="glass-card">
-                <h2>🫂 Помощь психолога</h2>
-                <p>Выберите страх, чтобы получить рекомендации:</p>
-                <div id="fearButtons" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-                <div id="adviceBox" class="advice-box">
-                    <div id="adviceContent"></div>
-                    <button class="btn btn-small btn-outline" onclick="closeAdvice()" style="margin-top: 15px;">Закрыть</button>
+                    <p style="opacity: 0.7;">✨ Пока нет данных. Поговорите с ребёнком через приложение!</p>
                 </div>
             </div>
             
@@ -284,6 +259,17 @@
                 </div>
             </div>
             
+            <!-- Помощь психолога -->
+            <div class="glass-card">
+                <h2>🫂 Помощь психолога</h2>
+                <p>Выберите страх, чтобы получить рекомендации:</p>
+                <div id="fearButtons" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0;"></div>
+                <div id="adviceBox" class="advice-box">
+                    <div id="adviceContent"></div>
+                    <button class="btn btn-small btn-outline" onclick="closeAdvice()" style="margin-top: 15px;">Закрыть</button>
+                </div>
+            </div>
+            
             <!-- Настройки -->
             <div class="glass-card">
                 <h2>⚙️ Настройки</h2>
@@ -293,14 +279,31 @@
                 </div>
                 <div>
                     <label>🌙 Напоминание перед сном</label>
-                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                        <label>
-                            <input type="checkbox" id="bedtimeReminder"> Включить
-                        </label>
-                        <input type="time" id="bedtimeTime" value="21:00" style="padding: 8px 15px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,248,235,0.2);">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <label><input type="checkbox" id="bedtimeReminder"> Включить</label>
+                        <input type="time" id="bedtimeTime" value="21:00" style="padding: 8px 15px; border-radius: 30px; border: none; background: rgba(255,255,255,0.2);">
                     </div>
                 </div>
                 <button class="btn" id="saveSettingsBtn" style="margin-top: 15px;">💾 Сохранить настройки</button>
+            </div>
+            
+            <!-- Будущие платежи -->
+            <div class="glass-card">
+                <h2>💎 Премиум возможности (скоро)</h2>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <h3>🌟 Стандарт</h3>
+                        <p style="font-size: 24px; margin: 10px 0;">299 ₽/мес</p>
+                        <p>Безлимит сказок<br>Мама+Папа<br>Все игры</p>
+                        <button class="btn btn-small" style="margin-top: 10px; opacity: 0.5;" disabled>Скоро</button>
+                    </div>
+                    <div class="stat-card">
+                        <h3>💫 Премиум</h3>
+                        <p style="font-size: 24px; margin: 10px 0;">499 ₽/мес</p>
+                        <p>Всё из Стандарта<br>Клонирование голоса<br>Pixar-фото</p>
+                        <button class="btn btn-small" style="margin-top: 10px; opacity: 0.5;" disabled>Скоро</button>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -310,38 +313,30 @@
     </div>
 
     <script>
-        // Эмодзи для страхов
         const fearEmojis = {
-            'темноты': '🌙',
-            'врачей': '💉',
-            'одиночества': '😔',
-            'обиды': '😢',
-            'нового': '🆕',
-            'животных': '🐕'
+            'темноты': '🌙', 'врачей': '💉', 'одиночества': '😔',
+            'обиды': '😢', 'нового': '🆕', 'животных': '🐕'
         };
         
         const fearNames = {
-            'темноты': 'Темнота',
-            'врачей': 'Врачи и уколы',
-            'одиночества': 'Одиночество',
-            'обиды': 'Обиды',
-            'нового': 'Новое и неизвестное',
-            'животных': 'Животные'
+            'темноты': 'Темнота', 'врачей': 'Врачи и уколы', 'одиночества': 'Одиночество',
+            'обиды': 'Обиды', 'нового': 'Новое', 'животных': 'Животные'
         };
         
         let currentToken = null;
         let currentEmail = null;
         let fearStats = {};
         
-        // Проверка авторизации
+        // Проверка авторизации (ГОСТИ ТОЖЕ МОГУТ)
         function checkAuth() {
             currentToken = localStorage.getItem('userToken');
             currentEmail = localStorage.getItem('userEmail');
+            const guestMode = localStorage.getItem('guestMode') === 'true';
             
-            if (currentToken && currentEmail) {
+            if ((currentToken && currentEmail) || guestMode) {
                 document.getElementById('notLoggedIn').style.display = 'none';
                 document.getElementById('loggedIn').style.display = 'block';
-                document.getElementById('userEmailDisplay').innerText = currentEmail;
+                document.getElementById('userEmailDisplay').innerText = currentEmail || 'Гость';
                 loadAllData();
             } else {
                 document.getElementById('notLoggedIn').style.display = 'block';
@@ -349,7 +344,6 @@
             }
         }
         
-        // Загрузка всех данных
         function loadAllData() {
             loadFearStats();
             loadChildren();
@@ -357,23 +351,15 @@
             loadGeneralStats();
         }
         
-        // Загрузка статистики страхов (ИСПРАВЛЕНО)
         function loadFearStats() {
             const saved = localStorage.getItem('fearStats');
             if (saved) {
-                try {
-                    fearStats = JSON.parse(saved);
-                } catch {
-                    fearStats = {};
-                }
-            } else {
-                fearStats = {};
-            }
+                try { fearStats = JSON.parse(saved); } catch { fearStats = {}; }
+            } else { fearStats = {}; }
             
             const fearsList = document.getElementById('fearsList');
             const fearButtons = document.getElementById('fearButtons');
             
-            // Проверяем, есть ли данные
             const hasData = Object.values(fearStats).some(v => v > 0);
             
             if (!hasData) {
@@ -382,34 +368,25 @@
                 return;
             }
             
-            // Преобразуем в массив и сортируем по количеству
             const fearsArray = Object.entries(fearStats)
                 .filter(([_, count]) => count > 0)
                 .sort((a, b) => b[1] - a[1]);
             
-            // Отображаем список страхов
             fearsList.innerHTML = fearsArray.map(([fear, count]) => `
                 <div class="fear-item">
-                    <div>
-                        <span class="fear-emoji">${fearEmojis[fear] || '😟'}</span>
-                        <span class="fear-name">${fearNames[fear] || fear}</span>
-                    </div>
-                    <div>
-                        <span class="fear-count">${count} ${declension(count, 'сказка', 'сказки', 'сказок')}</span>
-                        <span class="fear-date">✨</span>
-                    </div>
+                    <div><span style="font-size:24px;margin-right:10px;">${fearEmojis[fear]||'😟'}</span>
+                    <span class="fear-name">${fearNames[fear]||fear}</span></div>
+                    <div><span class="fear-count">${count} ${declension(count, 'сказка', 'сказки', 'сказок')}</span></div>
                 </div>
             `).join('');
             
-            // Кнопки для получения советов психолога
             fearButtons.innerHTML = fearsArray.map(([fear]) => `
                 <button class="btn btn-small btn-outline" onclick="getPsychologistAdvice('${fear}')">
-                    ${fearEmojis[fear] || '🫂'} ${fearNames[fear] || fear}
+                    ${fearEmojis[fear]||'🫂'} ${fearNames[fear]||fear}
                 </button>
             `).join('');
         }
         
-        // Склонение существительных
         function declension(n, one, two, five) {
             n = Math.abs(n) % 100;
             if (n > 10 && n < 20) return five;
@@ -419,129 +396,65 @@
             return five;
         }
         
-        // Загрузка детей
         function loadChildren() {
             const children = localStorage.getItem('childrenNames') || '';
             document.getElementById('childrenNames').value = children;
             
-            const activeChild = localStorage.getItem('currentChild') || localStorage.getItem('activeChild') || '';
-            const childName = activeChild || children.split(',')[0]?.trim() || 'малыш';
-            document.getElementById('childNameDisplay').innerText = childName;
+            const activeChild = localStorage.getItem('currentChild') || children.split(',')[0]?.trim() || 'малыш';
+            document.getElementById('childNameDisplay').innerText = activeChild;
             
             const childAge = localStorage.getItem('childAge') || '5';
             document.getElementById('childAgeDisplay').innerText = childAge;
+            document.getElementById('settingsAge').value = childAge;
         }
         
-        // Загрузка настроек
         function loadSettings() {
-            const age = localStorage.getItem('childAge') || '5';
-            document.getElementById('settingsAge').value = age;
             document.getElementById('bedtimeReminder').checked = localStorage.getItem('bedtimeReminder') === 'true';
             document.getElementById('bedtimeTime').value = localStorage.getItem('bedtimeTime') || '21:00';
         }
         
-        // Загрузка общей статистики (ИСПРАВЛЕНО)
         function loadGeneralStats() {
             const history = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-            const storiesCount = history.length;
-            document.getElementById('totalStories').innerText = storiesCount;
+            document.getElementById('totalStories').innerText = history.length;
             
-            // Считаем сумму всех страхов
-            const totalFears = Object.values(fearStats).reduce((sum, count) => sum + (typeof count === 'number' ? count : 0), 0);
+            const totalFears = Object.values(fearStats).reduce((sum, c) => sum + (typeof c === 'number' ? c : 0), 0);
             document.getElementById('totalFears').innerText = totalFears;
             
-            // Сказок сегодня
-            const todayStories = parseInt(localStorage.getItem('todayStoriesCount') || '0');
-            document.getElementById('storiesToday').innerText = todayStories;
+            document.getElementById('storiesToday').innerText = localStorage.getItem('todayStoriesCount') || '0';
             
-            // Премиум статус
             const isPremium = localStorage.getItem('isPremium') === 'true';
             const badge = document.getElementById('premiumBadge');
             if (isPremium) {
-                badge.innerText = '🌟 Премиум аккаунт';
+                badge.innerText = '🌟 Премиум';
                 badge.className = 'badge badge-premium';
-            } else {
-                badge.innerText = '📖 Бесплатный аккаунт';
-                badge.className = 'badge badge-free';
             }
         }
         
-        // Сохранение детей
-        function saveChildren() {
-            const children = document.getElementById('childrenNames').value.trim();
-            localStorage.setItem('childrenNames', children);
-            
-            const names = children.split(',').map(n => n.trim()).filter(n => n);
-            if (names.length > 0 && !localStorage.getItem('currentChild')) {
-                localStorage.setItem('currentChild', names[0]);
-            }
-            
-            alert('✅ Имена детей сохранены!');
-            loadChildren();
-        }
-        
-        // Сохранение настроек
-        function saveSettings() {
-            const age = document.getElementById('settingsAge').value;
-            if (age) localStorage.setItem('childAge', age);
-            
-            localStorage.setItem('bedtimeReminder', document.getElementById('bedtimeReminder').checked);
-            localStorage.setItem('bedtimeTime', document.getElementById('bedtimeTime').value);
-            
-            alert('✅ Настройки сохранены!');
-            loadGeneralStats();
-            loadChildren();
-        }
-        
-        // Получение совета психолога
         async function getPsychologistAdvice(fear) {
             const adviceBox = document.getElementById('adviceBox');
             const adviceContent = document.getElementById('adviceContent');
             
-            adviceContent.innerHTML = '<div class="loader"></div> Загружаем рекомендации...';
+            adviceContent.innerHTML = '<div class="loader"></div> Загружаем...';
             adviceBox.classList.add('show');
             
-            const childName = localStorage.getItem('currentChild') || localStorage.getItem('activeChild') || 'малыш';
+            const childName = localStorage.getItem('currentChild') || 'малыш';
             const childAge = localStorage.getItem('childAge') || 5;
             
             try {
-                const response = await fetch('/api/parent-advice', {
+                const res = await fetch('/api/parent-advice', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: JSON.stringify({ 
-                        fear: fearNames[fear] || fear, 
-                        childAge, 
-                        childName 
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fear: fearNames[fear] || fear, childAge, childName })
                 });
-                
-                const data = await response.json();
+                const data = await res.json();
                 
                 if (data.advice) {
-                    adviceContent.innerHTML = `
-                        <div style="background: rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; white-space: pre-wrap;">
-                            ${data.advice.replace(/\n/g, '<br>')}
-                        </div>
-                    `;
+                    adviceContent.innerHTML = `<div style="background:rgba(255,255,255,0.1);padding:15px;border-radius:15px;white-space:pre-wrap;">${data.advice.replace(/\n/g,'<br>')}</div>`;
                 } else {
-                    adviceContent.innerHTML = `
-                        <div style="text-align: center;">
-                            <p>😔 Не удалось получить рекомендации</p>
-                            <button class="btn btn-small" onclick="closeAdvice()">Закрыть</button>
-                        </div>
-                    `;
+                    adviceContent.innerHTML = '<p>😔 Не удалось получить рекомендации</p>';
                 }
-            } catch (error) {
-                console.error('Ошибка:', error);
-                adviceContent.innerHTML = `
-                    <div style="text-align: center;">
-                        <p>😔 Ошибка соединения. Попробуйте позже.</p>
-                        <button class="btn btn-small" onclick="closeAdvice()">Закрыть</button>
-                    </div>
-                `;
+            } catch (e) {
+                adviceContent.innerHTML = '<p>😔 Ошибка соединения</p>';
             }
         }
         
@@ -549,99 +462,44 @@
             document.getElementById('adviceBox').classList.remove('show');
         }
         
-        // Авторизация
-        async function login() {
-            const email = document.getElementById('loginEmail').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            const statusDiv = document.getElementById('loginStatus');
-            
-            if (!email || !password) {
-                statusDiv.innerHTML = '❌ Введите email и пароль';
-                return;
-            }
-            
-            statusDiv.innerHTML = '⏳ Вход...';
-            
-            try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                const data = await res.json();
-                
-                if (res.ok) {
-                    localStorage.setItem('userToken', data.token);
-                    localStorage.setItem('userEmail', data.email);
-                    statusDiv.innerHTML = '✅ Вход выполнен!';
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка входа');
-                }
-            } catch (error) {
-                statusDiv.innerHTML = '❌ Ошибка соединения';
-            }
-        }
-        
-        async function register() {
-            const email = document.getElementById('loginEmail').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            const statusDiv = document.getElementById('loginStatus');
-            
-            if (!email || !password) {
-                statusDiv.innerHTML = '❌ Введите email и пароль';
-                return;
-            }
-            if (password.length < 6) {
-                statusDiv.innerHTML = '❌ Пароль должен быть не менее 6 символов';
-                return;
-            }
-            
-            statusDiv.innerHTML = '⏳ Регистрация...';
-            
-            try {
-                const res = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                const data = await res.json();
-                
-                if (res.ok) {
-                    localStorage.setItem('userToken', data.token);
-                    localStorage.setItem('userEmail', data.email);
-                    statusDiv.innerHTML = '✅ Регистрация успешна!';
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка регистрации');
-                }
-            } catch (error) {
-                statusDiv.innerHTML = '❌ Ошибка соединения';
-            }
-        }
-        
         function logout() {
             localStorage.removeItem('userToken');
             localStorage.removeItem('userEmail');
-            location.reload();
+            localStorage.removeItem('guestMode');
+            location.href = '/';
         }
         
-        // Обновление данных каждые 10 секунд
+        // Обработчики
+        document.getElementById('saveChildrenBtn').onclick = () => {
+            const children = document.getElementById('childrenNames').value.trim();
+            localStorage.setItem('childrenNames', children);
+            const names = children.split(',').map(n => n.trim()).filter(n => n);
+            if (names.length > 0 && !localStorage.getItem('currentChild')) {
+                localStorage.setItem('currentChild', names[0]);
+            }
+            alert('✅ Сохранено!');
+            loadChildren();
+        };
+        
+        document.getElementById('saveSettingsBtn').onclick = () => {
+            const age = document.getElementById('settingsAge').value;
+            if (age) localStorage.setItem('childAge', age);
+            localStorage.setItem('bedtimeReminder', document.getElementById('bedtimeReminder').checked);
+            localStorage.setItem('bedtimeTime', document.getElementById('bedtimeTime').value);
+            alert('✅ Настройки сохранены!');
+            loadChildren();
+        };
+        
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+        
+        // Автообновление
         setInterval(() => {
-            if (localStorage.getItem('userToken')) {
+            if (localStorage.getItem('userToken') || localStorage.getItem('guestMode') === 'true') {
                 loadFearStats();
                 loadGeneralStats();
             }
         }, 10000);
         
-        // Обработчики событий
-        document.getElementById('loginBtn')?.addEventListener('click', login);
-        document.getElementById('registerBtn')?.addEventListener('click', register);
-        document.getElementById('logoutBtn')?.addEventListener('click', logout);
-        document.getElementById('saveChildrenBtn')?.addEventListener('click', saveChildren);
-        document.getElementById('saveSettingsBtn')?.addEventListener('click', saveSettings);
-        
-        // Инициализация
         checkAuth();
     </script>
 </body>
