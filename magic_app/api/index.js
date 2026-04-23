@@ -1,199 +1,103 @@
-// api/index.js — роутер: verify-token, parent-advice, save-stats, get-stats
+// api/tts.js — Яндекс SpeechKit со всеми голосами
 import jwt from 'jsonwebtoken';
-import { Pool } from '@neondatabase/serverless';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hero-skazki-secret-key';
-const ADMIN_EMAIL = 'alexmel669@gmail.com';
+const JWT_SECRET = process.env.JWT_SECRET;
 
-function setCors(res) {
-  res.setHeader('Access-Control-Allow-Origin', 'https://geroy-skazki.vercel.app');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-}
+const VOICE_MAP = {
+  lucik: 'zahar',
+  mom: 'jane',
+  dad: 'ermil',
+  kid1: 'alena',
+  kid2: 'filipp'
+};
 
-function getUserFromToken(authHeader) {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.split(' ')[1];
-  if (token.startsWith('guest_token_')) return { email: 'guest', role: 'guest' };
-  try {
-    return jwt.verify(token, JWT_SECRET);
-  } catch {
-    return null;
-  }
+function sanitizeText(text) {
+  return text
+    .replace(/[^\w\s\.,!?\-а-яА-ЯёЁ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 500);
 }
 
 export default async function handler(req, res) {
-  setCors(res);
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  const allowedOrigins = ['https://geroy-skazki.vercel.app'];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  const url = req.url || '';
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
 
   try {
-    // ========== VERIFY TOKEN ==========
-    if (url.includes('verify')) {
-      if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
-      
-      const user = getUserFromToken(req.headers.authorization);
-      if (!user) {
-        return res.status(401).json({ valid: false, error: 'Неверный токен' });
-      }
-      
-      return res.status(200).json({ 
-        valid: true, 
-        email: user.email, 
-        role: user.role || 'user' 
-      });
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Требуется авторизация' });
     }
 
-    // ========== PARENT ADVICE (2 URL: /api/index/advice и /api/parent-advice) ==========
-    if (url.includes('advice')) {
-      if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
-      
-      const { fear, childAge, childName } = req.body;
-      
-      if (!fear || fear.trim().length === 0) {
-        return res.status(400).json({ error: 'Укажите страх ребёнка' });
-      }
-
-      const age = parseInt(childAge) || 5;
-      const name = childName || 'малыш';
-
-      const prompt = `Ты — детский психолог. Родитель ребёнка ${name} (${age} лет) обращается за помощью. Ребёнок боится: "${fear}".
-Дай родителю практический, тёплый ответ. Используй структуру:
-1. КАК НАЧАТЬ РАЗГОВОР: (2-3 мягкие фразы)
-2. ЧЕГО НЕЛЬЗЯ ГОВОРИТЬ: (2-3 фразы)
-3. ИГРЫ И УПРАЖНЕНИЯ: (2-3 конкретных задания)
-4. КОГДА НУЖЕН СПЕЦИАЛИСТ: (чёткие признаки)
-Отвечай тёплым тоном. Пиши на русском.`;
-
-      const deepseekKey = process.env.DEEPSEEK_API_KEY;
-      if (!deepseekKey) {
-        return res.status(500).json({ error: 'API ключ DeepSeek не настроен' });
-      }
-
-      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${deepseekKey}`
-        },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            { role: 'system', content: 'Ты — добрый детский психолог. Отвечай структурированно, тепло.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 800
-        })
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error('DeepSeek error:', response.status, errText);
-        return res.status(500).json({ 
-          error: 'Ошибка генерации совета',
-          advice: '🌙 Попробуйте обнять ребёнка и сказать: "Я рядом, мы справимся вместе".'
-        });
-      }
-
-      const data = await response.json();
-      const advice = data.choices[0].message.content;
-
-      return res.status(200).json({ advice, fear });
-    }
-
-    // ========== SAVE STATS ==========
-    if (url.includes('save-stats') || url.includes('stats')) {
-      if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
-      
-      const user = getUserFromToken(req.headers.authorization);
-      const { event_type, child_name, event_data } = req.body;
-
-      if (!event_type) {
-        return res.status(400).json({ error: 'Нет event_type' });
-      }
-
-      // Сохраняем в БД если есть подключение
-      if (process.env.POSTGRES_URL) {
+    const token = authHeader.split(' ')[1];
+    
+    if (JWT_SECRET && JWT_SECRET !== 'your-secret-key-change-me') {
+      if (!token.startsWith('guest_token_')) {
         try {
-          const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
-          await pool.query(
-            'INSERT INTO analytics (event_type, user_email, child_name, event_data) VALUES ($1, $2, $3, $4)',
-            [
-              event_type, 
-              user?.email || 'guest', 
-              child_name || 'малыш', 
-              JSON.stringify(event_data || {})
-            ]
-          );
-          await pool.end();
-        } catch (dbError) {
-          console.error('DB save error:', dbError);
+          jwt.verify(token, JWT_SECRET);
+        } catch {
+          return res.status(401).json({ error: 'Неверный токен' });
         }
       }
-
-      return res.status(200).json({ success: true });
     }
 
-    // ========== GET STATS (ADMIN ONLY) ==========
-    if (url.includes('admin') || url.includes('get-stats')) {
-      if (req.method !== 'GET') return res.status(405).json({ error: 'Метод не поддерживается' });
-      
-      const user = getUserFromToken(req.headers.authorization);
-      
-      if (!user || user.email !== ADMIN_EMAIL) {
-        return res.status(403).json({ error: 'Доступ запрещён' });
-      }
+    let { text, voice = 'lucik', speed = 0.9 } = req.body;
 
-      if (!process.env.POSTGRES_URL) {
-        return res.status(500).json({ error: 'База данных не подключена' });
-      }
-
-      const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
-
-      try {
-        const [usersResult, storiesResult, fearsResult, todayResult, topFearsResult, recentResult] = await Promise.all([
-          pool.query('SELECT COUNT(*) as count FROM users'),
-          pool.query("SELECT COUNT(*) as count FROM analytics WHERE event_type = 'story'"),
-          pool.query("SELECT COUNT(*) as count FROM analytics WHERE event_type = 'fear_detected'"),
-          pool.query("SELECT COUNT(*) as count FROM analytics WHERE event_type = 'story' AND created_at::date = CURRENT_DATE"),
-          pool.query("SELECT event_data->>'fear' as fear, COUNT(*) as count FROM analytics WHERE event_type = 'fear_detected' GROUP BY fear ORDER BY count DESC LIMIT 10"),
-          pool.query('SELECT email, created_at FROM users ORDER BY created_at DESC LIMIT 10')
-        ]);
-
-        await pool.end();
-
-        return res.status(200).json({
-          totalUsers: parseInt(usersResult.rows[0].count),
-          totalStories: parseInt(storiesResult.rows[0].count),
-          totalFears: parseInt(fearsResult.rows[0].count),
-          todayStories: parseInt(todayResult.rows[0].count),
-          topFears: topFearsResult.rows,
-          recentUsers: recentResult.rows
-        });
-      } catch (dbError) {
-        await pool.end();
-        throw dbError;
-      }
+    if (!text || text.trim().length === 0) {
+      return res.status(400).json({ error: 'Нет текста' });
     }
 
-    // ========== 404 ==========
-    return res.status(404).json({ 
-      error: 'Неизвестный запрос',
-      available: ['verify', 'advice', 'save-stats', 'get-stats']
+    const yandexVoice = VOICE_MAP[voice] || 'zahar';
+
+    if (voice === 'kid1' || voice === 'kid2') speed = 0.95;
+    if (text.includes('сказка') || text.includes('спокойной ночи')) speed = 0.85;
+
+    const cleanText = sanitizeText(text);
+
+    if (cleanText.length === 0) {
+      return res.status(400).json({ error: 'Нет допустимых символов' });
+    }
+
+    const apiKey = process.env.YANDEX_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'API ключ не настроен' });
+    }
+
+    const params = new URLSearchParams();
+    params.append('text', cleanText);
+    params.append('voice', yandexVoice);
+    params.append('format', 'mp3');
+    params.append('sampleRateHertz', '48000');
+    params.append('speed', speed.toString());
+
+    const response = await fetch('https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Api-Key ${apiKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
     });
 
-  } catch (error) {
-    console.error('API Index Error:', error);
-    
-    if (url.includes('advice')) {
-      return res.status(500).json({ 
-        error: 'Сервер временно недоступен',
-        advice: '🌙 Попробуйте обнять ребёнка и сказать: "Я рядом, мы справимся вместе".'
-      });
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Ошибка синтеза' });
     }
-    
-    return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+
+    const audioBuffer = await response.arrayBuffer();
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.status(200).send(Buffer.from(audioBuffer));
+
+  } catch (error) {
+    console.error('TTS ошибка:', error);
+    res.status(500).json({ error: 'Внутренняя ошибка' });
   }
 }
