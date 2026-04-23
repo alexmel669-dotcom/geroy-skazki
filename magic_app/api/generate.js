@@ -1,128 +1,100 @@
-// api/generate.js
+// api/tts.js — Яндекс SpeechKit со всеми голосами
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+const VOICE_MAP = {
+    lucik: 'zahar',
+    mom: 'jane',
+    dad: 'ermil',
+    kid1: 'oksana',
+    kid2: 'oksana'
+};
+
+function sanitizeText(text) {
+    return text
+        .replace(/[^\w\s\.,!?\-а-яА-ЯёЁ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 500);
+}
+
 export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method Not Allowed' });
+    const allowedOrigins = ['https://geroy-skazki.vercel.app'];
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
     }
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
 
     try {
-        const { 
-            childName, 
-            childAge, 
-            userSpeech, 
-            isLong, 
-            history = [], 
-            systemPrompt 
-        } = req.body;
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Требуется авторизация' });
+        }
 
-        // Проверка авторизации (опционально)
-        const token = req.headers.authorization?.split(' ')[1];
-        let userEmail = null;
-        
-        if (token) {
+        const token = authHeader.split(' ')[1];
+        if (JWT_SECRET && JWT_SECRET !== 'your-secret-key-change-me') {
             try {
-                const jwt = await import('jsonwebtoken');
-                const decoded = jwt.default.verify(token, process.env.JWT_SECRET);
-                userEmail = decoded.email;
-            } catch (e) {
-                // Гостевой режим
+                jwt.verify(token, JWT_SECRET);
+            } catch {
+                return res.status(401).json({ error: 'Неверный токен' });
             }
         }
 
-        // Формируем сообщения для DeepSeek
-        const messages = [
-            { 
-                role: 'system', 
-                content: systemPrompt || `Ты Люцик — дружелюбный волшебный котик. Ты помогаешь ребёнку ${childName}, ${childAge} лет, чувствовать себя смелее. Отвечай кратко, по-доброму, иногда мурлыкай.` 
-            }
-        ];
+        let { text, voice = 'lucik', speed = 0.9 } = req.body;
 
-        // Добавляем историю диалога
-        if (history && history.length > 0) {
-            const recentHistory = history.slice(-10);
-            messages.push(...recentHistory);
+        if (!text || text.trim().length === 0) {
+            return res.status(400).json({ error: 'Нет текста' });
         }
 
-        // Добавляем текущее сообщение
-        messages.push({ 
-            role: 'user', 
-            content: isLong 
-                ? `Расскажи длинную, спокойную сказку на ночь для ${childName}. ${userSpeech}` 
-                : userSpeech 
-        });
+        const yandexVoice = VOICE_MAP[voice] || 'zahar';
 
-        // Вызов DeepSeek API
-        const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        if (voice === 'kid1' || voice === 'kid2') speed = 0.95;
+        if (text.includes('сказка') || text.includes('спокойной ночи')) speed = 0.85;
+
+        const cleanText = sanitizeText(text);
+        if (cleanText.length === 0) {
+            return res.status(400).json({ error: 'Нет допустимых символов' });
+        }
+
+        const apiKey = process.env.YANDEX_API_KEY;
+        if (!apiKey) {
+            return res.status(500).json({ error: 'API ключ не настроен' });
+        }
+
+        const params = new URLSearchParams();
+        params.append('text', cleanText);
+        params.append('voice', yandexVoice);
+        params.append('format', 'mp3');
+        params.append('sampleRateHertz', '48000');
+        params.append('speed', speed.toString());
+
+        const response = await fetch('https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+                'Authorization': `Api-Key ${apiKey}`,
+                'Content-Type': 'application/x-www-form-urlencoded'
             },
-            body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: messages,
-                max_tokens: isLong ? 800 : 200,
-                temperature: 0.7
-            })
+            body: params.toString()
         });
 
-        if (!deepseekResponse.ok) {
-            const errorText = await deepseekResponse.text();
-            console.error('DeepSeek API error:', deepseekResponse.status, errorText);
-            throw new Error(`DeepSeek API error: ${deepseekResponse.status}`);
+        if (!response.ok) {
+            return res.status(response.status).json({ error: 'Ошибка синтеза' });
         }
 
-        const data = await deepseekResponse.json();
-        const story = data.choices[0]?.message?.content || 'Мурр... Я задумался. Давай ещё раз?';
+        const audioBuffer = await response.arrayBuffer();
 
-        // Определение страха
-        let detectedFear = null;
-        const lowerSpeech = userSpeech.toLowerCase();
-        const lowerStory = story.toLowerCase();
-        
-        const fearKeywords = {
-            'темноты': ['темно', 'темнота', 'боюсь темно'],
-            'врачей': ['врач', 'укол', 'больница', 'доктор'],
-            'одиночества': ['один', 'скучно', 'никого'],
-            'нового': ['новое', 'незнаком', 'первый раз'],
-            'обиды': ['обид', 'грустно', 'плакать'],
-            'животных': ['собака', 'кошка', 'животн', 'монстр']
-        };
-
-        for (const [fear, keywords] of Object.entries(fearKeywords)) {
-            if (keywords.some(kw => lowerSpeech.includes(kw) || lowerStory.includes(kw))) {
-                detectedFear = fear;
-                break;
-            }
-        }
-
-        // Сохраняем в БД (опционально)
-        if (userEmail && process.env.POSTGRES_URL) {
-            try {
-                const { sql } = await import('@vercel/postgres');
-                await sql`
-                    INSERT INTO analytics (event_type, user_email, child_name, child_age, event_data)
-                    VALUES ('story_generated', ${userEmail}, ${childName}, ${childAge}, ${JSON.stringify({
-                        fear: detectedFear,
-                        isLong
-                    })})
-                `;
-            } catch (dbError) {
-                console.error('DB error (non-critical):', dbError);
-            }
-        }
-
-        return res.status(200).json({
-            story,
-            detectedFear,
-            timestamp: new Date().toISOString()
-        });
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.status(200).send(Buffer.from(audioBuffer));
 
     } catch (error) {
-        console.error('Generate API error:', error);
-        return res.status(500).json({ 
-            error: 'Ошибка генерации',
-            story: 'Мурр... Что-то пошло не так. Давай попробуем ещё раз?',
-            detectedFear: null
-        });
+        console.error('TTS ошибка:', error);
+        res.status(500).json({ error: 'Внутренняя ошибка' });
     }
 }
