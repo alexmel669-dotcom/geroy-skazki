@@ -277,7 +277,7 @@
     </style>
 </head>
 <body>
-    <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
+    <div class="parent-btn" id="parentBtn">⚙️ Штаб</div>
     
     <div class="app-container">
         <div class="stats">
@@ -381,7 +381,7 @@
             selector.style.display = 'flex';
         }
         
-        // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
+        // ========== ПРОВЕРКА АВТОРИЗАЦИИ (ГОСТИ ТОЖЕ МОГУТ) ==========
         async function checkAuthAndRedirect() {
             const token = localStorage.getItem('userToken');
             const guestMode = localStorage.getItem('guestMode') === 'true';
@@ -663,7 +663,7 @@
             }
         }
         
-        // ========== ОЗВУЧКА YANDEX ==========
+        // ========== ОЗВУЧКА YANDEX (БЕЗ ТОКЕНА) ==========
         let currentAudio = null;
         let isSpeaking = false;
         
@@ -689,10 +689,7 @@
                     
                     const response = await fetch('/api/tts', {
                         method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('userToken') || ''}`
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ text: cleanText, voice, speed: 0.9 })
                     });
                     
@@ -872,7 +869,7 @@
             return badWords.some(word => lowerText.includes(word));
         }
         
-        // ========== МИКРОФОН ==========
+        // ========== МИКРОФОН (БЕЗ АВТО-ОПРЕДЕЛЕНИЯ СТРАХОВ) ==========
         let isListening = false;
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         let rec = null;
@@ -912,13 +909,7 @@
                 
                 saveHistory(`👶 ${currentChild || childName}: ${text}`);
                 
-                const lower = text.toLowerCase();
-                if (lower.includes('темнот')) updateFear('темноты');
-                else if (lower.includes('врач')) updateFear('врачей');
-                else if (lower.includes('один')) updateFear('одиночества');
-                else if (lower.includes('обид')) updateFear('обиды');
-                else if (lower.includes('новое')) updateFear('нового');
-                else if (lower.includes('собака') || lower.includes('кошка')) updateFear('животных');
+                // АВТО-ОПРЕДЕЛЕНИЕ СТРАХОВ УДАЛЕНО — ТОЛЬКО ЧЕРЕЗ API
                 
                 showThinkingIndicator(true);
                 const answer = await askDeepSeek(text);
@@ -982,19 +973,8 @@
         safeOn('micBtn', startListening);
         
         safeOn('parentBtn', () => {
-            if (!savedPin) {
-                const pin = prompt('Создайте пароль (4-6 цифр):');
-                if (pin && pin.length >= 4 && /^\d+$/.test(pin)) {
-                    localStorage.setItem('parentPin', pin);
-                    savedPin = pin;
-                    alert('Пароль создан!');
-                    window.location.href = '/parent.html';
-                }
-            } else {
-                const pin = prompt('Введите пароль:');
-                if (pin === savedPin) window.location.href = '/parent.html';
-                else if (pin !== null) alert('Неверный пароль!');
-            }
+            // Переход в Штаб Создателя
+            window.location.href = '/dashboard.html';
         });
         
         updateStatsUI();
