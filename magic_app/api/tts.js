@@ -8,7 +8,7 @@ const VOICE_MAP = {
   mom: 'jane',
   dad: 'ermil',
   kid1: 'oksana',
-  kid2: 'alexander'
+  kid2: 'oksana'
 };
 
 function sanitizeText(text) {
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
 
     const apiKey = process.env.YANDEX_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'API ключ Яндекс не настроен' });
+      return res.status(500).json({ error: 'API ключ не настроен' });
     }
 
     const params = new URLSearchParams();
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: 'Ошибка синтеза речи' });
+      return res.status(response.status).json({ error: 'Ошибка синтеза' });
     }
 
     const audioBuffer = await response.arrayBuffer();
