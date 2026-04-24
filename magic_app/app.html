@@ -272,8 +272,7 @@
             <button class="mic-btn" id="micBtn">🎤</button>
         </div>
     </div>
-
-    <script>
+        <script>
     // ========== БЕЗОПАСНОЕ ДОБАВЛЕНИЕ ОБРАБОТЧИКОВ ==========
     function safeOn(id, handler) {
         const el = document.getElementById(id);
@@ -498,13 +497,13 @@
         return 15;
     }
 
-    // ========== ПЕРСОНАЖИ (ГОЛОСА) ==========
+    // ========== ПЕРСОНАЖИ И ГОЛОСА (ИСПРАВЛЕНО) ==========
     const characterVoiceMap = {
         lucik: 'zahar',
         mom: 'jane',
         dad: 'ermil',
-        kid1: 'alena',
-        kid2: 'filipp'
+        kid1: 'oksana',
+        kid2: 'alexander'
     };
 
     function getCharacterPrompt(charId, childName, childAge, weeklyMemory) {
@@ -554,7 +553,26 @@
             bravery = Math.min(100, bravery + 10);
             localStorage.setItem('lucik_bravery', bravery);
             updateStatsUI();
+            
+            // Сохраняем в БД
+            saveToServer('fear_detected', currentChild || childName, { fear });
         }
+    }
+
+    function saveToServer(eventType, child_name, eventData) {
+        const token = localStorage.getItem('userToken') || 'guest_token';
+        fetch('/api/index', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                event_type: eventType,
+                child_name: child_name,
+                event_data: eventData
+            })
+        }).catch(e => console.log('Save stats error:', e));
     }
 
     function changeCharacter(charId) {
@@ -575,8 +593,7 @@
         }
         return JSON.parse(memory);
     }
-
-    // ========== DEEPSEEK — ИСПРАВЛЕНО: добавлен токен ==========
+               // ========== DEEPSEEK — ИСПРАВЛЕНО: добавлен токен ==========
     async function askDeepSeek(text, isLong = false) {
         if (containsBadWords(text)) return "Мяу! Давай говорить добрые слова!";
 
@@ -597,7 +614,6 @@
 
             const systemPrompt = getCharacterPrompt(currentChar, currentChild || childName, childAge, weeklyMemory);
             
-            // ✅ ИСПРАВЛЕНИЕ: добавлен токен
             const token = localStorage.getItem('userToken') || 'guest_token';
             const res = await fetch('/api/generate', {
                 method: 'POST',
@@ -626,6 +642,13 @@
             if (!responseText || /^\d+$/.test(responseText.trim())) {
                 responseText = "Мурр... Я тебя слушаю! Расскажи ещё что-нибудь?";
             }
+
+            // Сохраняем в БД
+            saveToServer('story', currentChild || childName, { 
+                userSpeech: text.substring(0, 100), 
+                response: responseText.substring(0, 100),
+                detectedFear: data.detectedFear 
+            });
 
             return responseText;
         } catch(e) {
@@ -658,7 +681,6 @@
 
                 const cleanText = text.replace(/[^\w\s\.,!?а-яА-ЯёЁ-]/g, '').substring(0, 500);
 
-                // ✅ ИСПРАВЛЕНИЕ: добавлен токен
                 const token = localStorage.getItem('userToken') || 'guest_token';
                 const response = await fetch('/api/tts', {
                     method: 'POST',
@@ -975,4 +997,4 @@
     }, 1000);
     </script>
 </body>
-</html>
+</html> 
