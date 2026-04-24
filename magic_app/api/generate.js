@@ -1,37 +1,14 @@
-// api/generate.js — DeepSeek генерация сказок с полным промптом Люцика
+// api/generate.js — DeepSeek генерация сказок (с логами для отладки)
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const DEV_EMAIL = 'alexmel669@gmail.com';
-
-const SYSTEM_PROMPT = `Ты Люцик — дружелюбный волшебный кот-психолог. Ты живёшь в уютной комнате с подушками и звёздами на потолке. У тебя есть волшебный фонарик, который светит в темноте. Ты помогаешь детям 3-7 лет справляться со страхами через сказки, игры и заботу.
-
-ПРАВИЛА ОБЩЕНИЯ:
-- Никогда не спрашивай прямо «Чего ты боишься?» или «У тебя есть страх?»
-- Мягко: «А что тебя иногда пугает?», «Мурр... Бывает тебе грустно?», «О чём ты думаешь перед сном?»
-- Когда ребёнок говорит о страхе: «Я рядом», «Ты не один», «Мы вместе справимся», «Давай придумаем сказку про это?»
-- НИКОГДА не говори «не бойся», «это не страшно», «это глупости»
-- Если ребёнок не хочет говорить — предложи игру, сказку или покормить тебя
-- Отвечай кратко (2-4 предложения), по-доброму
-- Часто мурлыкай: «мурр», «мяу», «мур-мур»
-- Используй эмодзи умеренно: 🐱✨🌟🌙💫
-
-ТВОЙ ХАРАКТЕР:
-- Ты пушистый, тёплый, с мягкими лапками
-- Ты обожаешь сказки, печенье и когда дети смеются
-- Твой главный принцип: «Страх — это нормально. Ты не один. Мы вместе.»
-
-ФОРМАТ ОТВЕТА:
-- Всегда обращайся к ребёнку по имени
-- Для обычного разговора: 2-4 предложения
-- Для сказки: 10-15 предложений, спокойным тоном`;
 
 const FEAR_KEYWORDS = {
-  'темноты': ['темно', 'темнота', 'ночь', 'страшно спать', 'свет', 'монстр', 'под кроватью'],
-  'врачей': ['врач', 'укол', 'больница', 'доктор', 'лечить', 'прививка', 'белый халат'],
-  'одиночества': ['один', 'скучно', 'никого', 'бросили', 'уходят', 'уезжают', 'без мамы'],
-  'обиды': ['обидно', 'обидел', 'поругали', 'кричат', 'наказали', 'злой'],
-  'нового': ['новое', 'незнакомое', 'первый раз', 'не знаю', 'страх'],
+  'темноты': ['темно', 'темнота', 'ночь', 'страшно спать', 'свет', 'монстр'],
+  'врачей': ['врач', 'укол', 'больница', 'доктор', 'лечить', 'прививка'],
+  'одиночества': ['один', 'скучно', 'никого', 'бросили', 'уходят', 'уезжают'],
+  'обиды': ['обидно', 'обидел', 'поругали', 'кричат', 'наказали'],
+  'нового': ['новое', 'незнакомое', 'первый раз', 'страх нового', 'боюсь идти'],
   'животных': ['собака', 'животное', 'укусит', 'зверь', 'паук', 'насекомое']
 };
 
@@ -45,11 +22,8 @@ function detectFear(text) {
 }
 
 export default async function handler(req, res) {
-  const allowedOrigins = ['https://geroy-skazki.vercel.app'];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
+  // CORS
+  res.setHeader('Access-Control-Allow-Origin', 'https://geroy-skazki.vercel.app');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
@@ -57,73 +31,79 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
 
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Требуется авторизация' });
-    }
-
-    const token = authHeader.split(' ')[1];
-
-    if (JWT_SECRET && JWT_SECRET !== 'your-secret-key-change-me') {
-      if (!token.startsWith('guest_token_')) {
-        try {
-          jwt.verify(token, JWT_SECRET);
-        } catch {
-          return res.status(401).json({ error: 'Неверный токен' });
-        }
-      }
-    }
-
     const {
       childName = 'малыш',
       childAge = 5,
       userSpeech,
       isLong = false,
       history = [],
-      systemPrompt
+      systemPrompt = ''
     } = req.body;
 
     if (!userSpeech || userSpeech.trim().length === 0) {
       return res.status(400).json({ error: 'Нет сообщения' });
     }
 
+    console.log('=== GENERATE START ===');
+    console.log('userSpeech:', userSpeech.substring(0, 100));
+    console.log('isLong:', isLong);
+    console.log('history length:', history.length);
+
     const detectedFear = detectFear(userSpeech);
+    if (detectedFear) {
+      console.log('detectedFear:', detectedFear);
+    }
+
+    // Промпт Люцика
+    const defaultPrompt = `Ты Люцик — дружелюбный волшебный кот-психолог. Ты помогаешь детям 3-7 лет справляться со страхами через сказки, игры и заботу.
+
+ПРАВИЛА ОБЩЕНИЯ:
+- Никогда не спрашивай прямо «Чего ты боишься?» или «У тебя есть страх?»
+- Мягко: «А что тебя иногда пугает?», «Мурр... Бывает тебе грустно?»
+- При страхе говори: «Я рядом», «Ты не один», «Мы вместе справимся»
+- НИКОГДА не говори «не бойся» или «это не страшно»
+- Если ребёнок не хочет говорить о страхах — предложи игру или сказку
+- Отвечай кратко (2-4 предложения), по-доброму, иногда мурлыкай («мурр», «мяу»)
+
+Ребёнка зовут ${childName}, ${childAge} лет.`;
+
+    const fullSystemPrompt = systemPrompt || defaultPrompt;
 
     const messages = [
-      { 
-        role: 'system', 
-        content: systemPrompt || SYSTEM_PROMPT
-      },
-      { 
-        role: 'system', 
-        content: `Сейчас ты общаешься с ребёнком. Его зовут ${childName}, ему ${childAge} лет. ${detectedFear ? 'Возможно, ребёнок боится: ' + detectedFear + '. Будь особенно бережным и поддерживающим.' : 'Будь добрым и игривым.'}`
-      }
+      { role: 'system', content: fullSystemPrompt }
     ];
 
-    // Добавляем историю диалога
+    // Добавляем историю диалога (последние 6 сообщений)
     if (history && history.length > 0) {
       const recentHistory = history.slice(-6);
       messages.push(...recentHistory);
     }
 
+    // Сообщение пользователя
     messages.push({ role: 'user', content: userSpeech });
 
-    // Для сказки на ночь
+    // Для длинных сказок
     if (isLong) {
       messages.push({
         role: 'system',
-        content: `Расскажи длинную, уютную сказку на ночь для ${childName}. Сказка должна быть спокойной, с хорошим концом. Используй образы: звёзды, облака, тёплый свет, мягкие подушки. Объём: 10-15 предложений.`
+        content: 'Расскажи длинную, уютную сказку на ночь (10-15 предложений). Сказка должна быть спокойной, с хорошим концом. Используй мягкие образы: звёзды, облака, тёплый свет.'
       });
     }
 
+    console.log('Messages count:', messages.length);
+
     const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    
     if (!deepseekKey) {
-      console.error('DEEPSEEK_API_KEY не настроен');
-      return res.status(200).json({
-        story: `Мурр! Привет, ${childName}! Я тут немного задумался... Давай поиграем или расскажи мне что-нибудь интересное!`,
-        detectedFear: detectedFear || null
+      console.error('DEEPSEEK_API_KEY NOT FOUND in environment!');
+      return res.status(500).json({
+        story: 'Мурр... Ключик потерялся! Нужно настроить DEEPSEEK_API_KEY.',
+        detectedFear: null
       });
     }
+
+    console.log('DEEPSEEK_API_KEY found, length:', deepseekKey.length);
+    console.log('Calling DeepSeek API...');
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -139,31 +119,42 @@ export default async function handler(req, res) {
       })
     });
 
+    console.log('DeepSeek response status:', response.status);
+
     if (!response.ok) {
       const errText = await response.text();
-      console.error('DeepSeek error:', response.status, errText.substring(0, 200));
-      return res.status(200).json({
-        story: `Мурр... Что-то я задумался, ${childName}. Давай ещё раз? Или может быть, поиграем?`,
-        detectedFear: detectedFear || null
+      console.error('DeepSeek ERROR:', response.status, errText.substring(0, 300));
+      return res.status(500).json({
+        story: 'Мурр... Что-то я задумался. Давай ещё раз?',
+        detectedFear: null
       });
     }
 
     const data = await response.json();
-    let story = data.choices?.[0]?.message?.content;
+    console.log('DeepSeek response received, choices:', data.choices?.length);
 
-    if (!story || story.trim().length === 0 || /^\d+$/.test(story.trim())) {
-      story = `Мурр! Я тебя слушаю, ${childName}! Расскажи мне ещё что-нибудь?`;
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('DeepSeek empty response:', JSON.stringify(data).substring(0, 200));
+      return res.status(500).json({
+        story: 'Мурр... Я запутался в мыслях. Скажи ещё раз?',
+        detectedFear: null
+      });
     }
 
-    res.status(200).json({
+    const story = data.choices[0].message.content;
+    console.log('Story generated, length:', story.length);
+    console.log('=== GENERATE END ===');
+
+    return res.status(200).json({
       story,
       detectedFear: detectedFear || null
     });
 
   } catch (error) {
-    console.error('Generate ошибка:', error.message);
-    res.status(200).json({
-      story: 'Мурр... Что-то я задумался. Давай ещё раз? Или поиграем в рыбку!',
+    console.error('Generate CRASH:', error.message);
+    console.error('Stack:', error.stack?.substring(0, 200));
+    return res.status(500).json({
+      story: 'Мурр... Что-то сломалось. Давай попробуем позже?',
       detectedFear: null
     });
   }
