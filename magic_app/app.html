@@ -472,7 +472,7 @@ function saveHistory(text) {
     conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + text);
     if (conversationHistory.length > 50) conversationHistory.pop();
     localStorage.setItem('storyHistory', JSON.stringify(conversationHistory));
-}
+
     
 
     // ========== ПЕРСОНАЖИ И ГОЛОСА (ПО ПАСПОРТУ) ==========
