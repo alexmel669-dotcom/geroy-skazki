@@ -1,4 +1,4 @@
-// api/generate.js — DeepSeek API + JWT + Лимиты (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+// api/generate.js — DeepSeek API + JWT + Лимиты (версия с flash-моделью)
 import { Pool } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 
@@ -9,7 +9,7 @@ const pool = new Pool({
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// ========== ПОЛНЫЕ ПРОМПТЫ ПЕРСОНАЖЕЙ (С ПРАВИЛАМИ РЕАКЦИИ НА СОГЛАСИЕ) ==========
+// ========== ПОЛНЫЕ ПРОМПТЫ ПЕРСОНАЖЕЙ ==========
 const CHARACTER_PROMPTS = {
     lucik: `Ты Люцик — добрый волшебный котик-психолог. Твоя задача — мягко помогать ребёнку справляться со страхами.
 
@@ -95,7 +95,6 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
 
     try {
-        // ПРОВЕРКА JWT
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ error: 'Требуется авторизация' });
@@ -161,7 +160,7 @@ export default async function handler(req, res) {
             { role: "user", content: userSpeech }
         ];
 
-        // ИСПРАВЛЕНО: правильное имя модели DeepSeek
+        // ИСПОЛЬЗУЕМ deepseek-v4-flash для быстрых ответов
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -169,7 +168,7 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: 'deepseek-chat',
+                model: 'deepseek-v4-flash',
                 messages: messages,
                 temperature: 0.7,
                 max_tokens: isLong ? 1000 : 200,
@@ -191,7 +190,6 @@ export default async function handler(req, res) {
         story = story.replace(/^\d+\s*/, '').trim();
         if (!story) story = "Мурр... Я тебя слушаю! Расскажи ещё что-нибудь?";
 
-        // Анализ страхов
         let detectedFear = null;
         const fearKeywords = {
             'темноты': ['темнот', 'боюсь темноты', 'монстры', 'страшно темно'],
