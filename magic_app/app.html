@@ -550,82 +550,109 @@
         }
         return JSON.parse(memory);
     }
-                // ========== DEEPSEEK (С ТОКЕНОМ) ==========
-    async function askDeepSeek(text, isLong) {
-        if (isLong === undefined) isLong = false;
-
-        // Проверка на плохие слова
-        var badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись'];
-        var lowerText = text ? text.toLowerCase() : '';
-        for (var i = 0; i < badWords.length; i++) {
-            if (lowerText.includes(badWords[i])) {
-                return "Мяу! Давай говорить добрые слова!";
-            }
-        }
-
-        // Проверка лимита
-        var todayStories = parseInt(localStorage.getItem('todayStoriesCount') || '0');
-        var limit = getDailyStoryLimit();
-
-        if (!isDeveloperMode() && todayStories >= limit) {
-            return "Я немного устал. Давай поиграем или вернёмся завтра?";
-        }
-
-        try {
-            var weeklyMemory = getWeeklyMemory();
-            
-            // История диалога
-            var historyForAPI = conversationHistory.slice(-8).map(function(item) {
-                var isUser = item.includes('👶 ' + (currentChild || childName) + ':');
-                var cleanContent = item.replace(/^[^:]+:/, '').trim();
-                return { role: isUser ? "user" : "assistant", content: cleanContent };
-            });
-
-            var systemPrompt = getCharacterPrompt(currentChar, currentChild || childName, childAge, weeklyMemory);
-
-            // Отправляем запрос с токеном
-            var token = localStorage.getItem('userToken') || 'guest_token';
-            var res = await fetch('/api/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
-                body: JSON.stringify({
-                    childName: currentChild || childName,
-                    childAge: childAge,
-                    userSpeech: text,
-                    isLong: isLong,
-                    history: historyForAPI,
-                    weeklyMemory: weeklyMemory,
-                    systemPrompt: systemPrompt
-                })
-            });
-
-            var data = await res.json();
-
-            // Обновляем страхи
-            if (data.detectedFear) {
-                updateFear(data.detectedFear);
-            }
-
-            // Счётчик сказок
-            var newCount = todayStories + 1;
-            localStorage.setItem('todayStoriesCount', newCount.toString());
-
-            // Ответ
-            var responseText = data.story;
-            if (!responseText || /^\d+$/.test(responseText.trim())) {
-                responseText = "Мурр... Я тебя слушаю! Расскажи ещё что-нибудь?";
-            }
-
-            return responseText;
-
-        } catch(e) {
-            console.error('DeepSeek error:', e);
-            return "Мурр... Что-то я задумался. Давай ещё раз?";
+  async function askDeepSeek(text, isLong = false) {
+    // Проверка на плохие слова
+    const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись'];
+    const lowerText = text ? text.toLowerCase() : '';
+    for (let i = 0; i < badWords.length; i++) {
+        if (lowerText.includes(badWords[i])) {
+            return "Мяу! Давай говорить добрые слова!";
         }
     }
+
+    // Проверка лимита
+    const todayStories = parseInt(localStorage.getItem('todayStoriesCount') || '0');
+    const limit = getDailyStoryLimit();
+
+    if (!isDeveloperMode() && todayStories >= limit) {
+        return "Мурр... Я сегодня уже много рассказывал. Давай завтра продолжим? А сейчас поиграем!";
+    }
+
+    try {
+        // Получаем недельную память
+        const weeklyMemory = getWeeklyMemory();
+        
+        // ========== ИСТОРИЯ ДИАЛОГА (ВАЖНО!) ==========
+        // Берём последние 10 сообщений из сохранённой истории
+        const storedHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
+        
+        const historyForAPI = storedHistory.slice(-10).map(item => {
+            // Определяем, кто сказал: ребёнок или Люцик
+            const isUser = item.includes('👶') || item.includes(currentChild || childName);
+            // Очищаем от времени и имени
+            let cleanContent = item.replace(/^\d{1,2}:\d{2}:\d{2}:\s*/, '');
+            cleanContent = cleanContent.replace(/^👶\s*[^:]+:\s*/, '');
+            cleanContent = cleanContent.replace(/^🦁\s*[^:]+:\s*/, '');
+            cleanContent = cleanContent.replace(/^🐱\s*[^:]+:\s*/, '');
+            cleanContent = cleanContent.trim();
+            
+            if (!cleanContent) return null;
+            
+            return { 
+                role: isUser ? "user" : "assistant", 
+                content: cleanContent 
+            };
+        }).filter(msg => msg !== null);
+        
+        console.log(`📜 История для API: ${historyForAPI.length} сообщений`);
+        
+        const systemPrompt = getCharacterPrompt(currentChar, currentChild || childName, childAge, weeklyMemory);
+        const token = localStorage.getItem('userToken') || 'guest_token';
+        
+        const res = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': 'Bearer ' + token 
+            },
+            body: JSON.stringify({ 
+                childName: currentChild || childName, 
+                childAge: childAge, 
+                userSpeech: text, 
+                isLong: isLong, 
+                history: historyForAPI,
+                weeklyMemory: weeklyMemory, 
+                systemPrompt: systemPrompt, 
+                character: currentChar 
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (data.detectedFear) {
+            updateFear(data.detectedFear);
+            
+            // Сохраняем страх в недельную память
+            const weekly = getWeeklyMemory();
+            weekly.fears[data.detectedFear] = (weekly.fears[data.detectedFear] || 0) + 1;
+            weekly.lastUpdated = new Date().toISOString();
+            localStorage.setItem('weeklyMemory', JSON.stringify(weekly));
+        }
+        
+        // Обновляем счётчик сказок
+        const newCount = todayStories + 1;
+        localStorage.setItem('todayStoriesCount', newCount.toString());
+        
+        let responseText = data.story;
+        
+        // Очистка ответа от мусора
+        if (responseText) {
+            responseText = responseText.replace(/^\d+\s*/, '');
+            responseText = responseText.replace(/люцик\s*мур\s*мяу/gi, '');
+            responseText = responseText.trim();
+        }
+        
+        if (!responseText || responseText.length < 3 || /^\d+$/.test(responseText.trim())) {
+            responseText = "Мурр... Я тебя слушаю! Расскажи ещё что-нибудь?";
+        }
+        
+        return responseText;
+        
+    } catch(e) { 
+        console.error('DeepSeek error:', e);
+        return "Мурр... Что-то я задумался. Давай ещё раз?"; 
+    }
+}
 
     // ========== ОЗВУЧКА YANDEX (ИСПРАВЛЕНО ДЛЯ iOS/SAFARI) ==========
     var currentAudio = null;
