@@ -468,9 +468,11 @@
         localStorage.setItem('lastStoryDate', today);
     }
 
-    function getDailyStoryLimit() {
-        if (isDeveloperMode()) return 9999;
-        return 15;
+function saveHistory(text) {
+    conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + text);
+    if (conversationHistory.length > 50) conversationHistory.pop();
+    localStorage.setItem('storyHistory', JSON.stringify(conversationHistory));
+}
     }
 
     // ========== ПЕРСОНАЖИ И ГОЛОСА (ПО ПАСПОРТУ) ==========
