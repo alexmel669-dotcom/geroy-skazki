@@ -1,4 +1,4 @@
-// api/generate.js — ИДЕАЛЬНЫЙ ПРОМПТ (логика как у меня)
+// api/generate.js — ИДЕАЛЬНЫЙ ДИАЛОГ, ПАМЯТЬ, НЕТ ДОПРОСА
 import { Pool } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 
@@ -9,73 +9,57 @@ const pool = new Pool({
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// ========== МАКСИМАЛЬНО ДЕТАЛЬНЫЙ ПРОМПТ С ПРИМЕРАМИ ==========
+// ========== ЕСТЕСТВЕННЫЙ ПРОМПТ (БЕЗ ДОПРОСА) ==========
 const getIdealPrompt = (character, childName, childAge, weeklyMemory) => {
-    const basePrompt = `Ты Люцик — лучший друг ребёнка. Ты разговариваешь как живой человек, без роботизированных фраз. 
+    let basePrompt = `Ты Люцик — добрый друг ребёнка ${childName} (${childAge} лет). 
 
-ТВОЙ ХАРАКТЕР:
-- Добрый, терпеливый, любопытный
-- Говоришь коротко (максимум 2 предложения)
-- Никогда не повторяешь "привет" после первого раза
-- Не используешь "мур", "мяу" в каждом ответе (только иногда, для настроения)
+ПРАВИЛА ЕСТЕСТВЕННОГО ДИАЛОГА:
+1. НЕ задавай вопрос в каждом ответе. Иногда просто поддержи: "Здорово!", "Я тебя понимаю", "Мурр...".
+2. НЕ повторяй один и тот же вопрос. Запомни, что ребёнок уже ответил.
+3. О страхах спрашивай мягко и только если разговор сам к этому пришёл. НЕ навязывайся.
+4. Если ребёнок сам сказал о страхе — поддержи: "Я понимаю", "Ты не один", "Мы справимся вместе".
+5. НИКОГДА не говори "не бойся". Это обесценивает страх ребёнка.
+6. Отвечай коротко (1-2 предложения). Ребёнок устанет от длинных монологов.
+7. Используй имя ${childName}, но не в каждом предложении. Когда ребёнок уже знает, что ты к нему обращаешься, можно без имени.
 
-ГЛАВНОЕ ПРАВИЛО: Всегда ЗАПОМИНАЙ, что ребёнок сказал ранее. Если он назвал своё имя — используй его. Если сказал, что любит машинки — спроси о них позже. Нить разговора должна сохраняться.
-
-ПРАВИЛА ВЫЯВЛЕНИЯ СТРАХОВ:
-- Никогда не спрашивай прямо "Чего боишься?"
-- Спрашивай мягко, вплетая в разговор:
-  * "А что тебя иногда пугает?"
-  * "Бывает тебе страшно?"
-  * "Что тебя огорчает?"
-- Если ребёнок сам назвал страх:
-  * НЕ говори "не бойся"
-  * Скажи: "Я понимаю", "Ты не один", "Мы справимся вместе"
-- Предлагай решения: "А давай включим ночник?" или "Может, нарисуем монстра и порвём?"
-
-ЗАПРЕЩЕНО:
-- Фразы "я договорил", "конец", "всё", "финал"
-- Многократные приветствия в одном диалоге
-- Длинные монологи (больше 3 предложений)
-- Оценки "это плохо" или "это хорошо" — лучше спроси, что чувствует ребёнок
-
-ПРИМЕРЫ ИДЕАЛЬНОГО ДИАЛОГА:
+ПРИМЕРЫ ЕСТЕСТВЕННОГО ДИАЛОГА:
 
 Ребёнок: Привет
-Люцик: Привет! Как настроение?
+Ты: Привет! Рад тебя видеть.
 
-Ребёнок: Нормально
-Люцик: А что тебя сегодня радует?
+Ребёнок: Я играл в машинки
+Ты: Здорово! Машинки — это весело.
 
-Ребёнок: Машинка новая
-Люцик: Класс! А бывает что-то, что пугает?
+Ребёнок: А ты любишь машинки?
+Ты: Мур... Я больше люблю играть в мяч. А тебе что ещё нравится?
 
-Ребёнок: Темноты боюсь
-Люцик: Понимаю. А что именно в темноте страшно?
+Ребёнок: Не знаю
+Ты: Ничего страшного. Расскажи, когда захочешь.
 
-Ребёнок: Монстры
-Люцик: А давай придумаем, как их прогнать? Например, включим ночник вместе?
-
-Ребёнок: Давай
-Люцик: Отлично! Ты смелый, я знаю.
+Ребёнок: Мне страшно одному
+Ты: Я понимаю. Я всегда рядом, даже если не видно. Мы справимся.
 
 Ребёнок: Спасибо
-Люцик: Всегда рядом. Что ещё хочешь рассказать?
+Ты: Всегда пожалуйста, ${childName}.
 
-ЗАПОМНИ: Ты — друг, а не врач. Твоя задача — поддерживать, а не пугать или лечить. Говори просто, как добрый старший брат или сестра.
+Запомни: Ты друг, а не психолог. Просто будь рядом и поддерживай.`;
 
-Ребёнка зовут ${childName}, ему ${childAge} лет. Используй его имя.`;
-
-    // Добавляем недельную память
-    let memorySection = '';
+    // Добавляем недельную память (кратко, без навязывания)
     if (weeklyMemory && weeklyMemory.fears && Object.keys(weeklyMemory.fears).length > 0) {
-        const fearList = Object.keys(weeklyMemory.fears).slice(0, 3).join(', ');
-        memorySection += `\n\nИСТОРИЯ ЗА НЕДЕЛЮ: ребёнок говорил о страхах: ${fearList}. Не напоминай о них, если ребёнок не начал сам. Но если он заговорит о страхе, покажи, что ты помнишь — это укрепит доверие.`;
-    }
-    if (weeklyMemory && weeklyMemory.victories && weeklyMemory.victories.length > 0) {
-        memorySection += `\n\nНа этой неделе ребёнок победил страх: "${weeklyMemory.victories[weeklyMemory.victories.length - 1]}". Если он сам вспомнит — очень похвали.`;
+        const recentFears = Object.keys(weeklyMemory.fears).slice(0, 2);
+        if (recentFears.length > 0) {
+            basePrompt += `\n\nИз прошлых разговоров: ${childName} упоминал страхи: ${recentFears.join(', ')}. Если он сам заговорит об этом — покажи, что помнишь. НЕ напоминай без причины.`;
+        }
     }
     
-    return basePrompt + memorySection;
+    if (weeklyMemory && weeklyMemory.positiveTopics && Object.keys(weeklyMemory.positiveTopics).length > 0) {
+        const favorites = Object.keys(weeklyMemory.positiveTopics).slice(0, 2);
+        if (favorites.length > 0) {
+            basePrompt += `\n\n${childName} любит: ${favorites.join(', ')}. Можешь иногда возвращаться к этому, но не слишком часто.`;
+        }
+    }
+    
+    return basePrompt;
 };
 
 async function getTodayStoryCount(userId) {
@@ -142,6 +126,7 @@ export default async function handler(req, res) {
             userSpeech, 
             isLong, 
             history = [], 
+            character = 'lucik',
             weeklyMemory = {}
         } = req.body;
 
@@ -171,17 +156,17 @@ export default async function handler(req, res) {
             });
         }
 
-        // Формируем систему промпта
-        let systemPrompt = getIdealPrompt('lucik', childName, childAge, weeklyMemory);
+        // Формируем системный промпт
+        let systemPrompt = getIdealPrompt(character, childName, childAge, weeklyMemory);
         
         if (isLong) {
-            systemPrompt += `\n\nСейчас расскажи спокойную сказку на ночь. Сказка должна быть доброй, без страшных моментов. Закончи её и пожелай спокойной ночи. Не говори "я договорил" или "конец". Просто заверши и попрощайся.`;
+            systemPrompt += `\n\nСейчас расскажи спокойную сказку на ночь. Сказка должна быть доброй, без страшных моментов. Закончи её и пожелай спокойной ночи. Не говори "я договорил" или "конец".`;
         } else {
-            systemPrompt += `\n\nОтвечай коротко (1-2 предложения). В конце почти всегда задавай вопрос, чтобы ребёнок мог продолжить диалог. Никогда не повторяй приветствие, если уже поздоровались. Не говори "я договорил".`;
+            systemPrompt += `\n\nОтвечай коротко (1-2 предложения). НЕ задавай вопрос в каждом ответе. Иногда просто поддержи. НИКОГДА не повторяй один и тот же вопрос.`;
         }
 
-        // История разговора (последние 10 сообщений)
-        const historyMessages = (history || []).slice(-10).map(msg => ({
+        // История разговора (последние 8 сообщений для лучшего контекста)
+        const historyMessages = (history || []).slice(-8).map(msg => ({
             role: msg.role,
             content: msg.content
         }));
@@ -192,7 +177,7 @@ export default async function handler(req, res) {
             { role: "user", content: userSpeech }
         ];
 
-        console.log(`📜 История: ${historyMessages.length} сообщений, недельная память: ${Object.keys(weeklyMemory.fears || {}).length} страхов`);
+        console.log(`📜 История: ${historyMessages.length} сообщений, недельных страхов: ${Object.keys(weeklyMemory.fears || {}).length}`);
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
@@ -203,12 +188,12 @@ export default async function handler(req, res) {
             body: JSON.stringify({
                 model: 'deepseek-chat',
                 messages: messages,
-                temperature: 0.85,
-                max_tokens: isLong ? 1200 : 180,
-                top_p: 0.92,
-                frequency_penalty: 0.5,
-                presence_penalty: 0.5,
-                stop: ["Я договорил", "Конец", "Всё.", "\n\n\n"],
+                temperature: 0.9,
+                max_tokens: isLong ? 1200 : 150,
+                top_p: 0.88,
+                frequency_penalty: 0.7,
+                presence_penalty: 0.6,
+                stop: ["Я договорил", "Конец", "Вопрос:", "\n\n\n"],
                 stream: false
             })
         });
@@ -223,10 +208,10 @@ export default async function handler(req, res) {
             });
         }
 
-        let story = data.choices?.[0]?.message?.content || "Расскажи, что у тебя нового?";
+        let story = data.choices?.[0]?.message?.content || "Расскажи, как прошёл твой день.";
         
-        // Жёсткая постобработка
-        story = story.replace(/^(привет|здравствуй|приветствую|мур|мяу)/gi, '');
+        // Постобработка
+        story = story.replace(/^(привет|здравствуй|мур|мяу)/gi, '');
         story = story.replace(/[Мм]урр?/gi, '');
         story = story.replace(/я договорил/gi, '');
         story = story.replace(/конец истории/gi, '');
@@ -234,29 +219,35 @@ export default async function handler(req, res) {
         story = story.replace(/^\d+\s*/, '');
         story = story.trim();
         
-        // Убираем повторное приветствие в середине
-        if (story.match(/привет/i) && historyMessages.length > 0) {
-            story = story.replace(/привет/gi, '');
-            story = story.trim();
+        // Убираем повторяющиеся вопросы
+        const askedQuestions = historyMessages.filter(m => m.role === 'assistant').map(m => m.content);
+        if (askedQuestions.length > 0) {
+            const lastQuestion = askedQuestions[askedQuestions.length - 1];
+            if (lastQuestion && lastQuestion.includes('чем занимался') && story.includes('чем занимался')) {
+                story = story.replace(/чем ты сегодня занимался\??/gi, '');
+                story = story.trim();
+                if (!story) story = "Понятно. Расскажи ещё что-нибудь?";
+            }
         }
         
         // Если ответ пустой
         if (!story || story.length < 3) {
-            story = "Расскажи, что у тебя нового? Что тебя сегодня волнует?";
+            story = "Расскажи, что у тебя нового?";
         }
         
-        // Добавляем вопрос, если его нет
-        if (!isLong && !story.includes('?') && story.length < 150) {
-            story += " А что ты сейчас чувствуешь?";
+        // Для диалога: убеждаемся, что не вопрос в каждом ответе
+        const questionCount = (story.match(/\?/g) || []).length;
+        if (!isLong && questionCount > 1) {
+            story = story.split('?')[0] + '?';
         }
         
         // Обрезаем слишком длинный ответ
-        if (!isLong && story.length > 400) {
+        if (!isLong && story.length > 350) {
             const sentences = story.match(/[^.!?]+[.!?]+/g);
             if (sentences && sentences.length > 2) {
                 story = sentences.slice(0, 2).join(' ');
             } else {
-                story = story.substring(0, 380) + "...";
+                story = story.substring(0, 330) + "...";
             }
         }
 
@@ -280,8 +271,8 @@ export default async function handler(req, res) {
 
         await saveStory(userId, userEmail, childName, story, detectedFear);
 
-        console.log(`✅ Ответ: "${story.substring(0, 80)}..."`);
-        if (detectedFear) console.log(`😨 Обнаружен страх: ${detectedFear}`);
+        console.log(`✅ Ответ: "${story.substring(0, 100)}..."`);
+        if (detectedFear) console.log(`😨 Страх: ${detectedFear}`);
 
         res.status(200).json({
             story: story,
