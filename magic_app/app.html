@@ -253,9 +253,7 @@
             <div class="stat">⚡ <div class="stat-bar"><div class="stat-fill" id="energyFill" style="width: 50%"></div></div></div>
             <div class="stat">⭐ <div class="stat-bar"><div class="stat-fill" id="braveryFill" style="width: 0%"></div></div></div>
         </div>
-        <div class="avatar-container" id="avatarContainer">
-            <div class="avatar" id="avatar" style="background-image: url('avatar.png');"></div>
-        </div>
+        <div class="avatar-container"><div class="avatar" id="avatar" style="background-image: url('avatar.png');"></div></div>
         <div id="childSelector" class="child-selector" style="display: none;"></div>
         <div class="action-buttons">
             <button class="action-btn" id="feedBtn">🍎</button>
@@ -263,23 +261,10 @@
             <button class="action-btn" id="roomBtn">🏠</button>
             <button class="action-btn" id="nightStoryBtn" style="display: none;">🌙</button>
         </div>
-        <div class="mic-container">
-            <button class="mic-btn" id="micBtn">🎤</button>
-        </div>
+        <div class="mic-container"><button class="mic-btn" id="micBtn">🎤</button></div>
     </div>
-    <script>
-            // ========== РАЗБЛОКИРОВКА АУДИО ==========
-    function unlockAudio() {
-        const tempAudio = new Audio();
-        tempAudio.play().then(() => {
-            tempAudio.pause();
-            tempAudio.currentTime = 0;
-        }).catch(() => {});
-    }
-    document.addEventListener('touchstart', unlockAudio, { once: true });
-    document.addEventListener('click', unlockAudio, { once: true });
-
-    // ========== БЕЗОПАСНЫЙ ОБРАБОТЧИК ==========
+        <script>
+    // ========== ФУНКЦИЯ БЕЗОПАСНОГО ОБРАБОТЧИКА ==========
     function safeOn(id, handler) {
         const el = document.getElementById(id);
         if (el) el.onclick = handler;
@@ -304,9 +289,10 @@
         return isDevMode || localStorage.getItem('developerMode') === 'true';
     }
 
-    // ========== НЕСКОЛЬКО ДЕТЕЙ ==========
+    // ========== РАБОТА С ДЕТЬМИ ==========
     let childrenNames = [];
     let currentChild = null;
+
     function loadChildren() {
         const stored = localStorage.getItem('childrenNames');
         if (stored) childrenNames = JSON.parse(stored);
@@ -314,6 +300,7 @@
         if (savedChild && childrenNames.includes(savedChild)) currentChild = savedChild;
         return !!currentChild;
     }
+
     function showChildSelector() {
         if (childrenNames.length <= 1) {
             if (childrenNames.length === 1) {
@@ -343,17 +330,38 @@
     async function checkAuthAndRedirect() {
         const token = localStorage.getItem('userToken');
         const guestMode = localStorage.getItem('guestMode') === 'true';
-        if (guestMode) return true;
+        const guestName = localStorage.getItem('guestName');
+        
+        if (guestMode) {
+            // Гостевой режим: если имя не введено — знакомимся
+            if (!guestName && !currentChild) {
+                setTimeout(() => {
+                    const name = prompt('👋 Привет! Я Люцик! А как тебя зовут?');
+                    if (name && name.trim()) {
+                        const cleanName = name.trim();
+                        localStorage.setItem('guestName', cleanName);
+                        currentChild = cleanName;
+                        localStorage.setItem('currentChild', cleanName);
+                        speakWithYandex('Приятно познакомиться, ' + cleanName + '! Я Люцик, твой друг. Расскажи, что тебя сегодня радует?', getVoiceForCharacter('lucik'));
+                    } else {
+                        currentChild = 'друг';
+                        speakWithYandex('Приятно познакомиться! Я Люцик, твой друг.', getVoiceForCharacter('lucik'));
+                    }
+                }, 500);
+            }
+            return true;
+        }
         if (!token) {
             window.location.href = '/';
             return false;
         }
         return true;
     }
+
     checkAuthAndRedirect();
     checkDeveloperStatus();
 
-    // ========== ПЕРВЫЙ ВХОД ==========
+    // ========== ПЕРВЫЙ ВХОД (информация о подписках) ==========
     const isFirstVisit = !localStorage.getItem('hasSeenSubscriptionInfo');
     if (isFirstVisit && !isDeveloperMode()) {
         setTimeout(() => {
@@ -368,7 +376,7 @@
         }, 1000);
     }
 
-    // ========== АУДИО ==========
+    // ========== АУДИО И ЗВУКИ ==========
     let audioCtx = null;
     function initAudio() {
         if (!audioCtx) {
@@ -379,6 +387,7 @@
         }
         return audioCtx;
     }
+
     function playSound(soundName) {
         try {
             const ctx = initAudio();
@@ -432,6 +441,7 @@
         localStorage.setItem('todayStoriesCount', '0');
         localStorage.setItem('lastStoryDate', today);
     }
+
     function getDailyStoryLimit() {
         return isDeveloperMode() ? 9999 : 15;
     }
@@ -444,16 +454,18 @@
         kid1: 'oksana',
         kid2: 'oksana'
     };
+
     function getCharacterPrompt(charId, childName, childAge, weeklyMemory) {
         const prompts = {
-            lucik: `Ты Люцик — добрый котик-психолог. Правила: 1) Никогда не спрашивай прямо "Чего боишься?" 2) Мягко: "Мурр... А что тебя иногда пугает?" 3) При страхе: "Я рядом", "Ты не один", НЕ "не бойся" 4) Если соглашается — похвали и предложи следующий шаг 5) Отвечай кратко, иногда мурлыкай.`,
-            mom: `Ты Мама. Говори заботливо, нежно: "солнышко", "я рядом".`,
-            dad: `Ты Папа. Говори уверенно, подбадривай: "ты смелый", "я горжусь тобой".`,
-            kid1: `Ты друг ребёнка. Говори просто, предлагай игры.`,
-            kid2: `Ты друг ребёнка. Будь мягким, люби спокойные игры.`
+            lucik: `Ты Люцик — добрый друг ребёнка. Говори коротко (1-2 предложения). Не задавай вопросы в каждом ответе. Если ребёнок сказал о страхе — поддержи: "Я понимаю", "Ты не один". Никогда не говори "не бойся".`,
+            mom: `Ты Мама. Говори тепло, коротко. Используй: "солнышко", "я рядом".`,
+            dad: `Ты Папа. Говори уверенно, коротко. Используй: "ты смелый", "я горжусь тобой".`,
+            kid1: `Ты друг. Говори весело, коротко. Предлагай игры.`,
+            kid2: `Ты друг. Говори мягко, коротко. Люби спокойные игры.`
         };
         return (prompts[charId] || prompts.lucik) + ' Ребёнка зовут ' + childName + ', ' + childAge + ' лет.';
     }
+
     const characters = {
         lucik: { name: 'Люцик', icon: 'avatar.png', premium: false },
         mom: { name: 'Мама', icon: 'mom.png', premium: true },
@@ -461,22 +473,28 @@
         kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: true },
         kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: true }
     };
+
     let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
+
     function getVoiceForCharacter(charId) {
         return characterVoiceMap[charId] || 'zahar';
     }
+
     loadChildren();
+
     function updateStatsUI() {
         document.getElementById('moodFill').style.width = mood + '%';
         document.getElementById('hungerFill').style.width = hunger + '%';
         document.getElementById('energyFill').style.width = energy + '%';
         document.getElementById('braveryFill').style.width = bravery + '%';
     }
+
     function saveHistory(text) {
         conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + text);
         if (conversationHistory.length > 50) conversationHistory.pop();
         localStorage.setItem('storyHistory', JSON.stringify(conversationHistory));
     }
+
     function updateFear(fear) {
         if (fearStats[fear] !== undefined) {
             fearStats[fear]++;
@@ -484,25 +502,40 @@
             bravery = Math.min(100, bravery + 10);
             localStorage.setItem('lucik_bravery', bravery);
             updateStatsUI();
+            // Сохраняем в недельную память
+            const weekly = getWeeklyMemory();
+            weekly.fears[fear] = (weekly.fears[fear] || 0) + 1;
+            weekly.lastUpdated = new Date().toISOString();
+            localStorage.setItem('weeklyMemory', JSON.stringify(weekly));
         }
     }
+
     function changeCharacter(charId) {
         currentChar = charId;
         document.getElementById('avatar').style.backgroundImage = 'url(\'' + characters[charId].icon + '\')';
         localStorage.setItem('currentCharacter', charId);
         setTimeout(() => speakWithYandex('Теперь я ' + characters[charId].name + '!', getVoiceForCharacter(charId)), 500);
     }
+                // ========== НЕДЕЛЬНАЯ ПАМЯТЬ ==========
     function getWeekStart(date) {
         const d = new Date(date);
         const day = d.getDay();
         const diff = d.getDate() - day + (day === 0 ? -6 : 1);
         return new Date(d.setDate(diff)).toISOString().split('T')[0];
     }
+
     function getWeeklyMemory() {
         let memory = localStorage.getItem('weeklyMemory');
         if (!memory) {
             const now = new Date();
-            memory = { weekStart: getWeekStart(now), fears: {}, positiveTopics: {}, mood: { happy: 0, sad: 0, scared: 0 }, victories: [], lastUpdated: now.toISOString() };
+            memory = { 
+                weekStart: getWeekStart(now), 
+                fears: {}, 
+                positiveTopics: {}, 
+                mood: { happy: 0, sad: 0, scared: 0 }, 
+                victories: [], 
+                lastUpdated: now.toISOString() 
+            };
             localStorage.setItem('weeklyMemory', JSON.stringify(memory));
             return memory;
         }
@@ -511,12 +544,20 @@
         const currentWeekStart = getWeekStart(now);
         if (memory.weekStart !== currentWeekStart) {
             localStorage.setItem(`weeklyMemory_${memory.weekStart}`, JSON.stringify(memory));
-            memory = { weekStart: currentWeekStart, fears: {}, positiveTopics: {}, mood: { happy: 0, sad: 0, scared: 0 }, victories: [], lastUpdated: now.toISOString() };
+            memory = { 
+                weekStart: currentWeekStart, 
+                fears: {}, 
+                positiveTopics: {}, 
+                mood: { happy: 0, sad: 0, scared: 0 }, 
+                victories: [], 
+                lastUpdated: now.toISOString() 
+            };
             localStorage.setItem('weeklyMemory', JSON.stringify(memory));
         }
         return memory;
     }
-            // ========== DEEPSEEK С ИСТОРИЕЙ И НЕДЕЛЬНОЙ ПАМЯТЬЮ ==========
+
+    // ========== DEEPSEEK С ИСТОРИЕЙ ==========
     async function askDeepSeek(text, isLong = false) {
         const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись'];
         const lowerText = text ? text.toLowerCase() : '';
@@ -526,7 +567,7 @@
 
         const todayStories = parseInt(localStorage.getItem('todayStoriesCount') || '0');
         if (!isDeveloperMode() && todayStories >= getDailyStoryLimit()) {
-            return "Мурр... Я сегодня уже много рассказывал. Давай завтра продолжим? А сейчас поиграем!";
+            return "Я сегодня уже много рассказывал. Давай завтра продолжим? А сейчас поиграем!";
         }
 
         try {
@@ -548,6 +589,8 @@
             const systemPrompt = getCharacterPrompt(currentChar, currentChild || childName, childAge, weeklyMemory);
             const token = localStorage.getItem('userToken') || 'guest_token';
 
+            console.log(`📜 Отправляем историю: ${historyForAPI.length} сообщений`);
+
             const res = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
@@ -564,6 +607,7 @@
             });
 
             const data = await res.json();
+            
             if (data.detectedFear) {
                 updateFear(data.detectedFear);
                 const weekly = getWeeklyMemory();
@@ -582,18 +626,19 @@
                 responseText = responseText.trim();
             }
             if (!responseText || responseText.length < 3 || /^\d+$/.test(responseText.trim())) {
-                responseText = "Мурр... Я тебя слушаю! Расскажи ещё что-нибудь?";
+                responseText = "Расскажи, что у тебя нового?";
             }
             return responseText;
         } catch(e) {
             console.error('DeepSeek error:', e);
-            return "Мурр... Что-то я задумался. Давай ещё раз?";
+            return "Извини, я задумался. Повтори, пожалуйста?";
         }
     }
 
     // ========== ОЗВУЧКА YANDEX (ИСПРАВЛЕНА ДЛЯ iOS) ==========
     let currentAudio = null;
     let isSpeaking = false;
+
     async function speakWithYandex(text, voice = 'lucik') {
         return new Promise(async (resolve) => {
             if (isSpeaking) { resolve(); return; }
@@ -639,6 +684,7 @@
             }
         });
     }
+
     async function speak(text) {
         const voice = getVoiceForCharacter(currentChar);
         await speakWithYandex(text, voice);
@@ -733,6 +779,7 @@
             gameActive = false;
         };
     }
+
     function showGameMenu() {
         const modal = document.createElement('div');
         modal.className = 'modal';
@@ -741,6 +788,7 @@
         document.getElementById('gameFishBtn').onclick = () => { modal.remove(); startFishGame(); };
         modal.querySelector('.close-btn').onclick = () => modal.remove();
     }
+
     function showRoomMenu() {
         const modal = document.createElement('div');
         modal.className = 'modal';
@@ -772,11 +820,13 @@
         modal.remove();
         const storyModal = document.createElement('div');
         storyModal.className = 'modal';
-        storyModal.innerHTML = '<h3>🌙 Сказка на ночь</h3><p>' + longStory + '</p><button class="close-btn" onclick="this.parentElement.remove()">Закрыть</button>';
+        storyModal.style.maxHeight = '70%';
+        storyModal.style.overflow = 'auto';
+        storyModal.innerHTML = '<h3>🌙 Сказка на ночь</h3><p style="margin:15px 0; line-height:1.4;">' + longStory.replace(/\n/g, '<br>') + '</p><button class="close-btn" onclick="this.parentElement.remove()">Закрыть</button>';
         document.body.appendChild(storyModal);
         speak(longStory);
     };
-            // ========== ОБРАБОТЧИКИ КНОПОК ==========
+                // ========== ОБРАБОТЧИКИ КНОПОК ==========
     safeOn('feedBtn', () => {
         showVisualEffect('🍎🥣');
         hunger = Math.min(100, hunger + 15);
@@ -787,6 +837,7 @@
         playSound('eat');
         speak("Мурр! Вкусно! Спасибо!");
     });
+
     safeOn('gamesBtn', () => showGameMenu());
     safeOn('roomBtn', () => showRoomMenu());
     safeOn('micBtn', () => startListening());
@@ -802,6 +853,7 @@
         rec.continuous = false;
         rec.interimResults = false;
     }
+
     function startListening() {
         if (!rec) { speak("Твой браузер не умеет слушать."); return; }
         if (isListening || isSpeaking) return;
@@ -814,12 +866,17 @@
             document.getElementById('avatar').classList.remove('listening');
         }
     }
+
     if (rec) {
         rec.onresult = async (e) => {
             const text = e.results[0][0].transcript;
             document.getElementById('micBtn').classList.remove('recording');
             isListening = false;
-            saveHistory('👶 ' + (currentChild || childName) + ': ' + text);
+            
+            const childNameForHistory = currentChild || childName;
+            saveHistory('👶 ' + childNameForHistory + ': ' + text);
+            
+            // Анализ страхов прямо на месте (быстро)
             const lower = text.toLowerCase();
             if (lower.includes('темнот')) updateFear('темноты');
             else if (lower.includes('врач')) updateFear('врачей');
@@ -827,16 +884,24 @@
             else if (lower.includes('обид')) updateFear('обиды');
             else if (lower.includes('новое')) updateFear('нового');
             else if (lower.includes('собака') || lower.includes('кошка')) updateFear('животных');
+            
+            // Показываем индикатор "думает"
+            document.getElementById('avatar').classList.add('listening');
+            
             const answer = await askDeepSeek(text);
+            
+            document.getElementById('avatar').classList.remove('listening');
             saveHistory('🦁 ' + characters[currentChar].name + ': ' + answer);
             await speak(answer);
         };
+        
         rec.onerror = () => {
             document.getElementById('micBtn').classList.remove('recording');
             document.getElementById('avatar').classList.remove('listening');
             isListening = false;
             speak("Не расслышал, скажи ещё раз!");
         };
+        
         rec.onend = () => {
             document.getElementById('micBtn').classList.remove('recording');
             if (!isSpeaking) document.getElementById('avatar').classList.remove('listening');
@@ -844,69 +909,51 @@
         };
     }
 
+    // ========== РАЗБЛОКИРОВКА АУДИО ДЛЯ iOS ==========
+    let audioUnlocked = false;
+    function unlockAudio() {
+        if (audioUnlocked) return;
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        ctx.resume().then(() => {
+            audioUnlocked = true;
+            console.log('✅ Аудио разблокировано');
+        }).catch(e => console.log('Audio unlock error:', e));
+    }
+    document.addEventListener('touchstart', unlockAudio, { once: true });
+    document.addEventListener('click', unlockAudio, { once: true });
+
     // ========== ЗАПУСК ==========
     updateStatsUI();
     changeCharacter(currentChar);
 
+    // Service Worker для PWA
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error', e));
     }
 
-    // Приветствие при загрузке
+    // Приветствие при загрузке (только если не гость или есть имя)
     setTimeout(() => {
+        const guestMode = localStorage.getItem('guestMode') === 'true';
+        const guestName = localStorage.getItem('guestName');
+        
         if (childrenNames.length > 1 && !currentChild) {
             showChildSelector();
-        } else {
+        } else if (guestMode && guestName) {
+            // Гость с уже введённым именем — тихое приветствие (без звука, чтобы не блокировало)
+            console.log('👋 Привет, ' + guestName + '!');
+        } else if (!guestMode && currentChild) {
+            // Обычный пользователь с именем
             const greetingVoice = getVoiceForCharacter(currentChar);
-            let greetingText = 'Привет, ' + (currentChild || childName) + '!';
-            if (currentChar === 'lucik') greetingText = 'Мяу! Привет, ' + (currentChild || childName) + '! Я Люцик!';
-            speakWithYandex(greetingText, greetingVoice);
+            const greetingText = currentChar === 'lucik' ? 'Мяу! Привет, ' + (currentChild || childName) + '!' : 'Привет, ' + (currentChild || childName) + '!';
+            // Не озвучиваем автоматически, ждём первого нажатия на микрофон
+            console.log('💬 ' + greetingText);
         }
     }, 1000);
-            // ========== ИНДИКАТОР ЗАГРУЗКИ ==========
-    function showThinkingIndicator(show) {
-        const avatar = document.getElementById('avatar');
-        if (show) {
-            avatar.classList.add('listening');
-        } else {
-            avatar.classList.remove('listening');
-        }
-    }
 
-    // ========== ФУНКЦИЯ ДЛЯ РОДИТЕЛЬСКОГО ПИНА (если нужна) ==========
-    function checkParentPin() {
-        if (!savedPin) {
-            const pin = prompt('Создайте пароль для входа в Штаб (4-6 цифр):');
-            if (pin && pin.length >= 4 && /^\d+$/.test(pin)) {
-                localStorage.setItem('parentPin', pin);
-                savedPin = pin;
-                alert('Пароль создан!');
-                window.location.href = '/parent.html';
-            } else if (pin) {
-                alert('Пароль должен содержать только цифры (4-6)');
-            }
-        } else {
-            const pin = prompt('Введите пароль для входа в Штаб:');
-            if (pin === savedPin) {
-                window.location.href = '/parent.html';
-            } else if (pin !== null) {
-                alert('Неверный пароль!');
-            }
-        }
-    }
-
-    // Дублируем обработчик на родительскую кнопку (на случай, если safeOn не сработал)
-    const parentBtn = document.getElementById('parentBtn');
-    if (parentBtn) {
-        parentBtn.onclick = () => {
-            window.location.href = '/parent.html';
-        };
-    }
-
-    console.log('✅ Приложение "Герой Сказок" загружено успешно!');
-    console.log('📱 Текущий персонаж:', characters[currentChar].name);
-    console.log('👶 Имя ребёнка:', currentChild || childName);
-    console.log('🎤 Режим разработчика:', isDeveloperMode() ? 'ВКЛЮЧЁН' : 'ВЫКЛЮЧЁН');
-            </script>
+    console.log('✅ Приложение "Герой Сказок" загружено!');
+    console.log('🎭 Персонаж:', characters[currentChar].name);
+    console.log('👶 Ребёнок:', currentChild || childName);
+    console.log('🔧 Режим разработчика:', isDeveloperMode() ? 'ВКЛ' : 'ВЫКЛ');
+    </script>
 </body>
 </html>
