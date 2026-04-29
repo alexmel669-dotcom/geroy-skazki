@@ -1,4 +1,5 @@
-// api/generate.js — ИДЕАЛЬНЫЙ ДИАЛОГ, ПАМЯТЬ, НЕТ ДОПРОСА
+// api/generate.js — ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Правильная поддержка диалога, выявление страхов, нет допроса
 import { Pool } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 
@@ -9,46 +10,63 @@ const pool = new Pool({
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// ========== ЕСТЕСТВЕННЫЙ ПРОМПТ (БЕЗ ДОПРОСА) ==========
-const getIdealPrompt = (character, childName, childAge, weeklyMemory) => {
+// ========== УЛУЧШЕННЫЙ ПРОМПТ С ПОДДЕРЖКОЙ ЭМОЦИЙ ==========
+const getIdealPrompt = (character, childName, childAge, weeklyMemory, recentQuestionCount = 0) => {
     let basePrompt = `Ты Люцик — добрый друг ребёнка ${childName} (${childAge} лет). 
 
-ПРАВИЛА ЕСТЕСТВЕННОГО ДИАЛОГА:
-1. НЕ задавай вопрос в каждом ответе. Иногда просто поддержи: "Здорово!", "Я тебя понимаю", "Мурр...".
-2. НЕ повторяй один и тот же вопрос. Запомни, что ребёнок уже ответил.
-3. О страхах спрашивай мягко и только если разговор сам к этому пришёл. НЕ навязывайся.
-4. Если ребёнок сам сказал о страхе — поддержи: "Я понимаю", "Ты не один", "Мы справимся вместе".
-5. НИКОГДА не говори "не бойся". Это обесценивает страх ребёнка.
-6. Отвечай коротко (1-2 предложения). Ребёнок устанет от длинных монологов.
-7. Используй имя ${childName}, но не в каждом предложении. Когда ребёнок уже знает, что ты к нему обращаешься, можно без имени.
+ГЛАВНЫЙ ПРИНЦИП: Ты ДРУГ, а не психолог. Не лезь с вопросами, если ребёнок не хочет говорить.
 
-ПРИМЕРЫ ЕСТЕСТВЕННОГО ДИАЛОГА:
+ПРАВИЛА ЕСТЕСТВЕННОГО ДИАЛОГА:
+1. НЕ ЗАДАВАЙ ВОПРОСЫ ЧАЩЕ 1 РАЗА В 3 ОТВЕТА. Если ребёнок не развивает тему — переключись на поддержку без вопросов.
+2. Если ребёнок говорит коротко ("да", "нет", "не знаю", "отстань", "не хочу") — НЕ ЗАДАВАЙ НОВЫХ ВОПРОСОВ. Просто поддержи: "Хорошо", "Я рядом", "Расскажешь когда захочешь", "Ладно, я молчу".
+3. Распознавай эмоции по тексту:
+   - "!!!" или капс (ЗАГЛАВНЫЕ) -> ребёнок сильно взволнован. Ответь мягко: "Я слышу, тебе тяжело. Я здесь, рядом".
+   - "..." или "не знаю" -> неуверенность. Ответь: "Ничего страшного. Не торопись, я подожду".
+   - Ребёнок ругается или пишет "отстань" -> скажи: "Понял, давай тишина. Я рядом если захочешь поговорить".
+4. О СТРАХАХ (ОЧЕНЬ ВАЖНО):
+   - Если ребёнок сказал "боюсь", "страшно", "тревожно", "пугает" -> скажи: "Я понимаю, это правда страшно. Ты не один, мы справимся вместе".
+   - НИКОГДА не говори "не бойся", "всё будет хорошо", "не переживай" — это обесценивает страх.
+   - Мягко уточни максимум 1 раз: "Хочешь поговорим об этом?" ИЛИ "Расскажешь, что случилось?"
+   - Если ребёнок ответил "нет" или "не знаю" -> сразу отстань, скажи "Ладно, я просто рядом когда нужно".
+5. Отвечай коротко (1-2 предложения). Ребёнок устанет от длинных монологов.
+6. Используй иногда мягкие междометия: "Мур...", "Угу", "Понял", "Хорошо".
+7. НЕ повторяй один и тот же вопрос. Запомни, что ребёнок уже ответил.
+
+ПРИМЕРЫ ПРАВИЛЬНОГО ДИАЛОГА:
 
 Ребёнок: Привет
 Ты: Привет! Рад тебя видеть.
 
-Ребёнок: Я играл в машинки
-Ты: Здорово! Машинки — это весело.
-
-Ребёнок: А ты любишь машинки?
-Ты: Мур... Я больше люблю играть в мяч. А тебе что ещё нравится?
+Ребёнок: Я играл
+Ты: Здорово! А во что играл?
 
 Ребёнок: Не знаю
-Ты: Ничего страшного. Расскажи, когда захочешь.
+Ты: Ничего страшного. Расскажешь потом.
 
 Ребёнок: Мне страшно одному
-Ты: Я понимаю. Я всегда рядом, даже если не видно. Мы справимся.
+Ты: Понимаю. Я всегда рядом, даже если не видно.
 
 Ребёнок: Спасибо
-Ты: Всегда пожалуйста, ${childName}.
+Ты: Пожалуйста, ${childName}. Ты молодец, что говоришь о страхах.
+
+Ребёнок: Отстань
+Ты: Хорошо. Я здесь, если захочешь поговорить.
+
+Ребёнок: МНЕ СТРАШНО!!!
+Ты: Я слышу, тебе правда страшно. Я рядом, не бойся меня, бойся чего хочешь.
 
 Запомни: Ты друг, а не психолог. Просто будь рядом и поддерживай.`;
+
+    // Если было слишком много вопросов подряд — жёстко ограничиваем
+    if (recentQuestionCount >= 2) {
+        basePrompt += `\n\nВНИМАНИЕ: В последних ответах ты задал ${recentQuestionCount} вопроса подряд. Следующий ответ НЕ ДОЛЖЕН содержать вопросительных знаков. Просто поддержи или скажи что-то ободряющее без вопросов.`;
+    }
 
     // Добавляем недельную память (кратко, без навязывания)
     if (weeklyMemory && weeklyMemory.fears && Object.keys(weeklyMemory.fears).length > 0) {
         const recentFears = Object.keys(weeklyMemory.fears).slice(0, 2);
         if (recentFears.length > 0) {
-            basePrompt += `\n\nИз прошлых разговоров: ${childName} упоминал страхи: ${recentFears.join(', ')}. Если он сам заговорит об этом — покажи, что помнишь. НЕ напоминай без причины.`;
+            basePrompt += `\n\nИз прошлых разговоров: ${childName} боялся ${recentFears.join(', ')}. Если он сам заговорит об этом — покажи, что помнишь. НЕ напоминай без причины.`;
         }
     }
     
@@ -73,7 +91,9 @@ async function getTodayStoryCount(userId) {
         );
         client.release();
         return parseInt(result.rows[0]?.count || 0);
-    } catch { return 0; }
+    } catch { 
+        return 0; 
+    }
 }
 
 async function saveStory(userId, userEmail, childName, story, fear) {
@@ -85,7 +105,123 @@ async function saveStory(userId, userEmail, childName, story, fear) {
             ['story_generated', userId, userEmail, childName, JSON.stringify({ story: story.substring(0, 300), fear })]
         );
         client.release();
-    } catch (error) { console.error('Ошибка сохранения:', error); }
+    } catch (error) { 
+        console.error('Ошибка сохранения:', error); 
+    }
+}
+
+// ========== РАСШИРЕННЫЙ АНАЛИЗ СТРАХОВ ==========
+function detectFear(text) {
+    if (!text) return null;
+    
+    const lowerText = text.toLowerCase();
+    
+    // Расширенные паттерны страхов
+    const fearPatterns = {
+        'темноты': [
+            'темнот', 'боюсь темноты', 'монстр', 'страшно темно', 'ночник', 'темная комната',
+            'кто-то есть', 'под кроватью', 'в шкафу', 'выключать свет', 'тени', 'страшно спать',
+            'не вижу', 'темнеет', 'ночь', 'ночью', 'выключили свет', 'темница'
+        ],
+        'одиночества': [
+            'один', 'одна', 'никого нет', 'бросили', 'без мамы', 'без папы', 'не с кем',
+            'покинули', 'все ушли', 'меня нет', 'забыли', 'не подходит никто', 'никто не играет',
+            'никто не любит', 'не нужен', 'остался один', 'покинутый'
+        ],
+        'врачей': [
+            'врач', 'укол', 'больница', 'доктор', 'стоматолог', 'прививка', 'больно',
+            'лечить', 'операция', 'медсестра', 'таблетки', 'лекарство', 'уколоться',
+            'поликлиника', 'палата', 'хирург', 'зубной'
+        ],
+        'школы': [
+            'школа', 'садик', 'учитель', 'воспитатель', 'детсад', 'домашка', 'уроки',
+            'контрольная', 'отвечать', 'доска', 'вызывают', 'класс', 'перемена',
+            'страшно идти в школу', 'плохие оценки', 'двойка'
+        ],
+        'животных': [
+            'собака', 'кошка', 'боюсь собак', 'укусит', 'злая собака', 'кусается',
+            'животное', 'паук', 'змея', 'мышь', 'насекомое', 'жучок'
+        ],
+        'высоты': [
+            'высота', 'высоко', 'боюсь высоты', 'упаду', 'обрыв', 'балкон', 'крыша',
+            'с высоты', 'на высоте', 'головокружение от высоты'
+        ],
+        'громких звуков': [
+            'громко', 'шум', 'бабах', 'взрыв', 'фейерверк', 'гром', 'раскат',
+            'шумит', 'испугался звука', 'неожиданный звук'
+        ]
+    };
+    
+    // Проверяем каждый паттерн
+    for (const [fear, keywords] of Object.entries(fearPatterns)) {
+        if (keywords.some(kw => lowerText.includes(kw))) {
+            return fear;
+        }
+    }
+    
+    // Дополнительно: ловим общие слова страха, которые не попали в категории
+    if (lowerText.includes('боюс') || lowerText.includes('страш') || 
+        lowerText.includes('тревож') || lowerText.includes('пуга') ||
+        lowerText.includes('ужасн') || lowerText.includes('паник')) {
+        return 'тревога/страх (уточнить)';
+    }
+    
+    return null;
+}
+
+// ========== ЩАДЯЩАЯ ПОСТОБРАБОТКА ОТВЕТА ==========
+function postProcessResponse(story, isLong, userSpeech, history) {
+    if (!story || story.length < 3) {
+        return "Расскажи, что у тебя нового?";
+    }
+    
+    // Убираем только явные служебные фразы (НЕ трогаем "Мурр..." и приветствия)
+    story = story.replace(/\b(я договорил|конец истории|конец|всё\.)\b/gi, '');
+    story = story.replace(/^\d+\s*/, '');
+    story = story.trim();
+    
+    // Для длинных ответов (сказки) — минимальная обработка
+    if (isLong) {
+        if (story.length > 1200) {
+            story = story.substring(0, 1150) + "...";
+        }
+        return story;
+    }
+    
+    // Для диалогов: проверяем количество вопросов подряд
+    const assistantMessages = (history || []).filter(msg => msg.role === 'assistant');
+    const recentQuestions = assistantMessages.slice(-2).filter(msg => msg.content.includes('?')).length;
+    
+    // Если AI уже задавал вопросы и пользователь не отвечал на них развёрнуто
+    if (recentQuestions >= 2 && !userSpeech.includes('?') && userSpeech.length < 20) {
+        // Убираем все вопросы из ответа
+        story = story.replace(/[^.!?]*\?/g, '');
+        story = story.replace(/[.!?]+$/, '');
+        if (!story.trim()) {
+            story = "Понял. Я просто рядом. Расскажешь когда захочешь.";
+        }
+    }
+    
+    // Ограничиваем длину для диалога
+    if (story.length > 350) {
+        const sentences = story.match(/[^.!?]+[.!?]+/g);
+        if (sentences && sentences.length > 2) {
+            story = sentences.slice(0, 2).join(' ');
+        } else {
+            story = story.substring(0, 330) + "...";
+        }
+    }
+    
+    // Если всё ещё слишком много вопросов (>1), оставляем только первый
+    const questionCount = (story.match(/\?/g) || []).length;
+    if (!isLong && questionCount > 1 && !userSpeech.includes('?')) {
+        const firstQuestion = story.match(/[^.!?]+\?/);
+        if (firstQuestion) {
+            story = firstQuestion[0];
+        }
+    }
+    
+    return story;
 }
 
 export default async function handler(req, res) {
@@ -134,6 +270,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Нет текста' });
         }
 
+        // Лимиты на генерацию
         const isDeveloper = (userEmail === 'alexmel669@gmail.com');
         const maxStories = isDeveloper ? 9999 : 15;
 
@@ -156,17 +293,27 @@ export default async function handler(req, res) {
             });
         }
 
-        // Формируем системный промпт
-        let systemPrompt = getIdealPrompt(character, childName, childAge, weeklyMemory);
+        // Подсчитываем, сколько вопросов AI задал подряд
+        const assistantMessages = (history || []).filter(msg => msg.role === 'assistant').slice(-3);
+        const recentQuestionCount = assistantMessages.filter(msg => msg.content.includes('?')).length;
+
+        // Формируем системный промпт с учётом количества вопросов
+        let systemPrompt = getIdealPrompt(character, childName, childAge, weeklyMemory, recentQuestionCount);
         
         if (isLong) {
             systemPrompt += `\n\nСейчас расскажи спокойную сказку на ночь. Сказка должна быть доброй, без страшных моментов. Закончи её и пожелай спокойной ночи. Не говори "я договорил" или "конец".`;
         } else {
-            systemPrompt += `\n\nОтвечай коротко (1-2 предложения). НЕ задавай вопрос в каждом ответе. Иногда просто поддержи. НИКОГДА не повторяй один и тот же вопрос.`;
+            systemPrompt += `\n\nОтвечай коротко (1-2 предложения). Помни: НЕ задавай вопрос в каждом ответе.`;
         }
 
-        // История разговора (последние 8 сообщений для лучшего контекста)
-        const historyMessages = (history || []).slice(-8).map(msg => ({
+        // Добавляем специальную обработку, если ребёнок явно не хочет говорить
+        const userLower = userSpeech.toLowerCase();
+        if (userLower.includes('отстань') || userLower.includes('не хочу') || userLower === 'нет') {
+            systemPrompt += `\n\nВАЖНО: Ребёнок не хочет сейчас говорить. Ответь максимально коротко и прекрати вопросы. Например: "Хорошо", "Ладно, я молчу", "Понял".`;
+        }
+
+        // История разговора (последние 10 сообщений для лучшего контекста)
+        const historyMessages = (history || []).slice(-10).map(msg => ({
             role: msg.role,
             content: msg.content
         }));
@@ -177,7 +324,9 @@ export default async function handler(req, res) {
             { role: "user", content: userSpeech }
         ];
 
-        console.log(`📜 История: ${historyMessages.length} сообщений, недельных страхов: ${Object.keys(weeklyMemory.fears || {}).length}`);
+        console.log(`📜 История: ${historyMessages.length} сообщений`);
+        console.log(`❓ Вопросов подряд: ${recentQuestionCount}`);
+        console.log(`👤 Сообщение: "${userSpeech.substring(0, 100)}"`);
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
@@ -188,11 +337,11 @@ export default async function handler(req, res) {
             body: JSON.stringify({
                 model: 'deepseek-chat',
                 messages: messages,
-                temperature: 0.9,
-                max_tokens: isLong ? 1200 : 150,
-                top_p: 0.88,
-                frequency_penalty: 0.7,
-                presence_penalty: 0.6,
+                temperature: 0.85,  // Чуть снизил для предсказуемости
+                max_tokens: isLong ? 1200 : 180,
+                top_p: 0.9,
+                frequency_penalty: 0.8,  // Увеличил, чтобы избегать повторов
+                presence_penalty: 0.5,
                 stop: ["Я договорил", "Конец", "Вопрос:", "\n\n\n"],
                 stream: false
             })
@@ -210,69 +359,23 @@ export default async function handler(req, res) {
 
         let story = data.choices?.[0]?.message?.content || "Расскажи, как прошёл твой день.";
         
-        // Постобработка
-        story = story.replace(/^(привет|здравствуй|мур|мяу)/gi, '');
-        story = story.replace(/[Мм]урр?/gi, '');
-        story = story.replace(/я договорил/gi, '');
-        story = story.replace(/конец истории/gi, '');
-        story = story.replace(/всё\./gi, '');
-        story = story.replace(/^\d+\s*/, '');
-        story = story.trim();
+        // Постобработка ответа
+        story = postProcessResponse(story, isLong, userSpeech, history);
         
-        // Убираем повторяющиеся вопросы
-        const askedQuestions = historyMessages.filter(m => m.role === 'assistant').map(m => m.content);
-        if (askedQuestions.length > 0) {
-            const lastQuestion = askedQuestions[askedQuestions.length - 1];
-            if (lastQuestion && lastQuestion.includes('чем занимался') && story.includes('чем занимался')) {
-                story = story.replace(/чем ты сегодня занимался\??/gi, '');
-                story = story.trim();
-                if (!story) story = "Понятно. Расскажи ещё что-нибудь?";
-            }
-        }
+        // Анализ страхов (улучшенный)
+        let detectedFear = detectFear(userSpeech);
         
-        // Если ответ пустой
-        if (!story || story.length < 3) {
-            story = "Расскажи, что у тебя нового?";
-        }
-        
-        // Для диалога: убеждаемся, что не вопрос в каждом ответе
-        const questionCount = (story.match(/\?/g) || []).length;
-        if (!isLong && questionCount > 1) {
-            story = story.split('?')[0] + '?';
-        }
-        
-        // Обрезаем слишком длинный ответ
-        if (!isLong && story.length > 350) {
-            const sentences = story.match(/[^.!?]+[.!?]+/g);
-            if (sentences && sentences.length > 2) {
-                story = sentences.slice(0, 2).join(' ');
-            } else {
-                story = story.substring(0, 330) + "...";
-            }
+        // Дополнительно проверяем страх в ответе AI (на случай, если AI распознал)
+        if (!detectedFear && story.toLowerCase().includes('страх') || story.toLowerCase().includes('боишься')) {
+            // Не назначаем конкретный страх, но логируем
+            console.log('⚠️ AI упомянул страх в ответе');
         }
 
-        // Анализ страхов
-        let detectedFear = null;
-        const fearKeywords = {
-            'темноты': ['темнот', 'боюсь темноты', 'монстры', 'страшно темно', 'ночник', 'темная комната'],
-            'врачей': ['врач', 'укол', 'больница', 'доктор', 'стоматолог', 'прививка'],
-            'одиночества': ['один', 'одна', 'никого нет', 'бросили', 'без мамы', 'без папы'],
-            'обиды': ['обидели', 'обидно', 'несправедливо', 'дразнят', 'обижают'],
-            'нового': ['новое место', 'незнаком', 'первый раз', 'страшно идти', 'новая школа'],
-            'животных': ['собака', 'кошка', 'боюсь собак', 'укусит', 'злая собака']
-        };
-        const lowerText = (userSpeech || '').toLowerCase();
-        for (const [fear, keywords] of Object.entries(fearKeywords)) {
-            if (keywords.some(kw => lowerText.includes(kw))) {
-                detectedFear = fear;
-                break;
-            }
-        }
-
+        // Сохраняем в БД
         await saveStory(userId, userEmail, childName, story, detectedFear);
 
         console.log(`✅ Ответ: "${story.substring(0, 100)}..."`);
-        if (detectedFear) console.log(`😨 Страх: ${detectedFear}`);
+        if (detectedFear) console.log(`😨 Выявлен страх: ${detectedFear}`);
 
         res.status(200).json({
             story: story,
