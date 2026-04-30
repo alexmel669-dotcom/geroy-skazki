@@ -12,8 +12,7 @@
             font-family: 'Segoe UI', 'Roboto', 'Georgia', serif;
             min-height: 100vh;
             color: #3a2a1a;
-            position: relative;
-            background-image: url('parent-bg.png');
+            background-image: url('app-bg.png');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -107,27 +106,10 @@
             margin: 10px 0;
         }
         .input-field:focus { outline: none; border-color: #c8a86c; }
-        .social-buttons {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin: 15px 0;
-            flex-wrap: wrap;
-        }
         .install-instruction {
             text-align: center;
             padding: 30px;
         }
-        .reviews-section {
-            margin: 40px 0;
-        }
-        .review {
-            background: rgba(255,248,235,0.15);
-            padding: 20px 25px;
-            border-radius: 25px;
-            margin: 15px 0;
-        }
-        .review-stars { color: #c8a86c; font-size: 22px; }
         footer {
             text-align: center;
             margin-top: 60px;
@@ -176,11 +158,8 @@
                 <button class="btn btn-blue" id="loginBtn" style="width: 48%;">Войти</button>
             </div>
             <div id="loginStatus" style="margin-top: 10px; font-size: 14px; text-align: center;"></div>
-            <div class="social-buttons">
+            <div style="text-align: center; margin-top: 15px;">
                 <button class="btn btn-small" id="guestBtn" style="background: #888;">👤 Гость</button>
-                <button class="btn btn-small" id="vkBtn" style="background: #4c75a3;">ВКонтакте</button>
-                <button class="btn btn-small" id="googleBtn" style="background: #db4437;">Google</button>
-                <button class="btn btn-small" id="yandexBtn" style="background: #fc3f1d;">Яндекс</button>
             </div>
         </div>
 
@@ -192,26 +171,6 @@
             <div class="feature-card"><h3>👨‍👩‍👧 Выбор персонажа</h3><p>Свайп по аватару — мама, папа или сам ребёнок</p></div>
             <div class="feature-card"><h3>📊 Дневник страхов</h3><p>Родители видят статистику</p></div>
             <div class="feature-card"><h3>🔐 Безопасно</h3><p>Родительский вход по паролю</p></div>
-        </div>
-
-        <div class="reviews-section glass-card">
-            <h2 style="margin-top: 0;">💬 Отзывы родителей</h2>
-            <div id="reviewsList" style="margin-bottom: 30px;">
-                <div style="text-align: center; padding: 20px;">Загрузка отзывов...</div>
-            </div>
-            <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
-                <h3 style="margin-bottom: 15px;">📝 Оставить отзыв</h3>
-                <input type="text" id="reviewName" class="input-field" placeholder="Ваше имя">
-                <div style="margin: 15px 0;">
-                    <span style="margin-right: 10px;">Оценка: </span>
-                    <span id="starRating" style="font-size: 32px; cursor: pointer;">
-                        <span data-rating="1">★</span><span data-rating="2">★</span><span data-rating="3">★</span><span data-rating="4">★</span><span data-rating="5">★</span>
-                    </span>
-                </div>
-                <textarea id="reviewText" class="input-field" rows="3" placeholder="Поделитесь впечатлениями..."></textarea>
-                <button id="submitReviewBtn" class="btn">📤 Отправить</button>
-                <div id="reviewStatus" style="margin-top: 10px; font-size: 14px;"></div>
-            </div>
         </div>
 
         <div class="install-instruction glass-card">
@@ -228,166 +187,99 @@
     </div>
 
     <script>
-    // PWA установка
-    let deferredPrompt = null;
-    const installBtn = document.getElementById('installBtn');
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        installBtn.style.display = 'inline-block';
-    });
-    installBtn.addEventListener('click', async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            deferredPrompt = null;
-        } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-            alert('📱 Нажмите "Поделиться" → "На экран Домой"');
-        } else {
-            alert('📱 Нажмите ⋮ → "Установить приложение"');
-        }
-    });
-
-    // Гостевой вход
-    document.getElementById('guestBtn').addEventListener('click', () => {
-        localStorage.setItem('guestMode', 'true');
-        localStorage.setItem('userEmail', 'guest_' + Date.now());
-        localStorage.setItem('userToken', 'guest_token_' + Date.now());
-        window.location.href = '/app.html';
-    });
-
-    // Заглушки соцсетей
-    document.getElementById('vkBtn').addEventListener('click', () => {
-        alert('Вход через ВКонтакте в разработке. Используйте email или гостевой вход.');
-    });
-    document.getElementById('googleBtn').addEventListener('click', () => {
-        alert('Вход через Google в разработке. Используйте email или гостевой вход.');
-    });
-    document.getElementById('yandexBtn').addEventListener('click', () => {
-        alert('Вход через Яндекс в разработке. Используйте email или гостевой вход.');
-    });
-
-    // Регистрация
-    document.getElementById('registerBtn').addEventListener('click', async () => {
-        const email = document.getElementById('loginEmail').value.trim();
-        const password = document.getElementById('loginPassword').value;
-        const statusDiv = document.getElementById('loginStatus');
-
-        if (!email || !password) {
-            statusDiv.innerHTML = '❌ Введите email и пароль';
-            return;
-        }
-        if (password.length < 6) {
-            statusDiv.innerHTML = '❌ Пароль минимум 6 символов';
-            return;
-        }
-        statusDiv.innerHTML = '⏳ Регистрация...';
-        try {
-            const res = await fetch('/api/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                localStorage.setItem('userToken', data.token);
-                localStorage.setItem('userEmail', data.email);
-                localStorage.removeItem('guestMode');
-                statusDiv.innerHTML = '✅ Успешно!';
-                setTimeout(() => location.href = '/app.html', 1000);
+        // PWA установка
+        let deferredPrompt = null;
+        const installBtn = document.getElementById('installBtn');
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'inline-block';
+        });
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+            } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+                alert('📱 Нажмите "Поделиться" → "На экран Домой"');
             } else {
-                statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка');
+                alert('📱 Нажмите ⋮ → "Установить приложение"');
             }
-        } catch (e) {
-            statusDiv.innerHTML = '❌ Ошибка соединения';
-        }
-    });
+        });
 
-    // Вход
-    document.getElementById('loginBtn').addEventListener('click', async () => {
-        const email = document.getElementById('loginEmail').value.trim();
-        const password = document.getElementById('loginPassword').value;
-        const statusDiv = document.getElementById('loginStatus');
+        // Гостевой вход
+        document.getElementById('guestBtn').addEventListener('click', () => {
+            localStorage.setItem('guestMode', 'true');
+            localStorage.setItem('userEmail', 'guest_' + Date.now());
+            localStorage.setItem('userToken', 'guest_token_' + Date.now());
+            window.location.href = '/app.html';
+        });
 
-        if (!email || !password) {
-            statusDiv.innerHTML = '❌ Введите email и пароль';
-            return;
-        }
-        statusDiv.innerHTML = '⏳ Вход...';
-        try {
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                localStorage.setItem('userToken', data.token);
-                localStorage.setItem('userEmail', data.email);
-                localStorage.removeItem('guestMode');
-                statusDiv.innerHTML = '✅ Успешно!';
-                setTimeout(() => location.href = '/app.html', 1000);
-            } else {
-                statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка');
+        // Регистрация
+        document.getElementById('registerBtn').addEventListener('click', async () => {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const statusDiv = document.getElementById('loginStatus');
+            if (!email || !password) {
+                statusDiv.innerHTML = '❌ Введите email и пароль';
+                return;
             }
-        } catch (e) {
-            statusDiv.innerHTML = '❌ Ошибка соединения';
-        }
-    });
+            if (password.length < 6) {
+                statusDiv.innerHTML = '❌ Пароль минимум 6 символов';
+                return;
+            }
+            statusDiv.innerHTML = '⏳ Регистрация...';
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('userToken', data.token);
+                    localStorage.setItem('userEmail', data.email);
+                    localStorage.removeItem('guestMode');
+                    statusDiv.innerHTML = '✅ Успешно!';
+                    setTimeout(() => location.href = '/app.html', 1000);
+                } else {
+                    statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка');
+                }
+            } catch (e) {
+                statusDiv.innerHTML = '❌ Ошибка соединения';
+            }
+        });
 
-    // Отзывы
-    let currentRating = 5;
-    const stars = document.querySelectorAll('#starRating span');
-    stars.forEach((s, i) => s.onclick = () => {
-        currentRating = i + 1;
-        stars.forEach((st, idx) => st.style.color = idx < currentRating ? '#ffd700' : '#ccc');
-    });
-
-    function loadReviews() {
-        const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
-        const container = document.getElementById('reviewsList');
-        if (reviews.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:20px;">🌟 Пока нет отзывов</div>';
-            return;
-        }
-        container.innerHTML = reviews.slice(-6).reverse().map(r => `
-            <div class="review">
-                <div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
-                <p>${escapeHtml(r.text)}</p>
-                <small>— ${escapeHtml(r.name)}</small>
-            </div>
-        `).join('');
-    }
-
-    function escapeHtml(t) {
-        const d = document.createElement('div');
-        d.textContent = t;
-        return d.innerHTML;
-    }
-
-    document.getElementById('submitReviewBtn').onclick = () => {
-        const name = document.getElementById('reviewName').value.trim();
-        const text = document.getElementById('reviewText').value.trim();
-        const status = document.getElementById('reviewStatus');
-        if (!name || !text) {
-            status.innerHTML = '❌ Заполните имя и отзыв';
-            return;
-        }
-        const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
-        reviews.push({ name, text, rating: currentRating, date: new Date().toISOString() });
-        localStorage.setItem('reviews', JSON.stringify(reviews));
-        document.getElementById('reviewName').value = '';
-        document.getElementById('reviewText').value = '';
-        status.innerHTML = '✅ Спасибо за отзыв!';
-        loadReviews();
-    };
-
-    loadReviews();
-
-    const savedEmail = localStorage.getItem('userEmail');
-    if (savedEmail && !savedEmail.startsWith('guest_')) {
-        document.getElementById('loginEmail').value = savedEmail;
-    }
+        // Вход
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const statusDiv = document.getElementById('loginStatus');
+            if (!email || !password) {
+                statusDiv.innerHTML = '❌ Введите email и пароль';
+                return;
+            }
+            statusDiv.innerHTML = '⏳ Вход...';
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('userToken', data.token);
+                    localStorage.setItem('userEmail', data.email);
+                    localStorage.removeItem('guestMode');
+                    statusDiv.innerHTML = '✅ Успешно!';
+                    setTimeout(() => location.href = '/app.html', 1000);
+                } else {
+                    statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка');
+                }
+            } catch (e) {
+                statusDiv.innerHTML = '❌ Ошибка соединения';
+            }
+        });
     </script>
 </body>
 </html>
