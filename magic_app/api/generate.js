@@ -1,4 +1,4 @@
-// api/generate.js — последняя версия (с умным диалогом, до отката)
+// api/generate.js — DeepSeek API (версия от 19 апреля)
 import { Pool } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 
@@ -10,26 +10,19 @@ const pool = new Pool({
 const JWT_SECRET = process.env.JWT_SECRET;
 
 const CHARACTER_PROMPTS = {
-    lucik: `Ты Люцик — лучший друг ребёнка. Ты разговариваешь как живой человек, без роботизированных фраз. 
+    lucik: `Ты Люцик — добрый волшебный котик-психолог. Правила: 
+1) Никогда не спрашивай прямо "Чего ты боишься?" 
+2) Мягко выводи на разговор: "Мурр... А что тебя иногда пугает?" 
+3) Если ребёнок сам говорит о страхе — поддержи: "Мурр... Я с тобой", "Ты молодец, что рассказал", "Мы вместе справимся" 
+4) НИКОГДА не говори "не бойся" — вместо этого: "Я рядом", "Ты не один" 
+5) Если ребёнок не хочет говорить — предложи игру или сказку 
+6) Отвечай кратко, по-доброму, иногда мурлыкай
+7) НЕ начинай каждый ответ с приветствия — отвечай сразу по существу`,
 
-ГЛАВНОЕ ПРАВИЛО: Всегда ЗАПОМИНАЙ, что ребёнок сказал ранее. Нить разговора должна сохраняться.
-
-ПРАВИЛА ВЫЯВЛЕНИЯ СТРАХОВ:
-- Никогда не спрашивай прямо "Чего боишься?"
-- Спрашивай мягко: "А что тебя иногда пугает?"
-- Если ребёнок сам назвал страх: НЕ говори "не бойся". Скажи: "Я понимаю", "Ты не один", "Мы справимся вместе"
-
-ЗАПРЕЩЕНО:
-- Фразы "я договорил", "конец", "всё", "финал"
-- Длинные монологи (больше 3 предложений)
-- Многократные приветствия
-
-Отвечай коротко (1-2 предложения). Будь живым и отзывчивым.`,
-
-    mom: `Ты Мама. Говори тепло, коротко. Используй: "солнышко", "я рядом".`,
-    dad: `Ты Папа. Говори уверенно, коротко. Используй: "ты смелый", "я горжусь тобой".`,
-    kid1: `Ты друг. Говори весело, коротко. Предлагай игры.`,
-    kid2: `Ты друг. Говори мягко, коротко.`
+    mom: `Ты Мама. Говори заботливо, нежно: "солнышко", "я рядом".`,
+    dad: `Ты Папа. Говори уверенно, подбадривай: "ты смелый", "я горжусь тобой".`,
+    kid1: `Ты друг ребёнка. Говори просто, по-детски. Предлагай игры.`,
+    kid2: `Ты друг ребёнка. Будь мягким, люби спокойные игры.`
 };
 
 async function getTodayStoryCount(userId) {
@@ -90,7 +83,7 @@ export default async function handler(req, res) {
 
         const userId = decoded.userId;
         const userEmail = decoded.email;
-        const { childName = 'малыш', childAge = 5, userSpeech, isLong, history = [], character = 'lucik', weeklyMemory = {} } = req.body;
+        const { childName = 'малыш', childAge = 5, userSpeech, isLong, history = [], character = 'lucik' } = req.body;
 
         if (!userSpeech || userSpeech.trim().length === 0) {
             return res.status(400).json({ error: 'Нет текста' });
@@ -103,7 +96,7 @@ export default async function handler(req, res) {
             const todayCount = await getTodayStoryCount(userId);
             if (todayCount >= maxStories) {
                 return res.status(200).json({
-                    story: "Я сегодня уже много рассказывал. Давай завтра продолжим? А сейчас поиграем!",
+                    story: "Мурр... Я сегодня уже много рассказывал. Давай завтра продолжим? А сейчас поиграем!",
                     detectedFear: null,
                     limitReached: true
                 });
@@ -113,21 +106,16 @@ export default async function handler(req, res) {
         const apiKey = process.env.DEEPSEEK_API_KEY;
         if (!apiKey) {
             return res.status(200).json({
-                story: "Ошибка настройки. Позови взрослого.",
+                story: "Мурр... Что-то я задумался. Давай ещё раз?",
                 detectedFear: null
             });
         }
 
         let systemPrompt = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
-        systemPrompt += `\n\nРебёнка зовут ${childName}, ему ${childAge} лет. Обращайся к нему по имени. Отвечай коротко (1-2 предложения).`;
+        systemPrompt += `\nРебёнка зовут ${childName}, ему ${childAge} лет.`;
 
         if (isLong) {
-            systemPrompt += `\n\nРасскажи спокойную сказку на ночь. Закончи её и пожелай спокойной ночи.`;
-        }
-
-        if (weeklyMemory && weeklyMemory.fears && Object.keys(weeklyMemory.fears).length > 0) {
-            const recentFears = Object.keys(weeklyMemory.fears).slice(0, 2).join(', ');
-            systemPrompt += `\n\nРебёнок говорил о страхах: ${recentFears}. Будь мягок, не напоминай без причины.`;
+            systemPrompt += ` Расскажи длинную, спокойную сказку на ночь.`;
         }
 
         const historyMessages = (history || []).slice(-8).map(msg => ({
@@ -150,12 +138,8 @@ export default async function handler(req, res) {
             body: JSON.stringify({
                 model: 'deepseek-chat',
                 messages: messages,
-                temperature: 0.85,
-                max_tokens: isLong ? 1200 : 180,
-                top_p: 0.9,
-                frequency_penalty: 0.5,
-                presence_penalty: 0.4,
-                stop: ["Я договорил", "Конец", "Всё.", "\n\n\n"],
+                temperature: 0.7,
+                max_tokens: isLong ? 1000 : 200,
                 stream: false
             })
         });
@@ -164,36 +148,23 @@ export default async function handler(req, res) {
 
         if (data.error) {
             return res.status(200).json({
-                story: "Извини, я задумался. Повтори, пожалуйста?",
+                story: "Мурр... Я немного устал. Давай поиграем?",
                 detectedFear: null
             });
         }
 
-        let story = data.choices?.[0]?.message?.content || "Расскажи, что у тебя нового?";
-        
-        story = story.replace(/^(привет|здравствуй)/gi, '');
-        story = story.replace(/я договорил/gi, '');
-        story = story.replace(/конец истории/gi, '');
-        story = story.replace(/всё\./gi, '');
-        story = story.replace(/^\d+\s*/, '');
-        story = story.trim();
-        
-        if (!story || story.length < 3) {
-            story = "Расскажи, что у тебя нового?";
-        }
-        
-        if (!isLong && !story.includes('?') && story.length < 150) {
-            story += " А что ты сейчас чувствуешь?";
-        }
+        let story = data.choices?.[0]?.message?.content || "Мурр... Я тебя слушаю!";
+        story = story.replace(/^\d+\s*/, '').trim();
+        if (!story) story = "Мурр... Я тебя слушаю!";
 
         let detectedFear = null;
         const fearKeywords = {
-            'темноты': ['темнот', 'боюсь темноты', 'монстры', 'страшно темно'],
-            'врачей': ['врач', 'укол', 'больница', 'доктор'],
-            'одиночества': ['один', 'одна', 'никого нет', 'бросили'],
-            'обиды': ['обидели', 'обидно', 'несправедливо'],
-            'нового': ['новое', 'незнаком', 'первый раз'],
-            'животных': ['собака', 'кошка', 'боюсь собак', 'укусит']
+            'темноты': ['темнот', 'боюсь темноты', 'монстры'],
+            'врачей': ['врач', 'укол', 'больница'],
+            'одиночества': ['один', 'одна', 'никого нет'],
+            'обиды': ['обидели', 'обидно'],
+            'нового': ['новое', 'незнаком'],
+            'животных': ['собака', 'кошка', 'боюсь собак']
         };
         const lowerText = (userSpeech || '').toLowerCase();
         for (const [fear, keywords] of Object.entries(fearKeywords)) {
@@ -213,7 +184,7 @@ export default async function handler(req, res) {
     } catch (error) {
         console.error('Ошибка в generate.js:', error);
         res.status(200).json({
-            story: "Что-то пошло не так. Расскажи ещё раз, пожалуйста!",
+            story: "Мурр... Что-то пошло не так. Давай ещё раз?",
             detectedFear: null
         });
     }
