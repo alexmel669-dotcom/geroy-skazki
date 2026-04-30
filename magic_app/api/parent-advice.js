@@ -1,4 +1,4 @@
-// api/parent-advice.js — Советы психолога через DeepSeek (версия от 19 апреля)
+// api/parent-advice.js — Советы психолога (версия от 19 апреля)
 export default async function handler(req, res) {
     const allowedOrigins = ['https://geroy-skazki.vercel.app'];
     const origin = req.headers.origin;
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
             body: JSON.stringify({
                 model: 'deepseek-chat',
                 messages: [
-                    { role: 'system', content: 'Ты — добрый детский психолог. Отвечай структурированно, тепло.' },
+                    { role: 'system', content: 'Ты — добрый детский психолог.' },
                     { role: 'user', content: prompt }
                 ],
                 temperature: 0.7,
@@ -57,7 +57,6 @@ export default async function handler(req, res) {
         const data = await response.json();
         
         if (!response.ok) {
-            console.error('DeepSeek API error:', data);
             return res.status(500).json({ error: 'Ошибка генерации совета' });
         }
         
@@ -66,7 +65,7 @@ export default async function handler(req, res) {
         res.status(200).json({ advice, fear });
         
     } catch (error) {
-        console.error('Ошибка в parent-advice:', error);
+        console.error('Ошибка:', error);
         res.status(500).json({ 
             error: 'Сервер временно недоступен',
             advice: '🌙 Попробуйте обнять ребёнка и сказать: "Я рядом, мы справимся вместе".'
