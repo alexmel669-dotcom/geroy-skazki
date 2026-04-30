@@ -1,4 +1,4 @@
-// api/parent-advice.js — Советы психолога через DeepSeek V4 Pro
+// api/parent-advice.js — Советы психолога через DeepSeek (версия от 19 апреля)
 export default async function handler(req, res) {
     const allowedOrigins = ['https://geroy-skazki.vercel.app'];
     const origin = req.headers.origin;
@@ -44,8 +44,7 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
             },
             body: JSON.stringify({
-                // ИСПРАВЛЕНО: новое имя модели
-                model: 'deepseek-v4-flash',
+                model: 'deepseek-chat',
                 messages: [
                     { role: 'system', content: 'Ты — добрый детский психолог. Отвечай структурированно, тепло.' },
                     { role: 'user', content: prompt }
