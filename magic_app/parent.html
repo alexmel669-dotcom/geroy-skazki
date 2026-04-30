@@ -3,625 +3,382 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Штаб Создателя — Герой Сказок</title>
-    <link rel="manifest" href="manifest.json">
+    <title>Родительский кабинет — Герой Сказок</title>
     <link rel="icon" href="data:,">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+            font-family: 'Segoe UI', 'Roboto', 'Georgia', serif;
             min-height: 100vh;
-            color: #3a2a1a;
-            background-image: url('parent-bg.png');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
+            background: #d4c4a4;
+            position: relative;
             overflow-x: hidden;
         }
+        .sand-dunes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
+        }
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
         }
         .glass-card {
             background: rgba(255, 248, 235, 0.25);
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(8px);
             border-radius: 30px;
-            padding: 25px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.35);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
             margin-bottom: 25px;
-            border: 1px solid rgba(255,255,255,0.3);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        h1 { font-size: 32px; color: #5a2e1a; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; }
-        h2 { font-size: 24px; color: #5a2e1a; margin: 20px 0 15px; border-left: 4px solid #d4a373; padding-left: 15px; }
-        h3 { font-size: 18px; color: #6b3a1f; margin: 10px 0; }
+        h1 { font-size: 36px; color: #6b3a1f; margin-bottom: 20px; text-align: center; }
+        h2 { font-size: 24px; color: #6b3a1f; margin: 20px 0 15px; border-left: 4px solid #c8a86c; padding-left: 15px; }
         .btn {
             display: inline-block;
             background: linear-gradient(90deg, #c8a86c, #a8844a);
             color: white;
-            padding: 12px 24px;
+            padding: 12px 30px;
             border-radius: 40px;
             text-decoration: none;
             font-weight: bold;
-            border: none;
+            font-size: 16px;
+            margin: 10px 5px;
             cursor: pointer;
+            border: none;
             transition: all 0.3s;
-            font-size: 14px;
         }
-        .btn-small { padding: 6px 12px; font-size: 12px; }
+        .btn-blue { background: linear-gradient(90deg, #00d2ff, #3a7bd5); }
+        .btn-green { background: linear-gradient(90deg, #4CAF50, #2e7d32); }
+        .btn-red { background: linear-gradient(90deg, #ff4081, #c2185b); }
         .btn:hover { transform: scale(1.02); opacity: 0.95; }
-        .btn-outline { background: transparent; border: 2px solid #c8a86c; color: #5a2e1a; }
-        .btn-outline:hover { background: #c8a86c; color: white; }
-        .btn-danger { background: #c2185b; }
-        .btn-psychologist { background: linear-gradient(90deg, #e94560, #c73a54); animation: glow 2s infinite; }
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 5px #e94560; }
-            50% { box-shadow: 0 0 20px #e94560; }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
         }
-        .top-bar {
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,248,235,0.1);
+            border-radius: 20px;
+        }
+        .stat-number { font-size: 32px; font-weight: bold; color: #c8a86c; }
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,248,235,0.15);
+            color: #3a2a1a;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .top-nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 30px;
             flex-wrap: wrap;
             gap: 15px;
-            margin-bottom: 30px;
-            background: rgba(255,248,235,0.15);
+            background: rgba(255,248,235,0.1);
             backdrop-filter: blur(8px);
             border-radius: 50px;
             padding: 12px 25px;
         }
-        .nav-link { color: #5a2e1a; text-decoration: none; font-weight: 500; padding: 5px 10px; }
+        .nav-link {
+            color: #6b3a1f;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 5px 10px;
+        }
         .nav-link:hover { color: #c8a86c; }
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-        .stat-card {
-            background: rgba(255,255,255,0.15);
-            border-radius: 20px;
-            padding: 20px;
-            text-align: center;
-        }
-        .stat-number { font-size: 36px; font-weight: bold; color: #d4a373; }
-        .fear-item {
-            background: rgba(255,255,255,0.1);
+        .setting-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
             border-radius: 15px;
-            padding: 12px 15px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
         }
-        .fear-name { font-weight: bold; font-size: 18px; }
-        .fear-count { background: #d4a373; padding: 4px 12px; border-radius: 20px; color: white; }
-        .advice-box {
-            background: rgba(255,255,255,0.15);
-            border-radius: 20px;
-            padding: 20px;
-            margin-top: 15px;
-            display: none;
-        }
-        .advice-box.show { display: block; }
-        .input-field {
-            width: 100%;
-            padding: 12px 20px;
-            border-radius: 40px;
-            border: 1px solid rgba(255,255,255,0.3);
-            background: rgba(255,248,235,0.2);
-            font-size: 16px;
-            margin: 10px 0;
-        }
-        .badge { padding: 5px 15px; border-radius: 30px; font-size: 12px; font-weight: bold; }
-        .badge-premium { background: linear-gradient(90deg, #fdbb2d, #d4a373); color: #5a2e1a; }
-        .badge-free { background: rgba(100,70,40,0.3); color: #5a2e1a; }
-        .badge-warning { background: #e94560; color: white; animation: pulse 2s infinite; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        .loader {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #fff;
-            border-radius: 50%;
-            border-top-color: transparent;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .avatars-showcase {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin: 20px 0;
-        }
-        .avatar-item { text-align: center; }
-        .avatar-item img {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid #d4a373;
-        }
-        .conversation-item {
-            background: rgba(255,255,255,0.1);
-            border-radius: 15px;
-            padding: 12px 15px;
+        .setting-item label {
+            display: block;
             margin-bottom: 8px;
-            border-left: 3px solid #d4a373;
+            font-weight: 500;
         }
-        .conversation-time { font-size: 11px; opacity: 0.6; }
-        .conversation-speaker { font-weight: bold; font-size: 14px; }
-        .conversation-text { font-size: 14px; margin-top: 4px; }
-        .notification {
-            background: rgba(233, 69, 96, 0.2);
-            border: 1px solid #e94560;
-            border-radius: 15px;
-            padding: 15px;
-            margin: 10px 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            border-top: 1px solid rgba(100,70,40,0.15);
+            font-size: 12px;
         }
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .tab-btn {
-            padding: 10px 20px;
-            border-radius: 30px;
-            border: 2px solid #c8a86c;
-            background: transparent;
-            color: #5a2e1a;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-        .tab-btn.active {
-            background: #c8a86c;
-            color: white;
-        }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        footer a { color: #6b3a1f; text-decoration: none; }
         @media (max-width: 768px) {
-            .container { padding: 15px; }
-            .glass-card { padding: 15px; }
-            h1 { font-size: 24px; }
+            .glass-card { padding: 20px; }
+            h1 { font-size: 28px; }
         }
     </style>
 </head>
 <body>
+    <div class="sand-dunes"></div>
     <div class="container">
-        <div class="top-bar">
+        <div class="top-nav">
             <div style="display: flex; align-items: center; gap: 15px;">
                 <img src="avatar.png" alt="Герой Сказок" style="height: 50px; width: 50px; border-radius: 50%; object-fit: cover;">
-                <h1 style="margin: 0; font-size: 24px;">🏰 Штаб Создателя</h1>
+                <span style="font-weight: bold; font-size: 20px; color: #6b3a1f;">Герой Сказок</span>
             </div>
             <div>
-                <a href="/" class="nav-link">🏠 Главная</a>
-                <a href="/app.html" class="nav-link">🎮 Приложение</a>
-                <button class="btn btn-small btn-danger" id="logoutBtn">Выйти</button>
+                <a href="/" class="nav-link">Главная</a>
+                <a href="/app.html" class="nav-link">Приложение</a>
+                <a href="/account.html" class="nav-link">Личный кабинет</a>
             </div>
         </div>
-
-        <!-- Неавторизованный -->
-        <div id="notLoggedIn" class="glass-card" style="text-align: center;">
-            <h2>🔐 Вход в Штаб</h2>
-            <p style="margin: 15px 0;">Войдите или зарегистрируйтесь на главной странице</p>
-            <a href="/" class="btn">🏠 На главную</a>
-            <a href="/app.html" class="btn btn-outline">🎮 Гостевой режим</a>
+        
+        <div id="notLoggedIn" class="glass-card" style="display: none;">
+            <h2>🔐 Вход в личный кабинет</h2>
+            <p>Введите email и пароль, чтобы управлять подпиской и смотреть статистику</p>
+            <input type="email" id="loginEmail" class="input-field" placeholder="Ваш email">
+            <input type="password" id="loginPassword" class="input-field" placeholder="Пароль">
+            <button class="btn" id="loginBtn">Войти</button>
+            <button class="btn btn-blue" id="registerBtn">Зарегистрироваться</button>
+            <div id="loginStatus" style="margin-top: 10px; font-size: 14px; color: #6b3a1f;"></div>
         </div>
-
-        <!-- Авторизованный -->
+        
         <div id="loggedIn" style="display: none;">
-
-            <!-- Приветствие и уведомления -->
             <div class="glass-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                     <div>
-                        <h2 style="margin: 0 0 10px 0;">👋 Здравствуйте, <span id="userEmailDisplay">...</span>!</h2>
-                        <p>Активный ребёнок: <strong id="childNameDisplay">—</strong>, <span id="childAgeDisplay">—</span> лет</p>
+                        <h2 style="margin: 0 0 5px 0;">👋 Здравствуйте, <span id="userEmailDisplay">...</span>!</h2>
+                        <p style="margin: 0;">Ребёнок: <span id="childNameDisplay">—</span>, <span id="childAgeDisplay">—</span> лет</p>
                     </div>
                     <div>
-                        <span id="premiumBadge" class="badge badge-free">📖 Бесплатный аккаунт</span>
-                    </div>
-                </div>
-                <div id="fearNotification" class="notification" style="display: none;">
-                    <span>⚠️ Обнаружен новый страх! Нажмите для рекомендаций.</span>
-                    <button class="btn btn-small btn-psychologist" onclick="showFearAdvice()">Получить помощь</button>
-                </div>
-            </div>
-
-            <!-- Вкладки -->
-            <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('stats')">📊 Статистика</button>
-                <button class="tab-btn" onclick="switchTab('history')">💬 История разговоров</button>
-                <button class="tab-btn" onclick="switchTab('settings')">⚙️ Настройки</button>
-            </div>
-
-            <!-- ВКЛАДКА: СТАТИСТИКА -->
-            <div id="tab-stats" class="tab-content active">
-                <!-- Персонажи -->
-                <div class="glass-card">
-                    <h2>🎭 Персонажи</h2>
-                    <div class="avatars-showcase">
-                        <div class="avatar-item"><img src="avatar.png" alt="Люцик"><p>Люцик 🐱</p></div>
-                        <div class="avatar-item"><img src="mom.png" alt="Мама"><p>Мама 👩</p></div>
-                        <div class="avatar-item"><img src="dad.png" alt="Папа"><p>Папа 👨</p></div>
-                        <div class="avatar-item"><img src="kid1.png" alt="Друг 1"><p>Друг 1 🧒</p></div>
-                        <div class="avatar-item"><img src="kid2.png" alt="Друг 2"><p>Друг 2 👧</p></div>
-                    </div>
-                </div>
-
-                <!-- Статистика страхов -->
-                <div class="glass-card">
-                    <h2>📊 Статистика страхов</h2>
-                    <div id="fearsList">
-                        <p style="opacity: 0.7;">✨ Пока нет данных. Поговорите с ребёнком через приложение!</p>
-                    </div>
-                </div>
-
-                <!-- Общая статистика -->
-                <div class="glass-card">
-                    <h2>📈 Общая активность</h2>
-                    <div class="stat-grid">
-                        <div class="stat-card">
-                            <div class="stat-number" id="totalStories">0</div>
-                            <div>всего сказок</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" id="totalFears">0</div>
-                            <div>выявлено страхов</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" id="storiesToday">0</div>
-                            <div>сказок сегодня</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Помощь психолога -->
-                <div class="glass-card">
-                    <h2>🧠 Помощь психолога</h2>
-                    <p>Выберите страх или задайте свой вопрос:</p>
-                    <div id="fearButtons" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0;"></div>
-                    <button class="btn btn-psychologist" onclick="showPsychologistChat()">💬 Задать вопрос психологу</button>
-                    <div id="adviceBox" class="advice-box">
-                        <div id="adviceContent"></div>
-                        <button class="btn btn-small btn-outline" onclick="closeAdvice()" style="margin-top: 15px;">Закрыть</button>
+                        <span class="premium-badge" id="premiumBadge" style="background: linear-gradient(90deg, #d4a373, #fdbb2d); padding: 5px 15px; border-radius: 30px; display: inline-block; font-weight: bold; font-size: 14px;">Бесплатный аккаунт</span>
                     </div>
                 </div>
             </div>
-
-            <!-- ВКЛАДКА: ИСТОРИЯ РАЗГОВОРОВ -->
-            <div id="tab-history" class="tab-content">
-                <div class="glass-card">
-                    <h2>💬 Ветвь разговоров</h2>
-                    <p style="opacity: 0.7; margin-bottom: 15px;">Последние диалоги с персонажами</p>
-                    <div id="conversationList">
-                        <p style="opacity: 0.5; text-align: center;">Пока нет разговоров</p>
+            
+            <div class="glass-card">
+                <h2>📊 Статистика ребёнка</h2>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="statFears">0</div>
+                        <div>страхов выявлено</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="statTales">0</div>
+                        <div>сказок рассказано</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="statHours">0</div>
+                        <div>часов общения</div>
                     </div>
                 </div>
             </div>
-
-            <!-- ВКЛАДКА: НАСТРОЙКИ -->
-            <div id="tab-settings" class="tab-content">
-                <!-- Дети -->
-                <div class="glass-card">
-                    <h2>👶 Настройка детей</h2>
-                    <p>Введите имена детей через запятую (например: Саша, Миша, Катя)</p>
-                    <input type="text" id="childrenNames" class="input-field" placeholder="Имена детей через запятую">
-                    <button class="btn" id="saveChildrenBtn">💾 Сохранить</button>
+            
+            <div class="glass-card">
+                <h2>⚙️ Настройки</h2>
+                <div class="setting-item">
+                    <label>👶 Имя ребёнка</label>
+                    <input type="text" id="settingsChildName" class="input-field" placeholder="Имя ребёнка">
                 </div>
-
-                <!-- Настройки -->
-                <div class="glass-card">
-                    <h2>⚙️ Настройки</h2>
-                    <div>
-                        <label>📅 Возраст ребёнка</label>
-                        <input type="number" id="settingsAge" class="input-field" placeholder="Возраст" min="2" max="12" style="max-width: 150px;">
-                    </div>
-                    <div>
-                        <label>🌙 Напоминание перед сном</label>
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <label><input type="checkbox" id="bedtimeReminder"> Включить</label>
-                            <input type="time" id="bedtimeTime" value="21:00" style="padding: 8px 15px; border-radius: 30px; border: none; background: rgba(255,255,255,0.2);">
-                        </div>
-                    </div>
-                    <button class="btn" id="saveSettingsBtn" style="margin-top: 15px;">💾 Сохранить настройки</button>
+                <div class="setting-item">
+                    <label>📅 Возраст ребёнка</label>
+                    <input type="number" id="settingsChildAge" class="input-field" placeholder="Возраст">
                 </div>
-
-                <!-- Премиум -->
-                <div class="glass-card">
-                    <h2>💎 Премиум возможности (скоро)</h2>
-                    <div class="stat-grid">
-                        <div class="stat-card">
-                            <h3>🌟 Стандарт</h3>
-                            <p style="font-size: 24px; margin: 10px 0;">299 ₽/мес</p>
-                            <p>Безлимит сказок<br>Мама+Папа<br>Все игры</p>
-                            <button class="btn btn-small" style="margin-top: 10px; opacity: 0.5;" disabled>Скоро</button>
-                        </div>
-                        <div class="stat-card">
-                            <h3>💫 Премиум</h3>
-                            <p style="font-size: 24px; margin: 10px 0;">499 ₽/мес</p>
-                            <p>Всё из Стандарта<br>Клонирование голоса<br>Pixar-фото</p>
-                            <button class="btn btn-small" style="margin-top: 10px; opacity: 0.5;" disabled>Скоро</button>
-                        </div>
-                    </div>
+                <div class="setting-item">
+                    <label>🔐 Пароль для входа в Штаб (4-6 цифр)</label>
+                    <input type="password" id="settingsParentPin" class="input-field" placeholder="Пароль" maxlength="6">
+                    <button class="btn" id="savePinBtn">Сохранить пароль</button>
                 </div>
+                <div class="setting-item">
+                    <label>🌙 Напоминание перед сном</label>
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="bedtimeReminder"> Включить
+                        </label>
+                        <input type="time" id="bedtimeTime" value="21:00" style="padding: 8px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,248,235,0.15); color: #3a2a1a;">
+                    </div>
+                    <p style="font-size: 12px; opacity: 0.7; margin-top: 8px;">Люцик напомнит за 15 минут до указанного времени</p>
+                </div>
+                <button class="btn" id="saveSettingsBtn">Сохранить настройки</button>
+                <button class="btn btn-red" id="logoutBtn">Выйти из аккаунта</button>
             </div>
-
+            
+            <div class="glass-card">
+                <h2>🎁 Промокод</h2>
+                <p>Введите промокод для активации премиум-доступа</p>
+                <input type="text" id="promoInput" class="input-field" placeholder="TEST2025" style="max-width: 200px;">
+                <button class="btn" id="applyPromoBtn">Активировать</button>
+                <p style="margin-top: 10px; font-size: 12px;">Тестовый промокод: <strong>TEST2025</strong></p>
+            </div>
         </div>
-
-        <footer style="text-align: center; margin-top: 30px; padding: 20px; opacity: 0.7;">
-            <p>© 2026 Герой Сказок — виртуальный друг для детей 3-7 лет</p>
+        
+        <footer>
+            <p>© 2026 Герой Сказок — виртуальный друг для детей</p>
+            <p><a href="#">Политика конфиденциальности</a> | <a href="#">Пользовательское соглашение</a></p>
         </footer>
     </div>
 
     <script>
-    const fearEmojis = {
-        'темноты': '🌙', 'врачей': '💉', 'одиночества': '😔',
-        'обиды': '😢', 'нового': '🆕', 'животных': '🐕'
-    };
-    const fearNames = {
-        'темноты': 'Темнота', 'врачей': 'Врачи и уколы', 'одиночества': 'Одиночество',
-        'обиды': 'Обиды', 'нового': 'Новое', 'животных': 'Животные'
-    };
-
-    let currentToken = null;
-    let currentEmail = null;
-    let fearStats = {};
-    let lastDetectedFear = null;
-
-    function checkAuth() {
-        currentToken = localStorage.getItem('userToken');
-        currentEmail = localStorage.getItem('userEmail');
-        const guestMode = localStorage.getItem('guestMode') === 'true';
-
-        if ((currentToken && currentEmail) || guestMode) {
-            document.getElementById('notLoggedIn').style.display = 'none';
-            document.getElementById('loggedIn').style.display = 'block';
-            document.getElementById('userEmailDisplay').innerText = currentEmail || 'Гость';
-            loadAllData();
-        } else {
-            document.getElementById('notLoggedIn').style.display = 'block';
-            document.getElementById('loggedIn').style.display = 'none';
-        }
-    }
-
-    function switchTab(tabName) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
-        document.getElementById(`tab-${tabName}`).classList.add('active');
-        
-        if (tabName === 'history') loadConversationHistory();
-    }
-
-    function loadAllData() {
-        loadFearStats();
-        loadChildren();
-        loadSettings();
-        loadGeneralStats();
-        checkFearNotifications();
-    }
-
-    function loadFearStats() {
-        const saved = localStorage.getItem('fearStats');
-        if (saved) {
-            try { fearStats = JSON.parse(saved); } catch { fearStats = {}; }
-        } else {
-            fearStats = {};
-        }
-
-        const fearsList = document.getElementById('fearsList');
-        const fearButtons = document.getElementById('fearButtons');
-        const hasData = Object.values(fearStats).some(v => v > 0);
-
-        if (!hasData) {
-            fearsList.innerHTML = '<p style="opacity: 0.7;">✨ Пока нет данных. Поговорите с ребёнком через приложение!</p>';
-            fearButtons.innerHTML = '<p style="opacity: 0.7;">Нет страхов для анализа</p>';
-            return;
-        }
-
-        const fearsArray = Object.entries(fearStats)
-            .filter(([_, count]) => count > 0)
-            .sort((a, b) => b[1] - a[1]);
-
-        fearsList.innerHTML = fearsArray.map(([fear, count]) => `
-            <div class="fear-item">
-                <div>
-                    <span style="font-size:24px;margin-right:10px;">${fearEmojis[fear]||'😟'}</span>
-                    <span class="fear-name">${fearNames[fear]||fear}</span>
-                </div>
-                <div><span class="fear-count">${count} ${declension(count, 'сказка', 'сказки', 'сказок')}</span></div>
-            </div>
-        `).join('');
-
-        fearButtons.innerHTML = fearsArray.map(([fear]) => `
-            <button class="btn btn-small btn-outline" onclick="getPsychologistAdvice('${fear}')">
-                ${fearEmojis[fear]||''} ${fearNames[fear]||fear}
-            </button>
-        `).join('');
-
-        // Определяем последний обнаруженный страх
-        const sorted = fearsArray;
-        if (sorted.length > 0) lastDetectedFear = sorted[0][0];
-    }
-
-    function declension(n, one, two, five) {
-        n = Math.abs(n) % 100;
-        if (n > 10 && n < 20) return five;
-        n = n % 10;
-        if (n === 1) return one;
-        if (n > 1 && n < 5) return two;
-        return five;
-    }
-
-    function checkFearNotifications() {
-        const savedNotification = localStorage.getItem('fearNotificationDismissed');
-        const today = new Date().toDateString();
-        
-        if (lastDetectedFear && savedNotification !== today) {
-            document.getElementById('fearNotification').style.display = 'flex';
-        }
-    }
-
-    function showFearAdvice() {
-        if (lastDetectedFear) {
-            getPsychologistAdvice(lastDetectedFear);
-            document.getElementById('fearNotification').style.display = 'none';
-            localStorage.setItem('fearNotificationDismissed', new Date().toDateString());
-        }
-    }
-
-    function loadConversationHistory() {
-        const history = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-        const container = document.getElementById('conversationList');
-        
-        if (history.length === 0) {
-            container.innerHTML = '<p style="opacity: 0.5; text-align: center;">Пока нет разговоров. Начните общение в приложении!</p>';
-            return;
-        }
-
-        container.innerHTML = history.slice(0, 30).map(item => {
-            const isUser = item.includes('👶');
-            const speaker = isUser ? '👶 Ребёнок' : '🦁 Персонаж';
-            const text = item.replace(/^[^:]+:/, '').trim();
-            const time = item.split(':')[0];
-            
-            return `
-                <div class="conversation-item">
-                    <div class="conversation-time">${time}</div>
-                    <div class="conversation-speaker">${speaker}</div>
-                    <div class="conversation-text">${escapeHtml(text)}</div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    function escapeHtml(t) {
-        const d = document.createElement('div');
-        d.textContent = t;
-        return d.innerHTML;
-    }
-
-    function showPsychologistChat() {
-        const question = prompt('Какой у вас вопрос к психологу? Опишите ситуацию:');
-        if (question && question.trim()) {
-            getPsychologistAdvice(question.trim());
-        }
-    }
-
-    function loadChildren() {
-        const children = localStorage.getItem('childrenNames') || '';
-        document.getElementById('childrenNames').value = children;
-        const activeChild = localStorage.getItem('currentChild') || children.split(',')[0]?.trim() || 'малыш';
-        document.getElementById('childNameDisplay').innerText = activeChild;
-        const childAge = localStorage.getItem('childAge') || '5';
-        document.getElementById('childAgeDisplay').innerText = childAge;
-        document.getElementById('settingsAge').value = childAge;
-    }
-
-    function loadSettings() {
-        document.getElementById('bedtimeReminder').checked = localStorage.getItem('bedtimeReminder') === 'true';
-        document.getElementById('bedtimeTime').value = localStorage.getItem('bedtimeTime') || '21:00';
-    }
-
-    function loadGeneralStats() {
-        const history = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-        document.getElementById('totalStories').innerText = history.length;
-        const totalFears = Object.values(fearStats).reduce((sum, c) => sum + (typeof c === 'number' ? c : 0), 0);
-        document.getElementById('totalFears').innerText = totalFears;
-        document.getElementById('storiesToday').innerText = localStorage.getItem('todayStoriesCount') || '0';
-
-        const isPremium = localStorage.getItem('isPremium') === 'true';
-        const badge = document.getElementById('premiumBadge');
-        if (isPremium) {
-            badge.innerText = '🌟 Премиум';
-            badge.className = 'badge badge-premium';
-        }
-    }
-
-    async function getPsychologistAdvice(fear) {
-        const adviceBox = document.getElementById('adviceBox');
-        const adviceContent = document.getElementById('adviceContent');
-        adviceContent.innerHTML = '<div class="loader"></div> Психолог думает...';
-        adviceBox.classList.add('show');
-
-        const childName = localStorage.getItem('currentChild') || 'малыш';
-        const childAge = localStorage.getItem('childAge') || 5;
-        const token = localStorage.getItem('userToken') || 'guest_token';
-
-        try {
-            const res = await fetch('/api/index', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ fear, childAge, childName })
-            });
-            const data = await res.json();
-            if (data.advice) {
-                adviceContent.innerHTML = `<div style="background:rgba(255,255,255,0.1);padding:15px;border-radius:15px;white-space:pre-wrap;">${data.advice.replace(/\n/g,'<br>')}</div>`;
+        function checkAuth() {
+            const token = localStorage.getItem('userToken');
+            const email = localStorage.getItem('userEmail');
+            if (token && email) {
+                document.getElementById('notLoggedIn').style.display = 'none';
+                document.getElementById('loggedIn').style.display = 'block';
+                document.getElementById('userEmailDisplay').innerText = email;
+                loadStats();
+                loadUserData();
+                loadSettings();
             } else {
-                adviceContent.innerHTML = '<p>😔 Не удалось получить рекомендации. Попробуйте позже.</p>';
+                document.getElementById('notLoggedIn').style.display = 'block';
+                document.getElementById('loggedIn').style.display = 'none';
             }
-        } catch (e) {
-            adviceContent.innerHTML = '<p>😔 Ошибка соединения. Проверьте интернет.</p>';
         }
-    }
-
-    function closeAdvice() {
-        document.getElementById('adviceBox').classList.remove('show');
-    }
-
-    function logout() {
-        localStorage.removeItem('userToken');
-        localStorage.removeItem('userEmail');
-        localStorage.removeItem('guestMode');
-        location.href = '/';
-    }
-
-    document.getElementById('saveChildrenBtn').onclick = () => {
-        const children = document.getElementById('childrenNames').value.trim();
-        localStorage.setItem('childrenNames', children);
-        const names = children.split(',').map(n => n.trim()).filter(n => n);
-        if (names.length > 0 && !localStorage.getItem('currentChild')) {
-            localStorage.setItem('currentChild', names[0]);
+        
+        function loadStats() {
+            const fearStats = JSON.parse(localStorage.getItem('fearStats') || '{}');
+            const totalFears = Object.values(fearStats).reduce((a, b) => a + b, 0);
+            document.getElementById('statFears').innerText = totalFears;
+            
+            const history = JSON.parse(localStorage.getItem('storyHistory') || '[]');
+            const talesCount = history.length;
+            document.getElementById('statTales').innerText = talesCount;
+            
+            const childName = localStorage.getItem('childName') || '—';
+            const childAge = localStorage.getItem('childAge') || '—';
+            document.getElementById('childNameDisplay').innerText = childName;
+            document.getElementById('childAgeDisplay').innerText = childAge;
         }
-        alert('✅ Сохранено!');
-        loadChildren();
-    };
-
-    document.getElementById('saveSettingsBtn').onclick = () => {
-        const age = document.getElementById('settingsAge').value;
-        if (age) localStorage.setItem('childAge', age);
-        localStorage.setItem('bedtimeReminder', document.getElementById('bedtimeReminder').checked);
-        localStorage.setItem('bedtimeTime', document.getElementById('bedtimeTime').value);
-        alert('✅ Настройки сохранены!');
-        loadChildren();
-    };
-
-    document.getElementById('logoutBtn').addEventListener('click', logout);
-
-    setInterval(() => {
-        if (localStorage.getItem('userToken') || localStorage.getItem('guestMode') === 'true') {
-            loadFearStats();
-            loadGeneralStats();
+        
+        function loadUserData() {
+            document.getElementById('settingsChildName').value = localStorage.getItem('childName') || '';
+            document.getElementById('settingsChildAge').value = localStorage.getItem('childAge') || '';
+            document.getElementById('settingsParentPin').value = '';
         }
-    }, 10000);
-
-    checkAuth();
+        
+        function loadSettings() {
+            document.getElementById('bedtimeReminder').checked = localStorage.getItem('bedtimeReminder') === 'true';
+            document.getElementById('bedtimeTime').value = localStorage.getItem('bedtimeTime') || '21:00';
+        }
+        
+        function saveSettings() {
+            const childName = document.getElementById('settingsChildName').value;
+            const childAge = document.getElementById('settingsChildAge').value;
+            if (childName) localStorage.setItem('childName', childName);
+            if (childAge) localStorage.setItem('childAge', childAge);
+            
+            const parentPin = document.getElementById('settingsParentPin').value;
+            if (parentPin && parentPin.length >= 4 && /^\d+$/.test(parentPin)) {
+                localStorage.setItem('parentPin', parentPin);
+                alert('Пароль для Штаба сохранён!');
+                document.getElementById('settingsParentPin').value = '';
+            } else if (parentPin) {
+                alert('Пароль должен содержать 4-6 цифр');
+            }
+            
+            const reminderEnabled = document.getElementById('bedtimeReminder').checked;
+            const reminderTime = document.getElementById('bedtimeTime').value;
+            localStorage.setItem('bedtimeReminder', reminderEnabled);
+            localStorage.setItem('bedtimeTime', reminderTime);
+            
+            alert('Настройки сохранены!');
+            loadStats();
+        }
+        
+        async function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const statusDiv = document.getElementById('loginStatus');
+            if (!email || !password) {
+                statusDiv.innerHTML = '❌ Введите email и пароль';
+                return;
+            }
+            statusDiv.innerHTML = '⏳ Вход...';
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('userToken', data.token);
+                    localStorage.setItem('userEmail', data.email);
+                    statusDiv.innerHTML = '✅ Вход выполнен!';
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка входа');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '❌ Ошибка соединения';
+            }
+        }
+        
+        async function register() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const statusDiv = document.getElementById('loginStatus');
+            if (!email || !password) {
+                statusDiv.innerHTML = '❌ Введите email и пароль';
+                return;
+            }
+            if (password.length < 4) {
+                statusDiv.innerHTML = '❌ Пароль должен быть не менее 4 символов';
+                return;
+            }
+            statusDiv.innerHTML = '⏳ Регистрация...';
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('userToken', data.token);
+                    localStorage.setItem('userEmail', data.email);
+                    statusDiv.innerHTML = '✅ Регистрация успешна! Перенаправление...';
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка регистрации');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '❌ Ошибка соединения';
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('userToken');
+            localStorage.removeItem('userEmail');
+            location.reload();
+        }
+        
+        document.getElementById('loginBtn')?.addEventListener('click', login);
+        document.getElementById('registerBtn')?.addEventListener('click', register);
+        document.getElementById('logoutBtn')?.addEventListener('click', logout);
+        document.getElementById('saveSettingsBtn')?.addEventListener('click', saveSettings);
+        document.getElementById('savePinBtn')?.addEventListener('click', saveSettings);
+        document.getElementById('applyPromoBtn')?.addEventListener('click', () => {
+            const code = document.getElementById('promoInput').value.trim().toUpperCase();
+            if (code === 'TEST2025') {
+                localStorage.setItem('isPremium', 'true');
+                alert('🎉 Премиум активирован!');
+                loadStats();
+            } else {
+                alert('Неверный промокод');
+            }
+        });
+        
+        checkAuth();
+        setInterval(() => { if (localStorage.getItem('userToken')) loadStats(); }, 5000);
     </script>
 </body>
 </html>
