@@ -1,4 +1,4 @@
-// api/tts.js — Яндекс SpeechKit TTS (стабильная версия от 15 апреля)
+// api/tts.js — Яндекс SpeechKit TTS (версия от 19 апреля)
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET;
