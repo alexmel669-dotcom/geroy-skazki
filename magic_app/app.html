@@ -423,13 +423,13 @@
 
         function getCharacterPrompt(charId, childName, childAge, weeklyMemory) {
             const prompts = {
-                lucik: `Ты Люцик — дружелюбный волшебный котик. Правила: 1) Никогда не спрашивай прямо "Чего боишься?" 2) Мягко: "Мурр... А что тебя иногда пугает?" 3) При страхе: "Я рядом", "Ты не один", НЕ ГОВОРИ "не бойся" 4) Если не хочет говорить — предложи игру 5) Отвечай кратко, иногда мурлыкай.`,
-                mom: `Ты Мама. Говори заботливо, нежно: "солнышко", "я рядом".`,
-                dad: `Ты Папа. Говори уверенно, подбадривай: "ты смелый", "я горжусь тобой".`,
-                kid1: `Ты друг ребёнка. Говори просто, предлагай игры.`,
-                kid2: `Ты друг ребёнка. Будь мягким, люби спокойные игры.`
+                lucik: `Ты Люцик — добрый друг ребёнка. Говори коротко (1-2 предложения). Не задавай вопросы в каждом ответе. Если ребёнок сказал о страхе — поддержи: "Я понимаю", "Ты не один". Никогда не говори "не бойся".`,
+                mom: `Ты Мама. Говори тепло, коротко. Используй: "солнышко", "я рядом".`,
+                dad: `Ты Папа. Говори уверенно, коротко. Используй: "ты смелый", "я горжусь тобой".`,
+                kid1: `Ты друг. Говори весело, коротко. Предлагай игры.`,
+                kid2: `Ты друг. Говори мягко, коротко. Люби спокойные игры.`
             };
-            return (prompts[charId] || prompts.lucik) + `\nРебёнка зовут ${childName}, ему ${childAge} лет.`;
+            return (prompts[charId] || prompts.lucik) + ' Ребёнка зовут ' + childName + ', ' + childAge + ' лет.';
         }
 
         const characters = {
@@ -439,6 +439,7 @@
             kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: true },
             kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: true }
         };
+
         let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
 
         function getVoiceForCharacter(charId) {
@@ -503,23 +504,29 @@
             return memory;
         }
 
-        // ========== DEEPSEEK ==========
+        // ========== DEEPSEEK С ИСТОРИЕЙ ==========
         async function askDeepSeek(text, isLong = false) {
             const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись'];
             if (badWords.some(w => text.toLowerCase().includes(w))) return "Мяу! Давай говорить добрые слова!";
             
             const todayStories = parseInt(localStorage.getItem('todayStoriesCount') || '0');
             if (!isDeveloperMode() && todayStories >= getDailyStoryLimit()) {
-                return "Мурр... Я сегодня уже много рассказывал. Давай завтра продолжим? А сейчас поиграем!";
+                return "Я сегодня уже много рассказывал. Давай завтра продолжим? А сейчас поиграем!";
             }
             
             try {
                 const weeklyMemory = getWeeklyMemory();
-                const historyForAPI = conversationHistory.slice(-8).map(item => {
-                    const isUser = item.includes(`👶 ${currentChild || childName}:`);
-                    const cleanContent = item.replace(/^[^:]+:/, '').trim();
+                const storedHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
+                const historyForAPI = storedHistory.slice(-10).map(item => {
+                    const isUser = item.includes('👶') || item.includes(currentChild || childName);
+                    let cleanContent = item.replace(/^\d{1,2}:\d{2}:\d{2}:\s*/, '');
+                    cleanContent = cleanContent.replace(/^👶\s*[^:]+:\s*/, '');
+                    cleanContent = cleanContent.replace(/^🦁\s*[^:]+:\s*/, '');
+                    cleanContent = cleanContent.trim();
+                    if (!cleanContent) return null;
                     return { role: isUser ? "user" : "assistant", content: cleanContent };
-                });
+                }).filter(msg => msg !== null);
+                
                 const systemPrompt = getCharacterPrompt(currentChar, currentChild || childName, childAge, weeklyMemory);
                 const token = localStorage.getItem('userToken');
                 
@@ -533,7 +540,8 @@
                         isLong, 
                         history: historyForAPI,
                         weeklyMemory,
-                        systemPrompt
+                        systemPrompt,
+                        character: currentChar
                     })
                 });
                 const data = await res.json();
@@ -541,9 +549,9 @@
                 
                 localStorage.setItem('todayStoriesCount', (todayStories + 1).toString());
                 let responseText = data.story;
-                if (!responseText || /^\d+$/.test(responseText.trim())) responseText = "Мурр... Я тебя слушаю! Расскажи ещё что-нибудь?";
+                if (!responseText || /^\d+$/.test(responseText.trim())) responseText = "Расскажи, что у тебя нового?";
                 return responseText;
-            } catch(e) { console.error('DeepSeek error:', e); return "Мурр... Что-то я задумался. Давай ещё раз?"; }
+            } catch(e) { console.error('DeepSeek error:', e); return "Извини, я задумался. Повтори, пожалуйста?"; }
         }
 
         // ========== РАЗБЛОКИРОВКА АУДИО ==========
@@ -741,7 +749,9 @@
             modal.remove();
             const storyModal = document.createElement('div');
             storyModal.className = 'modal';
-            storyModal.innerHTML = `<h3>🌙 Сказка на ночь</h3><p>${longStory.replace(/\n/g, '<br>')}</p><button class="close-btn" onclick="this.parentElement.remove()">Закрыть</button>`;
+            storyModal.style.maxHeight = '70%';
+            storyModal.style.overflow = 'auto';
+            storyModal.innerHTML = `<h3>🌙 Сказка на ночь</h3><p style="margin:15px 0;">${longStory.replace(/\n/g, '<br>')}</p><button class="close-btn" onclick="this.parentElement.remove()">Закрыть</button>`;
             document.body.appendChild(storyModal);
             speak(longStory);
         };
@@ -831,9 +841,9 @@
                 if (currentChar === 'lucik') {
                     greetingText = `Мяу! Привет, ${currentChild || childName}! Я Люцик, твой друг. Нажми на микрофон, и мы подружимся!`;
                 } else if (currentChar === 'mom') {
-                    greetingText = `Привет, ${currentChild || childName}! Это мама. Я всегда рядом, если я нужна. Расскажи, как твои дела?`;
+                    greetingText = `Привет, ${currentChild || childName}! Это мама. Я всегда рядом. Расскажи, как твои дела?`;
                 } else if (currentChar === 'dad') {
-                    greetingText = `Привет, ${currentChild || childName}! Это папа. Как настроение? Что сегодня делал?`;
+                    greetingText = `Привет, ${currentChild || childName}! Это папа. Как настроение?`;
                 } else {
                     greetingText = `Привет, ${currentChild || childName}! Давай дружить и играть вместе!`;
                 }
