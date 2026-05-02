@@ -1,4 +1,4 @@
-// api/tts.js — Яндекс SpeechKit TTS (версия от 19 апреля)
+// api/tts.js — Яндекс SpeechKit TTS (версия от 2 мая 2026)
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -32,18 +32,18 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
 
     try {
+        // Пропускаем без авторизации в продакшене (озвучка доступна всем)
         const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            if (process.env.NODE_ENV === 'production') {
-                return res.status(401).json({ error: 'Требуется авторизация' });
-            }
-        } else {
+        if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.split(' ')[1];
             if (JWT_SECRET && JWT_SECRET !== 'your-secret-key-change-me') {
                 try {
-                    jwt.verify(token, JWT_SECRET);
+                    // Гостевой токен тоже пропускаем
+                    if (!token.startsWith('guest_token_')) {
+                        jwt.verify(token, JWT_SECRET);
+                    }
                 } catch {
-                    return res.status(401).json({ error: 'Неверный токен' });
+                    // Токен невалидный, но озвучку всё равно даём
                 }
             }
         }
