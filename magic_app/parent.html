@@ -19,7 +19,6 @@
             overflow-x: hidden;
         }
         
-        /* ФОН ИЗ КАРТИНКИ */
         .forest-bg {
             position: fixed;
             top: 0;
@@ -307,6 +306,11 @@
     </div>
     
     <script>
+        // Шифрование пина
+        const PIN_SALT = 'lucik_magic_2024';
+        function encodePin(pin) { return btoa(pin.split('').reverse().join('') + ':' + PIN_SALT); }
+        function decodePin(enc) { try { return atob(enc).split(':')[0].split('').reverse().join(''); } catch { return ''; } }
+                
         // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
         async function checkAuthAndRedirect() {
             const token = localStorage.getItem('userToken');
@@ -345,6 +349,7 @@
         let childName = localStorage.getItem('childName') || 'малыш';
         let childAge = localStorage.getItem('childAge') || 5;
         let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
+        let savedPin = localStorage.getItem('parentPin');
         let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
         let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
         let pendingFearAlert = localStorage.getItem('pendingFearAlert');
@@ -420,9 +425,13 @@
             modal.innerHTML = `<h3>🧠 Совет психолога</h3><div id="adviceResult" style="margin:15px 0; line-height:1.5;">⏳ Люцик советуется...</div><button class="close-btn" style="background:#ff4081; padding:10px 20px; border-radius:30px; border:none; color:white; margin-top:15px;">Закрыть</button>`;
             document.body.appendChild(modal);
             try {
+                const token = localStorage.getItem('userToken');
                 const response = await fetch('/api/parent-advice', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({ fear, childAge, childName })
                 });
                 const data = await response.json();
@@ -493,6 +502,7 @@
         
         updateUI();
         
+        // Проверка пина при входе в штаб
         const token = localStorage.getItem('userToken');
         if (!token && !localStorage.getItem('guestMode')) window.location.href = '/';
     </script>
