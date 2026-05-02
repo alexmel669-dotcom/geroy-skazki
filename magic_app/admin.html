@@ -15,17 +15,92 @@
             font-family: 'Segoe UI', system-ui, sans-serif;
             background: #1a1a2e;
             color: #eee;
-            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .login-form {
+            background: #2a2a3e;
+            padding: 40px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            border: 2px solid #ff9f4a;
+        }
+        
+        .login-form h2 {
+            text-align: center;
+            color: #ff9f4a;
+            margin-bottom: 20px;
+        }
+        
+        .login-form input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            background: #1a1a2e;
+            border: 1px solid #3a3a4e;
+            border-radius: 10px;
+            color: #eee;
+            font-size: 16px;
+        }
+        
+        .login-form input:focus {
+            outline: none;
+            border-color: #ff9f4a;
+        }
+        
+        .login-form button {
+            width: 100%;
+            padding: 12px;
+            background: #ff9f4a;
+            border: none;
+            border-radius: 10px;
+            color: #1a1a2e;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .login-form button:hover {
+            background: #ffb577;
+        }
+        
+        .login-error {
+            color: #ff6b6b;
+            text-align: center;
+            margin: 10px 0;
+            font-size: 14px;
         }
         
         .container {
             max-width: 1400px;
             margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
         }
         
         h1 {
-            text-align: center;
-            margin-bottom: 30px;
             color: #ff9f4a;
         }
         
@@ -80,16 +155,48 @@
             color: #ff9f4a;
         }
         
-        .chart-bar {
-            background: #ff9f4a;
-            height: 30px;
+        .chart-container {
+            background: #2a2a3e;
             border-radius: 15px;
-            margin: 5px 0;
+            padding: 15px;
+            position: relative;
+        }
+        
+        .chart-bar-wrapper {
+            margin: 10px 0;
             display: flex;
             align-items: center;
-            padding: 0 10px;
+            gap: 10px;
+        }
+        
+        .chart-date {
+            font-size: 11px;
+            min-width: 80px;
+            opacity: 0.7;
+        }
+        
+        .chart-bar-bg {
+            flex: 1;
+            background: #1a1a2e;
+            border-radius: 10px;
+            height: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .chart-bar {
+            background: linear-gradient(90deg, #ff9f4a, #ffb577);
+            height: 100%;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
             color: #1a1a2e;
             font-weight: bold;
+            font-size: 12px;
+            transition: width 0.5s ease;
+            min-width: fit-content;
         }
         
         .loading {
@@ -98,148 +205,439 @@
             font-size: 20px;
         }
         
-        .refresh-btn {
-            background: #ff9f4a;
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #3a3a4e;
+            border-top: 4px solid #ff9f4a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .refresh-btn, .logout-btn {
             padding: 10px 20px;
             border: none;
             border-radius: 30px;
             cursor: pointer;
-            margin-bottom: 20px;
             font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .refresh-btn {
+            background: #ff9f4a;
+            color: #1a1a2e;
+        }
+        
+        .refresh-btn:hover {
+            background: #ffb577;
+        }
+        
+        .logout-btn {
+            background: #3a3a4e;
+            color: #ff6b6b;
+            border: 1px solid #ff6b6b;
+        }
+        
+        .logout-btn:hover {
+            background: #ff6b6b;
+            color: #1a1a2e;
         }
         
         .error {
             color: #ff6b6b;
             text-align: center;
             padding: 20px;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            opacity: 0.5;
+            font-style: italic;
         }
         
         @media (max-width: 768px) {
             .stats-grid { grid-template-columns: 1fr; }
             table { font-size: 12px; }
             th, td { padding: 8px; }
+            .header { flex-direction: column; text-align: center; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📊 Админ-панель — Герой Сказок</h1>
-        <button class="refresh-btn" onclick="loadStats()">🔄 Обновить</button>
+    <!-- Форма входа (скрыта после авторизации) -->
+    <div id="loginOverlay" class="login-overlay">
+        <form class="login-form" onsubmit="handleLogin(event)">
+            <h2>🔐 Вход в админ-панель</h2>
+            <input type="password" id="passwordInput" placeholder="Пароль" required autofocus>
+            <div id="loginError" class="login-error" style="display: none;"></div>
+            <button type="submit">Войти</button>
+        </form>
+    </div>
+    
+    <!-- Основной контент (скрыт до авторизации) -->
+    <div id="mainContent" class="container" style="display: none;">
+        <div class="header">
+            <h1>📊 Админ-панель — Герой Сказок</h1>
+            <div class="btn-group">
+                <button class="refresh-btn" onclick="loadStats()">🔄 Обновить</button>
+                <button class="logout-btn" onclick="logout()">🚪 Выйти</button>
+            </div>
+        </div>
         
         <div id="statsContainer">
-            <div class="loading">Загрузка статистики...</div>
+            <div class="loading">
+                <div class="spinner"></div>
+                <div>Загрузка статистики...</div>
+            </div>
         </div>
     </div>
     
     <script>
+        // Константы
+        const API_URL = '/api/admin-stats';
+        const TOKEN_KEY = 'admin_auth_token';
+        const TOKEN_EXPIRY_KEY = 'admin_token_expiry';
+        const TOKEN_LIFETIME_HOURS = 8;
+        
+        // ==================== Аутентификация ====================
+        
+        function handleLogin(event) {
+            event.preventDefault();
+            const password = document.getElementById('passwordInput').value;
+            const errorDiv = document.getElementById('loginError');
+            
+            if (!password) {
+                showLoginError('Введите пароль');
+                return;
+            }
+            
+            // Отправляем пароль для получения токена
+            fetch('/api/admin-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    // Сохраняем токен и время истечения
+                    localStorage.setItem(TOKEN_KEY, data.token);
+                    const expiry = new Date();
+                    expiry.setHours(expiry.getHours() + TOKEN_LIFETIME_HOURS);
+                    localStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toISOString());
+                    
+                    // Показываем основной контент
+                    document.getElementById('loginOverlay').style.display = 'none';
+                    document.getElementById('mainContent').style.display = 'block';
+                    loadStats();
+                } else {
+                    showLoginError(data.error || 'Неверный пароль');
+                }
+            })
+            .catch(error => {
+                console.error('Login error:', error);
+                showLoginError('Ошибка соединения с сервером');
+            });
+        }
+        
+        function showLoginError(message) {
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function logout() {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(TOKEN_EXPIRY_KEY);
+            
+            document.getElementById('loginOverlay').style.display = 'flex';
+            document.getElementById('mainContent').style.display = 'none';
+            document.getElementById('passwordInput').value = '';
+        }
+        
+        function getAuthToken() {
+            const token = localStorage.getItem(TOKEN_KEY);
+            const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+            
+            if (!token || !expiry) {
+                return null;
+            }
+            
+            // Проверяем, не истёк ли токен
+            if (new Date() > new Date(expiry)) {
+                logout();
+                return null;
+            }
+            
+            return token;
+        }
+        
+        function isAuthenticated() {
+            return getAuthToken() !== null;
+        }
+        
+        // ==================== Загрузка данных ====================
+        
         async function loadStats() {
+            if (!isAuthenticated()) {
+                logout();
+                return;
+            }
+            
             const container = document.getElementById('statsContainer');
-            container.innerHTML = '<div class="loading">Загрузка статистики...</div>';
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Загрузка статистики...</div>
+                </div>
+            `;
             
             try {
-                const response = await fetch('/api/admin-stats', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: 'temp' }) // временно
+                const token = getAuthToken();
+                const response = await fetch(API_URL, {
+                    method: 'GET', // Изменено на GET
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
                 });
+                
+                if (response.status === 401) {
+                    // Токен недействителен
+                    logout();
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
                 const data = await response.json();
                 
-                if (response.ok) {
-                    renderStats(data);
-                } else {
-                    container.innerHTML = `<div class="error">❌ Ошибка: ${data.error || 'Неизвестная ошибка'}</div>`;
+                // Проверяем структуру данных
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Некорректный формат данных');
                 }
-            } catch(e) {
-                container.innerHTML = '<div class="error">❌ Ошибка соединения с сервером</div>';
+                
+                renderStats(data);
+                
+            } catch(error) {
+                console.error('Admin stats load failed:', {
+                    message: error.message,
+                    stack: error.stack,
+                    timestamp: new Date().toISOString()
+                });
+                
+                container.innerHTML = `
+                    <div class="error">
+                        ❌ Ошибка загрузки данных<br>
+                        <small style="opacity: 0.7;">${escapeHtml(error.message)}</small><br>
+                        <button class="refresh-btn" style="margin-top: 10px;" onclick="loadStats()">Попробовать снова</button>
+                    </div>
+                `;
             }
         }
         
+        // ==================== Рендеринг ====================
+        
         function renderStats(data) {
-            let html = `
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number">${data.total_events || 0}</div>
-                        <div class="stat-label">Всего событий</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${data.active_users?.length || 0}</div>
-                        <div class="stat-label">Активных пользователей (7 дней)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${data.event_stats?.find(e => e.event_type === 'fear_detected')?.count || 0}</div>
-                        <div class="stat-label">Выявлено страхов</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${data.event_stats?.find(e => e.event_type === 'achievement_earned')?.count || 0}</div>
-                        <div class="stat-label">Получено достижений</div>
-                    </div>
-                </div>
-                
-                <h2>📈 Динамика за 30 дней</h2>
-                <div class="stats-grid">
-                    ${data.daily_stats?.slice(0, 14).map(day => `
-                        <div style="background:#2a2a3e; border-radius:15px; padding:10px;">
-                            <div style="font-size:12px;">${day.date}</div>
-                            <div class="chart-bar" style="width: ${Math.min(100, day.total_events / 5)}%;">📊 ${day.total_events} событий</div>
-                            <div style="font-size:11px; opacity:0.7;">👤 ${day.unique_users} пользователей</div>
-                        </div>
-                    `).join('')}
-                </div>
-                
-                <h2>🎮 Статистика по играм</h2>
-                <table>
-                    <tr><th>Игра</th><th>Количество</th><th>Средний счёт</th></tr>
-                    ${data.game_stats?.map(game => `
-                        <tr>
-                            <td>${getGameName(game.event_type)}</td>
-                            <td>${game.count}</td>
-                            <td>${Math.round(game.avg_score || 0)}</td>
-                        </tr>
-                    `).join('') || '<tr><td colspan="3">Нет данных</td></tr>'}
-                </table>
-                
-                <h2>😨 Популярные страхи</h2>
-                <table>
-                    <tr><th>Страх</th><th>Количество</th></tr>
-                    ${data.fear_stats?.map(fear => `
-                        <tr>
-                            <td>${getFearName(fear.fear)}</td>
-                            <td>${fear.count}</td>
-                        </tr>
-                    `).join('') || '<tr><td colspan="2">Нет данных</td></tr>'}
-                </table>
-                
-                <h2>🏆 Популярные достижения</h2>
-                <table>
-                    <tr><th>Достижение</th><th>Количество</th></tr>
-                    ${data.achievement_stats?.map(ach => `
-                        <tr>
-                            <td>${ach.achievement}</td>
-                            <td>${ach.count}</td>
-                        </tr>
-                    `).join('') || '<tr><td colspan="2">Нет данных</td></tr>'}
-                </table>
-                
-                <h2>👥 Активные пользователи</h2>
-                <table>
-                    <tr><th>ID</th><th>Email</th><th>Ребёнок</th><th>Событий</th><th>Последняя активность</th></tr>
-                    ${data.active_users?.map(user => `
-                        <tr>
-                            <td>${user.user_id?.slice(-8) || '—'}</td>
-                            <td>${user.user_email || '—'}</td>
-                            <td>${user.child_name || '—'}</td>
-                            <td>${user.events_count}</td>
-                            <td>${new Date(user.last_active).toLocaleString()}</td>
-                        </tr>
-                    `).join('') || '<tr><td colspan="5">Нет данных</td></tr>'}
-                </table>
-            `;
+            const safeData = validateData(data);
+            
+            let html = '';
+            
+            // Карточки статистики
+            html += renderStatCards(safeData);
+            
+            // График динамики
+            html += renderDailyChart(safeData.dailyStats);
+            
+            // Статистика по играм
+            html += renderTable(
+                '🎮 Статистика по играм',
+                ['Игра', 'Количество', 'Средний счёт'],
+                safeData.gameStats.map(game => [
+                    getGameName(game.event_type),
+                    game.count.toString(),
+                    Math.round(game.avg_score || 0).toString()
+                ])
+            );
+            
+            // Популярные страхи
+            html += renderTable(
+                '😨 Популярные страхи',
+                ['Страх', 'Количество'],
+                safeData.fearStats.map(fear => [
+                    getFearName(fear.fear),
+                    fear.count.toString()
+                ])
+            );
+            
+            // Популярные достижения
+            html += renderTable(
+                '🏆 Популярные достижения',
+                ['Достижение', 'Количество'],
+                safeData.achievementStats.map(ach => [
+                    escapeHtml(ach.achievement || 'Неизвестно'),
+                    ach.count.toString()
+                ])
+            );
+            
+            // Активные пользователи
+            html += renderTable(
+                '👥 Активные пользователи',
+                ['ID', 'Email', 'Ребёнок', 'Событий', 'Последняя активность'],
+                safeData.activeUsers.map(user => [
+                    escapeHtml((user.user_id || '').slice(-8) || '—'),
+                    escapeHtml(user.user_email || '—'),
+                    escapeHtml(user.child_name || '—'),
+                    user.events_count.toString(),
+                    formatDate(user.last_active)
+                ])
+            );
             
             document.getElementById('statsContainer').innerHTML = html;
         }
         
+        function validateData(data) {
+            return {
+                totalEvents: parseInt(data.total_events) || 0,
+                activeUsersCount: Array.isArray(data.active_users) ? data.active_users.length : 0,
+                fearsDetected: getEventCount(data.event_stats, 'fear_detected'),
+                achievementsEarned: getEventCount(data.event_stats, 'achievement_earned'),
+                dailyStats: Array.isArray(data.daily_stats) ? data.daily_stats : [],
+                gameStats: Array.isArray(data.game_stats) ? data.game_stats : [],
+                fearStats: Array.isArray(data.fear_stats) ? data.fear_stats : [],
+                achievementStats: Array.isArray(data.achievement_stats) ? data.achievement_stats : [],
+                activeUsers: Array.isArray(data.active_users) ? data.active_users : []
+            };
+        }
+        
+        function getEventCount(eventStats, eventType) {
+            if (!Array.isArray(eventStats)) return 0;
+            const stat = eventStats.find(e => e.event_type === eventType);
+            return stat ? parseInt(stat.count) || 0 : 0;
+        }
+        
+        function renderStatCards(data) {
+            return `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${data.totalEvents.toLocaleString()}</div>
+                        <div class="stat-label">Всего событий</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.activeUsersCount}</div>
+                        <div class="stat-label">Активных пользователей (7 дней)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.fearsDetected}</div>
+                        <div class="stat-label">Выявлено страхов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.achievementsEarned}</div>
+                        <div class="stat-label">Получено достижений</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderDailyChart(dailyStats) {
+            if (!dailyStats.length) {
+                return '<h2>📈 Динамика за 30 дней</h2><div class="no-data">Нет данных</div>';
+            }
+            
+            const maxEvents = Math.max(...dailyStats.map(d => d.total_events || 0));
+            const last14Days = dailyStats.slice(-14); // Показываем последние 14 дней
+            
+            let barsHtml = last14Days.map(day => {
+                const events = parseInt(day.total_events) || 0;
+                const percentage = maxEvents > 0 ? (events / maxEvents * 100) : 0;
+                
+                return `
+                    <div class="chart-bar-wrapper">
+                        <div class="chart-date">${day.date || '—'}</div>
+                        <div class="chart-bar-bg">
+                            <div class="chart-bar" style="width: ${Math.max(percentage, 5)}%;" title="${events} событий, ${day.unique_users || 0} пользователей">
+                                ${events > 0 ? events : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            return `
+                <h2>📈 Динамика за 30 дней (последние 14)</h2>
+                <div class="chart-container">
+                    ${barsHtml}
+                </div>
+            `;
+        }
+        
+        function renderTable(title, headers, rows) {
+            const headersHtml = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+            
+            let rowsHtml;
+            if (!rows.length) {
+                rowsHtml = `<tr><td colspan="${headers.length}" class="no-data">Нет данных</td></tr>`;
+            } else {
+                rowsHtml = rows.map(row => {
+                    const cells = row.map(cell => `<td>${cell}</td>`).join('');
+                    return `<tr>${cells}</tr>`;
+                }).join('');
+            }
+            
+            return `
+                <h2>${escapeHtml(title)}</h2>
+                <table>
+                    <thead><tr>${headersHtml}</tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            `;
+        }
+        
+        // ==================== Утилиты ====================
+        
+        function escapeHtml(text) {
+            if (typeof text !== 'string') {
+                text = String(text || '');
+            }
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return '—';
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return '—';
+                return date.toLocaleString('ru-RU');
+            } catch(e) {
+                return '—';
+            }
+        }
+        
         function getGameName(eventType) {
+            if (typeof eventType !== 'string') return 'Неизвестная игра';
+            
             const names = {
                 'game_fish': '🐟 Поймай рыбку',
                 'game_memory': '🧠 Мемори',
@@ -251,6 +649,8 @@
         }
         
         function getFearName(fear) {
+            if (typeof fear !== 'string') return 'Неизвестный страх';
+            
             const names = {
                 'темноты': '😨 Темнота',
                 'врачей': '🏥 Врачи',
@@ -262,8 +662,24 @@
             return names[fear] || fear;
         }
         
-        // Загружаем статистику при открытии страницы
-        loadStats();
+        // ==================== Инициализация ====================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            if (isAuthenticated()) {
+                // Если токен действителен, сразу показываем админку
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                loadStats();
+            }
+            // Иначе показываем форму входа
+        });
+        
+        // Проверка токена каждые 5 минут
+        setInterval(() => {
+            if (!isAuthenticated() && document.getElementById('mainContent').style.display !== 'none') {
+                logout();
+            }
+        }, 300000); // 5 минут
     </script>
 </body>
 </html>
