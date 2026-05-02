@@ -330,6 +330,11 @@
     </div>
 
     <script>
+        // Шифрование пина
+        const PIN_SALT = 'lucik_magic_2024';
+        function encodePin(pin) { return btoa(pin.split('').reverse().join('') + ':' + PIN_SALT); }
+        function decodePin(enc) { try { return atob(enc).split(':')[0].split('').reverse().join(''); } catch { return ''; } }
+        
         function checkAuth() {
             const token = localStorage.getItem('userToken');
             const email = localStorage.getItem('userEmail');
@@ -392,7 +397,7 @@
             
             const parentPin = document.getElementById('settingsParentPin').value;
             if (parentPin && parentPin.length >= 4 && /^\d+$/.test(parentPin)) {
-                localStorage.setItem('parentPin', parentPin);
+                localStorage.setItem('parentPin', encodePin(parentPin));
                 alert('Пароль для Штаба сохранён!');
                 document.getElementById('settingsParentPin').value = '';
             } else if (parentPin) {
