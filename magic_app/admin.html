@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ-панель — Герой Сказок</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
@@ -20,14 +16,11 @@
         
         .login-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
             display: flex;
-            align-items: center;
-            justify-content: center;
+            align-items: center; justify-content: center;
             z-index: 1000;
         }
         
@@ -35,8 +28,7 @@
             background: #2a2a3e;
             padding: 40px;
             border-radius: 20px;
-            width: 90%;
-            max-width: 400px;
+            width: 90%; max-width: 400px;
             border: 2px solid #ff9f4a;
         }
         
@@ -74,10 +66,6 @@
             cursor: pointer;
         }
         
-        .login-form button:hover {
-            background: #ffb577;
-        }
-        
         .login-error {
             color: #ff6b6b;
             text-align: center;
@@ -100,9 +88,7 @@
             gap: 15px;
         }
         
-        h1 {
-            color: #ff9f4a;
-        }
+        h1 { color: #ff9f4a; }
         
         h2 {
             margin: 20px 0 15px;
@@ -113,7 +99,7 @@
         
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -159,11 +145,11 @@
             background: #2a2a3e;
             border-radius: 15px;
             padding: 15px;
-            position: relative;
+            margin-bottom: 20px;
         }
         
         .chart-bar-wrapper {
-            margin: 10px 0;
+            margin: 8px 0;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -180,7 +166,6 @@
             background: #1a1a2e;
             border-radius: 10px;
             height: 24px;
-            position: relative;
             overflow: hidden;
         }
         
@@ -196,7 +181,37 @@
             font-weight: bold;
             font-size: 12px;
             transition: width 0.5s ease;
-            min-width: fit-content;
+        }
+        
+        .pie-chart {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .pie-canvas {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .pie-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .pie-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .pie-legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
         }
         
         .loading {
@@ -223,9 +238,10 @@
         .btn-group {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
         
-        .refresh-btn, .logout-btn {
+        .refresh-btn, .logout-btn, .export-btn {
             padding: 10px 20px;
             border: none;
             border-radius: 30px;
@@ -239,35 +255,67 @@
             color: #1a1a2e;
         }
         
-        .refresh-btn:hover {
-            background: #ffb577;
-        }
-        
         .logout-btn {
             background: #3a3a4e;
             color: #ff6b6b;
             border: 1px solid #ff6b6b;
         }
         
-        .logout-btn:hover {
-            background: #ff6b6b;
-            color: #1a1a2e;
-        }
-        
-        .error {
-            color: #ff6b6b;
-            text-align: center;
-            padding: 20px;
-            background: rgba(255, 107, 107, 0.1);
-            border-radius: 10px;
-            margin: 10px 0;
+        .export-btn {
+            background: #4CAF50;
+            color: white;
         }
         
         .no-data {
             text-align: center;
             padding: 20px;
             opacity: 0.5;
-            font-style: italic;
+        }
+        
+        .funnel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .funnel-step {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 15px;
+            background: #2a2a3e;
+            border-radius: 10px;
+        }
+        
+        .funnel-name {
+            min-width: 150px;
+        }
+        
+        .funnel-bar-bg {
+            flex: 1;
+            background: #1a1a2e;
+            border-radius: 8px;
+            height: 20px;
+            overflow: hidden;
+        }
+        
+        .funnel-bar {
+            background: linear-gradient(90deg, #ff9f4a, #ffb577);
+            height: 100%;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+        
+        .funnel-count {
+            min-width: 60px;
+            text-align: right;
         }
         
         @media (max-width: 768px) {
@@ -275,11 +323,11 @@
             table { font-size: 12px; }
             th, td { padding: 8px; }
             .header { flex-direction: column; text-align: center; }
+            .btn-group { justify-content: center; }
         }
     </style>
 </head>
 <body>
-    <!-- Форма входа (скрыта после авторизации) -->
     <div id="loginOverlay" class="login-overlay">
         <form class="login-form" onsubmit="handleLogin(event)">
             <h2>🔐 Вход в админ-панель</h2>
@@ -289,16 +337,15 @@
         </form>
     </div>
     
-    <!-- Основной контент (скрыт до авторизации) -->
     <div id="mainContent" class="container" style="display: none;">
         <div class="header">
             <h1>📊 Админ-панель — Герой Сказок</h1>
             <div class="btn-group">
+                <button class="export-btn" onclick="exportCSV()">📥 Экспорт CSV</button>
                 <button class="refresh-btn" onclick="loadStats()">🔄 Обновить</button>
                 <button class="logout-btn" onclick="logout()">🚪 Выйти</button>
             </div>
         </div>
-        
         <div id="statsContainer">
             <div class="loading">
                 <div class="spinner"></div>
@@ -308,40 +355,33 @@
     </div>
     
     <script>
-        // Константы
         const API_URL = '/api/admin-stats';
         const TOKEN_KEY = 'admin_auth_token';
         const TOKEN_EXPIRY_KEY = 'admin_token_expiry';
         const TOKEN_LIFETIME_HOURS = 8;
         
-        // ==================== Аутентификация ====================
+        const COLORS = ['#ff9f4a', '#4CAF50', '#00d2ff', '#ff4081', '#f1c40f', '#9b59b6', '#e67e22', '#26A5E4', '#ff6b6b', '#2ecc71'];
+        
+        let allData = null;
         
         function handleLogin(event) {
             event.preventDefault();
             const password = document.getElementById('passwordInput').value;
             const errorDiv = document.getElementById('loginError');
+            if (!password) { showLoginError('Введите пароль'); return; }
             
-            if (!password) {
-                showLoginError('Введите пароль');
-                return;
-            }
-            
-            // Отправляем пароль для получения токена
             fetch('/api/admin-login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password })
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 if (data.token) {
-                    // Сохраняем токен и время истечения
                     localStorage.setItem(TOKEN_KEY, data.token);
                     const expiry = new Date();
                     expiry.setHours(expiry.getHours() + TOKEN_LIFETIME_HOURS);
                     localStorage.setItem(TOKEN_EXPIRY_KEY, expiry.toISOString());
-                    
-                    // Показываем основной контент
                     document.getElementById('loginOverlay').style.display = 'none';
                     document.getElementById('mainContent').style.display = 'block';
                     loadStats();
@@ -349,25 +389,19 @@
                     showLoginError(data.error || 'Неверный пароль');
                 }
             })
-            .catch(error => {
-                console.error('Login error:', error);
-                showLoginError('Ошибка соединения с сервером');
-            });
+            .catch(() => showLoginError('Ошибка соединения'));
         }
         
-        function showLoginError(message) {
-            const errorDiv = document.getElementById('loginError');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
+        function showLoginError(msg) {
+            const el = document.getElementById('loginError');
+            el.textContent = msg;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 5000);
         }
         
         function logout() {
             localStorage.removeItem(TOKEN_KEY);
             localStorage.removeItem(TOKEN_EXPIRY_KEY);
-            
             document.getElementById('loginOverlay').style.display = 'flex';
             document.getElementById('mainContent').style.display = 'none';
             document.getElementById('passwordInput').value = '';
@@ -376,142 +410,55 @@
         function getAuthToken() {
             const token = localStorage.getItem(TOKEN_KEY);
             const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
-            
-            if (!token || !expiry) {
-                return null;
-            }
-            
-            // Проверяем, не истёк ли токен
-            if (new Date() > new Date(expiry)) {
-                logout();
-                return null;
-            }
-            
+            if (!token || !expiry || new Date() > new Date(expiry)) { logout(); return null; }
             return token;
         }
         
-        function isAuthenticated() {
-            return getAuthToken() !== null;
-        }
-        
-        // ==================== Загрузка данных ====================
-        
+        function isAuthenticated() { return getAuthToken() !== null; }
+                
         async function loadStats() {
-            if (!isAuthenticated()) {
-                logout();
-                return;
-            }
+            if (!isAuthenticated()) { logout(); return; }
             
             const container = document.getElementById('statsContainer');
-            container.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <div>Загрузка статистики...</div>
-                </div>
-            `;
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загрузка...</div></div>';
             
             try {
                 const token = getAuthToken();
                 const response = await fetch(API_URL, {
-                    method: 'GET', // Изменено на GET
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                if (response.status === 401) {
-                    // Токен недействителен
-                    logout();
-                    return;
-                }
+                if (response.status === 401) { logout(); return; }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                
-                // Проверяем структуру данных
-                if (!data || typeof data !== 'object') {
-                    throw new Error('Некорректный формат данных');
-                }
-                
-                renderStats(data);
-                
+                allData = await response.json();
+                renderAll(allData);
             } catch(error) {
-                console.error('Admin stats load failed:', {
-                    message: error.message,
-                    stack: error.stack,
-                    timestamp: new Date().toISOString()
-                });
-                
-                container.innerHTML = `
-                    <div class="error">
-                        ❌ Ошибка загрузки данных<br>
-                        <small style="opacity: 0.7;">${escapeHtml(error.message)}</small><br>
-                        <button class="refresh-btn" style="margin-top: 10px;" onclick="loadStats()">Попробовать снова</button>
-                    </div>
-                `;
+                container.innerHTML = `<div style="color:#ff6b6b; text-align:center; padding:20px;">❌ Ошибка: ${escapeHtml(error.message)}<br><button class="refresh-btn" style="margin-top:10px;" onclick="loadStats()">Повторить</button></div>`;
             }
         }
         
-        // ==================== Рендеринг ====================
-        
-        function renderStats(data) {
-            const safeData = validateData(data);
-            
+        function renderAll(data) {
+            const safe = validateData(data);
             let html = '';
             
-            // Карточки статистики
-            html += renderStatCards(safeData);
+            // Карточки
+            html += renderStatCards(safe);
             
             // График динамики
-            html += renderDailyChart(safeData.dailyStats);
+            html += renderDailyChart(safe.dailyStats);
             
-            // Статистика по играм
-            html += renderTable(
-                '🎮 Статистика по играм',
-                ['Игра', 'Количество', 'Средний счёт'],
-                safeData.gameStats.map(game => [
-                    getGameName(game.event_type),
-                    game.count.toString(),
-                    Math.round(game.avg_score || 0).toString()
-                ])
-            );
+            // Круговая диаграмма страхов
+            html += renderFearPieChart(safe.fearStats);
             
-            // Популярные страхи
-            html += renderTable(
-                '😨 Популярные страхи',
-                ['Страх', 'Количество'],
-                safeData.fearStats.map(fear => [
-                    getFearName(fear.fear),
-                    fear.count.toString()
-                ])
-            );
+            // Воронка конверсии
+            html += renderFunnel(safe);
             
-            // Популярные достижения
-            html += renderTable(
-                '🏆 Популярные достижения',
-                ['Достижение', 'Количество'],
-                safeData.achievementStats.map(ach => [
-                    escapeHtml(ach.achievement || 'Неизвестно'),
-                    ach.count.toString()
-                ])
-            );
-            
-            // Активные пользователи
-            html += renderTable(
-                '👥 Активные пользователи',
-                ['ID', 'Email', 'Ребёнок', 'Событий', 'Последняя активность'],
-                safeData.activeUsers.map(user => [
-                    escapeHtml((user.user_id || '').slice(-8) || '—'),
-                    escapeHtml(user.user_email || '—'),
-                    escapeHtml(user.child_name || '—'),
-                    user.events_count.toString(),
-                    formatDate(user.last_active)
-                ])
-            );
+            // Таблицы
+            html += renderTable('🎮 Игры', ['Игра', 'Игр', 'Средний счёт'], safe.gameStats.map(g => [getGameName(g.event_type), g.count.toString(), Math.round(g.avg_score || 0).toString()]));
+            html += renderTable('😨 Страхи', ['Страх', 'Упоминаний'], safe.fearStats.map(f => [getFearName(f.fear), f.count.toString()]));
+            html += renderTable('🏆 Достижения', ['Достижение', 'Выдано'], safe.achievementStats.map(a => [escapeHtml(a.achievement || '—'), a.count.toString()]));
+            html += renderTable('👥 Пользователи (ТОП-20)', ['Email', 'Ребёнок', 'Событий', 'Активность'], safe.activeUsers.map(u => [escapeHtml(u.user_email || '—'), escapeHtml(u.child_name || '—'), u.events_count.toString(), formatDate(u.last_active)]));
             
             document.getElementById('statsContainer').innerHTML = html;
         }
@@ -522,18 +469,21 @@
                 activeUsersCount: Array.isArray(data.active_users) ? data.active_users.length : 0,
                 fearsDetected: getEventCount(data.event_stats, 'fear_detected'),
                 achievementsEarned: getEventCount(data.event_stats, 'achievement_earned'),
+                storiesGenerated: getEventCount(data.event_stats, 'story_generated'),
+                usersRegistered: getEventCount(data.event_stats, 'register'),
                 dailyStats: Array.isArray(data.daily_stats) ? data.daily_stats : [],
                 gameStats: Array.isArray(data.game_stats) ? data.game_stats : [],
                 fearStats: Array.isArray(data.fear_stats) ? data.fear_stats : [],
                 achievementStats: Array.isArray(data.achievement_stats) ? data.achievement_stats : [],
-                activeUsers: Array.isArray(data.active_users) ? data.active_users : []
+                activeUsers: Array.isArray(data.active_users) ? data.active_users : [],
+                eventStats: Array.isArray(data.event_stats) ? data.event_stats : []
             };
         }
         
-        function getEventCount(eventStats, eventType) {
-            if (!Array.isArray(eventStats)) return 0;
-            const stat = eventStats.find(e => e.event_type === eventType);
-            return stat ? parseInt(stat.count) || 0 : 0;
+        function getEventCount(stats, type) {
+            if (!Array.isArray(stats)) return 0;
+            const s = stats.find(e => e.event_type === type);
+            return s ? parseInt(s.count) || 0 : 0;
         }
         
         function renderStatCards(data) {
@@ -545,80 +495,188 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-number">${data.activeUsersCount}</div>
-                        <div class="stat-label">Активных пользователей (7 дней)</div>
+                        <div class="stat-label">Активных за 7 дней</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number">${data.fearsDetected}</div>
-                        <div class="stat-label">Выявлено страхов</div>
+                        <div class="stat-label">Страхов выявлено</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-number">${data.achievementsEarned}</div>
-                        <div class="stat-label">Получено достижений</div>
+                        <div class="stat-number">${data.storiesGenerated}</div>
+                        <div class="stat-label">Сказок рассказано</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.usersRegistered}</div>
+                        <div class="stat-label">Регистраций</div>
                     </div>
                 </div>
             `;
         }
         
-        function renderDailyChart(dailyStats) {
-            if (!dailyStats.length) {
-                return '<h2>📈 Динамика за 30 дней</h2><div class="no-data">Нет данных</div>';
-            }
+        function renderDailyChart(stats) {
+            if (!stats.length) return '<div class="chart-container"><h3>📈 Динамика</h3><div class="no-data">Нет данных</div></div>';
             
-            const maxEvents = Math.max(...dailyStats.map(d => d.total_events || 0));
-            const last14Days = dailyStats.slice(-14); // Показываем последние 14 дней
+            const last14 = stats.slice(-14);
+            const maxEvents = Math.max(...last14.map(d => d.total_events || 0), 1);
             
-            let barsHtml = last14Days.map(day => {
+            const bars = last14.map(day => {
                 const events = parseInt(day.total_events) || 0;
-                const percentage = maxEvents > 0 ? (events / maxEvents * 100) : 0;
-                
+                const pct = (events / maxEvents * 100);
                 return `
                     <div class="chart-bar-wrapper">
                         <div class="chart-date">${day.date || '—'}</div>
                         <div class="chart-bar-bg">
-                            <div class="chart-bar" style="width: ${Math.max(percentage, 5)}%;" title="${events} событий, ${day.unique_users || 0} пользователей">
-                                ${events > 0 ? events : ''}
-                            </div>
+                            <div class="chart-bar" style="width:${Math.max(pct, 3)}%;" title="${events} событий, ${day.unique_users || 0} пользователей">${events > 0 ? events : ''}</div>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
             
+            return `<div class="chart-container"><h3>📈 Динамика за 30 дней</h3>${bars}</div>`;
+        }
+        
+        function renderFearPieChart(fears) {
+            if (!fears.length) return '<div class="chart-container"><h3>😨 Круговая диаграмма страхов</h3><div class="no-data">Нет данных</div></div>';
+            
+            const total = fears.reduce((s, f) => s + (parseInt(f.count) || 0), 0);
+            if (total === 0) return '<div class="chart-container"><h3>😨 Круговая диаграмма страхов</h3><div class="no-data">Нет данных</div></div>';
+            
+            // Строим SVG-пирог
+            let cumulative = 0;
+            const slices = fears.map((f, i) => {
+                const count = parseInt(f.count) || 0;
+                const pct = count / total;
+                const startAngle = cumulative * 2 * Math.PI;
+                cumulative += pct;
+                const endAngle = cumulative * 2 * Math.PI;
+                const x1 = 100 + 80 * Math.cos(startAngle);
+                const y1 = 100 + 80 * Math.sin(startAngle);
+                const x2 = 100 + 80 * Math.cos(endAngle);
+                const y2 = 100 + 80 * Math.sin(endAngle);
+                const largeArc = pct > 0.5 ? 1 : 0;
+                const color = COLORS[i % COLORS.length];
+                const path = `M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArc} 1 ${x2} ${y2} Z`;
+                return { path, color, name: getFearName(f.fear), count, pct };
+            });
+            
+            const svgSlices = slices.map(s => `<path d="${s.path}" fill="${s.color}" stroke="#1a1a2e" stroke-width="1"/>`).join('');
+            const legend = slices.map(s => `
+                <div class="pie-legend-item">
+                    <div class="pie-legend-color" style="background:${s.color};"></div>
+                    <span>${s.name}: ${s.count} (${Math.round(s.pct * 100)}%)</span>
+                </div>`).join('');
+            
             return `
-                <h2>📈 Динамика за 30 дней (последние 14)</h2>
                 <div class="chart-container">
-                    ${barsHtml}
-                </div>
-            `;
+                    <h3>😨 Круговая диаграмма страхов</h3>
+                    <div class="pie-chart">
+                        <svg class="pie-canvas" viewBox="0 0 200 200">${svgSlices}</svg>
+                        <div class="pie-legend">${legend}</div>
+                    </div>
+                </div>`;
+        }
+        
+        function renderFunnel(data) {
+            const registrations = data.usersRegistered || 0;
+            const appOpens = getEventCount(data.eventStats, 'app_open');
+            const talks = getEventCount(data.eventStats, 'talk_start');
+            const fears = data.fearsDetected || 0;
+            const achievements = data.achievementsEarned || 0;
+            
+            const steps = [
+                { name: '📝 Регистрации', count: registrations },
+                { name: '🚀 Открыли приложение', count: appOpens },
+                { name: '🎤 Начали диалог', count: talks },
+                { name: '😨 Выявлено страхов', count: fears },
+                { name: '🏆 Получили достижения', count: achievements }
+            ];
+            
+            const maxCount = Math.max(...steps.map(s => s.count), 1);
+            
+            const funnelHtml = steps.map(s => `
+                <div class="funnel-step">
+                    <div class="funnel-name">${s.name}</div>
+                    <div class="funnel-bar-bg">
+                        <div class="funnel-bar" style="width:${(s.count / maxCount * 100)}%;">${s.count}</div>
+                    </div>
+                    <div class="funnel-count">${s.count}</div>
+                </div>`).join('');
+            
+            return `<div class="chart-container"><h3>🔽 Воронка конверсии</h3><div class="funnel">${funnelHtml}</div></div>`;
         }
         
         function renderTable(title, headers, rows) {
-            const headersHtml = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+            const headHtml = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+            const bodyHtml = rows.length
+                ? rows.map(row => `<tr>${row.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')
+                : `<tr><td colspan="${headers.length}" class="no-data">Нет данных</td></tr>`;
+            return `<h3>${title}</h3><table><thead><tr>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>`;
+        }
+                
+        // ==================== ЭКСПОРТ CSV ====================
+        
+        function exportCSV() {
+            if (!allData) { alert('Нет данных для экспорта'); return; }
             
-            let rowsHtml;
-            if (!rows.length) {
-                rowsHtml = `<tr><td colspan="${headers.length}" class="no-data">Нет данных</td></tr>`;
-            } else {
-                rowsHtml = rows.map(row => {
-                    const cells = row.map(cell => `<td>${cell}</td>`).join('');
-                    return `<tr>${cells}</tr>`;
-                }).join('');
-            }
+            const safe = validateData(allData);
+            let csv = '\uFEFF'; // BOM для Excel
             
-            return `
-                <h2>${escapeHtml(title)}</h2>
-                <table>
-                    <thead><tr>${headersHtml}</tr></thead>
-                    <tbody>${rowsHtml}</tbody>
-                </table>
-            `;
+            // Секция 1: Общая статистика
+            csv += '=== ОБЩАЯ СТАТИСТИКА ===\n';
+            csv += 'Всего событий;Активных пользователей;Выявлено страхов;Сказок рассказано;Регистраций\n';
+            csv += `${safe.totalEvents};${safe.activeUsersCount};${safe.fearsDetected};${safe.storiesGenerated};${safe.usersRegistered}\n\n`;
+            
+            // Секция 2: Динамика по дням
+            csv += '=== ДИНАМИКА ПО ДНЯМ ===\n';
+            csv += 'Дата;Событий;Уникальных пользователей\n';
+            safe.dailyStats.forEach(d => {
+                csv += `${d.date || ''};${d.total_events || 0};${d.unique_users || 0}\n`;
+            });
+            csv += '\n';
+            
+            // Секция 3: Страхи
+            csv += '=== СТРАХИ ===\n';
+            csv += 'Страх;Количество\n';
+            safe.fearStats.forEach(f => {
+                csv += `${getFearName(f.fear)};${f.count || 0}\n`;
+            });
+            csv += '\n';
+            
+            // Секция 4: Игры
+            csv += '=== ИГРЫ ===\n';
+            csv += 'Игра;Количество;Средний счёт\n';
+            safe.gameStats.forEach(g => {
+                csv += `${getGameName(g.event_type)};${g.count || 0};${Math.round(g.avg_score || 0)}\n`;
+            });
+            csv += '\n';
+            
+            // Секция 5: Достижения
+            csv += '=== ДОСТИЖЕНИЯ ===\n';
+            csv += 'Достижение;Количество\n';
+            safe.achievementStats.forEach(a => {
+                csv += `"${(a.achievement || '—').replace(/"/g, '""')}";${a.count || 0}\n`;
+            });
+            csv += '\n';
+            
+            // Секция 6: Пользователи
+            csv += '=== АКТИВНЫЕ ПОЛЬЗОВАТЕЛИ ===\n';
+            csv += 'Email;Ребёнок;Событий;Последняя активность\n';
+            safe.activeUsers.forEach(u => {
+                csv += `${u.user_email || '—'};${u.child_name || '—'};${u.events_count || 0};${formatDate(u.last_active)}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `herotales_stats_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
         
-        // ==================== Утилиты ====================
+        // ==================== УТИЛИТЫ ====================
         
         function escapeHtml(text) {
-            if (typeof text !== 'string') {
-                text = String(text || '');
-            }
+            if (typeof text !== 'string') text = String(text || '');
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
@@ -630,14 +688,11 @@
                 const date = new Date(dateString);
                 if (isNaN(date.getTime())) return '—';
                 return date.toLocaleString('ru-RU');
-            } catch(e) {
-                return '—';
-            }
+            } catch { return '—'; }
         }
         
-        function getGameName(eventType) {
-            if (typeof eventType !== 'string') return 'Неизвестная игра';
-            
+        function getGameName(type) {
+            if (typeof type !== 'string') return 'Неизвестно';
             const names = {
                 'game_fish': '🐟 Поймай рыбку',
                 'game_memory': '🧠 Мемори',
@@ -645,12 +700,11 @@
                 'game_color': '🎨 Раскраска',
                 'game_emotion': '😊 Угадай эмоцию'
             };
-            return names[eventType] || eventType;
+            return names[type] || type;
         }
         
         function getFearName(fear) {
-            if (typeof fear !== 'string') return 'Неизвестный страх';
-            
+            if (typeof fear !== 'string') return 'Неизвестно';
             const names = {
                 'темноты': '😨 Темнота',
                 'врачей': '🏥 Врачи',
@@ -662,24 +716,22 @@
             return names[fear] || fear;
         }
         
-        // ==================== Инициализация ====================
+        // ==================== ИНИЦИАЛИЗАЦИЯ ====================
         
         document.addEventListener('DOMContentLoaded', () => {
             if (isAuthenticated()) {
-                // Если токен действителен, сразу показываем админку
                 document.getElementById('loginOverlay').style.display = 'none';
                 document.getElementById('mainContent').style.display = 'block';
                 loadStats();
             }
-            // Иначе показываем форму входа
         });
         
-        // Проверка токена каждые 5 минут
+        // Авто-обновление каждые 5 минут
         setInterval(() => {
-            if (!isAuthenticated() && document.getElementById('mainContent').style.display !== 'none') {
-                logout();
+            if (document.getElementById('mainContent').style.display !== 'none' && isAuthenticated()) {
+                loadStats();
             }
-        }, 300000); // 5 минут
+        }, 300000);
     </script>
 </body>
 </html>
