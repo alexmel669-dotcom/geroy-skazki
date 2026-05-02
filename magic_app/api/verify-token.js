@@ -26,6 +26,14 @@ export default async function handler(req, res) {
     }
     
     try {
+        // Гостевой режим
+        if (token.startsWith('guest_token_')) {
+            return res.status(200).json({ 
+                valid: true, 
+                user: { userId: 'guest', email: 'guest' } 
+            });
+        }
+        
         const decoded = jwt.verify(token, JWT_SECRET);
         res.status(200).json({ 
             valid: true, 
