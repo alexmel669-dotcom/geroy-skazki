@@ -1,9 +1,21 @@
 {
-  "name": "geroy-skazki",
+  "name": "herotales",
   "version": "1.0.0",
-  "type": "module",
+  "description": "Герои сказок — детское приложение",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel start",
+    "build": "echo 'No build step required'"
+  },
   "dependencies": {
-    "jsonwebtoken": "^9.0.0",
-    "@neondatabase/serverless": "^0.9.0"
-  }
+    "@neondatabase/serverless": "^0.9.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
