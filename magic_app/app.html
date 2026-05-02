@@ -227,10 +227,13 @@
         .modal button {
             margin: 8px;
             padding: 12px 20px;
+            min-width: 70px;
+            min-height: 48px;
+            font-size: 18px;
             border-radius: 60px;
             border: none;
-            font-size: 16px;
             cursor: pointer;
+            touch-action: manipulation;
         }
         
         .modal .close-btn {
@@ -265,7 +268,7 @@
             .mic-btn { width: 80px; height: 80px; font-size: 44px; }
             .stat-bar { width: 45px; }
             .stat { font-size: 12px; padding: 3px 10px; }
-            .modal button { padding: 8px 16px; font-size: 14px; }
+            .modal button { padding: 10px 16px; font-size: 16px; }
         }
     </style>
 </head>
@@ -298,6 +301,11 @@
     </div>
     
     <script>
+        // Шифрование пина
+        const PIN_SALT = 'lucik_magic_2024';
+        function encodePin(pin) { return btoa(pin.split('').reverse().join('') + ':' + PIN_SALT); }
+        function decodePin(enc) { try { return atob(enc).split(':')[0].split('').reverse().join(''); } catch { return ''; } }
+                
         // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
         async function checkAuthAndRedirect() {
             const token = localStorage.getItem('userToken');
@@ -755,7 +763,7 @@
                 audio.play().catch(e => console.log('no purr'));
             });
         }
-        
+                
         // ========== ИГРЫ ==========
         
         let gameActive = false, gameInterval = null, gameTimerInterval = null;
@@ -779,7 +787,7 @@
             const closeBtn = document.createElement('button');
             closeBtn.innerText = 'Закрыть';
             closeBtn.style.cssText = 'padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-            closeBtn.onclick = () => { clearInterval(gameInterval); clearInterval(gameTimerInterval); document.body.removeChild(gameContainer); gameActive = false; };
+            closeBtn.onclick = () => { clearInterval(gameInterval); clearInterval(gameTimerInterval); gameContainer.remove(); gameActive = false; };
             bottomBar.appendChild(scoreDiv);
             bottomBar.appendChild(closeBtn);
             fishArea.appendChild(fish);
@@ -861,7 +869,7 @@
             const closeBtn = document.createElement('button');
             closeBtn.textContent = 'Закрыть';
             closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-            closeBtn.onclick = () => document.body.removeChild(gameContainer);
+            closeBtn.onclick = () => gameContainer.remove();
             gameContainer.appendChild(title);
             gameContainer.appendChild(board);
             gameContainer.appendChild(scoreDiv);
@@ -967,7 +975,7 @@
             const closeBtn = document.createElement('button');
             closeBtn.textContent = 'Закрыть';
             closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-            closeBtn.onclick = () => document.body.removeChild(gameContainer);
+            closeBtn.onclick = () => gameContainer.remove();
             gameContainer.appendChild(title);
             gameContainer.appendChild(board);
             gameContainer.appendChild(closeBtn);
@@ -1059,7 +1067,7 @@
             const closeBtn = document.createElement('button');
             closeBtn.textContent = 'Закрыть';
             closeBtn.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-            closeBtn.onclick = () => document.body.removeChild(gameContainer);
+            closeBtn.onclick = () => gameContainer.remove();
             gameContainer.appendChild(title);
             gameContainer.appendChild(canvas);
             gameContainer.appendChild(palette);
@@ -1160,7 +1168,7 @@
             document.getElementById('gamePlayBtn').onclick = () => {
                 modal.remove();
                 if (energy >= 20) {
-                    energy -= 20;
+                    energy = Math.max(0, energy - 20);
                     mood = Math.min(100, mood + 15);
                     localStorage.setItem('lucik_energy', energy);
                     localStorage.setItem('lucik_mood', mood);
@@ -1265,7 +1273,7 @@
             speak(longStory);
             saveHistory(`🌙 Люцик рассказал длинную сказку на ночь`);
         };
-        
+                
         const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись', 'пошёл', 'уйди', 'убирайся', 'хрен', 'фиг', 'блин', 'черт'];
         function containsBadWords(text) {
             if (!text) return false;
@@ -1339,8 +1347,8 @@
             if (!savedPin) {
                 const pin = prompt('Создайте пароль для входа в Штаб (4-6 цифр):');
                 if (pin && pin.length >= 4 && /^\d+$/.test(pin)) {
-                    localStorage.setItem('parentPin', pin);
-                    savedPin = pin;
+                    localStorage.setItem('parentPin', encodePin(pin));
+                    savedPin = encodePin(pin);
                     alert('Пароль создан! Теперь вы можете войти в Штаб.');
                     window.location.href = '/parent.html';
                 } else {
@@ -1348,7 +1356,7 @@
                 }
             } else {
                 const pin = prompt('Введите пароль для входа в Штаб:');
-                if (pin === savedPin) {
+                if (pin === decodePin(savedPin)) {
                     window.location.href = '/parent.html';
                 } else if (pin !== null) {
                     alert('Неверный пароль!');
