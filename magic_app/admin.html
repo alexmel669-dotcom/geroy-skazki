@@ -97,6 +97,8 @@
             color: #ff9f4a;
         }
         
+        h3 { margin: 15px 0 10px; color: #ff9f4a; }
+        
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -157,7 +159,7 @@
         
         .chart-date {
             font-size: 11px;
-            min-width: 80px;
+            min-width: 55px;
             opacity: 0.7;
         }
         
@@ -179,7 +181,7 @@
             padding-right: 8px;
             color: #1a1a2e;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11px;
             transition: width 0.5s ease;
         }
         
@@ -290,7 +292,8 @@
         }
         
         .funnel-name {
-            min-width: 150px;
+            min-width: 130px;
+            font-size: 13px;
         }
         
         .funnel-bar-bg {
@@ -314,8 +317,9 @@
         }
         
         .funnel-count {
-            min-width: 60px;
+            min-width: 50px;
             text-align: right;
+            font-size: 13px;
         }
         
         @media (max-width: 768px) {
@@ -353,8 +357,7 @@
             </div>
         </div>
     </div>
-    
-    <script>
+        <script>
         const API_URL = '/api/admin-stats';
         const TOKEN_KEY = 'admin_auth_token';
         const TOKEN_EXPIRY_KEY = 'admin_token_expiry';
@@ -363,6 +366,8 @@
         const COLORS = ['#ff9f4a', '#4CAF50', '#00d2ff', '#ff4081', '#f1c40f', '#9b59b6', '#e67e22', '#26A5E4', '#ff6b6b', '#2ecc71'];
         
         let allData = null;
+        
+        // ==================== АВТОРИЗАЦИЯ ====================
         
         function handleLogin(event) {
             event.preventDefault();
@@ -415,7 +420,9 @@
         }
         
         function isAuthenticated() { return getAuthToken() !== null; }
-                
+        
+        // ==================== ЗАГРУЗКА ДАННЫХ ====================
+        
         async function loadStats() {
             if (!isAuthenticated()) { logout(); return; }
             
@@ -438,23 +445,16 @@
             }
         }
         
+        // ==================== РЕНДЕРИНГ ====================
+        
         function renderAll(data) {
             const safe = validateData(data);
             let html = '';
             
-            // Карточки
             html += renderStatCards(safe);
-            
-            // График динамики
             html += renderDailyChart(safe.dailyStats);
-            
-            // Круговая диаграмма страхов
             html += renderFearPieChart(safe.fearStats);
-            
-            // Воронка конверсии
             html += renderFunnel(safe);
-            
-            // Таблицы
             html += renderTable('🎮 Игры', ['Игра', 'Игр', 'Средний счёт'], safe.gameStats.map(g => [getGameName(g.event_type), g.count.toString(), Math.round(g.avg_score || 0).toString()]));
             html += renderTable('😨 Страхи', ['Страх', 'Упоминаний'], safe.fearStats.map(f => [getFearName(f.fear), f.count.toString()]));
             html += renderTable('🏆 Достижения', ['Достижение', 'Выдано'], safe.achievementStats.map(a => [escapeHtml(a.achievement || '—'), a.count.toString()]));
@@ -486,6 +486,8 @@
             return s ? parseInt(s.count) || 0 : 0;
         }
         
+        // ==================== КАРТОЧКИ ====================
+        
         function renderStatCards(data) {
             return `
                 <div class="stats-grid">
@@ -513,8 +515,10 @@
             `;
         }
         
+        // ==================== ГРАФИК ДИНАМИКИ ====================
+        
         function renderDailyChart(stats) {
-            if (!stats.length) return '<div class="chart-container"><h3>📈 Динамика</h3><div class="no-data">Нет данных</div></div>';
+            if (!stats.length) return '<div class="chart-container"><h3>📈 Динамика за 30 дней</h3><div class="no-data">Нет данных</div></div>';
             
             const last14 = stats.slice(-14);
             const maxEvents = Math.max(...last14.map(d => d.total_events || 0), 1);
@@ -522,17 +526,24 @@
             const bars = last14.map(day => {
                 const events = parseInt(day.total_events) || 0;
                 const pct = (events / maxEvents * 100);
+                const dateObj = new Date(day.date);
+                const formattedDate = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+                
                 return `
                     <div class="chart-bar-wrapper">
-                        <div class="chart-date">${day.date || '—'}</div>
+                        <div class="chart-date">${formattedDate}</div>
                         <div class="chart-bar-bg">
-                            <div class="chart-bar" style="width:${Math.max(pct, 3)}%;" title="${events} событий, ${day.unique_users || 0} пользователей">${events > 0 ? events : ''}</div>
+                            <div class="chart-bar" style="width:${Math.max(pct, 5)}%;min-width:${events > 0 ? '30px' : '0'};" title="${events} событий, ${day.unique_users || 0} пользователей">
+                                ${events > 0 ? events : ''}
+                            </div>
                         </div>
                     </div>`;
             }).join('');
             
-            return `<div class="chart-container"><h3>📈 Динамика за 30 дней</h3>${bars}</div>`;
+            return `<div class="chart-container"><h3>📈 Динамика за 30 дней (последние 14)</h3>${bars}</div>`;
         }
+        
+        // ==================== КРУГОВАЯ ДИАГРАММА СТРАХОВ ====================
         
         function renderFearPieChart(fears) {
             if (!fears.length) return '<div class="chart-container"><h3>😨 Круговая диаграмма страхов</h3><div class="no-data">Нет данных</div></div>';
@@ -540,7 +551,6 @@
             const total = fears.reduce((s, f) => s + (parseInt(f.count) || 0), 0);
             if (total === 0) return '<div class="chart-container"><h3>😨 Круговая диаграмма страхов</h3><div class="no-data">Нет данных</div></div>';
             
-            // Строим SVG-пирог
             let cumulative = 0;
             const slices = fears.map((f, i) => {
                 const count = parseInt(f.count) || 0;
@@ -575,6 +585,8 @@
                 </div>`;
         }
         
+        // ==================== ВОРОНКА ====================
+        
         function renderFunnel(data) {
             const registrations = data.usersRegistered || 0;
             const appOpens = getEventCount(data.eventStats, 'app_open');
@@ -604,6 +616,8 @@
             return `<div class="chart-container"><h3>🔽 Воронка конверсии</h3><div class="funnel">${funnelHtml}</div></div>`;
         }
         
+        // ==================== ТАБЛИЦЫ ====================
+        
         function renderTable(title, headers, rows) {
             const headHtml = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
             const bodyHtml = rows.length
@@ -611,7 +625,7 @@
                 : `<tr><td colspan="${headers.length}" class="no-data">Нет данных</td></tr>`;
             return `<h3>${title}</h3><table><thead><tr>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>`;
         }
-                
+                    
         // ==================== ЭКСПОРТ CSV ====================
         
         function exportCSV() {
@@ -629,7 +643,9 @@
             csv += '=== ДИНАМИКА ПО ДНЯМ ===\n';
             csv += 'Дата;Событий;Уникальных пользователей\n';
             safe.dailyStats.forEach(d => {
-                csv += `${d.date || ''};${d.total_events || 0};${d.unique_users || 0}\n`;
+                const dateObj = new Date(d.date);
+                const formattedDate = dateObj.toLocaleDateString('ru-RU');
+                csv += `${formattedDate};${d.total_events || 0};${d.unique_users || 0}\n`;
             });
             csv += '\n';
             
@@ -726,7 +742,7 @@
             }
         });
         
-        // Авто-обновление каждые 5 минут
+        // Автообновление каждые 5 минут
         setInterval(() => {
             if (document.getElementById('mainContent').style.display !== 'none' && isAuthenticated()) {
                 loadStats();
