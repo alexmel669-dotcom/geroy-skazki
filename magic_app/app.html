@@ -750,7 +750,7 @@
         async function speak(text) {
             const cleanText = text.replace(/[\*\_\#]/g, '');
             try {
-                await speakWithYandex(cleanText, 'ermil', 'good');
+                await speakWithYandex(cleanText, currentChar, 'good');
             } catch (e) {
                 fallbackSpeak(cleanText);
             }
