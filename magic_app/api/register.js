@@ -1,4 +1,4 @@
-// api/register.js — JWT регистрация (версия от 19 апреля)
+// api/register.js — JWT регистрация с детьми (версия от 4 мая 2026)
 import { Pool } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     }
     
     try {
-        const { email, password } = req.body;
+        const { email, password, children } = req.body;
         
         if (!email || !password) {
             return res.status(400).json({ error: 'Email и пароль обязательны' });
@@ -50,9 +50,14 @@ export default async function handler(req, res) {
             
             const hashedPassword = await bcrypt.hash(password, 10);
             
+            // Сохраняем детей как JSON
+            const childrenData = Array.isArray(children) && children.length > 0 
+                ? JSON.stringify(children) 
+                : null;
+            
             const result = await client.query(
-                'INSERT INTO users (email, password_hash, created_at) VALUES ($1, $2, NOW()) RETURNING id, email',
-                [email.toLowerCase().trim(), hashedPassword]
+                'INSERT INTO users (email, password_hash, children, created_at) VALUES ($1, $2, $3, NOW()) RETURNING id, email',
+                [email.toLowerCase().trim(), hashedPassword, childrenData]
             );
             
             const user = result.rows[0];
@@ -67,7 +72,8 @@ export default async function handler(req, res) {
                 success: true, 
                 token, 
                 email: user.email,
-                userId: user.id
+                userId: user.id,
+                children: children || []
             });
         } finally {
             client.release();
