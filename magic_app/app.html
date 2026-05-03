@@ -47,6 +47,26 @@
             justify-content: space-between;
         }
         
+        .child-indicator {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #3a2a1a;
+            background: rgba(255,255,255,0.35);
+            backdrop-filter: blur(4px);
+            padding: 8px 20px;
+            border-radius: 30px;
+            margin-bottom: 15px;
+            display: inline-block;
+            align-self: center;
+            cursor: pointer;
+        }
+        
+        body.night .child-indicator {
+            color: #f0e6d0;
+            background: rgba(0,0,0,0.5);
+        }
+        
         .stats {
             display: flex;
             justify-content: space-around;
@@ -277,6 +297,8 @@
     <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
     
     <div class="app-container">
+        <div class="child-indicator" id="childIndicator">👶 Ваня, 5 лет ◀ ▶</div>
+        
         <div class="stats">
             <div class="stat">😊 <div class="stat-bar"><div class="stat-fill" id="moodFill" style="width: 70%"></div></div></div>
             <div class="stat">🍽️ <div class="stat-bar"><div class="stat-fill" id="hungerFill" style="width: 60%"></div></div></div>
@@ -306,6 +328,90 @@
         const PIN_SALT = 'lucik_magic_2024';
         function encodePin(pin) { return btoa(pin.split('').reverse().join('') + ':' + PIN_SALT); }
         function decodePin(enc) { try { return atob(enc).split(':')[0].split('').reverse().join(''); } catch { return ''; } }
+        
+        // ========== ДАННЫЕ ДЕТЕЙ ==========
+        let children = [];
+        let currentChildIndex = 0;
+        
+        try {
+            const saved = localStorage.getItem('children');
+            if (saved) children = JSON.parse(saved);
+            currentChildIndex = parseInt(localStorage.getItem('currentChildIndex') || '0');
+        } catch { children = []; }
+        
+        // Если детей нет (старый аккаунт) — создаём из старых данных
+        if (children.length === 0) {
+            const oldName = localStorage.getItem('childName') || 'малыш';
+            const oldAge = parseInt(localStorage.getItem('childAge') || '5');
+            children = [{ name: oldName, age: oldAge }];
+            localStorage.setItem('children', JSON.stringify(children));
+        }
+        
+        function getCurrentChild() {
+            if (currentChildIndex >= children.length) currentChildIndex = 0;
+            return children[currentChildIndex] || { name: 'малыш', age: 5 };
+        }
+        
+        function switchChild(direction) {
+            if (children.length <= 1) return;
+            currentChildIndex += direction;
+            if (currentChildIndex < 0) currentChildIndex = children.length - 1;
+            if (currentChildIndex >= children.length) currentChildIndex = 0;
+            localStorage.setItem('currentChildIndex', currentChildIndex);
+            
+            const child = getCurrentChild();
+            childName = child.name;
+            childAge = child.age;
+            localStorage.setItem('childName', childName);
+            localStorage.setItem('childAge', childAge);
+            
+            // Загружаем данные этого ребёнка
+            loadChildData(currentChildIndex);
+            updateChildIndicator();
+            updateStatsUI();
+            speak(`Привет, ${childName}!`);
+        }
+        
+        function updateChildIndicator() {
+            const child = getCurrentChild();
+            const arrow = children.length > 1 ? ' ◀ ▶' : '';
+            document.getElementById('childIndicator').innerHTML = `👶 ${child.name}, ${child.age} лет${arrow}`;
+        }
+        
+        function loadChildData(index) {
+            // Страхи
+            const fearData = localStorage.getItem(`fearStats_${index}`);
+            if (fearData) {
+                fearStats = JSON.parse(fearData);
+                localStorage.setItem('fearStats', fearData);
+            } else {
+                fearStats = JSON.parse('{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+            }
+            
+            // История
+            const historyData = localStorage.getItem(`storyHistory_${index}`);
+            if (historyData) {
+                conversationHistory = JSON.parse(historyData);
+                localStorage.setItem('storyHistory', historyData);
+            } else {
+                conversationHistory = [];
+            }
+            
+            // Настроение и т.д.
+            mood = parseInt(localStorage.getItem(`lucik_mood_${index}`) || localStorage.getItem('lucik_mood') || '70');
+            hunger = parseInt(localStorage.getItem(`lucik_hunger_${index}`) || localStorage.getItem('lucik_hunger') || '60');
+            energy = parseInt(localStorage.getItem(`lucik_energy_${index}`) || localStorage.getItem('lucik_energy') || '50');
+            bravery = parseInt(localStorage.getItem(`lucik_bravery_${index}`) || localStorage.getItem('lucik_bravery') || '0');
+        }
+        
+        function saveChildData(index) {
+            localStorage.setItem(`fearStats_${index}`, JSON.stringify(fearStats));
+            localStorage.setItem(`storyHistory_${index}`, JSON.stringify(conversationHistory));
+            localStorage.setItem(`lucik_mood_${index}`, mood);
+            localStorage.setItem(`lucik_hunger_${index}`, hunger);
+            localStorage.setItem(`lucik_energy_${index}`, energy);
+            localStorage.setItem(`lucik_bravery_${index}`, bravery);
+        }
                 
         // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
         async function checkAuthAndRedirect() {
@@ -400,7 +506,7 @@
         
         // ========== ДОСТИЖЕНИЯ ==========
         function initAchievements() {
-            let achievements = localStorage.getItem('achievements');
+            let achievements = localStorage.getItem(`achievements_${currentChildIndex}`);
             if (!achievements) {
                 const defaultAchievements = {
                     'first_talk': { name: '🎤 Первый разговор', desc: 'Первый разговор с Люциком', earned: false, date: null },
@@ -414,13 +520,14 @@
                     'emotion_master': { name: '😊 Мастер эмоций', desc: 'Угадал все эмоции', earned: false, date: null },
                     '7_days': { name: '📅 Друг на неделю', desc: '7 дней с Люциком', earned: false, date: null }
                 };
-                localStorage.setItem('achievements', JSON.stringify(defaultAchievements));
+                localStorage.setItem(`achievements_${currentChildIndex}`, JSON.stringify(defaultAchievements));
             }
-            return JSON.parse(localStorage.getItem('achievements'));
+            return JSON.parse(localStorage.getItem(`achievements_${currentChildIndex}`));
         }
         
         function updateAchievement(achievementId, progress = null) {
-            const achievements = JSON.parse(localStorage.getItem('achievements'));
+            const key = `achievements_${currentChildIndex}`;
+            const achievements = JSON.parse(localStorage.getItem(key));
             if (achievements[achievementId] && !achievements[achievementId].earned) {
                 if (progress !== null) {
                     achievements[achievementId].progress = (achievements[achievementId].progress || 0) + progress;
@@ -438,7 +545,7 @@
                     showAchievementNotification(achievements[achievementId].name);
                     sendAnalytics('achievement_earned', { achievement: achievements[achievementId].name });
                 }
-                localStorage.setItem('achievements', JSON.stringify(achievements));
+                localStorage.setItem(key, JSON.stringify(achievements));
             }
         }
         
@@ -459,7 +566,8 @@
         }
         
         function getWeeklyMemory() {
-            let memory = localStorage.getItem('weeklyMemory');
+            const key = `weeklyMemory_${currentChildIndex}`;
+            let memory = localStorage.getItem(key);
             if (!memory) {
                 const now = new Date();
                 const weekStart = getWeekStart(now);
@@ -471,14 +579,14 @@
                     victories: [],
                     lastUpdated: new Date().toISOString()
                 };
-                localStorage.setItem('weeklyMemory', JSON.stringify(memory));
+                localStorage.setItem(key, JSON.stringify(memory));
                 return memory;
             }
             memory = JSON.parse(memory);
             const now = new Date();
             const currentWeekStart = getWeekStart(now);
             if (memory.weekStart !== currentWeekStart) {
-                localStorage.setItem(`weeklyMemory_${memory.weekStart}`, JSON.stringify(memory));
+                localStorage.setItem(`${key}_${memory.weekStart}`, JSON.stringify(memory));
                 const newMemory = {
                     weekStart: currentWeekStart,
                     fears: {},
@@ -487,7 +595,7 @@
                     victories: [],
                     lastUpdated: new Date().toISOString()
                 };
-                localStorage.setItem('weeklyMemory', JSON.stringify(newMemory));
+                localStorage.setItem(key, JSON.stringify(newMemory));
                 return newMemory;
             }
             return memory;
@@ -507,22 +615,23 @@
                 if (memory.victories.length > 5) memory.victories.shift();
             }
             memory.lastUpdated = new Date().toISOString();
-            localStorage.setItem('weeklyMemory', JSON.stringify(memory));
+            localStorage.setItem(`weeklyMemory_${currentChildIndex}`, JSON.stringify(memory));
         }
         
         // ========== ОСНОВНЫЕ ДАННЫЕ ==========
         let isPremium = localStorage.getItem('isPremium') === 'true';
-        let childName = localStorage.getItem('childName') || 'малыш';
-        let childAge = localStorage.getItem('childAge') || 5;
+        const currentChild = getCurrentChild();
+        let childName = currentChild.name;
+        let childAge = currentChild.age;
         let savedPin = localStorage.getItem('parentPin');
-        let mood = parseInt(localStorage.getItem('lucik_mood')) || 70;
-        let hunger = parseInt(localStorage.getItem('lucik_hunger')) || 60;
-        let energy = parseInt(localStorage.getItem('lucik_energy')) || 50;
-        let bravery = parseInt(localStorage.getItem('lucik_bravery')) || 0;
-        let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
-        let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-        let fishScore = parseInt(localStorage.getItem('fishScore')) || 0;
-        let storyCount = parseInt(localStorage.getItem('storyCount')) || 0;
+        let mood = parseInt(localStorage.getItem(`lucik_mood_${currentChildIndex}`) || '70');
+        let hunger = parseInt(localStorage.getItem(`lucik_hunger_${currentChildIndex}`) || '60');
+        let energy = parseInt(localStorage.getItem(`lucik_energy_${currentChildIndex}`) || '50');
+        let bravery = parseInt(localStorage.getItem(`lucik_bravery_${currentChildIndex}`) || '0');
+        let fearStats = JSON.parse(localStorage.getItem(`fearStats_${currentChildIndex}`) || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+        let conversationHistory = JSON.parse(localStorage.getItem(`storyHistory_${currentChildIndex}`) || '[]');
+        let fishScore = parseInt(localStorage.getItem(`fishScore_${currentChildIndex}`) || '0');
+        let storyCount = parseInt(localStorage.getItem(`storyCount_${currentChildIndex}`) || '0');
         
         if (conversationHistory.length > 50) conversationHistory = conversationHistory.slice(0, 50);
         
@@ -536,10 +645,12 @@
         let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
         
         initAchievements();
+        updateChildIndicator();
         
         sendAnalytics('app_open');
         
         window.addEventListener('beforeunload', () => {
+            saveChildData(currentChildIndex);
             sendAnalytics('session_end');
         });
         
@@ -555,15 +666,15 @@
         function saveHistory(text) {
             conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + text);
             if (conversationHistory.length > 50) conversationHistory.pop();
-            localStorage.setItem('storyHistory', JSON.stringify(conversationHistory));
+            localStorage.setItem(`storyHistory_${currentChildIndex}`, JSON.stringify(conversationHistory));
         }
         
         function updateFear(fear) {
             if (fearStats[fear] !== undefined) {
                 fearStats[fear]++;
-                localStorage.setItem('fearStats', JSON.stringify(fearStats));
+                localStorage.setItem(`fearStats_${currentChildIndex}`, JSON.stringify(fearStats));
                 bravery = Math.min(100, bravery + 10);
-                localStorage.setItem('lucik_bravery', bravery);
+                localStorage.setItem(`lucik_bravery_${currentChildIndex}`, bravery);
                 updateAchievement('brave_kid');
                 sendAnalytics('fear_detected', { fear: fear });
                 const fearMessages = { темноты: 'боюсь темноты', врачей: 'боюсь врачей', одиночества: 'боюсь оставаться один', нового: 'боюсь нового', обиды: 'меня обидели', животных: 'боюсь животных' };
@@ -587,7 +698,7 @@
             }
         }
         
-        // ========== ОЗВУЧКА (должна быть объявлена ДО changeCharacter) ==========
+        // ========== ОЗВУЧКА ==========
         let currentAudio = null;
         let isAudioPlaying = false;
         let audioUnlocked = false;
@@ -640,14 +751,10 @@
                         body: JSON.stringify({ text, voice, emotion, speed: 1.0 })
                     });
                     
-                    if (!response.ok) {
-                        throw new Error('TTS API error: ' + response.status);
-                    }
+                    if (!response.ok) throw new Error('TTS API error: ' + response.status);
                     
                     const audioBlob = await response.blob();
-                    if (audioBlob.size < 100) {
-                        throw new Error('Audio too small');
-                    }
+                    if (audioBlob.size < 100) throw new Error('Audio too small');
                     
                     const audioUrl = URL.createObjectURL(audioBlob);
                     const audio = new Audio(audioUrl);
@@ -699,7 +806,7 @@
             });
         }
         
-        // ========== СМЕНА ПЕРСОНАЖА (теперь speak объявлена) ==========
+        // ========== СМЕНА ПЕРСОНАЖА ==========
         function changeCharacter(charId) {
             if (characters[charId].premium && !isPremium) {
                 alert('🌟 Оформите подписку, чтобы играть за этого персонажа!');
@@ -711,7 +818,27 @@
             updateAvatarLock();
             speak(`Теперь я ${characters[charId].name}!`);
         }
+        
+        // ========== ПЕРЕКЛЮЧЕНИЕ ДЕТЕЙ (свайп по индикатору) ==========
+        let childTouchStart = 0;
+        document.getElementById('childIndicator').addEventListener('touchstart', (e) => {
+            childTouchStart = e.changedTouches[0].screenX;
+        });
+        document.getElementById('childIndicator').addEventListener('touchend', (e) => {
+            const diff = e.changedTouches[0].screenX - childTouchStart;
+            if (Math.abs(diff) > 40) {
+                saveChildData(currentChildIndex);
+                switchChild(diff > 0 ? -1 : 1);
+            }
+        });
+        document.getElementById('childIndicator').addEventListener('click', () => {
+            if (children.length > 1) {
+                saveChildData(currentChildIndex);
+                switchChild(1);
+            }
+        });
                 
+        // ========== СВАЙП ПО АВАТАРУ (смена персонажа) ==========
         let touchStart = 0;
         const avatarEl = document.getElementById('avatar');
         avatarEl.addEventListener('touchstart', (e) => { touchStart = e.changedTouches[0].screenX; });
@@ -812,7 +939,7 @@
                 if (!gameActive) return;
                 gameScore++;
                 fishScore++;
-                localStorage.setItem('fishScore', fishScore);
+                localStorage.setItem(`fishScore_${currentChildIndex}`, fishScore);
                 updateAchievement('fish_catcher', 1);
                 scoreDiv.innerText = `🐟 Счёт: ${gameScore} | ⏱️ Осталось: ${timeLeft} сек`;
                 moveFish();
@@ -1175,8 +1302,8 @@
                 if (energy >= 20) {
                     energy = Math.max(0, energy - 20);
                     mood = Math.min(100, mood + 15);
-                    localStorage.setItem('lucik_energy', energy);
-                    localStorage.setItem('lucik_mood', mood);
+                    localStorage.setItem(`lucik_energy_${currentChildIndex}`, energy);
+                    localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood);
                     updateStatsUI();
                     speak("Ура! Весело играть!");
                     playSound('laugh');
@@ -1206,8 +1333,8 @@
                 sendAnalytics('room_clean');
                 energy = Math.min(100, energy + 10);
                 mood = Math.min(100, mood + 5);
-                localStorage.setItem('lucik_energy', energy);
-                localStorage.setItem('lucik_mood', mood);
+                localStorage.setItem(`lucik_energy_${currentChildIndex}`, energy);
+                localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood);
                 updateStatsUI();
                 speak("Мурр! Комната стала чистой!");
                 playSound('purr');
@@ -1255,7 +1382,7 @@
             };
             document.getElementById('closeRoomMenu').onclick = () => modal.remove();
         }
-                
+        
         document.getElementById('nightStoryBtn').onclick = async () => {
             const modal = document.createElement('div');
             modal.className = 'modal';
@@ -1265,7 +1392,7 @@
             const longStory = await askDeepSeek("Расскажи длинную, спокойную сказку на ночь для ребёнка 3-7 лет.", true);
             modal.remove();
             storyCount++;
-            localStorage.setItem('storyCount', storyCount);
+            localStorage.setItem(`storyCount_${currentChildIndex}`, storyCount);
             updateAchievement('story_lover', 1);
             sendAnalytics('story_night');
             const storyModal = document.createElement('div');
@@ -1290,8 +1417,8 @@
             sendAnalytics('feed');
             hunger = Math.min(100, hunger + 15);
             mood = Math.min(100, mood + 5);
-            localStorage.setItem('lucik_mood', mood);
-            localStorage.setItem('lucik_hunger', hunger);
+            localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood);
+            localStorage.setItem(`lucik_hunger_${currentChildIndex}`, hunger);
             updateStatsUI();
             playSound('eat');
             saveHistory(`🍎 Покормил ${characters[currentChar].name}`);
@@ -1386,6 +1513,11 @@
         setInterval(updateTimeTheme, 60000);
         
         speak(`Мяу! Привет, ${childName}! Нажми на микрофон, и мы подружимся!`);
+        
+        // Сохраняем данные при уходе
+        window.addEventListener('beforeunload', () => {
+            saveChildData(currentChildIndex);
+        });
     </script>
 </body>
 </html>
