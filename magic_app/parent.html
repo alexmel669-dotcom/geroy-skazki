@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Родительский штаб — Герой Сказок</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
@@ -20,206 +16,73 @@
         }
         
         .forest-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -2;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
             background-image: url('parent-bg.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            background-size: cover; background-position: center; background-repeat: no-repeat;
         }
         
         .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 30px 20px;
-            position: relative;
-            z-index: 2;
+            max-width: 600px; margin: 0 auto; padding: 30px 20px;
+            position: relative; z-index: 2;
         }
         
         .card {
-            background: rgba(0, 0, 0, 0.55);
-            backdrop-filter: blur(8px);
-            border-radius: 30px;
-            padding: 20px;
-            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(8px);
+            border-radius: 30px; padding: 20px; margin-bottom: 20px;
             border: 1px solid rgba(160, 180, 140, 0.3);
         }
         
-        h1 {
-            font-size: 28px;
-            margin-bottom: 20px;
-            text-align: center;
-            color: #d4e6c3;
-            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
+        h1 { font-size: 28px; margin-bottom: 20px; text-align: center; color: #d4e6c3; text-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        h2 { font-size: 20px; margin-bottom: 15px; color: #c4d6a3; border-left: 3px solid #8bc34a; padding-left: 12px; }
+        h3 { font-size: 18px; margin: 15px 0 10px; color: #b4c89a; }
         
-        h2 {
-            font-size: 20px;
-            margin-bottom: 15px;
-            color: #c4d6a3;
-            border-left: 3px solid #8bc34a;
-            padding-left: 12px;
-        }
-        
-        h3 {
-            font-size: 18px;
-            margin: 15px 0 10px;
-            color: #b4c89a;
+        .child-indicator {
+            text-align: center; font-size: 18px; font-weight: bold;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+            padding: 10px 20px; border-radius: 30px; margin-bottom: 20px;
+            cursor: pointer; color: #f0e6d0;
         }
         
         button {
-            background: #2d5a3b;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 30px;
-            margin: 5px;
-            cursor: pointer;
-            color: white;
-            font-size: 14px;
-            transition: 0.2s;
+            background: #2d5a3b; border: none; padding: 10px 20px;
+            border-radius: 30px; margin: 5px; cursor: pointer;
+            color: white; font-size: 14px; transition: 0.2s;
         }
+        button:hover { background: #3d7a4b; transform: scale(1.02); }
         
-        button:hover {
-            background: #3d7a4b;
-            transform: scale(1.02);
-        }
-        
-        .btn-primary {
-            background: #4a7a4a;
-        }
-        
-        .btn-share {
-            background: #25D366;
-        }
-        
-        .btn-share-vk {
-            background: #4c75a3;
-        }
-        
-        .btn-share-tg {
-            background: #26A5E4;
-        }
-        
-        .char-selector {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin: 15px 0;
-        }
-        
-        .char-option {
-            text-align: center;
-            cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 40px;
-            background: rgba(0,0,0,0.4);
-            transition: 0.2s;
-        }
-        
-        .char-option.active {
-            background: #ff9f4a;
-            transform: scale(1.05);
-        }
-        
-        .char-avatar {
-            width: 50px;
-            height: 50px;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-            margin: 0 auto 5px;
-            border-radius: 50%;
-        }
-        
-        .char-name {
-            font-size: 12px;
-        }
+        .btn-primary { background: #4a7a4a; }
+        .btn-share { background: #25D366; }
+        .btn-share-vk { background: #4c75a3; }
+        .btn-share-tg { background: #26A5E4; }
         
         .alert-card {
-            background: rgba(255, 215, 0, 0.15);
-            border-left: 4px solid #ffd700;
-            padding: 12px 15px;
-            border-radius: 20px;
-            margin-bottom: 20px;
+            background: rgba(255, 215, 0, 0.15); border-left: 4px solid #ffd700;
+            padding: 12px 15px; border-radius: 20px; margin-bottom: 20px;
         }
         
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .stat-item { background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 20px; font-size: 14px; }
         
-        .stat-item {
-            background: rgba(0,0,0,0.3);
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-        }
-        
-        .achievements-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-        
-        .achievement-item {
-            background: rgba(0,0,0,0.3);
-            border-radius: 20px;
-            padding: 10px;
-            text-align: center;
-        }
-        
-        .achievement-item.earned {
-            background: rgba(255, 215, 0, 0.2);
-            border: 1px solid #ffd700;
-        }
-        
-        .achievement-item.locked {
-            opacity: 0.6;
-        }
+        .achievements-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .achievement-item { background: rgba(0,0,0,0.3); border-radius: 20px; padding: 10px; text-align: center; }
+        .achievement-item.earned { background: rgba(255, 215, 0, 0.2); border: 1px solid #ffd700; }
+        .achievement-item.locked { opacity: 0.6; }
         
         .history-list {
-            max-height: 150px;
-            overflow-y: auto;
-            background: rgba(0,0,0,0.3);
-            border-radius: 20px;
-            padding: 10px;
-            font-size: 12px;
+            max-height: 150px; overflow-y: auto;
+            background: rgba(0,0,0,0.3); border-radius: 20px; padding: 10px; font-size: 12px;
         }
-        
-        .history-item {
-            padding: 5px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        hr {
-            border-color: rgba(160, 180, 140, 0.2);
-            margin: 15px 0;
-        }
+        .history-item { padding: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         
         .lock-icon {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(4px);
-            padding: 8px 15px;
-            border-radius: 30px;
-            font-size: 12px;
-            z-index: 10;
-            color: white;
+            position: fixed; top: 20px; right: 20px;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+            padding: 8px 15px; border-radius: 30px; font-size: 12px; z-index: 10; color: white;
         }
         
         @media (max-width: 480px) {
             .container { padding: 20px 15px; }
             h1 { font-size: 24px; }
-            .char-avatar { width: 40px; height: 40px; }
-            .char-name { font-size: 10px; }
             .achievements-grid { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr; }
         }
@@ -233,36 +96,11 @@
     <div class="container">
         <h1>🌲 Штаб Создателя</h1>
         
+        <div class="child-indicator" id="childIndicator">👶 Загрузка...</div>
+        
         <div id="fearAlert" class="alert-card" style="display: none;">
             <div id="alertContent"></div>
             <button id="alertHelpBtn" style="margin-top: 10px; background: #ff9f4a;">💬 Помочь поговорить</button>
-        </div>
-        
-        <div class="card">
-            <h2>🎭 Смена персонажа</h2>
-            <div class="char-selector" id="charSelector">
-                <div class="char-option" data-char="lucik">
-                    <div class="char-avatar" style="background-image: url('avatar.png');"></div>
-                    <div class="char-name">🦁 Люцик</div>
-                </div>
-                <div class="char-option" data-char="mom">
-                    <div class="char-avatar" style="background-image: url('mom.png');"></div>
-                    <div class="char-name">👩 Мама</div>
-                </div>
-                <div class="char-option" data-char="dad">
-                    <div class="char-avatar" style="background-image: url('dad.png');"></div>
-                    <div class="char-name">👨 Папа</div>
-                </div>
-                <div class="char-option" data-char="kid1">
-                    <div class="char-avatar" style="background-image: url('kid1.png');"></div>
-                    <div class="char-name">🧒 Ребёнок 1</div>
-                </div>
-                <div class="char-option" data-char="kid2">
-                    <div class="char-avatar" style="background-image: url('kid2.png');"></div>
-                    <div class="char-name">👧 Ребёнок 2</div>
-                </div>
-            </div>
-            <p style="font-size:12px; opacity:0.7; margin-top:10px;">⭐ Мама, Папа, Ребёнок 1, Ребёнок 2 доступны по премиум-подписке</p>
         </div>
         
         <div class="card">
@@ -304,147 +142,160 @@
         
         <a href="/app.html" style="display: block; text-align: center; margin-top: 15px; color: #a4d4a4;">← На главный экран</a>
     </div>
-    
-    <script>
+        <script>
         // Шифрование пина
         const PIN_SALT = 'lucik_magic_2024';
         function encodePin(pin) { return btoa(pin.split('').reverse().join('') + ':' + PIN_SALT); }
         function decodePin(enc) { try { return atob(enc).split(':')[0].split('').reverse().join(''); } catch { return ''; } }
-                
+        
         // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
         async function checkAuthAndRedirect() {
             const token = localStorage.getItem('userToken');
             const guestMode = localStorage.getItem('guestMode') === 'true';
-            
             if (guestMode) return true;
-            
-            if (!token) {
-                window.location.href = '/';
-                return false;
-            }
-            
+            if (!token) { window.location.href = '/'; return false; }
             try {
                 const response = await fetch('/api/verify-token', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await response.json();
-                
                 if (!data.valid) {
-                    localStorage.removeItem('userToken');
-                    localStorage.removeItem('userEmail');
-                    localStorage.removeItem('guestMode');
-                    window.location.href = '/';
-                    return false;
+                    localStorage.removeItem('userToken'); localStorage.removeItem('userEmail');
+                    localStorage.removeItem('guestMode'); window.location.href = '/'; return false;
                 }
                 return true;
-            } catch (error) {
-                return true;
-            }
+            } catch (error) { return true; }
         }
         
         checkAuthAndRedirect();
         
-        let isPremium = localStorage.getItem('isPremium') === 'true';
-        let childName = localStorage.getItem('childName') || 'малыш';
-        let childAge = localStorage.getItem('childAge') || 5;
-        let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
-        let savedPin = localStorage.getItem('parentPin');
-        let fearStats = JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
-        let conversationHistory = JSON.parse(localStorage.getItem('storyHistory') || '[]');
-        let pendingFearAlert = localStorage.getItem('pendingFearAlert');
-        let pendingFearText = localStorage.getItem('pendingFearText') || '';
+        // ========== ДАННЫЕ ДЕТЕЙ ==========
+        let children = [];
+        let currentChildIndex = 0;
         
-        const characters = {
-            lucik: { name: 'Люцик', icon: 'avatar.png', premium: false },
-            mom: { name: 'Мама', icon: 'mom.png', premium: true },
-            dad: { name: 'Папа', icon: 'dad.png', premium: true },
-            kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: true },
-            kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: true }
-        };
+        try {
+            const saved = localStorage.getItem('children');
+            if (saved) children = JSON.parse(saved);
+            currentChildIndex = parseInt(localStorage.getItem('currentChildIndex') || '0');
+            if (currentChildIndex >= children.length) currentChildIndex = 0;
+        } catch { children = []; }
+        
+        if (children.length === 0) {
+            const oldName = localStorage.getItem('childName') || 'малыш';
+            const oldAge = parseInt(localStorage.getItem('childAge') || '5');
+            children = [{ name: oldName, age: oldAge, gender: 'boy' }];
+            localStorage.setItem('children', JSON.stringify(children));
+        }
+        
+        function getCurrentChild() {
+            if (currentChildIndex >= children.length) currentChildIndex = 0;
+            return children[currentChildIndex] || { name: 'малыш', age: 5 };
+        }
+        
+        function updateChildIndicator() {
+            const child = getCurrentChild();
+            const arrow = children.length > 1 ? ' ◀ ▶' : '';
+            document.getElementById('childIndicator').innerHTML = `👶 ${child.name}, ${child.age} лет${arrow}`;
+        }
+        
+        function switchChild(direction) {
+            if (children.length <= 1) return;
+            currentChildIndex += direction;
+            if (currentChildIndex < 0) currentChildIndex = children.length - 1;
+            if (currentChildIndex >= children.length) currentChildIndex = 0;
+            localStorage.setItem('currentChildIndex', currentChildIndex);
+            updateChildIndicator();
+            updateUI();
+        }
+        
+        // Переключение по тапу/свайпу
+        let childTouchStart = 0;
+        document.getElementById('childIndicator').addEventListener('touchstart', (e) => {
+            childTouchStart = e.changedTouches[0].screenX;
+        });
+        document.getElementById('childIndicator').addEventListener('touchend', (e) => {
+            const diff = e.changedTouches[0].screenX - childTouchStart;
+            if (Math.abs(diff) > 40) switchChild(diff > 0 ? -1 : 1);
+        });
+        document.getElementById('childIndicator').addEventListener('click', () => {
+            if (children.length > 1) switchChild(1);
+        });
+        
+        let isPremium = localStorage.getItem('isPremium') === 'true';
         
         function updateUI() {
+            const idx = currentChildIndex;
+            
+            // Страхи
+            const fearData = localStorage.getItem(`fearStats_${idx}`);
+            const fearStats = fearData ? JSON.parse(fearData) : JSON.parse('{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+            
             document.getElementById('fearStats').innerHTML = `
-                <div class="stat-item">😨 Темнота: ${fearStats.темноты}</div>
-                <div class="stat-item">🏥 Врачи: ${fearStats.врачей}</div>
-                <div class="stat-item">🧸 Одиночество: ${fearStats.одиночества}</div>
-                <div class="stat-item">🌟 Новое: ${fearStats.нового}</div>
-                <div class="stat-item">💔 Обиды: ${fearStats.обиды}</div>
-                <div class="stat-item">🐕 Животные: ${fearStats.животных}</div>
+                <div class="stat-item">😨 Темнота: ${fearStats.темноты || 0}</div>
+                <div class="stat-item">🏥 Врачи: ${fearStats.врачей || 0}</div>
+                <div class="stat-item">🧸 Одиночество: ${fearStats.одиночества || 0}</div>
+                <div class="stat-item">🌟 Новое: ${fearStats.нового || 0}</div>
+                <div class="stat-item">💔 Обиды: ${fearStats.обиды || 0}</div>
+                <div class="stat-item">🐕 Животные: ${fearStats.животных || 0}</div>
             `;
+            
+            // История
+            const historyData = localStorage.getItem(`storyHistory_${idx}`);
+            const conversationHistory = historyData ? JSON.parse(historyData) : [];
             document.getElementById('historyList').innerHTML = conversationHistory.slice(-15).map(i => `<div class="history-item">${i}</div>`).join('') || "Пока тишина...";
             
+            // Оповещение о страхе
+            const pendingFearAlert = localStorage.getItem('pendingFearAlert');
+            const pendingFearText = localStorage.getItem('pendingFearText') || '';
             if (pendingFearAlert === 'true' && pendingFearText) {
                 document.getElementById('fearAlert').style.display = 'block';
-                document.getElementById('alertContent').innerHTML = `📢 <strong>Люцик заметил:</strong><br>Ребёнок сказал: "${pendingFearText}"<br><span style="font-size:12px;">Хотите получить совет, как мягко поговорить?</span>`;
+                document.getElementById('alertContent').innerHTML = `📢 <strong>Люцик заметил:</strong><br>Ребёнок сказал: "${pendingFearText}"<br><span style="font-size:12px;">Хотите получить совет?</span>`;
             } else {
                 document.getElementById('fearAlert').style.display = 'none';
             }
             
-            document.querySelectorAll('.char-option').forEach(opt => {
-                if (opt.dataset.char === currentChar) opt.classList.add('active');
-                else opt.classList.remove('active');
-            });
-            
-            const achievements = JSON.parse(localStorage.getItem('achievements') || '{}');
+            // Достижения
+            const achData = localStorage.getItem(`achievements_${idx}`);
+            const achievements = achData ? JSON.parse(achData) : {};
             let html = '';
             for (const [id, ach] of Object.entries(achievements)) {
                 const earnedClass = ach.earned ? 'earned' : 'locked';
                 const earnedText = ach.earned ? '✅' : '🔒';
-                html += `
-                    <div class="achievement-item ${earnedClass}">
-                        <div style="font-size:24px;">${earnedText}</div>
-                        <div style="font-weight:bold; font-size:12px;">${ach.name}</div>
-                        <div style="font-size:10px; opacity:0.7;">${ach.desc}</div>
-                        ${ach.progress ? `<div style="font-size:10px; margin-top:5px;">${ach.progress}/${ach.target}</div>` : ''}
-                        ${ach.earned && ach.date ? `<div style="font-size:9px; margin-top:5px;">${new Date(ach.date).toLocaleDateString()}</div>` : ''}
-                    </div>
-                `;
+                html += `<div class="achievement-item ${earnedClass}">
+                    <div style="font-size:24px;">${earnedText}</div>
+                    <div style="font-weight:bold; font-size:12px;">${ach.name}</div>
+                    <div style="font-size:10px; opacity:0.7;">${ach.desc}</div>
+                    ${ach.progress ? `<div style="font-size:10px;">${ach.progress}/${ach.target}</div>` : ''}
+                </div>`;
             }
             document.getElementById('achievementsList').innerHTML = html || 'Пока нет достижений';
         }
         
-        function changeCharacter(charId) {
-            if (characters[charId].premium && !isPremium) {
-                alert('🌟 Оформите подписку, чтобы играть за этого персонажа!');
-                return;
-            }
-            currentChar = charId;
-            localStorage.setItem('currentCharacter', charId);
-            updateUI();
-            alert(`Персонаж изменён на ${characters[charId].name}`);
-        }
-        
-        document.querySelectorAll('.char-option').forEach(opt => {
-            opt.addEventListener('click', () => changeCharacter(opt.dataset.char));
-        });
-        
+        // ========== ПОМОЩЬ ПСИХОЛОГА ==========
         async function getParentAdvice(fear) {
             const modal = document.createElement('div');
-            modal.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); backdrop-filter:blur(12px); border-radius:40px; padding:24px; z-index:3000; min-width:280px; max-width:90%; max-height:80%; overflow:auto; color:white; border:1px solid rgba(255,255,255,0.2);';
-            modal.innerHTML = `<h3>🧠 Совет психолога</h3><div id="adviceResult" style="margin:15px 0; line-height:1.5;">⏳ Люцик советуется...</div><button class="close-btn" style="background:#ff4081; padding:10px 20px; border-radius:30px; border:none; color:white; margin-top:15px;">Закрыть</button>`;
+            modal.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); border-radius:40px; padding:24px; z-index:3000; min-width:280px; max-width:90%; color:white;';
+            modal.innerHTML = `<h3>🧠 Совет психолога</h3><div id="adviceResult">⏳ Загрузка...</div><button class="close-btn" style="background:#ff4081; padding:10px 20px; border-radius:30px; border:none; color:white; margin-top:15px;">Закрыть</button>`;
             document.body.appendChild(modal);
             try {
                 const token = localStorage.getItem('userToken');
                 const response = await fetch('/api/parent-advice', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ fear, childAge, childName })
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ fear, childAge: getCurrentChild().age, childName: getCurrentChild().name })
                 });
                 const data = await response.json();
-                const resultDiv = document.getElementById('adviceResult');
-                if (data.advice) resultDiv.innerHTML = `<strong>😟 Страх: "${fear}"</strong><br><br>${data.advice.replace(/\n/g, '<br>')}<br><br><small>💡 Совет сгенерирован ИИ</small>`;
-                else resultDiv.innerHTML = '❌ Не удалось получить совет. Попробуйте позже.';
+                document.getElementById('adviceResult').innerHTML = data.advice 
+                    ? `<strong>😟 Страх: "${fear}"</strong><br><br>${data.advice.replace(/\n/g, '<br>')}<br><br><small>💡 Совет сгенерирован ИИ</small>`
+                    : '❌ Не удалось получить совет.';
             } catch(e) { document.getElementById('adviceResult').innerHTML = '❌ Ошибка соединения.'; }
             modal.querySelector('.close-btn').onclick = () => modal.remove();
         }
         
         function showHelpModal() {
             const modal = document.createElement('div');
-            modal.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); backdrop-filter:blur(12px); border-radius:40px; padding:24px; z-index:3000; min-width:280px; max-width:90%; color:white; border:1px solid rgba(255,255,255,0.2);';
+            modal.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); border-radius:40px; padding:24px; z-index:3000; min-width:280px; max-width:90%; color:white;';
             modal.innerHTML = `
                 <h3>🧠 Выберите страх</h3>
                 <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:15px 0;">
@@ -465,9 +316,9 @@
             const getAdvice = (fear) => { modal.remove(); getParentAdvice(fear); };
             document.getElementById('helpDarkness').onclick = () => getAdvice('темнота');
             document.getElementById('helpDoctors').onclick = () => getAdvice('врачи, уколы, больница');
-            document.getElementById('helpAlone').onclick = () => getAdvice('одиночество, оставаться без мамы');
+            document.getElementById('helpAlone').onclick = () => getAdvice('одиночество');
             document.getElementById('helpAnimals').onclick = () => getAdvice('животные');
-            document.getElementById('helpNew').onclick = () => getAdvice('новое, незнакомое, перемены');
+            document.getElementById('helpNew').onclick = () => getAdvice('новое, перемены');
             document.getElementById('helpOffense').onclick = () => getAdvice('обиды, ссоры');
             document.getElementById('customBtn').onclick = () => {
                 const custom = document.getElementById('customFear').value.trim();
@@ -478,20 +329,20 @@
         
         document.getElementById('parentHelpBtn').onclick = showHelpModal;
         document.getElementById('alertHelpBtn').onclick = () => {
-            const fear = pendingFearText;
+            const fear = localStorage.getItem('pendingFearText') || '';
             localStorage.removeItem('pendingFearAlert');
             localStorage.removeItem('pendingFearText');
             updateUI();
             getParentAdvice(fear);
         };
         
+        // ========== ПОДЕЛИТЬСЯ ==========
         function shareApp(platform) {
-            const text = "🎉 Мой ребёнок больше не боится темноты! Люцик — волшебный кот, который помогает детям 3-7 лет справляться со страхами. Бесплатно, без рекламы, только сказки и забота. Попробуйте и вы! 👉 https://geroy-skazki.vercel.app";
-            const shortText = "🐱 Люцик — друг, который лечит страхи сказкой. Мой ребёнок теперь спит без света! Спасибо, Люцик! ❤️ https://geroy-skazki.vercel.app";
+            const text = "🎉 Мой ребёнок больше не боится темноты! Люцик — волшебный кот, который помогает детям 3-12 лет справляться со страхами. Попробуйте: https://geroy-skazki.vercel.app";
             const urls = {
-                whatsapp: `https://wa.me/?text=${encodeURIComponent(shortText)}`,
+                whatsapp: `https://wa.me/?text=${encodeURIComponent(text)}`,
                 vk: `https://vk.com/share.php?url=https://geroy-skazki.vercel.app&title=Герой Сказок&description=${encodeURIComponent(text)}`,
-                telegram: `https://t.me/share/url?url=https://geroy-skazki.vercel.app&text=${encodeURIComponent(shortText)}`
+                telegram: `https://t.me/share/url?url=https://geroy-skazki.vercel.app&text=${encodeURIComponent(text)}`
             };
             if (urls[platform]) window.open(urls[platform], '_blank');
         }
@@ -500,9 +351,10 @@
         document.getElementById('shareVkBtn').onclick = () => shareApp('vk');
         document.getElementById('shareTgBtn').onclick = () => shareApp('telegram');
         
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        updateChildIndicator();
         updateUI();
         
-        // Проверка пина при входе в штаб
         const token = localStorage.getItem('userToken');
         if (!token && !localStorage.getItem('guestMode')) window.location.href = '/';
     </script>
