@@ -1,4 +1,4 @@
-// api/login.js — JWT авторизация с возвратом детей (версия от 4 мая 2026)
+// api/login.js — JWT авторизация с детьми и полом (версия от 5 мая 2026)
 import { Pool } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
                 { expiresIn: '7d' }
             );
             
-            // Парсим детей
+            // Парсим детей с полом
             let children = [];
             if (user.children) {
                 try {
