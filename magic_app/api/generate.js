@@ -1,4 +1,4 @@
-// api/generate.js — DeepSeek API (версия от 3 мая 2026)
+// api/generate.js — DeepSeek API (версия от 5 мая 2026)
 import { Pool } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 
@@ -191,7 +191,6 @@ export default async function handler(req, res) {
             let greeting;
             
             if (age <= 7) {
-                // Дошкольник
                 const greetings = {
                     lucik: `Мурр, привет, ${childName}! Я — котик Люцик. Я волшебный — умею помогать, когда страшно или грустно. А ещё я люблю сказки и игры! Расскажи, как у тебя дела?`,
                     mom: `Привет, моё солнышко! Мама рядом. Как прошёл твой день, ${childName}?`,
@@ -201,7 +200,6 @@ export default async function handler(req, res) {
                 };
                 greeting = greetings[character] || greetings.lucik;
             } else {
-                // Школьник 7-12
                 const greetings = {
                     lucik: `Привет, ${childName}! Рад тебя слышать. Я здесь, чтобы поболтать, поддержать или помочь разобраться с тем, что волнует. Как ты сегодня?`,
                     mom: `Родной мой, как ты? Я здесь, рассказывай всё как есть.`,
@@ -246,7 +244,6 @@ export default async function handler(req, res) {
         const age = parseInt(childAge) || 5;
         let systemPrompt = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
         
-        // Добавляем возрастной контекст
         if (age <= 7) {
             systemPrompt += `\n\nСЕЙЧАС ТЫ В РЕЖИМЕ ДОШКОЛЬНИКА (3-7 лет). Ребёнка зовут ${childName}, ему ${age} лет. Говори просто, коротко, с мурлыканьем (если ты Люцик).`;
         } else {
@@ -257,7 +254,6 @@ export default async function handler(req, res) {
             systemPrompt += `\n\nРасскажи длинную, спокойную сказку на ночь. Учитывай возраст ребёнка.`;
         }
 
-        // Последние 8 сообщений для контекста
         const historyMessages = (history || []).slice(-8).map(msg => ({
             role: msg.role,
             content: msg.content
@@ -288,14 +284,20 @@ export default async function handler(req, res) {
 
         if (data.error) {
             return res.status(200).json({
-                story: "Я немного устал. Давай поиграем?",
+                story: "Мурр... Я немного устал. Давай поиграем?",
                 detectedFear: null
             });
         }
 
         let story = data.choices?.[0]?.message?.content || "Я тебя слушаю!";
+        
+        // ФИЛЬТР МУСОРНЫХ ОТВЕТОВ
+        if (!story || story.includes('Люцик 31') || story.includes('Люцик 02') || story.includes('ошибка') || story.includes('error') || story.length < 2) {
+            story = "Мурр... Я немного задумался. Давай ещё раз?";
+        }
+        
         story = story.replace(/^\d+\s*/, '').trim();
-        if (!story) story = "Я тебя слушаю!";
+        if (!story || story.length < 2) story = "Мурр... Я тебя слушаю!";
 
         // ========== ДЕТЕКЦИЯ СТРАХОВ ==========
         let detectedFear = null;
