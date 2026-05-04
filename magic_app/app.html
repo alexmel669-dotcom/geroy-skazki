@@ -191,13 +191,9 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
         
-        .action-btn:active {
-            transform: scale(0.96);
-        }
+        .action-btn:active { transform: scale(0.96); }
         
-        body.night .action-btn {
-            background: rgba(0,0,0,0.5);
-        }
+        body.night .action-btn { background: rgba(0,0,0,0.5); }
         
         .mic-container {
             display: flex;
@@ -217,14 +213,8 @@
             transition: 0.2s;
         }
         
-        .mic-btn:active {
-            transform: scale(0.95);
-        }
-        
-        .mic-btn.recording {
-            background: #4CAF50;
-            animation: pulse 1s infinite;
-        }
+        .mic-btn:active { transform: scale(0.95); }
+        .mic-btn.recording { background: #4CAF50; animation: pulse 1s infinite; }
         
         .modal {
             position: fixed;
@@ -257,10 +247,7 @@
             touch-action: manipulation;
         }
         
-        .modal .close-btn {
-            background: #ff4081;
-            color: white;
-        }
+        .modal .close-btn { background: #ff4081; color: white; }
         
         .parent-btn {
             position: fixed;
@@ -297,7 +284,7 @@
     <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
     
     <div class="app-container">
-        <div class="child-indicator" id="childIndicator">👶 Ваня, 5 лет ◀ ▶</div>
+        <div class="child-indicator" id="childIndicator">👶 Загрузка...</div>
         
         <div class="stats">
             <div class="stat">😊 <div class="stat-bar"><div class="stat-fill" id="moodFill" style="width: 70%"></div></div></div>
@@ -329,7 +316,7 @@
         function encodePin(pin) { return btoa(pin.split('').reverse().join('') + ':' + PIN_SALT); }
         function decodePin(enc) { try { return atob(enc).split(':')[0].split('').reverse().join(''); } catch { return ''; } }
         
-        // ========== ДАННЫЕ ДЕТЕЙ ==========
+        // ========== ДАННЫЕ ДЕТЕЙ (исправлено) ==========
         let children = [];
         let currentChildIndex = 0;
         
@@ -337,39 +324,34 @@
             const saved = localStorage.getItem('children');
             if (saved) children = JSON.parse(saved);
             currentChildIndex = parseInt(localStorage.getItem('currentChildIndex') || '0');
+            if (currentChildIndex >= children.length) currentChildIndex = 0;
         } catch { children = []; }
         
-        // Если детей нет (старый аккаунт) — создаём из старых данных
         if (children.length === 0) {
             const oldName = localStorage.getItem('childName') || 'малыш';
             const oldAge = parseInt(localStorage.getItem('childAge') || '5');
             children = [{ name: oldName, age: oldAge }];
+            currentChildIndex = 0;
             localStorage.setItem('children', JSON.stringify(children));
+            localStorage.setItem('currentChildIndex', '0');
+            // Переносим старые данные в новый формат
+            const oldFear = localStorage.getItem('fearStats');
+            const oldHistory = localStorage.getItem('storyHistory');
+            const oldMood = localStorage.getItem('lucik_mood');
+            const oldHunger = localStorage.getItem('lucik_hunger');
+            const oldEnergy = localStorage.getItem('lucik_energy');
+            const oldBravery = localStorage.getItem('lucik_bravery');
+            if (oldFear) localStorage.setItem('fearStats_0', oldFear);
+            if (oldHistory) localStorage.setItem('storyHistory_0', oldHistory);
+            if (oldMood) localStorage.setItem('lucik_mood_0', oldMood);
+            if (oldHunger) localStorage.setItem('lucik_hunger_0', oldHunger);
+            if (oldEnergy) localStorage.setItem('lucik_energy_0', oldEnergy);
+            if (oldBravery) localStorage.setItem('lucik_bravery_0', oldBravery);
         }
         
         function getCurrentChild() {
             if (currentChildIndex >= children.length) currentChildIndex = 0;
             return children[currentChildIndex] || { name: 'малыш', age: 5 };
-        }
-        
-        function switchChild(direction) {
-            if (children.length <= 1) return;
-            currentChildIndex += direction;
-            if (currentChildIndex < 0) currentChildIndex = children.length - 1;
-            if (currentChildIndex >= children.length) currentChildIndex = 0;
-            localStorage.setItem('currentChildIndex', currentChildIndex);
-            
-            const child = getCurrentChild();
-            childName = child.name;
-            childAge = child.age;
-            localStorage.setItem('childName', childName);
-            localStorage.setItem('childAge', childAge);
-            
-            // Загружаем данные этого ребёнка
-            loadChildData(currentChildIndex);
-            updateChildIndicator();
-            updateStatsUI();
-            speak(`Привет, ${childName}!`);
         }
         
         function updateChildIndicator() {
@@ -379,38 +361,47 @@
         }
         
         function loadChildData(index) {
-            // Страхи
-            const fearData = localStorage.getItem(`fearStats_${index}`);
-            if (fearData) {
-                fearStats = JSON.parse(fearData);
-                localStorage.setItem('fearStats', fearData);
-            } else {
-                fearStats = JSON.parse('{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
-            }
-            
-            // История
-            const historyData = localStorage.getItem(`storyHistory_${index}`);
-            if (historyData) {
-                conversationHistory = JSON.parse(historyData);
-                localStorage.setItem('storyHistory', historyData);
-            } else {
-                conversationHistory = [];
-            }
-            
-            // Настроение и т.д.
-            mood = parseInt(localStorage.getItem(`lucik_mood_${index}`) || localStorage.getItem('lucik_mood') || '70');
-            hunger = parseInt(localStorage.getItem(`lucik_hunger_${index}`) || localStorage.getItem('lucik_hunger') || '60');
-            energy = parseInt(localStorage.getItem(`lucik_energy_${index}`) || localStorage.getItem('lucik_energy') || '50');
-            bravery = parseInt(localStorage.getItem(`lucik_bravery_${index}`) || localStorage.getItem('lucik_bravery') || '0');
+            const idx = index || 0;
+            const fearData = localStorage.getItem(`fearStats_${idx}`);
+            fearStats = fearData ? JSON.parse(fearData) : JSON.parse('{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+            const historyData = localStorage.getItem(`storyHistory_${idx}`);
+            conversationHistory = historyData ? JSON.parse(historyData) : [];
+            mood = parseInt(localStorage.getItem(`lucik_mood_${idx}`) || '70');
+            hunger = parseInt(localStorage.getItem(`lucik_hunger_${idx}`) || '60');
+            energy = parseInt(localStorage.getItem(`lucik_energy_${idx}`) || '50');
+            bravery = parseInt(localStorage.getItem(`lucik_bravery_${idx}`) || '0');
+            fishScore = parseInt(localStorage.getItem(`fishScore_${idx}`) || '0');
+            storyCount = parseInt(localStorage.getItem(`storyCount_${idx}`) || '0');
         }
         
         function saveChildData(index) {
-            localStorage.setItem(`fearStats_${index}`, JSON.stringify(fearStats));
-            localStorage.setItem(`storyHistory_${index}`, JSON.stringify(conversationHistory));
-            localStorage.setItem(`lucik_mood_${index}`, mood);
-            localStorage.setItem(`lucik_hunger_${index}`, hunger);
-            localStorage.setItem(`lucik_energy_${index}`, energy);
-            localStorage.setItem(`lucik_bravery_${index}`, bravery);
+            const idx = index || 0;
+            localStorage.setItem(`fearStats_${idx}`, JSON.stringify(fearStats));
+            localStorage.setItem(`storyHistory_${idx}`, JSON.stringify(conversationHistory));
+            localStorage.setItem(`lucik_mood_${idx}`, mood);
+            localStorage.setItem(`lucik_hunger_${idx}`, hunger);
+            localStorage.setItem(`lucik_energy_${idx}`, energy);
+            localStorage.setItem(`lucik_bravery_${idx}`, bravery);
+            localStorage.setItem(`fishScore_${idx}`, fishScore);
+            localStorage.setItem(`storyCount_${idx}`, storyCount);
+        }
+        
+        function switchChild(direction) {
+            if (children.length <= 1) return;
+            saveChildData(currentChildIndex);
+            currentChildIndex += direction;
+            if (currentChildIndex < 0) currentChildIndex = children.length - 1;
+            if (currentChildIndex >= children.length) currentChildIndex = 0;
+            localStorage.setItem('currentChildIndex', currentChildIndex);
+            const child = getCurrentChild();
+            childName = child.name;
+            childAge = child.age;
+            localStorage.setItem('childName', childName);
+            localStorage.setItem('childAge', childAge);
+            loadChildData(currentChildIndex);
+            updateChildIndicator();
+            updateStatsUI();
+            speak(`Привет, ${childName}!`);
         }
                 
         // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
@@ -505,8 +496,11 @@
         }
         
         // ========== ДОСТИЖЕНИЯ ==========
+        function getAchievementsKey() { return `achievements_${currentChildIndex}`; }
+        
         function initAchievements() {
-            let achievements = localStorage.getItem(`achievements_${currentChildIndex}`);
+            const key = getAchievementsKey();
+            let achievements = localStorage.getItem(key);
             if (!achievements) {
                 const defaultAchievements = {
                     'first_talk': { name: '🎤 Первый разговор', desc: 'Первый разговор с Люциком', earned: false, date: null },
@@ -520,13 +514,13 @@
                     'emotion_master': { name: '😊 Мастер эмоций', desc: 'Угадал все эмоции', earned: false, date: null },
                     '7_days': { name: '📅 Друг на неделю', desc: '7 дней с Люциком', earned: false, date: null }
                 };
-                localStorage.setItem(`achievements_${currentChildIndex}`, JSON.stringify(defaultAchievements));
+                localStorage.setItem(key, JSON.stringify(defaultAchievements));
             }
-            return JSON.parse(localStorage.getItem(`achievements_${currentChildIndex}`));
+            return JSON.parse(localStorage.getItem(key));
         }
         
         function updateAchievement(achievementId, progress = null) {
-            const key = `achievements_${currentChildIndex}`;
+            const key = getAchievementsKey();
             const achievements = JSON.parse(localStorage.getItem(key));
             if (achievements[achievementId] && !achievements[achievementId].earned) {
                 if (progress !== null) {
@@ -571,14 +565,7 @@
             if (!memory) {
                 const now = new Date();
                 const weekStart = getWeekStart(now);
-                memory = {
-                    weekStart: weekStart,
-                    fears: {},
-                    positiveTopics: {},
-                    mood: { happy: 0, sad: 0, scared: 0 },
-                    victories: [],
-                    lastUpdated: new Date().toISOString()
-                };
+                memory = { weekStart, fears: {}, positiveTopics: {}, mood: { happy: 0, sad: 0, scared: 0 }, victories: [], lastUpdated: new Date().toISOString() };
                 localStorage.setItem(key, JSON.stringify(memory));
                 return memory;
             }
@@ -587,14 +574,7 @@
             const currentWeekStart = getWeekStart(now);
             if (memory.weekStart !== currentWeekStart) {
                 localStorage.setItem(`${key}_${memory.weekStart}`, JSON.stringify(memory));
-                const newMemory = {
-                    weekStart: currentWeekStart,
-                    fears: {},
-                    positiveTopics: {},
-                    mood: { happy: 0, sad: 0, scared: 0 },
-                    victories: [],
-                    lastUpdated: new Date().toISOString()
-                };
+                const newMemory = { weekStart: currentWeekStart, fears: {}, positiveTopics: {}, mood: { happy: 0, sad: 0, scared: 0 }, victories: [], lastUpdated: new Date().toISOString() };
                 localStorage.setItem(key, JSON.stringify(newMemory));
                 return newMemory;
             }
@@ -624,14 +604,10 @@
         let childName = currentChild.name;
         let childAge = currentChild.age;
         let savedPin = localStorage.getItem('parentPin');
-        let mood = parseInt(localStorage.getItem(`lucik_mood_${currentChildIndex}`) || '70');
-        let hunger = parseInt(localStorage.getItem(`lucik_hunger_${currentChildIndex}`) || '60');
-        let energy = parseInt(localStorage.getItem(`lucik_energy_${currentChildIndex}`) || '50');
-        let bravery = parseInt(localStorage.getItem(`lucik_bravery_${currentChildIndex}`) || '0');
-        let fearStats = JSON.parse(localStorage.getItem(`fearStats_${currentChildIndex}`) || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
-        let conversationHistory = JSON.parse(localStorage.getItem(`storyHistory_${currentChildIndex}`) || '[]');
-        let fishScore = parseInt(localStorage.getItem(`fishScore_${currentChildIndex}`) || '0');
-        let storyCount = parseInt(localStorage.getItem(`storyCount_${currentChildIndex}`) || '0');
+        let mood, hunger, energy, bravery, fearStats, conversationHistory, fishScore, storyCount;
+        
+        // Загружаем данные текущего ребёнка
+        loadChildData(currentChildIndex);
         
         if (conversationHistory.length > 50) conversationHistory = conversationHistory.slice(0, 50);
         
@@ -706,10 +682,7 @@
         function unlockAudio() {
             if (audioUnlocked) return;
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            ctx.resume().then(() => {
-                audioUnlocked = true;
-                console.log('Audio unlocked');
-            }).catch(e => console.log('Audio unlock error:', e));
+            ctx.resume().then(() => { audioUnlocked = true; }).catch(e => console.log('Audio unlock error:', e));
         }
         
         function fallbackSpeak(text) {
@@ -727,59 +700,22 @@
                 try {
                     if (!audioUnlocked) {
                         await new Promise(r => setTimeout(r, 500));
-                        if (!audioUnlocked) {
-                            fallbackSpeak(text);
-                            resolve();
-                            return;
-                        }
+                        if (!audioUnlocked) { fallbackSpeak(text); resolve(); return; }
                     }
-                    
-                    if (currentAudio) {
-                        currentAudio.pause();
-                        currentAudio = null;
-                    }
-                    
+                    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
                     const token = localStorage.getItem('userToken');
                     const headers = { 'Content-Type': 'application/json' };
-                    if (token) {
-                        headers['Authorization'] = `Bearer ${token}`;
-                    }
-                    
-                    const response = await fetch('/api/tts', {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify({ text, voice, emotion, speed: 1.0 })
-                    });
-                    
+                    if (token) headers['Authorization'] = `Bearer ${token}`;
+                    const response = await fetch('/api/tts', { method: 'POST', headers, body: JSON.stringify({ text, voice, emotion, speed: 1.0 }) });
                     if (!response.ok) throw new Error('TTS API error: ' + response.status);
-                    
                     const audioBlob = await response.blob();
                     if (audioBlob.size < 100) throw new Error('Audio too small');
-                    
                     const audioUrl = URL.createObjectURL(audioBlob);
                     const audio = new Audio(audioUrl);
                     currentAudio = audio;
-                    
-                    audio.onplay = () => {
-                        isAudioPlaying = true;
-                        document.getElementById('avatar').classList.add('talking');
-                    };
-                    
-                    audio.onended = () => {
-                        isAudioPlaying = false;
-                        document.getElementById('avatar').classList.remove('talking');
-                        URL.revokeObjectURL(audioUrl);
-                        resolve();
-                    };
-                    
-                    audio.onerror = () => {
-                        isAudioPlaying = false;
-                        document.getElementById('avatar').classList.remove('talking');
-                        URL.revokeObjectURL(audioUrl);
-                        fallbackSpeak(text);
-                        resolve();
-                    };
-                    
+                    audio.onplay = () => { isAudioPlaying = true; document.getElementById('avatar').classList.add('talking'); };
+                    audio.onended = () => { isAudioPlaying = false; document.getElementById('avatar').classList.remove('talking'); URL.revokeObjectURL(audioUrl); resolve(); };
+                    audio.onerror = () => { isAudioPlaying = false; document.getElementById('avatar').classList.remove('talking'); URL.revokeObjectURL(audioUrl); fallbackSpeak(text); resolve(); };
                     await audio.play();
                 } catch (error) {
                     console.error('Yandex TTS error:', error);
@@ -791,11 +727,7 @@
         
         async function speak(text) {
             const cleanText = text.replace(/[\*\_\#]/g, '');
-            try {
-                await speakWithYandex(cleanText, currentChar, 'good');
-            } catch (e) {
-                fallbackSpeak(cleanText);
-            }
+            try { await speakWithYandex(cleanText, currentChar, 'good'); } catch (e) { fallbackSpeak(cleanText); }
         }
         
         function purr() {
@@ -819,23 +751,17 @@
             speak(`Теперь я ${characters[charId].name}!`);
         }
         
-        // ========== ПЕРЕКЛЮЧЕНИЕ ДЕТЕЙ (свайп по индикатору) ==========
+        // ========== ПЕРЕКЛЮЧЕНИЕ ДЕТЕЙ ==========
         let childTouchStart = 0;
         document.getElementById('childIndicator').addEventListener('touchstart', (e) => {
             childTouchStart = e.changedTouches[0].screenX;
         });
         document.getElementById('childIndicator').addEventListener('touchend', (e) => {
             const diff = e.changedTouches[0].screenX - childTouchStart;
-            if (Math.abs(diff) > 40) {
-                saveChildData(currentChildIndex);
-                switchChild(diff > 0 ? -1 : 1);
-            }
+            if (Math.abs(diff) > 40) switchChild(diff > 0 ? -1 : 1);
         });
         document.getElementById('childIndicator').addEventListener('click', () => {
-            if (children.length > 1) {
-                saveChildData(currentChildIndex);
-                switchChild(1);
-            }
+            if (children.length > 1) switchChild(1);
         });
                 
         // ========== СВАЙП ПО АВАТАРУ (смена персонажа) ==========
@@ -920,33 +846,23 @@
             closeBtn.innerText = 'Закрыть';
             closeBtn.style.cssText = 'padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
             closeBtn.onclick = () => { clearInterval(gameInterval); clearInterval(gameTimerInterval); gameContainer.remove(); gameActive = false; };
-            bottomBar.appendChild(scoreDiv);
-            bottomBar.appendChild(closeBtn);
+            bottomBar.appendChild(scoreDiv); bottomBar.appendChild(closeBtn);
             fishArea.appendChild(fish);
-            gameContainer.appendChild(fishArea);
-            gameContainer.appendChild(bottomBar);
+            gameContainer.appendChild(fishArea); gameContainer.appendChild(bottomBar);
             document.body.appendChild(gameContainer);
             
             function moveFish() {
-                const maxX = fishArea.clientWidth - 80;
-                const maxY = fishArea.clientHeight - 80;
-                if (maxX > 0 && maxY > 0) {
-                    fish.style.left = Math.random() * maxX + 'px';
-                    fish.style.top = Math.random() * maxY + 'px';
-                }
+                const maxX = fishArea.clientWidth - 80, maxY = fishArea.clientHeight - 80;
+                if (maxX > 0 && maxY > 0) { fish.style.left = Math.random() * maxX + 'px'; fish.style.top = Math.random() * maxY + 'px'; }
             }
             fish.onclick = () => {
                 if (!gameActive) return;
-                gameScore++;
-                fishScore++;
+                gameScore++; fishScore++;
                 localStorage.setItem(`fishScore_${currentChildIndex}`, fishScore);
                 updateAchievement('fish_catcher', 1);
                 scoreDiv.innerText = `🐟 Счёт: ${gameScore} | ⏱️ Осталось: ${timeLeft} сек`;
-                moveFish();
-                playSound('click');
-                hunger = Math.min(100, hunger + 3);
-                mood = Math.min(100, mood + 3);
-                updateStatsUI();
+                moveFish(); playSound('click');
+                hunger = Math.min(100, hunger + 3); mood = Math.min(100, mood + 3); updateStatsUI();
             };
             moveFish();
             gameTimerInterval = setInterval(() => {
@@ -959,9 +875,7 @@
                     fish.style.display = 'none';
                     speak(`Игра окончена! Ты поймал ${gameScore} рыбок! Молодец!`);
                     sendAnalytics('game_fish', { score: gameScore });
-                } else {
-                    scoreDiv.innerText = `🐟 Счёт: ${gameScore} | ⏱️ Осталось: ${timeLeft} сек`;
-                }
+                } else scoreDiv.innerText = `🐟 Счёт: ${gameScore} | ⏱️ Осталось: ${timeLeft} сек`;
             }, 1000);
             gameInterval = setInterval(() => { if (gameActive) moveFish(); }, 1500);
         }
@@ -971,76 +885,37 @@
             sendAnalytics('game_memory');
             const emotions = ['😊', '😢', '😨', '😡', '😴', '😍'];
             memoryCards = [...emotions, ...emotions];
-            for (let i = memoryCards.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [memoryCards[i], memoryCards[j]] = [memoryCards[j], memoryCards[i]];
-            }
+            for (let i = memoryCards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [memoryCards[i], memoryCards[j]] = [memoryCards[j], memoryCards[i]]; }
             memoryFlipped = new Array(memoryCards.length).fill(false);
             memoryMatches = 0;
             
             const gameContainer = document.createElement('div');
             gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
-            const title = document.createElement('h2');
-            title.textContent = '🧠 Найди пару';
-            title.style.color = 'white';
-            title.style.marginBottom = '20px';
-            const board = document.createElement('div');
-            board.style.cssText = 'display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; max-width:400px; width:90%; margin:0 auto;';
+            const title = document.createElement('h2'); title.textContent = '🧠 Найди пару'; title.style.color = 'white'; title.style.marginBottom = '20px';
+            const board = document.createElement('div'); board.style.cssText = 'display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; max-width:400px; width:90%; margin:0 auto;';
             const cards = [];
             for (let i = 0; i < memoryCards.length; i++) {
                 const card = document.createElement('div');
                 card.style.cssText = 'aspect-ratio:1; background:#4a4a6a; border-radius:15px; display:flex; align-items:center; justify-content:center; font-size:40px; cursor:pointer; transition:0.3s;';
-                card.dataset.index = i;
-                card.onclick = () => flipCard(i, card, cards);
-                cards.push(card);
-                board.appendChild(card);
+                card.dataset.index = i; card.onclick = () => flipCard(i, card, cards); cards.push(card); board.appendChild(card);
             }
-            const scoreDiv = document.createElement('div');
-            scoreDiv.style.cssText = 'color:white; margin-top:20px; font-size:20px;';
-            scoreDiv.textContent = `Найдено пар: ${memoryMatches} / 6`;
-            const closeBtn = document.createElement('button');
-            closeBtn.textContent = 'Закрыть';
-            closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-            closeBtn.onclick = () => gameContainer.remove();
-            gameContainer.appendChild(title);
-            gameContainer.appendChild(board);
-            gameContainer.appendChild(scoreDiv);
-            gameContainer.appendChild(closeBtn);
+            const scoreDiv = document.createElement('div'); scoreDiv.style.cssText = 'color:white; margin-top:20px; font-size:20px;'; scoreDiv.textContent = `Найдено пар: ${memoryMatches} / 6`;
+            const closeBtn = document.createElement('button'); closeBtn.textContent = 'Закрыть'; closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; closeBtn.onclick = () => gameContainer.remove();
+            gameContainer.appendChild(title); gameContainer.appendChild(board); gameContainer.appendChild(scoreDiv); gameContainer.appendChild(closeBtn);
             document.body.appendChild(gameContainer);
             
             let firstIndex = null, firstCard = null;
             function flipCard(idx, card, cardsArray) {
                 if (memoryLocked || memoryFlipped[idx]) return;
-                memoryFlipped[idx] = true;
-                card.textContent = memoryCards[idx];
-                card.style.background = '#6c6caa';
-                if (firstIndex === null) {
-                    firstIndex = idx;
-                    firstCard = card;
-                } else {
+                memoryFlipped[idx] = true; card.textContent = memoryCards[idx]; card.style.background = '#6c6caa';
+                if (firstIndex === null) { firstIndex = idx; firstCard = card; }
+                else {
                     if (memoryCards[firstIndex] === memoryCards[idx]) {
-                        memoryMatches++;
-                        scoreDiv.textContent = `Найдено пар: ${memoryMatches} / 6`;
-                        firstIndex = null;
-                        firstCard = null;
-                        playSound('success');
-                        if (memoryMatches === 6) {
-                            updateAchievement('memory_champion');
-                            setTimeout(() => { alert('🎉 Поздравляю! Ты нашёл все пары!'); playSound('victory'); gameContainer.remove(); }, 500);
-                        }
+                        memoryMatches++; scoreDiv.textContent = `Найдено пар: ${memoryMatches} / 6`; firstIndex = null; firstCard = null; playSound('success');
+                        if (memoryMatches === 6) { updateAchievement('memory_champion'); setTimeout(() => { alert('🎉 Поздравляю! Ты нашёл все пары!'); playSound('victory'); gameContainer.remove(); }, 500); }
                     } else {
                         memoryLocked = true;
-                        setTimeout(() => {
-                            memoryFlipped[firstIndex] = false;
-                            memoryFlipped[idx] = false;
-                            firstCard.textContent = '?';
-                            card.textContent = '?';
-                            firstCard.style.background = '#4a4a6a';
-                            card.style.background = '#4a4a6a';
-                            firstIndex = null;
-                            firstCard = null;
-                            memoryLocked = false;
-                        }, 1000);
+                        setTimeout(() => { memoryFlipped[firstIndex] = false; memoryFlipped[idx] = false; firstCard.textContent = '?'; card.textContent = '?'; firstCard.style.background = '#4a4a6a'; card.style.background = '#4a4a6a'; firstIndex = null; firstCard = null; memoryLocked = false; }, 1000);
                     }
                 }
             }
@@ -1051,67 +926,36 @@
             sendAnalytics('game_puzzle');
             const imageUrl = 'avatar.png';
             puzzlePieces = Array.from({ length: 9 }, (_, i) => i);
-            for (let i = puzzlePieces.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [puzzlePieces[i], puzzlePieces[j]] = [puzzlePieces[j], puzzlePieces[i]];
-            }
+            for (let i = puzzlePieces.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [puzzlePieces[i], puzzlePieces[j]] = [puzzlePieces[j], puzzlePieces[i]]; }
             puzzleEmptyIndex = puzzlePieces.indexOf(8);
             
             const gameContainer = document.createElement('div');
             gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
-            const title = document.createElement('h2');
-            title.textContent = '🧩 Собери пазл';
-            title.style.color = 'white';
-            title.style.marginBottom = '20px';
-            const board = document.createElement('div');
-            board.style.cssText = 'display:grid; grid-template-columns:repeat(3, 1fr); gap:5px; width:300px; height:300px; background:#333; border-radius:10px; overflow:hidden;';
+            const title = document.createElement('h2'); title.textContent = '🧩 Собери пазл'; title.style.color = 'white'; title.style.marginBottom = '20px';
+            const board = document.createElement('div'); board.style.cssText = 'display:grid; grid-template-columns:repeat(3, 1fr); gap:5px; width:300px; height:300px; background:#333; border-radius:10px; overflow:hidden;';
             
             function renderBoard() {
                 board.innerHTML = '';
                 for (let i = 0; i < 9; i++) {
-                    const piece = document.createElement('div');
-                    piece.style.cssText = 'background-size:300% 300%; cursor:pointer; border:1px solid #555;';
-                    if (puzzlePieces[i] === 8) {
-                        piece.style.background = '#2a2a2a';
-                    } else {
-                        const row = Math.floor(puzzlePieces[i] / 3);
-                        const col = puzzlePieces[i] % 3;
-                        piece.style.backgroundImage = `url('${imageUrl}')`;
-                        piece.style.backgroundPosition = `${-col * 100}% ${-row * 100}%`;
-                        piece.style.backgroundSize = '300% 300%';
-                    }
-                    piece.onclick = () => movePiece(i);
-                    board.appendChild(piece);
+                    const piece = document.createElement('div'); piece.style.cssText = 'background-size:300% 300%; cursor:pointer; border:1px solid #555;';
+                    if (puzzlePieces[i] === 8) piece.style.background = '#2a2a2a';
+                    else { const row = Math.floor(puzzlePieces[i] / 3), col = puzzlePieces[i] % 3; piece.style.backgroundImage = `url('${imageUrl}')`; piece.style.backgroundPosition = `${-col * 100}% ${-row * 100}%`; piece.style.backgroundSize = '300% 300%'; }
+                    piece.onclick = () => movePiece(i); board.appendChild(piece);
                 }
             }
             
             function movePiece(idx) {
-                const emptyRow = Math.floor(puzzleEmptyIndex / 3);
-                const emptyCol = puzzleEmptyIndex % 3;
-                const clickedRow = Math.floor(idx / 3);
-                const clickedCol = idx % 3;
+                const emptyRow = Math.floor(puzzleEmptyIndex / 3), emptyCol = puzzleEmptyIndex % 3, clickedRow = Math.floor(idx / 3), clickedCol = idx % 3;
                 if (Math.abs(emptyRow - clickedRow) + Math.abs(emptyCol - clickedCol) === 1) {
                     [puzzlePieces[idx], puzzlePieces[puzzleEmptyIndex]] = [puzzlePieces[puzzleEmptyIndex], puzzlePieces[idx]];
-                    puzzleEmptyIndex = idx;
-                    renderBoard();
-                    playSound('click');
-                    let win = true;
-                    for (let i = 0; i < 8; i++) if (puzzlePieces[i] !== i) win = false;
-                    if (win && puzzlePieces[8] === 8) {
-                        updateAchievement('puzzle_solver');
-                        setTimeout(() => { alert('🎉 Ура! Ты собрал пазл!'); playSound('victory'); gameContainer.remove(); }, 500);
-                    }
+                    puzzleEmptyIndex = idx; renderBoard(); playSound('click');
+                    let win = true; for (let i = 0; i < 8; i++) if (puzzlePieces[i] !== i) win = false;
+                    if (win && puzzlePieces[8] === 8) { updateAchievement('puzzle_solver'); setTimeout(() => { alert('🎉 Ура! Ты собрал пазл!'); playSound('victory'); gameContainer.remove(); }, 500); }
                 }
             }
             
-            const closeBtn = document.createElement('button');
-            closeBtn.textContent = 'Закрыть';
-            closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-            closeBtn.onclick = () => gameContainer.remove();
-            gameContainer.appendChild(title);
-            gameContainer.appendChild(board);
-            gameContainer.appendChild(closeBtn);
-            document.body.appendChild(gameContainer);
+            const closeBtn = document.createElement('button'); closeBtn.textContent = 'Закрыть'; closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; closeBtn.onclick = () => gameContainer.remove();
+            gameContainer.appendChild(title); gameContainer.appendChild(board); gameContainer.appendChild(closeBtn); document.body.appendChild(gameContainer);
             renderBoard();
         }
         
@@ -1121,51 +965,17 @@
             sendAnalytics('game_color');
             const gameContainer = document.createElement('div');
             gameContainer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
-            const title = document.createElement('h2');
-            title.textContent = '🎨 Раскрась Люцика';
-            title.style.color = 'white';
-            title.style.marginBottom = '10px';
-            const canvas = document.createElement('canvas');
-            canvas.width = 300;
-            canvas.height = 300;
-            canvas.style.border = '3px solid white';
-            canvas.style.borderRadius = '20px';
-            canvas.style.cursor = 'pointer';
-            canvas.style.backgroundColor = '#f0e6d0';
+            const title = document.createElement('h2'); title.textContent = '🎨 Раскрась Люцика'; title.style.color = 'white'; title.style.marginBottom = '10px';
+            const canvas = document.createElement('canvas'); canvas.width = 300; canvas.height = 300; canvas.style.border = '3px solid white'; canvas.style.borderRadius = '20px'; canvas.style.cursor = 'pointer'; canvas.style.backgroundColor = '#f0e6d0';
             const ctx = canvas.getContext('2d');
             
             function drawOutline() {
-                ctx.clearRect(0, 0, 300, 300);
-                ctx.fillStyle = '#f0e6d0';
-                ctx.fillRect(0, 0, 300, 300);
-                ctx.fillStyle = currentColor;
-                ctx.beginPath();
-                ctx.arc(150, 130, 60, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(120, 110, 12, 0, Math.PI * 2);
-                ctx.arc(180, 110, 12, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#3a2a1a';
-                ctx.beginPath();
-                ctx.arc(120, 110, 6, 0, Math.PI * 2);
-                ctx.arc(180, 110, 6, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#ff6b6b';
-                ctx.beginPath();
-                ctx.ellipse(150, 140, 8, 6, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.moveTo(100, 145);
-                ctx.lineTo(70, 140);
-                ctx.moveTo(100, 150);
-                ctx.lineTo(65, 155);
-                ctx.moveTo(200, 145);
-                ctx.lineTo(230, 140);
-                ctx.moveTo(200, 150);
-                ctx.lineTo(235, 155);
-                ctx.stroke();
+                ctx.clearRect(0, 0, 300, 300); ctx.fillStyle = '#f0e6d0'; ctx.fillRect(0, 0, 300, 300);
+                ctx.fillStyle = currentColor; ctx.beginPath(); ctx.arc(150, 130, 60, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(120, 110, 12, 0, Math.PI * 2); ctx.arc(180, 110, 12, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#3a2a1a'; ctx.beginPath(); ctx.arc(120, 110, 6, 0, Math.PI * 2); ctx.arc(180, 110, 6, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#ff6b6b'; ctx.beginPath(); ctx.ellipse(150, 140, 8, 6, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(100, 145); ctx.lineTo(70, 140); ctx.moveTo(100, 150); ctx.lineTo(65, 155); ctx.moveTo(200, 145); ctx.lineTo(230, 140); ctx.moveTo(200, 150); ctx.lineTo(235, 155); ctx.stroke();
             }
             drawOutline();
             
@@ -1174,350 +984,114 @@
             canvas.onmouseup = () => { isDrawing = false; updateAchievement('artist'); };
             canvas.onmousemove = (e) => {
                 if (!isDrawing) return;
-                const rect = canvas.getBoundingClientRect();
-                const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-                const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-                ctx.fillStyle = currentColor;
-                ctx.beginPath();
-                ctx.arc(x, y, 8, 0, Math.PI * 2);
-                ctx.fill();
-                playSound('paint');
+                const rect = canvas.getBoundingClientRect(), x = (e.clientX - rect.left) * (canvas.width / rect.width), y = (e.clientY - rect.top) * (canvas.height / rect.height);
+                ctx.fillStyle = currentColor; ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill(); playSound('paint');
             };
             
-            const palette = document.createElement('div');
-            palette.style.cssText = 'display:flex; gap:10px; margin:15px 0;';
-            colors.forEach(color => {
-                const colorBtn = document.createElement('div');
-                colorBtn.style.cssText = `width:40px; height:40px; background:${color}; border-radius:50%; cursor:pointer; border:2px solid white;`;
-                colorBtn.onclick = () => { currentColor = color; playSound('click'); };
-                palette.appendChild(colorBtn);
-            });
-            const clearBtn = document.createElement('button');
-            clearBtn.textContent = '🧽 Очистить';
-            clearBtn.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#e67e22; color:white; border:none;';
-            clearBtn.onclick = () => { drawOutline(); playSound('click'); };
-            const closeBtn = document.createElement('button');
-            closeBtn.textContent = 'Закрыть';
-            closeBtn.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-            closeBtn.onclick = () => gameContainer.remove();
-            gameContainer.appendChild(title);
-            gameContainer.appendChild(canvas);
-            gameContainer.appendChild(palette);
-            gameContainer.appendChild(clearBtn);
-            gameContainer.appendChild(closeBtn);
-            document.body.appendChild(gameContainer);
+            const palette = document.createElement('div'); palette.style.cssText = 'display:flex; gap:10px; margin:15px 0;';
+            colors.forEach(color => { const btn = document.createElement('div'); btn.style.cssText = `width:40px; height:40px; background:${color}; border-radius:50%; cursor:pointer; border:2px solid white;`; btn.onclick = () => { currentColor = color; playSound('click'); }; palette.appendChild(btn); });
+            const clearBtn = document.createElement('button'); clearBtn.textContent = '🧽 Очистить'; clearBtn.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#e67e22; color:white; border:none;'; clearBtn.onclick = () => { drawOutline(); playSound('click'); };
+            const closeBtn = document.createElement('button'); closeBtn.textContent = 'Закрыть'; closeBtn.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; closeBtn.onclick = () => gameContainer.remove();
+            gameContainer.appendChild(title); gameContainer.appendChild(canvas); gameContainer.appendChild(palette); gameContainer.appendChild(clearBtn); gameContainer.appendChild(closeBtn); document.body.appendChild(gameContainer);
         }
         
         let emotionScore = 0, emotionQuestion = 0;
         const emotionsList = [
-            { emoji: '😊', name: 'радость', desc: 'Когда тебе весело и хорошо' },
-            { emoji: '😢', name: 'грусть', desc: 'Когда тебе немного грустно' },
-            { emoji: '😨', name: 'страх', desc: 'Когда тебе страшно' },
-            { emoji: '😡', name: 'злость', desc: 'Когда ты сердишься' },
-            { emoji: '😴', name: 'сонливость', desc: 'Когда ты хочешь спать' },
-            { emoji: '😍', name: 'любовь', desc: 'Когда ты кого-то очень любишь' }
+            { emoji: '😊', name: 'радость', desc: 'Когда тебе весело и хорошо' }, { emoji: '😢', name: 'грусть', desc: 'Когда тебе немного грустно' },
+            { emoji: '😨', name: 'страх', desc: 'Когда тебе страшно' }, { emoji: '😡', name: 'злость', desc: 'Когда ты сердишься' },
+            { emoji: '😴', name: 'сонливость', desc: 'Когда ты хочешь спать' }, { emoji: '😍', name: 'любовь', desc: 'Когда ты кого-то очень любишь' }
         ];
         
-        function startEmotionGame() {
-            sendAnalytics('game_emotion');
-            emotionScore = 0;
-            emotionQuestion = 0;
-            showEmotionQuestion();
-        }
+        function startEmotionGame() { sendAnalytics('game_emotion'); emotionScore = 0; emotionQuestion = 0; showEmotionQuestion(); }
         
         function showEmotionQuestion() {
-            if (emotionQuestion >= 6) {
-                alert(`🎉 Молодец! Ты угадал ${emotionScore} из 6 эмоций!`);
-                if (emotionScore >= 5) {
-                    updateAchievement('emotion_master');
-                    playSound('victory');
-                }
-                return;
-            }
-            const emotion = emotionsList[emotionQuestion];
-            const options = emotionsList.map(e => e.name);
-            for (let i = options.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [options[i], options[j]] = [options[j], options[i]];
-            }
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <h3>😊 Угадай эмоцию</h3>
-                <div style="font-size:80px; margin:20px;">${emotion.emoji}</div>
-                <p style="margin-bottom:15px;">${emotion.desc}</p>
-                <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
-                    ${options.map(opt => `<button class="emotion-option" data-emotion="${opt}">${opt}</button>`).join('')}
-                </div>
-                <div style="margin-top:20px;">
-                    <button class="close-btn" id="closeEmotionGame">Закрыть</button>
-                </div>
-            `;
+            if (emotionQuestion >= 6) { alert(`🎉 Молодец! Ты угадал ${emotionScore} из 6 эмоций!`); if (emotionScore >= 5) { updateAchievement('emotion_master'); playSound('victory'); } return; }
+            const emotion = emotionsList[emotionQuestion], options = emotionsList.map(e => e.name);
+            for (let i = options.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [options[i], options[j]] = [options[j], options[i]]; }
+            const modal = document.createElement('div'); modal.className = 'modal';
+            modal.innerHTML = `<h3>😊 Угадай эмоцию</h3><div style="font-size:80px; margin:20px;">${emotion.emoji}</div><p style="margin-bottom:15px;">${emotion.desc}</p><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${options.map(opt => `<button class="emotion-option" data-emotion="${opt}">${opt}</button>`).join('')}</div><div style="margin-top:20px;"><button class="close-btn" id="closeEmotionGame">Закрыть</button></div>`;
             document.body.appendChild(modal);
-            document.querySelectorAll('.emotion-option').forEach(btn => {
-                btn.onclick = () => {
-                    const selected = btn.dataset.emotion;
-                    if (selected === emotion.name) {
-                        emotionScore++;
-                        playSound('success');
-                        alert('✅ Правильно! Молодец!');
-                    } else {
-                        playSound('fail');
-                        alert(`❌ Неправильно. Это ${emotion.name}. Запомни!`);
-                    }
-                    modal.remove();
-                    emotionQuestion++;
-                    showEmotionQuestion();
-                };
-            });
+            document.querySelectorAll('.emotion-option').forEach(btn => { btn.onclick = () => { const selected = btn.dataset.emotion; if (selected === emotion.name) { emotionScore++; playSound('success'); alert('✅ Правильно! Молодец!'); } else { playSound('fail'); alert(`❌ Неправильно. Это ${emotion.name}. Запомни!`); } modal.remove(); emotionQuestion++; showEmotionQuestion(); }; });
             document.getElementById('closeEmotionGame').onclick = () => modal.remove();
         }
         
         function showGameMenu() {
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <h3 style="margin-bottom: 20px;">🎮 Выбери игру</h3>
-                <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-                    <button id="gameFishBtn" style="background:#4aa3df;">🐟 Поймай рыбку</button>
-                    <button id="gameMemoryBtn" style="background:#9b59b6;">🧠 Мемори</button>
-                    <button id="gamePuzzleBtn" style="background:#e67e22;">🧩 Пазл</button>
-                    <button id="gameColorBtn" style="background:#2ecc71;">🎨 Раскраска</button>
-                    <button id="gameEmotionBtn" style="background:#f1c40f;">😊 Угадай эмоцию</button>
-                    <button id="gamePlayBtn" style="background:#ff9f4a;">🎾 Поиграть с Люциком</button>
-                </div>
-                <div style="margin-top: 20px;">
-                    <button class="close-btn" id="closeGameMenu">Закрыть</button>
-                </div>
-            `;
+            const modal = document.createElement('div'); modal.className = 'modal';
+            modal.innerHTML = `<h3 style="margin-bottom: 20px;">🎮 Выбери игру</h3><div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;"><button id="gameFishBtn" style="background:#4aa3df;">🐟 Поймай рыбку</button><button id="gameMemoryBtn" style="background:#9b59b6;">🧠 Мемори</button><button id="gamePuzzleBtn" style="background:#e67e22;">🧩 Пазл</button><button id="gameColorBtn" style="background:#2ecc71;">🎨 Раскраска</button><button id="gameEmotionBtn" style="background:#f1c40f;">😊 Угадай эмоцию</button><button id="gamePlayBtn" style="background:#ff9f4a;">🎾 Поиграть с Люциком</button></div><div style="margin-top: 20px;"><button class="close-btn" id="closeGameMenu">Закрыть</button></div>`;
             document.body.appendChild(modal);
-            
             document.getElementById('gameFishBtn').onclick = () => { modal.remove(); startFishGame(); updateAchievement('game_master'); };
             document.getElementById('gameMemoryBtn').onclick = () => { modal.remove(); startMemoryGame(); updateAchievement('game_master'); };
             document.getElementById('gamePuzzleBtn').onclick = () => { modal.remove(); startPuzzleGame(); updateAchievement('game_master'); };
             document.getElementById('gameColorBtn').onclick = () => { modal.remove(); startColoringGame(); updateAchievement('game_master'); };
             document.getElementById('gameEmotionBtn').onclick = () => { modal.remove(); startEmotionGame(); updateAchievement('game_master'); };
-            document.getElementById('gamePlayBtn').onclick = () => {
-                modal.remove();
-                if (energy >= 20) {
-                    energy = Math.max(0, energy - 20);
-                    mood = Math.min(100, mood + 15);
-                    localStorage.setItem(`lucik_energy_${currentChildIndex}`, energy);
-                    localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood);
-                    updateStatsUI();
-                    speak("Ура! Весело играть!");
-                    playSound('laugh');
-                } else {
-                    speak("Я устал. Дай отдохнуть.");
-                }
-                saveHistory(`🎾 Поиграл с ${characters[currentChar].name}`);
-            };
+            document.getElementById('gamePlayBtn').onclick = () => { modal.remove(); if (energy >= 20) { energy = Math.max(0, energy - 20); mood = Math.min(100, mood + 15); localStorage.setItem(`lucik_energy_${currentChildIndex}`, energy); localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood); updateStatsUI(); speak("Ура! Весело играть!"); playSound('laugh'); } else speak("Я устал. Дай отдохнуть."); saveHistory(`🎾 Поиграл с ${characters[currentChar].name}`); };
             document.getElementById('closeGameMenu').onclick = () => modal.remove();
         }
         
         function showRoomMenu() {
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <h3 style="margin-bottom: 20px;">🏠 Моя комната</h3>
-                <button id="cleanRoomBtn" style="background:#4CAF50;">🧸 Уборка комнаты</button>
-                <button id="dressUpBtn" style="background:#ff9f4a;">👕 Переодеть персонажа</button>
-                <div style="margin-top: 20px;">
-                    <button class="close-btn" id="closeRoomMenu">Закрыть</button>
-                </div>
-            `;
+            const modal = document.createElement('div'); modal.className = 'modal';
+            modal.innerHTML = `<h3 style="margin-bottom: 20px;">🏠 Моя комната</h3><button id="cleanRoomBtn" style="background:#4CAF50;">🧸 Уборка комнаты</button><button id="dressUpBtn" style="background:#ff9f4a;">👕 Переодеть персонажа</button><div style="margin-top: 20px;"><button class="close-btn" id="closeRoomMenu">Закрыть</button></div>`;
             document.body.appendChild(modal);
-            
-            document.getElementById('cleanRoomBtn').onclick = () => {
-                modal.remove();
-                sendAnalytics('room_clean');
-                energy = Math.min(100, energy + 10);
-                mood = Math.min(100, mood + 5);
-                localStorage.setItem(`lucik_energy_${currentChildIndex}`, energy);
-                localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood);
-                updateStatsUI();
-                speak("Мурр! Комната стала чистой!");
-                playSound('purr');
-                saveHistory(`🧸 Убрал комнату ${characters[currentChar].name}`);
-            };
-            document.getElementById('dressUpBtn').onclick = () => {
-                modal.remove();
-                sendAnalytics('dress_up');
-                if (!isPremium) {
-                    alert('🌟 Оформите подписку, чтобы переодевать персонажа!');
-                    return;
-                }
-                const dressModal = document.createElement('div');
-                dressModal.className = 'modal';
-                dressModal.innerHTML = `
-                    <h3>👕 Выбери образ</h3>
-                    <button id="dressDefault">🦁 Обычный</button>
-                    <button id="dressHat">🎩 В шляпе</button>
-                    <button id="dressGlasses">🕶️ В очках</button>
-                    <button id="dressCrown">👑 С короной</button>
-                    <div><button class="close-btn" id="closeDressMenu">Закрыть</button></div>
-                `;
-                document.body.appendChild(dressModal);
-                document.getElementById('dressDefault').onclick = () => {
-                    document.getElementById('avatar').style.filter = 'none';
-                    dressModal.remove();
-                    speak("Вернулся к обычному виду!");
-                };
-                document.getElementById('dressHat').onclick = () => {
-                    document.getElementById('avatar').style.filter = 'drop-shadow(0 0 5px gold)';
-                    dressModal.remove();
-                    speak("Какая стильная шляпа!");
-                };
-                document.getElementById('dressGlasses').onclick = () => {
-                    document.getElementById('avatar').style.filter = 'brightness(1.1)';
-                    dressModal.remove();
-                    speak("Очки делают меня умным!");
-                };
-                document.getElementById('dressCrown').onclick = () => {
-                    document.getElementById('avatar').style.filter = 'drop-shadow(0 0 8px #ffd700)';
-                    dressModal.remove();
-                    speak("Я король! Мур-мяу!");
-                };
-                document.getElementById('closeDressMenu').onclick = () => dressModal.remove();
-            };
+            document.getElementById('cleanRoomBtn').onclick = () => { modal.remove(); sendAnalytics('room_clean'); energy = Math.min(100, energy + 10); mood = Math.min(100, mood + 5); localStorage.setItem(`lucik_energy_${currentChildIndex}`, energy); localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood); updateStatsUI(); speak("Мурр! Комната стала чистой!"); playSound('purr'); saveHistory(`🧸 Убрал комнату ${characters[currentChar].name}`); };
+            document.getElementById('dressUpBtn').onclick = () => { modal.remove(); sendAnalytics('dress_up'); if (!isPremium) { alert('🌟 Оформите подписку, чтобы переодевать персонажа!'); return; } const dressModal = document.createElement('div'); dressModal.className = 'modal'; dressModal.innerHTML = `<h3>👕 Выбери образ</h3><button id="dressDefault">🦁 Обычный</button><button id="dressHat">🎩 В шляпе</button><button id="dressGlasses">🕶️ В очках</button><button id="dressCrown">👑 С короной</button><div><button class="close-btn" id="closeDressMenu">Закрыть</button></div>`; document.body.appendChild(dressModal); document.getElementById('dressDefault').onclick = () => { document.getElementById('avatar').style.filter = 'none'; dressModal.remove(); speak("Вернулся к обычному виду!"); }; document.getElementById('dressHat').onclick = () => { document.getElementById('avatar').style.filter = 'drop-shadow(0 0 5px gold)'; dressModal.remove(); speak("Какая стильная шляпа!"); }; document.getElementById('dressGlasses').onclick = () => { document.getElementById('avatar').style.filter = 'brightness(1.1)'; dressModal.remove(); speak("Очки делают меня умным!"); }; document.getElementById('dressCrown').onclick = () => { document.getElementById('avatar').style.filter = 'drop-shadow(0 0 8px #ffd700)'; dressModal.remove(); speak("Я король! Мур-мяу!"); }; document.getElementById('closeDressMenu').onclick = () => dressModal.remove(); };
             document.getElementById('closeRoomMenu').onclick = () => modal.remove();
         }
         
         document.getElementById('nightStoryBtn').onclick = async () => {
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `<h3>🌙 Люцик готовит сказку...</h3><p>Пожалуйста, подожди</p>`;
-            document.body.appendChild(modal);
+            const modal = document.createElement('div'); modal.className = 'modal'; modal.innerHTML = `<h3>🌙 Люцик готовит сказку...</h3><p>Пожалуйста, подожди</p>`; document.body.appendChild(modal);
             speak("Мяу! Сейчас я расскажу тебе длинную, уютную сказку на ночь...");
             const longStory = await askDeepSeek("Расскажи длинную, спокойную сказку на ночь для ребёнка 3-7 лет.", true);
-            modal.remove();
-            storyCount++;
-            localStorage.setItem(`storyCount_${currentChildIndex}`, storyCount);
-            updateAchievement('story_lover', 1);
-            sendAnalytics('story_night');
-            const storyModal = document.createElement('div');
-            storyModal.className = 'modal';
-            storyModal.style.maxWidth = '90%';
-            storyModal.style.maxHeight = '70%';
-            storyModal.style.overflow = 'auto';
+            modal.remove(); storyCount++; localStorage.setItem(`storyCount_${currentChildIndex}`, storyCount); updateAchievement('story_lover', 1); sendAnalytics('story_night');
+            const storyModal = document.createElement('div'); storyModal.className = 'modal'; storyModal.style.maxWidth = '90%'; storyModal.style.maxHeight = '70%'; storyModal.style.overflow = 'auto';
             storyModal.innerHTML = `<h3>🌙 Сказка на ночь</h3><p style="margin:15px 0; line-height:1.4;">${longStory.replace(/\n/g, '<br>')}</p><button class="close-btn" onclick="this.parentElement.remove()">Закрыть</button>`;
-            document.body.appendChild(storyModal);
-            speak(longStory);
-            saveHistory(`🌙 Люцик рассказал длинную сказку на ночь`);
+            document.body.appendChild(storyModal); speak(longStory); saveHistory(`🌙 Люцик рассказал длинную сказку на ночь`);
         };
         
         const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись', 'пошёл', 'уйди', 'убирайся', 'хрен', 'фиг', 'блин', 'черт'];
-        function containsBadWords(text) {
-            if (!text) return false;
-            const lowerText = text.toLowerCase();
-            return badWords.some(word => lowerText.includes(word));
-        }
+        function containsBadWords(text) { if (!text) return false; return badWords.some(word => text.toLowerCase().includes(word)); }
         
-        document.getElementById('feedBtn').onclick = () => {
-            sendAnalytics('feed');
-            hunger = Math.min(100, hunger + 15);
-            mood = Math.min(100, mood + 5);
-            localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood);
-            localStorage.setItem(`lucik_hunger_${currentChildIndex}`, hunger);
-            updateStatsUI();
-            playSound('eat');
-            saveHistory(`🍎 Покормил ${characters[currentChar].name}`);
-        };
+        document.getElementById('feedBtn').onclick = () => { sendAnalytics('feed'); hunger = Math.min(100, hunger + 15); mood = Math.min(100, mood + 5); localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood); localStorage.setItem(`lucik_hunger_${currentChildIndex}`, hunger); updateStatsUI(); playSound('eat'); saveHistory(`🍎 Покормил ${characters[currentChar].name}`); };
         document.getElementById('gamesBtn').onclick = () => showGameMenu();
         document.getElementById('roomBtn').onclick = () => showRoomMenu();
         
         let isListening = false, isWaiting = false;
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         let rec = null;
-        if (SpeechRec) {
-            rec = new SpeechRec();
-            rec.lang = 'ru-RU';
-            rec.continuous = false;
-        }
-        document.getElementById('micBtn').onclick = () => {
-            if (!rec) { speak("Голос не поддерживается"); return; }
-            if (isListening) return;
-            if (isWaiting) { speak("Подожди, я ещё отвечаю..."); return; }
-            isListening = true;
-            document.getElementById('micBtn').classList.add('recording');
-            document.getElementById('avatar').classList.add('listening');
-            rec.start();
-            sendAnalytics('talk_start');
-        };
+        if (SpeechRec) { rec = new SpeechRec(); rec.lang = 'ru-RU'; rec.continuous = false; }
+        document.getElementById('micBtn').onclick = () => { if (!rec) { speak("Голос не поддерживается"); return; } if (isListening) return; if (isWaiting) { speak("Подожди, я ещё отвечаю..."); return; } isListening = true; document.getElementById('micBtn').classList.add('recording'); document.getElementById('avatar').classList.add('listening'); rec.start(); sendAnalytics('talk_start'); };
         
         if (rec) {
             rec.onresult = async (e) => {
-                const text = e.results[0][0].transcript;
-                document.getElementById('micBtn').classList.remove('recording');
-                document.getElementById('avatar').classList.remove('listening');
-                isListening = false;
-                saveHistory(`👶 ${childName}: ${text}`);
-                updateAchievement('first_talk');
+                const text = e.results[0][0].transcript; document.getElementById('micBtn').classList.remove('recording'); document.getElementById('avatar').classList.remove('listening'); isListening = false;
+                saveHistory(`👶 ${childName}: ${text}`); updateAchievement('first_talk');
                 const lower = text.toLowerCase();
-                if (lower.includes('темнот')) updateFear('темноты');
-                else if (lower.includes('врач')) updateFear('врачей');
-                else if (lower.includes('один')) updateFear('одиночества');
-                else if (lower.includes('обид')) updateFear('обиды');
-                else if (lower.includes('новое')) updateFear('нового');
-                else if (lower.includes('собака') || lower.includes('кошка')) updateFear('животных');
-                isWaiting = true;
-                const answer = await askDeepSeek(text);
-                isWaiting = false;
-                saveHistory(`🦁 ${characters[currentChar].name}: ${answer}`);
-                speak(answer);
-                purr();
+                if (lower.includes('темнот')) updateFear('темноты'); else if (lower.includes('врач')) updateFear('врачей'); else if (lower.includes('один')) updateFear('одиночества'); else if (lower.includes('обид')) updateFear('обиды'); else if (lower.includes('новое')) updateFear('нового'); else if (lower.includes('собака') || lower.includes('кошка')) updateFear('животных');
+                isWaiting = true; const answer = await askDeepSeek(text); isWaiting = false;
+                saveHistory(`🦁 ${characters[currentChar].name}: ${answer}`); speak(answer); purr();
             };
-            rec.onerror = () => {
-                document.getElementById('micBtn').classList.remove('recording');
-                document.getElementById('avatar').classList.remove('listening');
-                isListening = false;
-                speak("Не расслышал, скажи ещё раз!");
-            };
+            rec.onerror = () => { document.getElementById('micBtn').classList.remove('recording'); document.getElementById('avatar').classList.remove('listening'); isListening = false; speak("Не расслышал, скажи ещё раз!"); };
         }
         
         document.getElementById('parentBtn').onclick = () => {
             if (!savedPin) {
                 const pin = prompt('Создайте пароль для входа в Штаб (4-6 цифр):');
-                if (pin && pin.length >= 4 && /^\d+$/.test(pin)) {
-                    localStorage.setItem('parentPin', encodePin(pin));
-                    savedPin = encodePin(pin);
-                    alert('Пароль создан! Теперь вы можете войти в Штаб.');
-                    window.location.href = '/parent.html';
-                } else {
-                    alert('Пароль должен содержать 4-6 цифр!');
-                }
+                if (pin && pin.length >= 4 && /^\d+$/.test(pin)) { localStorage.setItem('parentPin', encodePin(pin)); savedPin = encodePin(pin); alert('Пароль создан! Теперь вы можете войти в Штаб.'); window.location.href = '/parent.html'; }
+                else alert('Пароль должен содержать 4-6 цифр!');
             } else {
                 const pin = prompt('Введите пароль для входа в Штаб:');
-                if (pin === decodePin(savedPin)) {
-                    window.location.href = '/parent.html';
-                } else if (pin !== null) {
-                    alert('Неверный пароль!');
-                }
+                if (pin === decodePin(savedPin)) window.location.href = '/parent.html';
+                else if (pin !== null) alert('Неверный пароль!');
             }
         };
         
-        updateAvatarLock();
-        updateStatsUI();
-        changeCharacter(currentChar);
+        updateAvatarLock(); updateStatsUI(); changeCharacter(currentChar);
         
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error', e));
-        }
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error', e)); }
         
-        function updateTimeTheme() {
-            const hour = new Date().getHours();
-            if (hour >= 18 || hour < 6) document.body.classList.add('night');
-            else document.body.classList.remove('night');
-        }
-        updateTimeTheme();
-        setInterval(updateTimeTheme, 60000);
+        function updateTimeTheme() { const hour = new Date().getHours(); if (hour >= 18 || hour < 6) document.body.classList.add('night'); else document.body.classList.remove('night'); }
+        updateTimeTheme(); setInterval(updateTimeTheme, 60000);
         
         speak(`Мяу! Привет, ${childName}! Нажми на микрофон, и мы подружимся!`);
-        
-        // Сохраняем данные при уходе
-        window.addEventListener('beforeunload', () => {
-            saveChildData(currentChildIndex);
-        });
     </script>
 </body>
 </html>
