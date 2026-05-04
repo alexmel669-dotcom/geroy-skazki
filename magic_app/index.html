@@ -16,181 +16,91 @@
         }
 
         .forest-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -2;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
             background-image: url('parent-bg.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            background-size: cover; background-position: center; background-repeat: no-repeat;
         }
 
         .forest-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background: rgba(0, 0, 0, 0.3);
-            pointer-events: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: rgba(0, 0, 0, 0.3); pointer-events: none;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            position: relative;
-            z-index: 1;
-        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; position: relative; z-index: 1; }
 
         .glass-card {
-            background: rgba(0, 0, 0, 0.55);
-            backdrop-filter: blur(8px);
-            border-radius: 30px;
-            border: 1px solid rgba(160, 180, 140, 0.3);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(8px); border-radius: 30px;
+            border: 1px solid rgba(160, 180, 140, 0.3); box-shadow: 0 15px 35px rgba(0,0,0,0.1);
         }
 
         h1 { font-size: 48px; margin-bottom: 20px; color: #d4e6c3; text-align: center; text-shadow: 0 2px 5px rgba(0,0,0,0.3); }
         h2 { text-align: center; color: #d4e6c3; }
+        h3 { color: #d4e6c3; margin-bottom: 15px; }
 
         .btn {
-            display: inline-block;
-            background: linear-gradient(90deg, #2d5a3b, #1a3a2a);
-            color: white;
-            padding: 14px 38px;
-            border-radius: 60px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 18px;
-            margin: 10px;
-            cursor: pointer;
-            border: none;
+            display: inline-block; background: linear-gradient(90deg, #2d5a3b, #1a3a2a); color: white;
+            padding: 14px 38px; border-radius: 60px; text-decoration: none; font-weight: bold;
+            font-size: 18px; margin: 10px; cursor: pointer; border: none;
         }
         .btn-blue { background: linear-gradient(90deg, #00d2ff, #3a7bd5); }
         .btn-small { padding: 10px 20px; font-size: 14px; }
 
         .top-nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-            gap: 15px;
-            background: rgba(0, 0, 0, 0.45);
-            backdrop-filter: blur(8px);
-            border-radius: 50px;
-            padding: 12px 25px;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
+            flex-wrap: wrap; gap: 15px; background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(8px);
+            border-radius: 50px; padding: 12px 25px;
         }
-        .nav-link {
-            color: #d4e6c3;
-            text-decoration: none;
-            font-weight: 500;
-            padding: 5px 10px;
-        }
+        .nav-link { color: #d4e6c3; text-decoration: none; font-weight: 500; padding: 5px 10px; }
         .nav-link:hover { color: #8bc34a; }
 
-        .hero {
-            text-align: center;
-            padding: 50px 30px;
-            margin-bottom: 40px;
-        }
+        .hero { text-align: center; padding: 50px 30px; margin-bottom: 40px; }
         .hero p { font-size: 20px; margin-bottom: 30px; color: #f0e6d0; }
 
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-            margin: 40px 0;
-        }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; margin: 40px 0; }
         .feature-card {
-            background: rgba(0, 0, 0, 0.45);
-            backdrop-filter: blur(8px);
-            padding: 28px 22px;
-            border-radius: 30px;
-            text-align: center;
-            border: 1px solid rgba(160, 180, 140, 0.2);
+            background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(8px); padding: 28px 22px;
+            border-radius: 30px; text-align: center; border: 1px solid rgba(160, 180, 140, 0.2);
         }
         .feature-card h3 { margin-bottom: 12px; color: #d4e6c3; }
 
         .reviews-section {
-            background: rgba(0, 0, 0, 0.45);
-            backdrop-filter: blur(8px);
-            border-radius: 30px;
-            padding: 30px;
-            margin: 40px 0;
-            border: 1px solid rgba(160, 180, 140, 0.2);
+            background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(8px); border-radius: 30px;
+            padding: 30px; margin: 40px 0; border: 1px solid rgba(160, 180, 140, 0.2);
         }
-        .review {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 20px 25px;
-            border-radius: 25px;
-            margin: 15px 0;
-        }
+        .review { background: rgba(0, 0, 0, 0.3); padding: 20px 25px; border-radius: 25px; margin: 15px 0; }
         .review-stars { color: #ffd700; font-size: 22px; }
         .review p { margin: 10px 0; }
         .review small { opacity: 0.8; }
 
-        .auth-form {
-            max-width: 500px;
-            margin: 30px auto;
-        }
+        .auth-form { max-width: 500px; margin: 30px auto; }
         .input-field {
-            width: 100%;
-            padding: 12px;
-            border-radius: 30px;
-            border: 1px solid rgba(255,255,255,0.3);
-            background: rgba(0, 0, 0, 0.35);
-            color: #f0e6d0;
-            font-size: 16px;
-            margin: 10px 0;
+            width: 100%; padding: 12px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(0, 0, 0, 0.35); color: #f0e6d0; font-size: 16px; margin: 10px 0;
         }
         .input-field::placeholder { color: rgba(240, 230, 208, 0.5); }
         .input-field:focus { outline: none; border-color: #8bc34a; }
+        select.input-field { appearance: none; }
 
-        .social-buttons {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin: 15px 0;
-            flex-wrap: wrap;
-        }
+        .social-buttons { display: flex; gap: 12px; justify-content: center; margin: 15px 0; flex-wrap: wrap; }
 
         .install-instruction {
-            background: rgba(0, 0, 0, 0.45);
-            backdrop-filter: blur(8px);
-            border-radius: 30px;
-            padding: 30px;
-            margin: 40px 0;
-            text-align: center;
-            border: 1px solid rgba(160, 180, 140, 0.2);
+            background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(8px); border-radius: 30px;
+            padding: 30px; margin: 40px 0; text-align: center; border: 1px solid rgba(160, 180, 140, 0.2);
         }
         .install-instruction h3 { color: #d4e6c3; margin-bottom: 15px; }
 
-        footer {
-            text-align: center;
-            margin-top: 60px;
-            padding: 20px;
-            border-top: 1px solid rgba(160, 180, 140, 0.2);
-            font-size: 12px;
-        }
+        footer { text-align: center; margin-top: 60px; padding: 20px; border-top: 1px solid rgba(160, 180, 140, 0.2); font-size: 12px; }
         footer a { color: #d4e6c3; text-decoration: none; }
 
-        .child-row {
-            background: rgba(0,0,0,0.2);
-            border-radius: 20px;
-            padding: 12px;
-            margin: 10px 0;
+        .child-row { background: rgba(0,0,0,0.2); border-radius: 20px; padding: 12px; margin: 10px 0; }
+        .gender-buttons { display: flex; gap: 10px; margin: 5px 0; }
+        .gender-btn {
+            flex: 1; padding: 8px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(0,0,0,0.3); color: #f0e6d0; cursor: pointer; text-align: center; font-size: 14px;
         }
+        .gender-btn.selected { background: #8bc34a; border-color: #8bc34a; color: #1a3a2a; font-weight: bold; }
 
-        @media (max-width: 768px) {
-            h1 { font-size: 32px; }
-            .hero p { font-size: 16px; }
-        }
+        @media (max-width: 768px) { h1 { font-size: 32px; } .hero p { font-size: 16px; } }
     </style>
 </head>
 <body>
@@ -232,13 +142,15 @@
                     <p style="margin: 0 0 8px; font-weight: bold;">👶 Ребёнок 1</p>
                     <input type="text" class="input-field child-name" placeholder="Имя ребёнка" style="margin: 4px 0;">
                     <input type="number" class="input-field child-age" placeholder="Возраст" min="2" max="12" style="margin: 4px 0;">
+                    <div class="gender-buttons">
+                        <div class="gender-btn selected" onclick="selectGender(this, 'boy')">👦 Мальчик</div>
+                        <div class="gender-btn" onclick="selectGender(this, 'girl')">👧 Девочка</div>
+                    </div>
                 </div>
             </div>
 
             <button class="btn btn-small" id="addChildBtn" style="background: #4a7a4a; width: 100%; margin-top: 5px;">+ Добавить ребёнка (макс. 3)</button>
-
             <button class="btn" id="registerBtn" style="width: 100%; margin-top: 15px;">Зарегистрироваться</button>
-
             <div id="regStatus" style="margin-top: 10px; font-size: 14px; text-align: center;"></div>
 
             <div style="border-top: 1px solid rgba(255,255,255,0.2); margin-top: 15px; padding-top: 15px; text-align: center;">
@@ -266,42 +178,22 @@
 
         <div class="reviews-section">
             <h2 style="text-align: center; margin-bottom: 20px;">💬 Отзывы родителей</h2>
-
             <div id="reviewsList" style="margin-bottom: 30px;">
-                <div class="review">
-                    <div class="review-stars">★★★★★</div>
-                    <p>"Дочка 4 года перестала бояться темноты после сказок Люцика! Каждый вечер ждёт новой истории. Спасибо за чудо!"</p>
-                    <small>— Анна, мама Софии, 4 года</small>
-                </div>
-                <div class="review">
-                    <div class="review-stars">★★★★★</div>
-                    <p>"Сын боялся врачей. Люцик рассказал сказку про храброго зайчика — теперь Даня сам просит записаться к доктору. Волшебство!"</p>
-                    <small>— Дмитрий, папа Дани, 5 лет</small>
-                </div>
-                <div class="review">
-                    <div class="review-stars">★★★★★</div>
-                    <p>"Племянница 6 лет в восторге. Рисует Люцика, кормит его, разговаривает. Страх одиночества ушёл за неделю."</p>
-                    <small>— Елена, тётя Алисы, 6 лет</small>
-                </div>
+                <div class="review"><div class="review-stars">★★★★★</div><p>"Дочка 4 года перестала бояться темноты после сказок Люцика! Каждый вечер ждёт новой истории. Спасибо за чудо!"</p><small>— Анна, мама Софии, 4 года</small></div>
+                <div class="review"><div class="review-stars">★★★★★</div><p>"Сын боялся врачей. Люцик рассказал сказку про храброго зайчика — теперь Даня сам просит записаться к доктору. Волшебство!"</p><small>— Дмитрий, папа Дани, 5 лет</small></div>
+                <div class="review"><div class="review-stars">★★★★★</div><p>"Племянница 6 лет в восторге. Рисует Люцика, кормит его, разговаривает. Страх одиночества ушёл за неделю."</p><small>— Елена, тётя Алисы, 6 лет</small></div>
             </div>
 
             <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
-                <h3 style="margin-bottom: 15px;">📝 Оставить отзыв</h3>
+                <h3>📝 Оставить отзыв</h3>
                 <input type="text" id="reviewName" class="input-field" placeholder="Ваше имя" style="margin: 10px 0;">
-
                 <div style="margin: 15px 0;">
                     <span style="margin-right: 10px;">Ваша оценка: </span>
                     <span id="starRating" style="font-size: 32px; cursor: pointer; display: inline-flex; gap: 5px;">
-                        <span data-rating="1" style="color: #ffd700;">★</span>
-                        <span data-rating="2" style="color: #ffd700;">★</span>
-                        <span data-rating="3" style="color: #ffd700;">★</span>
-                        <span data-rating="4" style="color: #ffd700;">★</span>
-                        <span data-rating="5" style="color: #ffd700;">★</span>
+                        <span data-rating="1" style="color: #ffd700;">★</span><span data-rating="2" style="color: #ffd700;">★</span><span data-rating="3" style="color: #ffd700;">★</span><span data-rating="4" style="color: #ffd700;">★</span><span data-rating="5" style="color: #ffd700;">★</span>
                     </span>
                 </div>
-
                 <textarea id="reviewText" class="input-field" rows="3" placeholder="Поделитесь впечатлениями..." style="resize: none;"></textarea>
-
                 <button id="submitReviewBtn" class="btn" style="margin-top: 10px;">📤 Отправить отзыв</button>
                 <div id="reviewStatus" style="margin-top: 10px; font-size: 14px;"></div>
             </div>
@@ -335,41 +227,36 @@
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                console.log('Установка:', outcome);
                 deferredPrompt = null;
                 installBtn.style.display = 'none';
             } else {
                 if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
                     alert('📱 Нажмите "Поделиться" → "На экран Домой"');
                 } else {
-                    alert('📱 Нажмите на три точки (⋮) в правом верхнем углу → "Установить приложение"');
+                    alert('📱 Нажмите на три точки (⋮) → "Установить приложение"');
                 }
             }
         });
 
-        window.addEventListener('appinstalled', () => {
-            console.log('PWA установлено');
-            installBtn.style.display = 'none';
-        });
-
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            installBtn.style.display = 'none';
-        }
-
+        window.addEventListener('appinstalled', () => { installBtn.style.display = 'none'; });
+        if (window.matchMedia('(display-mode: standalone)').matches) { installBtn.style.display = 'none'; }
         if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
             installBtn.innerText = '📱 Инструкция для iPhone';
             installBtn.style.background = '#555';
-            installBtn.onclick = () => {
-                alert('📱 Нажмите "Поделиться" → "На экран Домой"');
-            };
+            installBtn.onclick = () => { alert('📱 Нажмите "Поделиться" → "На экран Домой"'); };
+        }
+
+        // ========== ВЫБОР ПОЛА ==========
+        function selectGender(element, gender) {
+            const buttons = element.parentElement.querySelectorAll('.gender-btn');
+            buttons.forEach(b => b.classList.remove('selected'));
+            element.classList.add('selected');
+            element.parentElement.dataset.gender = gender;
         }
 
         // ========== ДОБАВЛЕНИЕ ДЕТЕЙ ==========
         document.getElementById('addChildBtn').addEventListener('click', () => {
-            if (childCount >= 3) {
-                alert('Максимум 3 ребёнка');
-                return;
-            }
+            if (childCount >= 3) { alert('Максимум 3 ребёнка'); return; }
             childCount++;
             const container = document.getElementById('childrenContainer');
             const row = document.createElement('div');
@@ -378,47 +265,36 @@
                 <p style="margin: 0 0 8px; font-weight: bold;">👶 Ребёнок ${childCount}</p>
                 <input type="text" class="input-field child-name" placeholder="Имя ребёнка" style="margin: 4px 0;">
                 <input type="number" class="input-field child-age" placeholder="Возраст" min="2" max="12" style="margin: 4px 0;">
+                <div class="gender-buttons">
+                    <div class="gender-btn selected" onclick="selectGender(this, 'boy')">👦 Мальчик</div>
+                    <div class="gender-btn" onclick="selectGender(this, 'girl')">👧 Девочка</div>
+                </div>
             `;
             container.appendChild(row);
-            
-            if (childCount >= 3) {
-                document.getElementById('addChildBtn').style.display = 'none';
-            }
+            if (childCount >= 3) document.getElementById('addChildBtn').style.display = 'none';
         });
 
-        // ========== РЕГИСТРАЦИЯ С ДЕТЬМИ ==========
+        // ========== РЕГИСТРАЦИЯ ==========
         document.getElementById('registerBtn').addEventListener('click', async () => {
             const email = document.getElementById('regEmail').value.trim();
             const password = document.getElementById('regPassword').value;
             const statusDiv = document.getElementById('regStatus');
             
-            if (!email || !password) {
-                statusDiv.innerHTML = '❌ Введите email и пароль';
-                return;
-            }
+            if (!email || !password) { statusDiv.innerHTML = '❌ Введите email и пароль'; return; }
+            if (password.length < 6) { statusDiv.innerHTML = '❌ Пароль должен быть не менее 6 символов'; return; }
             
-            if (password.length < 6) {
-                statusDiv.innerHTML = '❌ Пароль должен быть не менее 6 символов';
-                return;
-            }
-            
-            // Собираем детей
             const children = [];
-            const nameInputs = document.querySelectorAll('.child-name');
-            const ageInputs = document.querySelectorAll('.child-age');
-            
-            for (let i = 0; i < nameInputs.length; i++) {
-                const name = nameInputs[i].value.trim();
-                const age = parseInt(ageInputs[i].value) || 0;
+            const rows = document.querySelectorAll('.child-row');
+            rows.forEach(row => {
+                const name = row.querySelector('.child-name')?.value?.trim();
+                const age = parseInt(row.querySelector('.child-age')?.value || '0');
+                const gender = row.querySelector('.gender-buttons')?.dataset?.gender || 'boy';
                 if (name && age >= 2 && age <= 12) {
-                    children.push({ name, age });
+                    children.push({ name, age, gender });
                 }
-            }
+            });
             
-            if (children.length === 0) {
-                statusDiv.innerHTML = '❌ Добавьте хотя бы одного ребёнка с именем и возрастом';
-                return;
-            }
+            if (children.length === 0) { statusDiv.innerHTML = '❌ Добавьте хотя бы одного ребёнка'; return; }
             
             statusDiv.innerHTML = '⏳ Регистрация...';
             
@@ -426,11 +302,7 @@
                 const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        email, 
-                        password,
-                        children: children
-                    })
+                    body: JSON.stringify({ email, password, children })
                 });
                 const data = await response.json();
                 
@@ -447,9 +319,7 @@
                 } else {
                     statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка регистрации');
                 }
-            } catch (error) {
-                statusDiv.innerHTML = '❌ Ошибка соединения';
-            }
+            } catch (error) { statusDiv.innerHTML = '❌ Ошибка соединения'; }
         });
 
         // ========== ВХОД ==========
@@ -458,11 +328,7 @@
             const password = document.getElementById('loginPassword').value;
             const statusDiv = document.getElementById('loginStatus');
             
-            if (!email || !password) {
-                statusDiv.innerHTML = '❌ Введите email и пароль';
-                return;
-            }
-            
+            if (!email || !password) { statusDiv.innerHTML = '❌ Введите email и пароль'; return; }
             statusDiv.innerHTML = '⏳ Вход...';
             
             try {
@@ -476,7 +342,7 @@
                 if (response.ok) {
                     localStorage.setItem('userToken', data.token);
                     localStorage.setItem('userEmail', data.email);
-                    if (data.children) {
+                    if (data.children && data.children.length > 0) {
                         localStorage.setItem('children', JSON.stringify(data.children));
                         localStorage.setItem('childName', data.children[0].name);
                         localStorage.setItem('childAge', data.children[0].age);
@@ -488,9 +354,7 @@
                 } else {
                     statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка входа');
                 }
-            } catch (error) {
-                statusDiv.innerHTML = '❌ Ошибка соединения';
-            }
+            } catch (error) { statusDiv.innerHTML = '❌ Ошибка соединения'; }
         });
 
         // ========== ГОСТЕВОЙ ВХОД ==========
@@ -502,22 +366,14 @@
         });
 
         // ========== ОТЗЫВЫ ==========
-        function loadReviews() {
-            const container = document.getElementById('reviewsList');
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        function loadReviews() {}
+        function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
         
         let currentRating = 5;
-        const stars = document.querySelectorAll('#starRating span');
-        stars.forEach((star, i) => {
+        document.querySelectorAll('#starRating span').forEach((star, i) => {
             star.onclick = () => {
                 currentRating = i + 1;
-                stars.forEach((s, idx) => {
+                document.querySelectorAll('#starRating span').forEach((s, idx) => {
                     s.style.color = idx < currentRating ? '#ffd700' : '#ccc';
                 });
             };
@@ -528,27 +384,12 @@
             const text = document.getElementById('reviewText').value.trim();
             const statusDiv = document.getElementById('reviewStatus');
             
-            if (!name) {
-                statusDiv.innerHTML = '❌ Введите ваше имя';
-                statusDiv.style.color = '#ff6b6b';
-                return;
-            }
-            if (!text) {
-                statusDiv.innerHTML = '❌ Напишите отзыв';
-                statusDiv.style.color = '#ff6b6b';
-                return;
-            }
+            if (!name) { statusDiv.innerHTML = '❌ Введите ваше имя'; statusDiv.style.color = '#ff6b6b'; return; }
+            if (!text) { statusDiv.innerHTML = '❌ Напишите отзыв'; statusDiv.style.color = '#ff6b6b'; return; }
             
-            statusDiv.innerHTML = '⏳ Отправка...';
-            statusDiv.style.color = '#ffd700';
+            statusDiv.innerHTML = '⏳ Отправка...'; statusDiv.style.color = '#ffd700';
             
-            const review = {
-                name: name,
-                text: text,
-                rating: currentRating,
-                date: new Date().toISOString()
-            };
-            
+            const review = { name, text, rating: currentRating, date: new Date().toISOString() };
             const reviews = JSON.parse(localStorage.getItem('reviews') || '[]');
             reviews.push(review);
             localStorage.setItem('reviews', JSON.stringify(reviews));
@@ -560,25 +401,16 @@
                     body: JSON.stringify(review)
                 });
                 const data = await response.json();
-                if (data.telegram) {
-                    statusDiv.innerHTML = '✅ Спасибо за отзыв! Уведомление отправлено в Telegram.';
-                } else {
-                    statusDiv.innerHTML = '✅ Спасибо за отзыв!';
-                }
+                statusDiv.innerHTML = data.telegram ? '✅ Спасибо! Отзыв отправлен.' : '✅ Спасибо за отзыв!';
                 statusDiv.style.color = '#90ee90';
-            } catch(e) {
-                statusDiv.innerHTML = '✅ Спасибо за отзыв!';
-                statusDiv.style.color = '#90ee90';
-            }
+            } catch(e) { statusDiv.innerHTML = '✅ Спасибо за отзыв!'; statusDiv.style.color = '#90ee90'; }
             
             document.getElementById('reviewName').value = '';
             document.getElementById('reviewText').value = '';
-            
             setTimeout(() => { statusDiv.innerHTML = ''; }, 3000);
         };
         
         loadReviews();
-        
         const savedEmail = localStorage.getItem('userEmail');
         if (savedEmail && !savedEmail.startsWith('guest_')) {
             document.getElementById('loginEmail').value = savedEmail;
