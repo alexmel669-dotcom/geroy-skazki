@@ -9,48 +9,29 @@
         body {
             font-family: 'Segoe UI', 'Roboto', 'Georgia', serif;
             min-height: 100vh;
-            background: #d4c4a4;
+            color: #f0e6d0;
             position: relative;
             overflow-x: hidden;
         }
         
-        .sand-dunes {
+        .forest-bg {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             z-index: -2;
-            background: linear-gradient(135deg, #e8d5a8 0%, #d4c08c 30%, #c8b078 60%, #b89c68 100%);
+            background-image: url('parent-bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
         
-        .sand-texture {
+        .forest-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             z-index: -1;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.12'/%3E%3C/svg%3E");
-            background-repeat: repeat;
-            opacity: 0.5;
+            background: rgba(0, 0, 0, 0.35);
             pointer-events: none;
-        }
-        
-        .wind-ripple {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(200,170,120,0.08) 80px, rgba(200,170,120,0.08) 120px, transparent 120px, transparent 200px);
-            pointer-events: none;
-            z-index: -1;
-            animation: windMove 20s linear infinite;
-        }
-        @keyframes windMove {
-            0% { background-position: 0 0; }
-            100% { background-position: 200px 0; }
         }
         
         .container {
@@ -62,21 +43,21 @@
         }
         
         .glass-card {
-            background: rgba(255, 248, 235, 0.15);
+            background: rgba(0, 0, 0, 0.55);
             backdrop-filter: blur(8px);
             border-radius: 30px;
             padding: 30px;
-            border: 1px solid rgba(255,255,255,0.35);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            border: 1px solid rgba(160, 180, 140, 0.3);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
             margin-bottom: 25px;
         }
         
-        h1 { font-size: 36px; color: #6b3a1f; margin-bottom: 20px; text-align: center; }
-        h2 { font-size: 24px; color: #6b3a1f; margin: 20px 0 15px; border-left: 4px solid #c8a86c; padding-left: 15px; }
+        h1 { font-size: 36px; color: #d4e6c3; margin-bottom: 20px; text-align: center; text-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        h2 { font-size: 24px; color: #c4d6a3; margin: 20px 0 15px; border-left: 4px solid #8bc34a; padding-left: 15px; }
         
         .btn {
             display: inline-block;
-            background: linear-gradient(90deg, #c8a86c, #a8844a);
+            background: linear-gradient(90deg, #2d5a3b, #1a3a2a);
             color: white;
             padding: 12px 30px;
             border-radius: 40px;
@@ -100,6 +81,7 @@
             display: inline-block;
             font-weight: bold;
             font-size: 14px;
+            color: #3a2a1a;
         }
         
         .stat-grid {
@@ -111,20 +93,20 @@
         .stat-item {
             text-align: center;
             padding: 15px;
-            background: rgba(255,248,235,0.1);
+            background: rgba(0,0,0,0.3);
             border-radius: 20px;
         }
-        .stat-number { font-size: 32px; font-weight: bold; color: #c8a86c; }
+        .stat-number { font-size: 32px; font-weight: bold; color: #ff9f4a; }
         
         .plan-card {
-            background: rgba(255,248,235,0.1);
+            background: rgba(0,0,0,0.3);
             border-radius: 20px;
             padding: 20px;
             text-align: center;
             transition: all 0.3s;
         }
-        .plan-card:hover { transform: translateY(-3px); background: rgba(255,248,235,0.15); }
-        .plan-price { font-size: 28px; font-weight: bold; color: #c8a86c; margin: 10px 0; }
+        .plan-card:hover { transform: translateY(-3px); background: rgba(0,0,0,0.4); }
+        .plan-price { font-size: 28px; font-weight: bold; color: #ff9f4a; margin: 10px 0; }
         .plan-features { list-style: none; margin: 15px 0; }
         .plan-features li { margin: 8px 0; font-size: 14px; }
         
@@ -133,11 +115,13 @@
             padding: 12px;
             border-radius: 30px;
             border: 1px solid rgba(255,255,255,0.3);
-            background: rgba(255,248,235,0.15);
-            color: #3a2a1a;
+            background: rgba(0, 0, 0, 0.35);
+            color: #f0e6d0;
             font-size: 16px;
             margin: 10px 0;
         }
+        .input-field::placeholder { color: rgba(240, 230, 208, 0.5); }
+        .input-field:focus { outline: none; border-color: #8bc34a; }
         
         .top-nav {
             display: flex;
@@ -146,18 +130,13 @@
             margin-bottom: 30px;
             flex-wrap: wrap;
             gap: 15px;
-            background: rgba(255,248,235,0.1);
+            background: rgba(0, 0, 0, 0.45);
             backdrop-filter: blur(8px);
             border-radius: 50px;
             padding: 12px 25px;
         }
-        .nav-link {
-            color: #6b3a1f;
-            text-decoration: none;
-            font-weight: 500;
-            padding: 5px 10px;
-        }
-        .nav-link:hover { color: #c8a86c; }
+        .nav-link { color: #d4e6c3; text-decoration: none; font-weight: 500; padding: 5px 10px; }
+        .nav-link:hover { color: #8bc34a; }
         
         .setting-item {
             margin-bottom: 15px;
@@ -165,20 +144,16 @@
             background: rgba(255,255,255,0.05);
             border-radius: 15px;
         }
-        .setting-item label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
+        .setting-item label { display: block; margin-bottom: 8px; font-weight: 500; }
         
         footer {
             text-align: center;
             margin-top: 40px;
             padding: 20px;
-            border-top: 1px solid rgba(100,70,40,0.15);
+            border-top: 1px solid rgba(160, 180, 140, 0.2);
             font-size: 12px;
         }
-        footer a { color: #6b3a1f; text-decoration: none; }
+        footer a { color: #d4e6c3; text-decoration: none; }
         
         @media (max-width: 768px) {
             .glass-card { padding: 20px; }
@@ -188,15 +163,14 @@
     </style>
 </head>
 <body>
-    <div class="sand-dunes"></div>
-    <div class="sand-texture"></div>
-    <div class="wind-ripple"></div>
+    <div class="forest-bg"></div>
+    <div class="forest-overlay"></div>
     
     <div class="container">
         <div class="top-nav">
             <div style="display: flex; align-items: center; gap: 15px;">
                 <img src="avatar.png" alt="Герой Сказок" style="height: 50px; width: 50px; border-radius: 50%; object-fit: cover;">
-                <span style="font-weight: bold; font-size: 20px; color: #6b3a1f;">Герой Сказок</span>
+                <span style="font-weight: bold; font-size: 20px; color: #d4e6c3;">Герой Сказок</span>
             </div>
             <div>
                 <a href="/" class="nav-link">Главная</a>
@@ -212,7 +186,7 @@
             <input type="password" id="loginPassword" class="input-field" placeholder="Пароль">
             <button class="btn" id="loginBtn">Войти</button>
             <button class="btn btn-blue" id="registerBtn">Зарегистрироваться</button>
-            <div id="loginStatus" style="margin-top: 10px; font-size: 14px; color: #6b3a1f;"></div>
+            <div id="loginStatus" style="margin-top: 10px; font-size: 14px;"></div>
         </div>
         
         <div id="loggedIn" style="display: none;">
@@ -305,7 +279,7 @@
                         <label style="display: flex; align-items: center; gap: 8px;">
                             <input type="checkbox" id="bedtimeReminder"> Включить
                         </label>
-                        <input type="time" id="bedtimeTime" value="21:00" style="padding: 8px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,248,235,0.15); color: #3a2a1a;">
+                        <input type="time" id="bedtimeTime" value="21:00" style="padding: 8px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.35); color: #f0e6d0;">
                     </div>
                     <p style="font-size: 12px; opacity: 0.7; margin-top: 8px;">Люцик напомнит за 15 минут до указанного времени</p>
                 </div>
@@ -328,8 +302,7 @@
             <p><a href="/privacy.html">Политика конфиденциальности</a> | <a href="/terms.html">Пользовательское соглашение</a></p>
         </footer>
     </div>
-
-    <script>
+        <script>
         // Шифрование пина
         const PIN_SALT = 'lucik_magic_2024';
         function encodePin(pin) { return btoa(pin.split('').reverse().join('') + ':' + PIN_SALT); }
@@ -417,50 +390,37 @@
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             const statusDiv = document.getElementById('loginStatus');
-            if (!email || !password) {
-                statusDiv.innerHTML = '❌ Введите email и пароль';
-                return;
-            }
+            if (!email || !password) { statusDiv.innerHTML = '❌ Введите email и пароль'; return; }
             statusDiv.innerHTML = '⏳ Вход...';
             try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
+                const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
                 const data = await res.json();
                 if (res.ok) {
                     localStorage.setItem('userToken', data.token);
                     localStorage.setItem('userEmail', data.email);
+                    if (data.children && data.children.length > 0) {
+                        localStorage.setItem('children', JSON.stringify(data.children));
+                        localStorage.setItem('childName', data.children[0].name);
+                        localStorage.setItem('childAge', data.children[0].age);
+                        localStorage.setItem('currentChildIndex', '0');
+                    }
                     statusDiv.innerHTML = '✅ Вход выполнен!';
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка входа');
                 }
-            } catch (error) {
-                statusDiv.innerHTML = '❌ Ошибка соединения';
-            }
+            } catch (error) { statusDiv.innerHTML = '❌ Ошибка соединения'; }
         }
         
         async function register() {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             const statusDiv = document.getElementById('loginStatus');
-            if (!email || !password) {
-                statusDiv.innerHTML = '❌ Введите email и пароль';
-                return;
-            }
-            if (password.length < 4) {
-                statusDiv.innerHTML = '❌ Пароль должен быть не менее 4 символов';
-                return;
-            }
+            if (!email || !password) { statusDiv.innerHTML = '❌ Введите email и пароль'; return; }
+            if (password.length < 4) { statusDiv.innerHTML = '❌ Пароль должен быть не менее 4 символов'; return; }
             statusDiv.innerHTML = '⏳ Регистрация...';
             try {
-                const res = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
+                const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
                 const data = await res.json();
                 if (res.ok) {
                     localStorage.setItem('userToken', data.token);
@@ -470,38 +430,22 @@
                 } else {
                     statusDiv.innerHTML = '❌ ' + (data.error || 'Ошибка регистрации');
                 }
-            } catch (error) {
-                statusDiv.innerHTML = '❌ Ошибка соединения';
-            }
+            } catch (error) { statusDiv.innerHTML = '❌ Ошибка соединения'; }
         }
         
-        function logout() {
-            localStorage.removeItem('userToken');
-            localStorage.removeItem('userEmail');
-            location.reload();
-        }
+        function logout() { localStorage.removeItem('userToken'); localStorage.removeItem('userEmail'); location.reload(); }
         
         document.getElementById('loginBtn')?.addEventListener('click', login);
         document.getElementById('registerBtn')?.addEventListener('click', register);
         document.getElementById('logoutBtn')?.addEventListener('click', logout);
         document.getElementById('saveSettingsBtn')?.addEventListener('click', saveSettings);
         document.getElementById('savePinBtn')?.addEventListener('click', saveSettings);
-        
-        document.getElementById('subscribeBtn')?.addEventListener('click', () => {
-            alert('🌟 Премиум-подписка\n299 ₽/мес\n(тестовый режим)');
-        });
-        document.getElementById('familySubscribeBtn')?.addEventListener('click', () => {
-            alert('👨‍👩‍👧 Семейная подписка\n499 ₽/мес\n(тестовый режим)');
-        });
+        document.getElementById('subscribeBtn')?.addEventListener('click', () => { alert('🌟 Премиум-подписка\n299 ₽/мес\n(тестовый режим)'); });
+        document.getElementById('familySubscribeBtn')?.addEventListener('click', () => { alert('👨‍👩‍👧 Семейная подписка\n499 ₽/мес\n(тестовый режим)'); });
         document.getElementById('applyPromoBtn')?.addEventListener('click', () => {
             const code = document.getElementById('promoInput').value.trim().toUpperCase();
-            if (code === 'TEST2025') {
-                localStorage.setItem('isPremium', 'true');
-                alert('🎉 Премиум активирован!');
-                loadStats();
-            } else {
-                alert('Неверный промокод');
-            }
+            if (code === 'TEST2025') { localStorage.setItem('isPremium', 'true'); alert('🎉 Премиум активирован!'); loadStats(); }
+            else alert('Неверный промокод');
         });
         
         checkAuth();
