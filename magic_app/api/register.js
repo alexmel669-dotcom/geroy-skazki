@@ -1,4 +1,4 @@
-// api/register.js — JWT регистрация с детьми (версия от 4 мая 2026)
+// api/register.js — JWT регистрация с детьми и полом (версия от 5 мая 2026)
 import { Pool } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
             
             const hashedPassword = await bcrypt.hash(password, 10);
             
-            // Сохраняем детей как JSON
+            // Сохраняем детей с полом
             const childrenData = Array.isArray(children) && children.length > 0 
                 ? JSON.stringify(children) 
                 : null;
