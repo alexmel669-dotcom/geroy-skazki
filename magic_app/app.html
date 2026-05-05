@@ -9,20 +9,13 @@
     <style>
         * { user-select: none; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
         
-        body {
-            margin: 0; min-height: 100vh; font-family: 'Segoe UI', 'Comic Neue', system-ui, sans-serif;
-            color: #3a2a1a; background-image: url('app-bg.png'); background-size: cover; background-position: center;
-            background-attachment: fixed; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;
-        }
-        body.night {
-            background-image: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url('app-bg.png');
-            background-size: cover; background-position: center; background-attachment: fixed;
-        }
+        body { margin: 0; min-height: 100vh; font-family: 'Segoe UI', 'Comic Neue', system-ui, sans-serif; color: #3a2a1a; background-image: url('app-bg.png'); background-size: cover; background-position: center; background-attachment: fixed; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        body.night { background-image: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url('app-bg.png'); background-size: cover; background-position: center; background-attachment: fixed; }
         
         .app-container { max-width: 500px; width: 100%; min-height: 85vh; display: flex; flex-direction: column; justify-content: space-between; }
         
-        .child-indicator { text-align: center; font-size: 18px; font-weight: bold; color: #3a2a1a; background: rgba(255,255,255,0.35); backdrop-filter: blur(4px); padding: 8px 20px; border-radius: 30px; margin-bottom: 15px; display: inline-block; align-self: center; cursor: pointer; }
-        body.night .child-indicator { color: #f0e6d0; background: rgba(0,0,0,0.5); }
+        .child-name-label { text-align: center; font-size: 14px; font-weight: bold; color: #3a2a1a; margin-bottom: 5px; opacity: 0.7; }
+        body.night .child-name-label { color: #f0e6d0; opacity: 0.5; }
         
         .stats { display: flex; justify-content: space-around; background: rgba(0,0,0,0.25); backdrop-filter: blur(8px); padding: 12px 16px; border-radius: 60px; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
         .stat { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: bold; color: #3a2a1a; background: rgba(255,255,255,0.3); padding: 5px 12px; border-radius: 40px; }
@@ -43,6 +36,12 @@
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         
         .lock-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; background: rgba(0,0,0,0.6); border-radius: 50%; padding: 10px; pointer-events: none; }
+        
+        .child-select-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); backdrop-filter: blur(12px); border-radius: 40px; padding: 24px; z-index: 3000; min-width: 250px; text-align: center; color: white; border: 1px solid rgba(255,255,255,0.2); }
+        .child-select-menu button { display: block; width: 100%; margin: 8px 0; padding: 12px 20px; border-radius: 60px; border: none; font-size: 18px; cursor: pointer; color: white; }
+        .child-select-menu .active-child { background: #8bc34a; color: #1a3a2a; font-weight: bold; }
+        .child-select-menu .inactive-child { background: rgba(255,255,255,0.15); }
+        .child-select-menu .close-btn { background: #ff4081; }
         
         .action-buttons { display: flex; justify-content: center; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
         .action-btn { background: rgba(255,255,255,0.35); backdrop-filter: blur(4px); border: none; border-radius: 60px; padding: 12px 20px; min-width: 70px; font-size: 28px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -69,7 +68,7 @@
     <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
     
     <div class="app-container">
-        <div class="child-indicator" id="childIndicator">👶 Загрузка...</div>
+        <div class="child-name-label" id="childNameLabel">👶 Загрузка...</div>
         
         <div class="stats">
             <div class="stat">😊 <div class="stat-bar"><div class="stat-fill" id="moodFill" style="width: 70%"></div></div></div>
@@ -120,8 +119,7 @@
             currentChildIndex = 0;
             localStorage.setItem('children', JSON.stringify(children));
             localStorage.setItem('currentChildIndex', '0');
-            const oldFear = localStorage.getItem('fearStats');
-            const oldHistory = localStorage.getItem('storyHistory');
+            const oldFear = localStorage.getItem('fearStats'), oldHistory = localStorage.getItem('storyHistory');
             if (oldFear) localStorage.setItem('fearStats_0', oldFear);
             if (oldHistory) localStorage.setItem('storyHistory_0', oldHistory);
         }
@@ -131,27 +129,26 @@
             return children[currentChildIndex] || { name: 'малыш', age: 5, gender: 'boy' };
         }
         
-        function updateChildIndicator() {
+        function updateChildNameLabel() {
             const child = getCurrentChild();
-            const arrow = children.length > 1 ? ' ◀ ▶' : '';
-            document.getElementById('childIndicator').innerHTML = `👶 ${child.name}, ${child.age} лет${arrow}`;
+            document.getElementById('childNameLabel').textContent = child.name + ', ' + child.age + ' лет';
         }
         
         function updateAvatarLabel() {
             const label = document.getElementById('avatarLabel');
-            if (isPremium) {
-                label.innerHTML = '🖼️ Образец аватара<br><small style="opacity:0.7;">Скоро: загрузка фото ребёнка</small>';
+            if (currentChar === 'kid1' || currentChar === 'kid2') {
+                label.innerHTML = '🖼️ Образец аватара<br><small style="opacity:0.7;">🌟 Премиум: загрузка фото</small>';
+            } else if (currentChar === 'mom' || currentChar === 'dad') {
+                label.innerHTML = '🌟 Премиум-аватар';
             } else {
-                label.innerHTML = '🖼️ Образец аватара<br><small style="opacity:0.7;">🌟 В премиуме — фото ребёнка</small>';
+                label.innerHTML = '🖼️ Образец аватара';
             }
         }
         
         function loadChildData(index) {
             const idx = index || 0;
-            const fearData = localStorage.getItem(`fearStats_${idx}`);
-            fearStats = fearData ? JSON.parse(fearData) : JSON.parse('{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
-            const historyData = localStorage.getItem(`storyHistory_${idx}`);
-            conversationHistory = historyData ? JSON.parse(historyData) : [];
+            fearStats = JSON.parse(localStorage.getItem(`fearStats_${idx}`) || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+            conversationHistory = JSON.parse(localStorage.getItem(`storyHistory_${idx}`) || '[]');
             mood = parseInt(localStorage.getItem(`lucik_mood_${idx}`) || '70');
             hunger = parseInt(localStorage.getItem(`lucik_hunger_${idx}`) || '60');
             energy = parseInt(localStorage.getItem(`lucik_energy_${idx}`) || '50');
@@ -169,21 +166,37 @@
             localStorage.setItem(`fishScore_${idx}`, fishScore); localStorage.setItem(`storyCount_${idx}`, storyCount);
         }
         
-        function switchChild(direction) {
+        function switchChild(index) {
             if (children.length <= 1) return;
             saveChildData(currentChildIndex);
-            currentChildIndex += direction;
-            if (currentChildIndex < 0) currentChildIndex = children.length - 1;
-            if (currentChildIndex >= children.length) currentChildIndex = 0;
+            currentChildIndex = index;
             localStorage.setItem('currentChildIndex', currentChildIndex);
             const child = getCurrentChild();
             childName = child.name; childAge = child.age;
             localStorage.setItem('childName', childName); localStorage.setItem('childAge', childAge);
             loadChildData(currentChildIndex);
-            updateChildIndicator();
+            updateChildNameLabel();
             updateStatsUI();
             setAvatarByGender();
             speak(`Привет, ${childName}!`);
+        }
+        
+        function showChildSelectMenu() {
+            if (children.length <= 1) return;
+            const menu = document.createElement('div');
+            menu.className = 'child-select-menu';
+            let btns = '';
+            children.forEach((child, i) => {
+                const cls = (i === currentChildIndex) ? 'active-child' : 'inactive-child';
+                const icon = child.gender === 'girl' ? '👧' : '👦';
+                btns += `<button class="${cls}" data-index="${i}">${icon} ${child.name}, ${child.age} лет</button>`;
+            });
+            menu.innerHTML = `<h3 style="margin-bottom:15px;">Кто играет?</h3>${btns}<button class="close-btn" style="margin-top:10px;">Закрыть</button>`;
+            document.body.appendChild(menu);
+            menu.querySelectorAll('button[data-index]').forEach(btn => {
+                btn.onclick = () => { const idx = parseInt(btn.dataset.index); menu.remove(); if (idx !== currentChildIndex) switchChild(idx); };
+            });
+            menu.querySelector('.close-btn').onclick = () => menu.remove();
         }
                 
         // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
@@ -193,74 +206,43 @@
             if (guestMode) return true;
             if (!token) { window.location.href = '/'; return false; }
             try {
-                const response = await fetch('/api/verify-token', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-                const data = await response.json();
-                if (!data.valid) { localStorage.removeItem('userToken'); localStorage.removeItem('userEmail'); localStorage.removeItem('guestMode'); window.location.href = '/'; return false; }
+                const r = await fetch('/api/verify-token', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+                const d = await r.json();
+                if (!d.valid) { localStorage.removeItem('userToken'); localStorage.removeItem('userEmail'); localStorage.removeItem('guestMode'); window.location.href = '/'; return false; }
                 return true;
-            } catch (error) { console.error('Auth check error:', error); return true; }
+            } catch (e) { return true; }
         }
         checkAuthAndRedirect();
         
         // ========== АНАЛИТИКА ==========
-        function sendAnalytics(eventType, eventData = {}) {
-            const userToken = localStorage.getItem('userToken'), userEmail = localStorage.getItem('userEmail'), guestMode = localStorage.getItem('guestMode') === 'true';
-            fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event_type: eventType, user_id: userToken ? userToken.slice(0, 50) : (guestMode ? 'guest_' + Date.now() : null), user_email: userEmail && !userEmail.startsWith('guest_') ? userEmail : null, child_name: childName, child_age: parseInt(childAge), event_data: eventData }) }).catch(e => console.log('Analytics error:', e));
+        function sendAnalytics(et, ed = {}) {
+            const ut = localStorage.getItem('userToken'), ue = localStorage.getItem('userEmail'), gm = localStorage.getItem('guestMode') === 'true';
+            fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event_type: et, user_id: ut ? ut.slice(0, 50) : (gm ? 'guest_' + Date.now() : null), user_email: ue && !ue.startsWith('guest_') ? ue : null, child_name: childName, child_age: parseInt(childAge), event_data: ed }) }).catch(() => {});
         }
         
         // ========== ЗВУКИ ==========
         let audioCtx = null;
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
-        function playSound(soundName) {
-            try {
-                const ctx = initAudio(), osc = ctx.createOscillator(), gain = ctx.createGain();
-                osc.connect(gain); gain.connect(ctx.destination);
-                const sounds = { 'eat': { f: 523.25, d: 0.2, t: 'sine' }, 'purr': { f: 130.81, d: 0.5, t: 'sine' }, 'laugh': { f: 659.25, d: 0.15, t: 'square' }, 'click': { f: 880, d: 0.05, t: 'sine' }, 'success': { f: 523.25, d: 0.2, t: 'sine' }, 'fail': { f: 220, d: 0.3, t: 'sawtooth' }, 'victory': { f: 783.99, d: 0.3, t: 'sine' }, 'achievement': { f: 1046.50, d: 0.4, t: 'sine' }, 'paint': { f: 440, d: 0.03, t: 'sine' } };
-                const s = sounds[soundName] || sounds['click']; osc.type = s.t; osc.frequency.value = s.f; gain.gain.value = 0.25;
-                osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + s.d); osc.stop(ctx.currentTime + s.d);
-            } catch(e) {}
-        }
+        function playSound(s) { try { const ctx = initAudio(), o = ctx.createOscillator(), g = ctx.createGain(); o.connect(g); g.connect(ctx.destination); const ss = { 'eat': { f: 523.25, d: 0.2, t: 'sine' }, 'purr': { f: 130.81, d: 0.5, t: 'sine' }, 'laugh': { f: 659.25, d: 0.15, t: 'square' }, 'click': { f: 880, d: 0.05, t: 'sine' }, 'success': { f: 523.25, d: 0.2, t: 'sine' }, 'fail': { f: 220, d: 0.3, t: 'sawtooth' }, 'victory': { f: 783.99, d: 0.3, t: 'sine' }, 'achievement': { f: 1046.50, d: 0.4, t: 'sine' }, 'paint': { f: 440, d: 0.03, t: 'sine' } }, sd = ss[s] || ss['click']; o.type = sd.t; o.frequency.value = sd.f; g.gain.value = 0.25; o.start(); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + sd.d); o.stop(ctx.currentTime + sd.d); } catch(e) {} }
         
         // ========== ДОСТИЖЕНИЯ ==========
-        function getAchievementsKey() { return `achievements_${currentChildIndex}`; }
-        function initAchievements() {
-            const key = getAchievementsKey(); let ach = localStorage.getItem(key);
-            if (!ach) { const d = { 'first_talk': { name: '🎤 Первый разговор', desc: 'Первый разговор с Люциком', earned: false, date: null }, 'brave_kid': { name: '🦁 Храбрый малыш', desc: 'Победил первый страх', earned: false, date: null }, 'story_lover': { name: '🌙 Сказочник', desc: '10 сказок на ночь', earned: false, date: null, progress: 0, target: 10 }, 'game_master': { name: '🎮 Игроман', desc: 'Сыграл во все игры', earned: false, date: null }, 'fish_catcher': { name: '🐟 Рыболов', desc: 'Поймал 30 рыбок', earned: false, date: null, progress: 0, target: 30 }, 'memory_champion': { name: '🧠 Чемпион памяти', desc: 'Выиграл в Мемори', earned: false, date: null }, 'puzzle_solver': { name: '🧩 Собиратель пазлов', desc: 'Собрал пазл', earned: false, date: null }, 'artist': { name: '🎨 Художник', desc: 'Раскрасил Люцика', earned: false, date: null }, 'emotion_master': { name: '😊 Мастер эмоций', desc: 'Угадал все эмоции', earned: false, date: null }, '7_days': { name: '📅 Друг на неделю', desc: '7 дней с Люциком', earned: false, date: null } }; localStorage.setItem(key, JSON.stringify(d)); }
-            return JSON.parse(localStorage.getItem(key));
-        }
-        function updateAchievement(id, progress = null) {
-            const key = getAchievementsKey(), ach = JSON.parse(localStorage.getItem(key));
-            if (ach[id] && !ach[id].earned) {
-                if (progress !== null) { ach[id].progress = (ach[id].progress || 0) + progress; if (ach[id].progress >= ach[id].target) { ach[id].earned = true; ach[id].date = new Date().toISOString(); playSound('achievement'); showAchievementNotification(ach[id].name); sendAnalytics('achievement_earned', { achievement: ach[id].name }); } }
-                else { ach[id].earned = true; ach[id].date = new Date().toISOString(); playSound('achievement'); showAchievementNotification(ach[id].name); sendAnalytics('achievement_earned', { achievement: ach[id].name }); }
-                localStorage.setItem(key, JSON.stringify(ach));
-            }
-        }
-        function showAchievementNotification(name) { const n = document.createElement('div'); n.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#ffd700,#ff9f4a); color:#3a2a1a; padding:20px 30px; border-radius:60px; z-index:5000; text-align:center; animation:achievementPop 0.5s ease-out; box-shadow:0 0 30px rgba(0,0,0,0.3); font-weight:bold;'; n.innerHTML = `<strong>🏆 НАГРАДА!</strong><br>${name}`; document.body.appendChild(n); setTimeout(() => n.remove(), 3000); }
-        
-        // ========== НЕДЕЛЬНАЯ ПАМЯТЬ ==========
-        function getWeekStart(d) { const date = new Date(d); const day = date.getDay(); const diff = date.getDate() - day + (day === 0 ? -6 : 1); return new Date(date.setDate(diff)).toISOString().split('T')[0]; }
-        function getWeeklyMemory() {
-            const key = `weeklyMemory_${currentChildIndex}`; let m = localStorage.getItem(key);
-            if (!m) { const now = new Date(); m = { weekStart: getWeekStart(now), fears: {}, positiveTopics: {}, mood: { happy: 0, sad: 0, scared: 0 }, victories: [], lastUpdated: new Date().toISOString() }; localStorage.setItem(key, JSON.stringify(m)); return m; }
-            m = JSON.parse(m); const now = new Date(), ws = getWeekStart(now);
-            if (m.weekStart !== ws) { localStorage.setItem(`${key}_${m.weekStart}`, JSON.stringify(m)); const nm = { weekStart: ws, fears: {}, positiveTopics: {}, mood: { happy: 0, sad: 0, scared: 0 }, victories: [], lastUpdated: new Date().toISOString() }; localStorage.setItem(key, JSON.stringify(nm)); return nm; }
-            return m;
-        }
-        function updateWeeklyMemory(fear, topic, moodType, victory = null) { const m = getWeeklyMemory(); if (fear && m.fears) { if (!m.fears[fear]) m.fears[fear] = { count: 0, resolved: false }; m.fears[fear].count++; m.fears[fear].lastMention = new Date().toISOString(); } if (topic && m.positiveTopics) m.positiveTopics[topic] = (m.positiveTopics[topic] || 0) + 1; if (moodType && m.mood) m.mood[moodType] = (m.mood[moodType] || 0) + 1; if (victory && m.victories) { m.victories.push(victory); if (m.victories.length > 5) m.victories.shift(); } m.lastUpdated = new Date().toISOString(); localStorage.setItem(`weeklyMemory_${currentChildIndex}`, JSON.stringify(m)); }
+        function getAchKey() { return `achievements_${currentChildIndex}`; }
+        function initAchievements() { const k = getAchKey(); if (!localStorage.getItem(k)) { const d = { 'first_talk': { name: '🎤 Первый разговор', desc: 'Первый разговор', earned: false }, 'brave_kid': { name: '🦁 Храбрый малыш', desc: 'Победил страх', earned: false }, 'story_lover': { name: '🌙 Сказочник', desc: '10 сказок', earned: false, progress: 0, target: 10 }, 'game_master': { name: '🎮 Игроман', desc: 'Все игры', earned: false }, 'fish_catcher': { name: '🐟 Рыболов', desc: '30 рыбок', earned: false, progress: 0, target: 30 }, 'memory_champion': { name: '🧠 Чемпион', desc: 'Мемори', earned: false }, 'puzzle_solver': { name: '🧩 Собиратель', desc: 'Пазл', earned: false }, 'artist': { name: '🎨 Художник', desc: 'Раскраска', earned: false }, 'emotion_master': { name: '😊 Мастер эмоций', desc: 'Все эмоции', earned: false } }; localStorage.setItem(k, JSON.stringify(d)); } }
+        function updateAchievement(id, p = null) { const k = getAchKey(), a = JSON.parse(localStorage.getItem(k)); if (a[id] && !a[id].earned) { if (p !== null) { a[id].progress = (a[id].progress || 0) + p; if (a[id].progress >= a[id].target) { a[id].earned = true; a[id].date = new Date().toISOString(); playSound('achievement'); showAchievementNotification(a[id].name); } } else { a[id].earned = true; a[id].date = new Date().toISOString(); playSound('achievement'); showAchievementNotification(a[id].name); } localStorage.setItem(k, JSON.stringify(a)); } }
+        function showAchievementNotification(n) { const el = document.createElement('div'); el.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#ffd700,#ff9f4a); color:#3a2a1a; padding:20px 30px; border-radius:60px; z-index:5000; text-align:center; animation:achievementPop 0.5s ease-out; font-weight:bold;'; el.innerHTML = `<strong>🏆 НАГРАДА!</strong><br>${n}`; document.body.appendChild(el); setTimeout(() => el.remove(), 3000); }
         
         // ========== ОСНОВНЫЕ ДАННЫЕ ==========
         let isPremium = localStorage.getItem('isPremium') === 'true';
-        const currentChild = getCurrentChild();
-        let childName = currentChild.name, childAge = currentChild.age;
+        const curChild = getCurrentChild();
+        let childName = curChild.name, childAge = curChild.age;
         let savedPin = localStorage.getItem('parentPin');
         let mood, hunger, energy, bravery, fearStats, conversationHistory, fishScore, storyCount;
         loadChildData(currentChildIndex);
         if (conversationHistory.length > 50) conversationHistory = conversationHistory.slice(0, 50);
         
-        const characters = { lucik: { name: 'Люцик', icon: 'avatar.png', premium: false }, mom: { name: 'Мама', icon: 'mom.png', premium: true }, dad: { name: 'Папа', icon: 'dad.png', premium: true }, kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: true }, kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: true } };
+        const characters = { lucik: { name: 'Люцик', icon: 'avatar.png', premium: false }, mom: { name: 'Мама', icon: 'mom.png', premium: true }, dad: { name: 'Папа', icon: 'dad.png', premium: true }, kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: false }, kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: false } };
         let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
         
-        // Установка аватара по полу
         function setAvatarByGender() {
             const child = getCurrentChild();
             if (child.gender === 'girl') currentChar = 'kid1';
@@ -268,42 +250,43 @@
             else currentChar = 'lucik';
             localStorage.setItem('currentCharacter', currentChar);
             document.getElementById('avatar').style.backgroundImage = `url('${characters[currentChar].icon}')`;
-            updateAvatarLock();
-            updateAvatarLabel();
+            updateAvatarLock(); updateAvatarLabel();
         }
         setAvatarByGender();
         
         initAchievements();
-        updateChildIndicator();
+        updateChildNameLabel();
         sendAnalytics('app_open');
         window.addEventListener('beforeunload', () => { saveChildData(currentChildIndex); sendAnalytics('session_end'); });
         
         function updateStatsUI() { document.getElementById('moodFill').style.width = mood + '%'; document.getElementById('hungerFill').style.width = hunger + '%'; document.getElementById('energyFill').style.width = energy + '%'; document.getElementById('braveryFill').style.width = bravery + '%'; }
         function updateUI() { updateStatsUI(); }
-        function saveHistory(text) { conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + text); if (conversationHistory.length > 50) conversationHistory.pop(); localStorage.setItem(`storyHistory_${currentChildIndex}`, JSON.stringify(conversationHistory)); }
-        function updateFear(fear) { if (fearStats[fear] !== undefined) { fearStats[fear]++; localStorage.setItem(`fearStats_${currentChildIndex}`, JSON.stringify(fearStats)); bravery = Math.min(100, bravery + 10); localStorage.setItem(`lucik_bravery_${currentChildIndex}`, bravery); updateAchievement('brave_kid'); sendAnalytics('fear_detected', { fear }); const msgs = { темноты: 'боюсь темноты', врачей: 'боюсь врачей', одиночества: 'боюсь оставаться один', нового: 'боюсь нового', обиды: 'меня обидели', животных: 'боюсь животных' }; localStorage.setItem('pendingFearAlert', 'true'); localStorage.setItem('pendingFearText', msgs[fear] || fear); updateUI(); } }
+        function saveHistory(t) { conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + t); if (conversationHistory.length > 50) conversationHistory.pop(); localStorage.setItem(`storyHistory_${currentChildIndex}`, JSON.stringify(conversationHistory)); }
+        function updateFear(f) { if (fearStats[f] !== undefined) { fearStats[f]++; localStorage.setItem(`fearStats_${currentChildIndex}`, JSON.stringify(fearStats)); bravery = Math.min(100, bravery + 10); localStorage.setItem(`lucik_bravery_${currentChildIndex}`, bravery); updateAchievement('brave_kid'); sendAnalytics('fear_detected', { fear: f }); const msgs = { темноты: 'боюсь темноты', врачей: 'боюсь врачей', одиночества: 'боюсь оставаться один', нового: 'боюсь нового', обиды: 'меня обидели', животных: 'боюсь животных' }; localStorage.setItem('pendingFearAlert', 'true'); localStorage.setItem('pendingFearText', msgs[f] || f); updateUI(); } }
         function updateAvatarLock() { const av = document.getElementById('avatar'), lo = document.getElementById('lockOverlay'), locked = characters[currentChar].premium && !isPremium; if (locked) { av.classList.add('premium-locked'); lo.style.display = 'flex'; } else { av.classList.remove('premium-locked'); lo.style.display = 'none'; } }
         
         // ========== ОЗВУЧКА ==========
         let currentAudio = null, isAudioPlaying = false, audioUnlocked = false;
-        function unlockAudio() { if (audioUnlocked) return; const ctx = new (window.AudioContext || window.webkitAudioContext)(); ctx.resume().then(() => { audioUnlocked = true; }).catch(e => console.log('Audio unlock error:', e)); }
-        function fallbackSpeak(text) { const ct = text.replace(/[\*\_\#]/g, ''); const u = new SpeechSynthesisUtterance(ct); u.lang = 'ru-RU'; u.rate = 0.9; u.onstart = () => document.getElementById('avatar').classList.add('talking'); u.onend = () => document.getElementById('avatar').classList.remove('talking'); window.speechSynthesis.speak(u); }
-        async function speakWithYandex(text, voice = 'lucik', emotion = 'good') { return new Promise(async (resolve) => { try { if (!audioUnlocked) { await new Promise(r => setTimeout(r, 500)); if (!audioUnlocked) { fallbackSpeak(text); resolve(); return; } } if (currentAudio) { currentAudio.pause(); currentAudio = null; } const token = localStorage.getItem('userToken'); const headers = { 'Content-Type': 'application/json' }; if (token) headers['Authorization'] = `Bearer ${token}`; const resp = await fetch('/api/tts', { method: 'POST', headers, body: JSON.stringify({ text, voice, emotion, speed: 1.0 }) }); if (!resp.ok) throw new Error('TTS error'); const blob = await resp.blob(); if (blob.size < 100) throw new Error('Small audio'); const url = URL.createObjectURL(blob); const audio = new Audio(url); currentAudio = audio; audio.onplay = () => { isAudioPlaying = true; document.getElementById('avatar').classList.add('talking'); }; audio.onended = () => { isAudioPlaying = false; document.getElementById('avatar').classList.remove('talking'); URL.revokeObjectURL(url); resolve(); }; audio.onerror = () => { isAudioPlaying = false; document.getElementById('avatar').classList.remove('talking'); URL.revokeObjectURL(url); fallbackSpeak(text); resolve(); }; await audio.play(); } catch (e) { console.error('TTS error:', e); fallbackSpeak(text); resolve(); } }); }
-        async function speak(text) { const ct = text.replace(/[\*\_\#]/g, ''); try { await speakWithYandex(ct, currentChar, 'good'); } catch (e) { fallbackSpeak(ct); } }
+        function unlockAudio() { if (audioUnlocked) return; const ctx = new (window.AudioContext || window.webkitAudioContext)(); ctx.resume().then(() => { audioUnlocked = true; }).catch(() => {}); }
+        function fallbackSpeak(t) { const ct = t.replace(/[\*\_\#]/g, ''); const u = new SpeechSynthesisUtterance(ct); u.lang = 'ru-RU'; u.rate = 0.9; u.onstart = () => document.getElementById('avatar').classList.add('talking'); u.onend = () => document.getElementById('avatar').classList.remove('talking'); window.speechSynthesis.speak(u); }
+        async function speakWithYandex(txt, voice = 'lucik', emotion = 'good') { return new Promise(async (resolve) => { try { if (!audioUnlocked) { await new Promise(r => setTimeout(r, 500)); if (!audioUnlocked) { fallbackSpeak(txt); resolve(); return; } } if (currentAudio) { currentAudio.pause(); currentAudio = null; } const tok = localStorage.getItem('userToken'), headers = { 'Content-Type': 'application/json' }; if (tok) headers['Authorization'] = `Bearer ${tok}`; const resp = await fetch('/api/tts', { method: 'POST', headers, body: JSON.stringify({ text: txt, voice, emotion, speed: 1.0 }) }); if (!resp.ok) throw new Error('TTS error'); const blob = await resp.blob(); if (blob.size < 100) throw new Error('Small'); const url = URL.createObjectURL(blob); const a = new Audio(url); currentAudio = a; a.onplay = () => { isAudioPlaying = true; document.getElementById('avatar').classList.add('talking'); }; a.onended = () => { isAudioPlaying = false; document.getElementById('avatar').classList.remove('talking'); URL.revokeObjectURL(url); resolve(); }; a.onerror = () => { isAudioPlaying = false; document.getElementById('avatar').classList.remove('talking'); URL.revokeObjectURL(url); fallbackSpeak(txt); resolve(); }; await a.play(); } catch(e) { fallbackSpeak(txt); resolve(); } }); }
+        async function speak(t) { const ct = t.replace(/[\*\_\#]/g, ''); try { await speakWithYandex(ct, currentChar, 'good'); } catch(e) { fallbackSpeak(ct); } }
         function purr() { unlockAudio(); speakWithYandex("Муррр!", 'lucik', 'friendly').catch(() => { const a = new Audio('purr.mp3'); a.play().catch(() => {}); }); }
         
-        function changeCharacter(charId) { if (characters[charId].premium && !isPremium) { alert('🌟 Оформите подписку, чтобы играть за этого персонажа!'); return; } currentChar = charId; document.getElementById('avatar').style.backgroundImage = `url('${characters[charId].icon}')`; localStorage.setItem('currentCharacter', charId); updateAvatarLock(); updateAvatarLabel(); speak(`Теперь я ${characters[charId].name}!`); }
+        function changeCharacter(charId) { if (characters[charId].premium && !isPremium) { alert('🌟 Оформите подписку!'); return; } currentChar = charId; document.getElementById('avatar').style.backgroundImage = `url('${characters[charId].icon}')`; localStorage.setItem('currentCharacter', charId); updateAvatarLock(); updateAvatarLabel(); speak(`Теперь я ${characters[charId].name}!`); }
         
-        // ========== ПЕРЕКЛЮЧЕНИЕ ДЕТЕЙ ==========
-        let childTouchStart = 0;
-        document.getElementById('childIndicator').addEventListener('touchstart', (e) => { childTouchStart = e.changedTouches[0].screenX; });
-        document.getElementById('childIndicator').addEventListener('touchend', (e) => { const diff = e.changedTouches[0].screenX - childTouchStart; if (Math.abs(diff) > 40) switchChild(diff > 0 ? -1 : 1); });
-        document.getElementById('childIndicator').addEventListener('click', () => { if (children.length > 1) switchChild(1); });
-                
-        // ========== СВАЙП ПО АВАТАРУ ==========
-        let touchStart = 0;
+        // ========== ДОЛГОЕ НАЖАТИЕ НА АВАТАР → ВЫБОР РЕБЁНКА ==========
+        let longPressTimer = null;
         const avatarEl = document.getElementById('avatar');
-        avatarEl.addEventListener('touchstart', (e) => { touchStart = e.changedTouches[0].screenX; });
+        avatarEl.addEventListener('touchstart', (e) => { longPressTimer = setTimeout(() => { showChildSelectMenu(); }, 800); touchStart = e.changedTouches[0].screenX; });
+        avatarEl.addEventListener('touchend', () => { clearTimeout(longPressTimer); });
+        avatarEl.addEventListener('touchmove', () => { clearTimeout(longPressTimer); });
+        avatarEl.addEventListener('mousedown', () => { longPressTimer = setTimeout(() => { showChildSelectMenu(); }, 800); });
+        avatarEl.addEventListener('mouseup', () => { clearTimeout(longPressTimer); });
+        avatarEl.addEventListener('mouseleave', () => { clearTimeout(longPressTimer); });
+        
+        // Свайп по аватару → смена персонажа
+        let touchStart = 0;
         avatarEl.addEventListener('touchend', (e) => {
             const diff = e.changedTouches[0].screenX - touchStart;
             if (Math.abs(diff) > 50) {
@@ -311,135 +294,84 @@
                 let idx = chars.indexOf(currentChar);
                 if (diff > 0) idx = (idx - 1 + chars.length) % chars.length;
                 else idx = (idx + 1) % chars.length;
-                const newChar = chars[idx];
-                if (characters[newChar].premium && !isPremium) { alert('🌟 Оформите подписку, чтобы играть за этого персонажа!'); return; }
-                changeCharacter(newChar);
+                changeCharacter(chars[idx]);
             }
         });
         
-        function updateMoonButton() { const hour = new Date().getHours(); document.getElementById('nightStoryBtn').style.display = (hour >= 20 || hour < 6) ? 'flex' : 'none'; }
+        function updateMoonButton() { document.getElementById('nightStoryBtn').style.display = (new Date().getHours() >= 20 || new Date().getHours() < 6) ? 'flex' : 'none'; }
         updateMoonButton(); setInterval(updateMoonButton, 60000);
         
         async function askDeepSeek(text, isLong = false) {
             if (containsBadWords(text)) return "Мяу! Давай говорить добрые слова!";
             try {
-                const weeklyMemory = getWeeklyMemory();
                 const historyForAPI = conversationHistory.slice(-12).map(item => {
                     const isUser = item.includes(`👶 ${childName}:`);
                     return { role: isUser ? "user" : "assistant", content: item.replace(/^[^:]+:/, '').trim() };
                 });
                 const token = localStorage.getItem('userToken'), headers = { 'Content-Type': 'application/json' };
                 if (token) headers['Authorization'] = `Bearer ${token}`;
-                const res = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify({ childName, childAge, userSpeech: text, isLong, history: historyForAPI, weeklyMemory }) });
+                const res = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify({ childName, childAge, userSpeech: text, isLong, history: historyForAPI }) });
                 const data = await res.json();
                 if (data.detectedFear) updateFear(data.detectedFear);
-                if (data.detectedTopic) updateWeeklyMemory(null, data.detectedTopic, null);
-                if (data.detectedMood) updateWeeklyMemory(null, null, data.detectedMood);
-                if (text.toLowerCase().includes('не бою') || text.toLowerCase().includes('победил')) updateWeeklyMemory(null, null, null, `${childName} победил страх!`);
-                return data.story;
+                // Двойной фильтр мусорных ответов (клиент + сервер)
+                let story = data.story;
+                if (!story || story.includes('Люцик 31') || story.includes('Люцик 02') || story.includes('ошибка') || story.includes('error') || story.length < 2) {
+                    story = "Мурр... Я немного задумался. Давай ещё раз?";
+                }
+                return story;
             } catch(e) { return "Мяу! Давай ещё раз?"; }
         }
         
         document.addEventListener('touchstart', unlockAudio, { once: true });
         document.addEventListener('click', unlockAudio, { once: true });
         document.getElementById('micBtn').addEventListener('click', unlockAudio, { once: true });
-        
+                
         // ========== ИГРЫ ==========
         let gameActive = false, gameInterval = null, gameTimerInterval = null;
-        function startFishGame() {
-            if (gameActive) return; gameActive = true; sendAnalytics('game_fish');
-            let gameScore = 0, timeLeft = 30;
-            const gc = document.createElement('div'); gc.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:space-between;';
-            const fa = document.createElement('div'); fa.style.cssText = 'flex:1; position:relative; width:100%;';
-            const fish = document.createElement('div'); fish.innerText = '🐟'; fish.style.cssText = 'font-size:60px; position:absolute; cursor:pointer;';
-            const bb = document.createElement('div'); bb.style.cssText = 'padding:20px; text-align:center; width:100%;';
-            const sd = document.createElement('div'); sd.style.cssText = 'color:white; font-size:24px; margin-bottom:10px;'; sd.innerText = `🐟 Счёт: 0 | ⏱️ Осталось: ${timeLeft} сек`;
-            const cb = document.createElement('button'); cb.innerText = 'Закрыть'; cb.style.cssText = 'padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; cb.onclick = () => { clearInterval(gameInterval); clearInterval(gameTimerInterval); gc.remove(); gameActive = false; };
-            bb.appendChild(sd); bb.appendChild(cb); fa.appendChild(fish); gc.appendChild(fa); gc.appendChild(bb); document.body.appendChild(gc);
-            function moveFish() { const mx = fa.clientWidth - 80, my = fa.clientHeight - 80; if (mx > 0 && my > 0) { fish.style.left = Math.random() * mx + 'px'; fish.style.top = Math.random() * my + 'px'; } }
-            fish.onclick = () => { if (!gameActive) return; gameScore++; fishScore++; localStorage.setItem(`fishScore_${currentChildIndex}`, fishScore); updateAchievement('fish_catcher', 1); sd.innerText = `🐟 Счёт: ${gameScore} | ⏱️ Осталось: ${timeLeft} сек`; moveFish(); playSound('click'); hunger = Math.min(100, hunger + 3); mood = Math.min(100, mood + 3); updateStatsUI(); };
-            moveFish();
-            gameTimerInterval = setInterval(() => { if (!gameActive) return; timeLeft--; if (timeLeft <= 0) { clearInterval(gameTimerInterval); clearInterval(gameInterval); gameActive = false; sd.innerText = `🎉 Игра окончена! Ты поймал ${gameScore} рыбок! 🎉`; fish.style.display = 'none'; speak(`Игра окончена! Ты поймал ${gameScore} рыбок! Молодец!`); sendAnalytics('game_fish', { score: gameScore }); } else sd.innerText = `🐟 Счёт: ${gameScore} | ⏱️ Осталось: ${timeLeft} сек`; }, 1000);
-            gameInterval = setInterval(() => { if (gameActive) moveFish(); }, 1500);
-        }
+        function startFishGame() { if (gameActive) return; gameActive = true; sendAnalytics('game_fish'); let gs = 0, tl = 30; const gc = document.createElement('div'); gc.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:space-between;'; const fa = document.createElement('div'); fa.style.cssText = 'flex:1; position:relative; width:100%;'; const f = document.createElement('div'); f.innerText = '🐟'; f.style.cssText = 'font-size:60px; position:absolute; cursor:pointer;'; const bb = document.createElement('div'); bb.style.cssText = 'padding:20px; text-align:center; width:100%;'; const sd = document.createElement('div'); sd.style.cssText = 'color:white; font-size:24px; margin-bottom:10px;'; sd.innerText = `🐟 Счёт: 0 | ⏱️ Осталось: ${tl} сек`; const cb = document.createElement('button'); cb.innerText = 'Закрыть'; cb.style.cssText = 'padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; cb.onclick = () => { clearInterval(gameInterval); clearInterval(gameTimerInterval); gc.remove(); gameActive = false; }; bb.appendChild(sd); bb.appendChild(cb); fa.appendChild(f); gc.appendChild(fa); gc.appendChild(bb); document.body.appendChild(gc); function moveFish() { const mx = fa.clientWidth - 80, my = fa.clientHeight - 80; if (mx > 0 && my > 0) { f.style.left = Math.random() * mx + 'px'; f.style.top = Math.random() * my + 'px'; } } f.onclick = () => { if (!gameActive) return; gs++; fishScore++; localStorage.setItem(`fishScore_${currentChildIndex}`, fishScore); updateAchievement('fish_catcher', 1); sd.innerText = `🐟 Счёт: ${gs} | ⏱️ Осталось: ${tl} сек`; moveFish(); playSound('click'); hunger = Math.min(100, hunger + 3); mood = Math.min(100, mood + 3); updateStatsUI(); }; moveFish(); gameTimerInterval = setInterval(() => { if (!gameActive) return; tl--; if (tl <= 0) { clearInterval(gameTimerInterval); clearInterval(gameInterval); gameActive = false; sd.innerText = `🎉 Ты поймал ${gs} рыбок! 🎉`; f.style.display = 'none'; speak(`Игра окончена! Ты поймал ${gs} рыбок!`); sendAnalytics('game_fish', { score: gs }); } else sd.innerText = `🐟 Счёт: ${gs} | ⏱️ Осталось: ${tl} сек`; }, 1000); gameInterval = setInterval(() => { if (gameActive) moveFish(); }, 1500); }
         
         let memoryCards = [], memoryFlipped = [], memoryLocked = false, memoryMatches = 0;
-        function startMemoryGame() {
-            sendAnalytics('game_memory');
-            const em = ['😊','😢','😨','😡','😴','😍']; memoryCards = [...em, ...em];
-            for (let i = memoryCards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [memoryCards[i], memoryCards[j]] = [memoryCards[j], memoryCards[i]]; }
-            memoryFlipped = new Array(memoryCards.length).fill(false); memoryMatches = 0;
-            const gc = document.createElement('div'); gc.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
-            const t = document.createElement('h2'); t.textContent = '🧠 Найди пару'; t.style.color = 'white'; t.style.marginBottom = '20px';
-            const board = document.createElement('div'); board.style.cssText = 'display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; max-width:400px; width:90%; margin:0 auto;';
-            const cards = [];
-            for (let i = 0; i < memoryCards.length; i++) { const c = document.createElement('div'); c.style.cssText = 'aspect-ratio:1; background:#4a4a6a; border-radius:15px; display:flex; align-items:center; justify-content:center; font-size:40px; cursor:pointer; transition:0.3s;'; c.dataset.index = i; c.onclick = () => flipCard(i, c, cards); cards.push(c); board.appendChild(c); }
-            const sd = document.createElement('div'); sd.style.cssText = 'color:white; margin-top:20px; font-size:20px;'; sd.textContent = `Найдено пар: ${memoryMatches} / 6`;
-            const cb = document.createElement('button'); cb.textContent = 'Закрыть'; cb.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; cb.onclick = () => gc.remove();
-            gc.appendChild(t); gc.appendChild(board); gc.appendChild(sd); gc.appendChild(cb); document.body.appendChild(gc);
-            let fi = null, fc = null;
-            function flipCard(idx, card, cardsArray) { if (memoryLocked || memoryFlipped[idx]) return; memoryFlipped[idx] = true; card.textContent = memoryCards[idx]; card.style.background = '#6c6caa'; if (fi === null) { fi = idx; fc = card; } else { if (memoryCards[fi] === memoryCards[idx]) { memoryMatches++; sd.textContent = `Найдено пар: ${memoryMatches} / 6`; fi = null; fc = null; playSound('success'); if (memoryMatches === 6) { updateAchievement('memory_champion'); setTimeout(() => { alert('🎉 Поздравляю! Ты нашёл все пары!'); playSound('victory'); gc.remove(); }, 500); } } else { memoryLocked = true; setTimeout(() => { memoryFlipped[fi] = false; memoryFlipped[idx] = false; fc.textContent = '?'; card.textContent = '?'; fc.style.background = '#4a4a6a'; card.style.background = '#4a4a6a'; fi = null; fc = null; memoryLocked = false; }, 1000); } } }
-        }
+        function startMemoryGame() { sendAnalytics('game_memory'); const em = ['😊','😢','😨','😡','😴','😍']; memoryCards = [...em, ...em]; for (let i = memoryCards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [memoryCards[i], memoryCards[j]] = [memoryCards[j], memoryCards[i]]; } memoryFlipped = new Array(memoryCards.length).fill(false); memoryMatches = 0; const gc = document.createElement('div'); gc.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;'; const t = document.createElement('h2'); t.textContent = '🧠 Найди пару'; t.style.color = 'white'; t.style.marginBottom = '20px'; const board = document.createElement('div'); board.style.cssText = 'display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; max-width:400px; width:90%; margin:0 auto;'; const cards = []; for (let i = 0; i < memoryCards.length; i++) { const c = document.createElement('div'); c.style.cssText = 'aspect-ratio:1; background:#4a4a6a; border-radius:15px; display:flex; align-items:center; justify-content:center; font-size:40px; cursor:pointer; transition:0.3s;'; c.dataset.index = i; c.onclick = () => flipCard(i, c); cards.push(c); board.appendChild(c); } const sd = document.createElement('div'); sd.style.cssText = 'color:white; margin-top:20px; font-size:20px;'; sd.textContent = `Найдено пар: ${memoryMatches} / 6`; const cb = document.createElement('button'); cb.textContent = 'Закрыть'; cb.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; cb.onclick = () => gc.remove(); gc.appendChild(t); gc.appendChild(board); gc.appendChild(sd); gc.appendChild(cb); document.body.appendChild(gc); let fi = null, fc = null; function flipCard(idx, card) { if (memoryLocked || memoryFlipped[idx]) return; memoryFlipped[idx] = true; card.textContent = memoryCards[idx]; card.style.background = '#6c6caa'; if (fi === null) { fi = idx; fc = card; } else { if (memoryCards[fi] === memoryCards[idx]) { memoryMatches++; sd.textContent = `Найдено пар: ${memoryMatches} / 6`; fi = null; fc = null; playSound('success'); if (memoryMatches === 6) { updateAchievement('memory_champion'); setTimeout(() => { alert('🎉 Ты нашёл все пары!'); playSound('victory'); gc.remove(); }, 500); } } else { memoryLocked = true; setTimeout(() => { memoryFlipped[fi] = false; memoryFlipped[idx] = false; fc.textContent = '?'; card.textContent = '?'; fc.style.background = '#4a4a6a'; card.style.background = '#4a4a6a'; fi = null; fc = null; memoryLocked = false; }, 1000); } } } }
         
         let puzzlePieces = [], puzzleEmptyIndex = 8;
-        function startPuzzleGame() {
-            sendAnalytics('game_puzzle'); const img = 'avatar.png'; puzzlePieces = Array.from({ length: 9 }, (_, i) => i);
-            for (let i = puzzlePieces.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [puzzlePieces[i], puzzlePieces[j]] = [puzzlePieces[j], puzzlePieces[i]]; }
-            puzzleEmptyIndex = puzzlePieces.indexOf(8);
-            const gc = document.createElement('div'); gc.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
-            const t = document.createElement('h2'); t.textContent = '🧩 Собери пазл'; t.style.color = 'white'; t.style.marginBottom = '20px';
-            const board = document.createElement('div'); board.style.cssText = 'display:grid; grid-template-columns:repeat(3, 1fr); gap:5px; width:300px; height:300px; background:#333; border-radius:10px; overflow:hidden;';
-            function renderBoard() { board.innerHTML = ''; for (let i = 0; i < 9; i++) { const p = document.createElement('div'); p.style.cssText = 'background-size:300% 300%; cursor:pointer; border:1px solid #555;'; if (puzzlePieces[i] === 8) p.style.background = '#2a2a2a'; else { const r = Math.floor(puzzlePieces[i] / 3), c = puzzlePieces[i] % 3; p.style.backgroundImage = `url('${img}')`; p.style.backgroundPosition = `${-c * 100}% ${-r * 100}%`; p.style.backgroundSize = '300% 300%'; } p.onclick = () => movePiece(i); board.appendChild(p); } }
-            function movePiece(idx) { const er = Math.floor(puzzleEmptyIndex / 3), ec = puzzleEmptyIndex % 3, cr = Math.floor(idx / 3), cc = idx % 3; if (Math.abs(er - cr) + Math.abs(ec - cc) === 1) { [puzzlePieces[idx], puzzlePieces[puzzleEmptyIndex]] = [puzzlePieces[puzzleEmptyIndex], puzzlePieces[idx]]; puzzleEmptyIndex = idx; renderBoard(); playSound('click'); let win = true; for (let i = 0; i < 8; i++) if (puzzlePieces[i] !== i) win = false; if (win && puzzlePieces[8] === 8) { updateAchievement('puzzle_solver'); setTimeout(() => { alert('🎉 Ура! Ты собрал пазл!'); playSound('victory'); gc.remove(); }, 500); } } }
-            const cb = document.createElement('button'); cb.textContent = 'Закрыть'; cb.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; cb.onclick = () => gc.remove();
-            gc.appendChild(t); gc.appendChild(board); gc.appendChild(cb); document.body.appendChild(gc); renderBoard();
-        }
+        function startPuzzleGame() { sendAnalytics('game_puzzle'); const img = 'avatar.png'; puzzlePieces = Array.from({ length: 9 }, (_, i) => i); for (let i = puzzlePieces.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [puzzlePieces[i], puzzlePieces[j]] = [puzzlePieces[j], puzzlePieces[i]]; } puzzleEmptyIndex = puzzlePieces.indexOf(8); const gc = document.createElement('div'); gc.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;'; const t = document.createElement('h2'); t.textContent = '🧩 Собери пазл'; t.style.color = 'white'; t.style.marginBottom = '20px'; const board = document.createElement('div'); board.style.cssText = 'display:grid; grid-template-columns:repeat(3, 1fr); gap:5px; width:300px; height:300px; background:#333; border-radius:10px; overflow:hidden;'; function renderBoard() { board.innerHTML = ''; for (let i = 0; i < 9; i++) { const p = document.createElement('div'); p.style.cssText = 'background-size:300% 300%; cursor:pointer; border:1px solid #555;'; if (puzzlePieces[i] === 8) p.style.background = '#2a2a2a'; else { const r = Math.floor(puzzlePieces[i] / 3), c = puzzlePieces[i] % 3; p.style.backgroundImage = `url('${img}')`; p.style.backgroundPosition = `${-c * 100}% ${-r * 100}%`; p.style.backgroundSize = '300% 300%'; } p.onclick = () => movePiece(i); board.appendChild(p); } } function movePiece(idx) { const er = Math.floor(puzzleEmptyIndex / 3), ec = puzzleEmptyIndex % 3, cr = Math.floor(idx / 3), cc = idx % 3; if (Math.abs(er - cr) + Math.abs(ec - cc) === 1) { [puzzlePieces[idx], puzzlePieces[puzzleEmptyIndex]] = [puzzlePieces[puzzleEmptyIndex], puzzlePieces[idx]]; puzzleEmptyIndex = idx; renderBoard(); playSound('click'); let win = true; for (let i = 0; i < 8; i++) if (puzzlePieces[i] !== i) win = false; if (win && puzzlePieces[8] === 8) { updateAchievement('puzzle_solver'); setTimeout(() => { alert('🎉 Ты собрал пазл!'); playSound('victory'); gc.remove(); }, 500); } } } const cb = document.createElement('button'); cb.textContent = 'Закрыть'; cb.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; cb.onclick = () => gc.remove(); gc.appendChild(t); gc.appendChild(board); gc.appendChild(cb); document.body.appendChild(gc); renderBoard(); }
         
         let currentColor = '#ff9f4a'; const colors = ['#ff9f4a','#ff4081','#4CAF50','#00d2ff','#9b59b6','#f1c40f'];
-        function startColoringGame() {
-            sendAnalytics('game_color'); const gc = document.createElement('div'); gc.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
-            const t = document.createElement('h2'); t.textContent = '🎨 Раскрась Люцика'; t.style.color = 'white'; t.style.marginBottom = '10px';
-            const canvas = document.createElement('canvas'); canvas.width = 300; canvas.height = 300; canvas.style.border = '3px solid white'; canvas.style.borderRadius = '20px'; canvas.style.cursor = 'pointer'; canvas.style.backgroundColor = '#f0e6d0'; const ctx = canvas.getContext('2d');
-            function drawOutline() { ctx.clearRect(0,0,300,300); ctx.fillStyle='#f0e6d0'; ctx.fillRect(0,0,300,300); ctx.fillStyle=currentColor; ctx.beginPath(); ctx.arc(150,130,60,0,Math.PI*2); ctx.fill(); ctx.fillStyle='white'; ctx.beginPath(); ctx.arc(120,110,12,0,Math.PI*2); ctx.arc(180,110,12,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#3a2a1a'; ctx.beginPath(); ctx.arc(120,110,6,0,Math.PI*2); ctx.arc(180,110,6,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#ff6b6b'; ctx.beginPath(); ctx.ellipse(150,140,8,6,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.moveTo(100,145); ctx.lineTo(70,140); ctx.moveTo(100,150); ctx.lineTo(65,155); ctx.moveTo(200,145); ctx.lineTo(230,140); ctx.moveTo(200,150); ctx.lineTo(235,155); ctx.stroke(); }
-            drawOutline(); let isDrawing = false; canvas.onmousedown = () => isDrawing = true; canvas.onmouseup = () => { isDrawing = false; updateAchievement('artist'); };
-            canvas.onmousemove = (e) => { if (!isDrawing) return; const rect = canvas.getBoundingClientRect(), x = (e.clientX - rect.left) * (canvas.width / rect.width), y = (e.clientY - rect.top) * (canvas.height / rect.height); ctx.fillStyle = currentColor; ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI*2); ctx.fill(); playSound('paint'); };
-            const palette = document.createElement('div'); palette.style.cssText = 'display:flex; gap:10px; margin:15px 0;'; colors.forEach(c => { const b = document.createElement('div'); b.style.cssText = `width:40px; height:40px; background:${c}; border-radius:50%; cursor:pointer; border:2px solid white;`; b.onclick = () => { currentColor = c; playSound('click'); }; palette.appendChild(b); });
-            const clr = document.createElement('button'); clr.textContent = '🧽 Очистить'; clr.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#e67e22; color:white; border:none;'; clr.onclick = () => { drawOutline(); playSound('click'); };
-            const cb = document.createElement('button'); cb.textContent = 'Закрыть'; cb.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; cb.onclick = () => gc.remove();
-            gc.appendChild(t); gc.appendChild(canvas); gc.appendChild(palette); gc.appendChild(clr); gc.appendChild(cb); document.body.appendChild(gc);
-        }
+        function startColoringGame() { sendAnalytics('game_color'); const gc = document.createElement('div'); gc.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;'; const t = document.createElement('h2'); t.textContent = '🎨 Раскрась Люцика'; t.style.color = 'white'; t.style.marginBottom = '10px'; const cv = document.createElement('canvas'); cv.width = 300; cv.height = 300; cv.style.border = '3px solid white'; cv.style.borderRadius = '20px'; cv.style.cursor = 'pointer'; cv.style.backgroundColor = '#f0e6d0'; const ctx = cv.getContext('2d'); function drawOutline() { ctx.clearRect(0,0,300,300); ctx.fillStyle='#f0e6d0'; ctx.fillRect(0,0,300,300); ctx.fillStyle=currentColor; ctx.beginPath(); ctx.arc(150,130,60,0,Math.PI*2); ctx.fill(); ctx.fillStyle='white'; ctx.beginPath(); ctx.arc(120,110,12,0,Math.PI*2); ctx.arc(180,110,12,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#3a2a1a'; ctx.beginPath(); ctx.arc(120,110,6,0,Math.PI*2); ctx.arc(180,110,6,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#ff6b6b'; ctx.beginPath(); ctx.ellipse(150,140,8,6,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.moveTo(100,145); ctx.lineTo(70,140); ctx.moveTo(100,150); ctx.lineTo(65,155); ctx.moveTo(200,145); ctx.lineTo(230,140); ctx.moveTo(200,150); ctx.lineTo(235,155); ctx.stroke(); } drawOutline(); let isDrawing = false; cv.onmousedown = () => isDrawing = true; cv.onmouseup = () => { isDrawing = false; updateAchievement('artist'); }; cv.onmousemove = (e) => { if (!isDrawing) return; const rect = cv.getBoundingClientRect(), x = (e.clientX - rect.left) * (cv.width / rect.width), y = (e.clientY - rect.top) * (cv.height / rect.height); ctx.fillStyle = currentColor; ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI*2); ctx.fill(); playSound('paint'); }; const pal = document.createElement('div'); pal.style.cssText = 'display:flex; gap:10px; margin:15px 0;'; colors.forEach(c => { const b = document.createElement('div'); b.style.cssText = `width:40px; height:40px; background:${c}; border-radius:50%; cursor:pointer; border:2px solid white;`; b.onclick = () => { currentColor = c; playSound('click'); }; pal.appendChild(b); }); const clr = document.createElement('button'); clr.textContent = '🧽 Очистить'; clr.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#e67e22; color:white; border:none;'; clr.onclick = () => { drawOutline(); playSound('click'); }; const cb = document.createElement('button'); cb.textContent = 'Закрыть'; cb.style.cssText = 'margin:5px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; cb.onclick = () => gc.remove(); gc.appendChild(t); gc.appendChild(cv); gc.appendChild(pal); gc.appendChild(clr); gc.appendChild(cb); document.body.appendChild(gc); }
         
         let emotionScore = 0, emotionQuestion = 0;
-        const emotionsList = [{ emoji:'😊', name:'радость', desc:'Когда тебе весело и хорошо' },{ emoji:'😢', name:'грусть', desc:'Когда тебе немного грустно' },{ emoji:'😨', name:'страх', desc:'Когда тебе страшно' },{ emoji:'😡', name:'злость', desc:'Когда ты сердишься' },{ emoji:'😴', name:'сонливость', desc:'Когда ты хочешь спать' },{ emoji:'😍', name:'любовь', desc:'Когда ты кого-то очень любишь' }];
+        const emotionsList = [{ emoji:'😊', name:'радость', desc:'Когда тебе весело' },{ emoji:'😢', name:'грусть', desc:'Когда тебе грустно' },{ emoji:'😨', name:'страх', desc:'Когда тебе страшно' },{ emoji:'😡', name:'злость', desc:'Когда ты сердишься' },{ emoji:'😴', name:'сонливость', desc:'Когда хочешь спать' },{ emoji:'😍', name:'любовь', desc:'Когда ты любишь' }];
         function startEmotionGame() { sendAnalytics('game_emotion'); emotionScore = 0; emotionQuestion = 0; showEmotionQuestion(); }
-        function showEmotionQuestion() { if (emotionQuestion >= 6) { alert(`🎉 Молодец! Ты угадал ${emotionScore} из 6 эмоций!`); if (emotionScore >= 5) { updateAchievement('emotion_master'); playSound('victory'); } return; } const emotion = emotionsList[emotionQuestion], options = emotionsList.map(e => e.name); for (let i = options.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [options[i], options[j]] = [options[j], options[i]]; } const modal = document.createElement('div'); modal.className = 'modal'; modal.innerHTML = `<h3>😊 Угадай эмоцию</h3><div style="font-size:80px; margin:20px;">${emotion.emoji}</div><p style="margin-bottom:15px;">${emotion.desc}</p><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${options.map(opt => `<button class="emotion-option" data-emotion="${opt}">${opt}</button>`).join('')}</div><div style="margin-top:20px;"><button class="close-btn" id="closeEmotionGame">Закрыть</button></div>`; document.body.appendChild(modal); document.querySelectorAll('.emotion-option').forEach(btn => { btn.onclick = () => { const sel = btn.dataset.emotion; if (sel === emotion.name) { emotionScore++; playSound('success'); alert('✅ Правильно! Молодец!'); } else { playSound('fail'); alert(`❌ Неправильно. Это ${emotion.name}. Запомни!`); } modal.remove(); emotionQuestion++; showEmotionQuestion(); }; }); document.getElementById('closeEmotionGame').onclick = () => modal.remove(); }
+        function showEmotionQuestion() { if (emotionQuestion >= 6) { alert(`🎉 Ты угадал ${emotionScore} из 6 эмоций!`); if (emotionScore >= 5) { updateAchievement('emotion_master'); playSound('victory'); } return; } const em = emotionsList[emotionQuestion], opts = emotionsList.map(e => e.name); for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; } const modal = document.createElement('div'); modal.className = 'modal'; modal.innerHTML = `<h3>😊 Угадай эмоцию</h3><div style="font-size:80px; margin:20px;">${em.emoji}</div><p>${em.desc}</p><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${opts.map(o => `<button class="emo-opt" data-emotion="${o}">${o}</button>`).join('')}</div><div style="margin-top:20px;"><button class="close-btn" id="ceg">Закрыть</button></div>`; document.body.appendChild(modal); document.querySelectorAll('.emo-opt').forEach(btn => { btn.onclick = () => { const sel = btn.dataset.emotion; if (sel === em.name) { emotionScore++; playSound('success'); alert('✅ Правильно!'); } else { playSound('fail'); alert(`❌ Это ${em.name}`); } modal.remove(); emotionQuestion++; showEmotionQuestion(); }; }); document.getElementById('ceg').onclick = () => modal.remove(); }
         
-        function showGameMenu() { const modal = document.createElement('div'); modal.className = 'modal'; modal.innerHTML = `<h3 style="margin-bottom:20px;">🎮 Выбери игру</h3><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;"><button id="gf" style="background:#4aa3df;">🐟 Поймай рыбку</button><button id="gm" style="background:#9b59b6;">🧠 Мемори</button><button id="gp" style="background:#e67e22;">🧩 Пазл</button><button id="gc" style="background:#2ecc71;">🎨 Раскраска</button><button id="ge" style="background:#f1c40f;">😊 Угадай эмоцию</button><button id="gpl" style="background:#ff9f4a;">🎾 Поиграть с Люциком</button></div><div style="margin-top:20px;"><button class="close-btn" id="cgm">Закрыть</button></div>`; document.body.appendChild(modal); document.getElementById('gf').onclick = () => { modal.remove(); startFishGame(); updateAchievement('game_master'); }; document.getElementById('gm').onclick = () => { modal.remove(); startMemoryGame(); updateAchievement('game_master'); }; document.getElementById('gp').onclick = () => { modal.remove(); startPuzzleGame(); updateAchievement('game_master'); }; document.getElementById('gc').onclick = () => { modal.remove(); startColoringGame(); updateAchievement('game_master'); }; document.getElementById('ge').onclick = () => { modal.remove(); startEmotionGame(); updateAchievement('game_master'); }; document.getElementById('gpl').onclick = () => { modal.remove(); if (energy >= 20) { energy = Math.max(0, energy - 20); mood = Math.min(100, mood + 15); localStorage.setItem(`lucik_energy_${currentChildIndex}`, energy); localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood); updateStatsUI(); speak("Ура! Весело играть!"); playSound('laugh'); } else speak("Я устал. Дай отдохнуть."); saveHistory(`🎾 Поиграл с ${characters[currentChar].name}`); }; document.getElementById('cgm').onclick = () => modal.remove(); }
+        function showGameMenu() { const m = document.createElement('div'); m.className = 'modal'; m.innerHTML = `<h3 style="margin-bottom:20px;">🎮 Выбери игру</h3><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;"><button id="gf" style="background:#4aa3df;">🐟 Поймай рыбку</button><button id="gm" style="background:#9b59b6;">🧠 Мемори</button><button id="gp" style="background:#e67e22;">🧩 Пазл</button><button id="gc" style="background:#2ecc71;">🎨 Раскраска</button><button id="ge" style="background:#f1c40f;">😊 Угадай эмоцию</button><button id="gpl" style="background:#ff9f4a;">🎾 Поиграть</button></div><div style="margin-top:20px;"><button class="close-btn" id="cgm">Закрыть</button></div>`; document.body.appendChild(m); document.getElementById('gf').onclick = () => { m.remove(); startFishGame(); updateAchievement('game_master'); }; document.getElementById('gm').onclick = () => { m.remove(); startMemoryGame(); updateAchievement('game_master'); }; document.getElementById('gp').onclick = () => { m.remove(); startPuzzleGame(); updateAchievement('game_master'); }; document.getElementById('gc').onclick = () => { m.remove(); startColoringGame(); updateAchievement('game_master'); }; document.getElementById('ge').onclick = () => { m.remove(); startEmotionGame(); updateAchievement('game_master'); }; document.getElementById('gpl').onclick = () => { m.remove(); if (energy >= 20) { energy = Math.max(0, energy - 20); mood = Math.min(100, mood + 15); localStorage.setItem(`lucik_energy_${currentChildIndex}`, energy); localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood); updateStatsUI(); speak("Ура! Весело играть!"); playSound('laugh'); } else speak("Я устал. Дай отдохнуть."); saveHistory(`🎾 Поиграл`); }; document.getElementById('cgm').onclick = () => m.remove(); }
         
-        function showRoomMenu() { const modal = document.createElement('div'); modal.className = 'modal'; modal.innerHTML = `<h3 style="margin-bottom:20px;">🏠 Моя комната</h3><button id="cr" style="background:#4CAF50;">🧸 Уборка комнаты</button><button id="du" style="background:#ff9f4a;">👕 Переодеть персонажа</button><div style="margin-top:20px;"><button class="close-btn" id="crm">Закрыть</button></div>`; document.body.appendChild(modal); document.getElementById('cr').onclick = () => { modal.remove(); sendAnalytics('room_clean'); energy = Math.min(100, energy + 10); mood = Math.min(100, mood + 5); localStorage.setItem(`lucik_energy_${currentChildIndex}`, energy); localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood); updateStatsUI(); speak("Мурр! Комната стала чистой!"); playSound('purr'); saveHistory(`🧸 Убрал комнату для ${getCurrentChild().name}`); }; document.getElementById('du').onclick = () => { modal.remove(); sendAnalytics('dress_up'); if (!isPremium) { alert('🌟 Оформите подписку, чтобы переодевать персонажа!'); return; } const dm = document.createElement('div'); dm.className = 'modal'; dm.innerHTML = `<h3>👕 Выбери образ</h3><button id="d1">🦁 Обычный</button><button id="d2">🎩 В шляпе</button><button id="d3">🕶️ В очках</button><button id="d4">👑 С короной</button><div><button class="close-btn" id="cdm">Закрыть</button></div>`; document.body.appendChild(dm); document.getElementById('d1').onclick = () => { document.getElementById('avatar').style.filter = 'none'; dm.remove(); speak("Вернулся к обычному виду!"); }; document.getElementById('d2').onclick = () => { document.getElementById('avatar').style.filter = 'drop-shadow(0 0 5px gold)'; dm.remove(); speak("Какая стильная шляпа!"); }; document.getElementById('d3').onclick = () => { document.getElementById('avatar').style.filter = 'brightness(1.1)'; dm.remove(); speak("Очки делают меня умным!"); }; document.getElementById('d4').onclick = () => { document.getElementById('avatar').style.filter = 'drop-shadow(0 0 8px #ffd700)'; dm.remove(); speak("Я король! Мур-мяу!"); }; document.getElementById('cdm').onclick = () => dm.remove(); }; document.getElementById('crm').onclick = () => modal.remove(); }
+        function showRoomMenu() { const m = document.createElement('div'); m.className = 'modal'; m.innerHTML = `<h3 style="margin-bottom:20px;">🏠 Моя комната</h3><button id="cr" style="background:#4CAF50;">🧸 Уборка</button><button id="du" style="background:#ff9f4a;">👕 Переодеть</button><div style="margin-top:20px;"><button class="close-btn" id="crm">Закрыть</button></div>`; document.body.appendChild(m); document.getElementById('cr').onclick = () => { m.remove(); sendAnalytics('room_clean'); energy = Math.min(100, energy + 10); mood = Math.min(100, mood + 5); localStorage.setItem(`lucik_energy_${currentChildIndex}`, energy); localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood); updateStatsUI(); speak("Мурр! Чисто!"); playSound('purr'); saveHistory('🧸 Уборка'); }; document.getElementById('du').onclick = () => { m.remove(); if (!isPremium) { alert('🌟 Оформите подписку!'); return; } const dm = document.createElement('div'); dm.className = 'modal'; dm.innerHTML = `<h3>👕 Выбери образ</h3><button id="d1">🦁 Обычный</button><button id="d2">🎩 Шляпа</button><button id="d3">🕶️ Очки</button><button id="d4">👑 Корона</button><div><button class="close-btn" id="cdm">Закрыть</button></div>`; document.body.appendChild(dm); document.getElementById('d1').onclick = () => { document.getElementById('avatar').style.filter = 'none'; dm.remove(); }; document.getElementById('d2').onclick = () => { document.getElementById('avatar').style.filter = 'drop-shadow(0 0 5px gold)'; dm.remove(); }; document.getElementById('d3').onclick = () => { document.getElementById('avatar').style.filter = 'brightness(1.1)'; dm.remove(); }; document.getElementById('d4').onclick = () => { document.getElementById('avatar').style.filter = 'drop-shadow(0 0 8px #ffd700)'; dm.remove(); }; document.getElementById('cdm').onclick = () => dm.remove(); }; document.getElementById('crm').onclick = () => m.remove(); }
         
-        document.getElementById('nightStoryBtn').onclick = async () => { const modal = document.createElement('div'); modal.className = 'modal'; modal.innerHTML = `<h3>🌙 Люцик готовит сказку...</h3><p>Пожалуйста, подожди</p>`; document.body.appendChild(modal); speak("Мяу! Сейчас я расскажу тебе длинную, уютную сказку на ночь..."); const longStory = await askDeepSeek("Расскажи длинную, спокойную сказку на ночь для ребёнка 3-7 лет.", true); modal.remove(); storyCount++; localStorage.setItem(`storyCount_${currentChildIndex}`, storyCount); updateAchievement('story_lover', 1); sendAnalytics('story_night'); const sm = document.createElement('div'); sm.className = 'modal'; sm.style.maxWidth = '90%'; sm.style.maxHeight = '70%'; sm.style.overflow = 'auto'; sm.innerHTML = `<h3>🌙 Сказка на ночь</h3><p style="margin:15px 0; line-height:1.4;">${longStory.replace(/\n/g, '<br>')}</p><button class="close-btn" onclick="this.parentElement.remove()">Закрыть</button>`; document.body.appendChild(sm); speak(longStory); saveHistory(`🌙 Люцик рассказал длинную сказку на ночь`); };
+        document.getElementById('nightStoryBtn').onclick = async () => { const m = document.createElement('div'); m.className = 'modal'; m.innerHTML = '<h3>🌙 Готовлю сказку...</h3>'; document.body.appendChild(m); speak("Сейчас расскажу сказку..."); const story = await askDeepSeek("Расскажи длинную, спокойную сказку на ночь", true); m.remove(); storyCount++; localStorage.setItem(`storyCount_${currentChildIndex}`, storyCount); updateAchievement('story_lover', 1); sendAnalytics('story_night'); const sm = document.createElement('div'); sm.className = 'modal'; sm.style.maxWidth = '90%'; sm.style.maxHeight = '70%'; sm.style.overflow = 'auto'; sm.innerHTML = `<h3>🌙 Сказка на ночь</h3><p style="margin:15px 0; line-height:1.4;">${story.replace(/\n/g, '<br>')}</p><button class="close-btn" onclick="this.parentElement.remove()">Закрыть</button>`; document.body.appendChild(sm); speak(story); saveHistory('🌙 Сказка на ночь'); };
         
         const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись', 'пошёл', 'уйди', 'убирайся', 'хрен', 'фиг', 'блин', 'черт'];
-        function containsBadWords(text) { if (!text) return false; return badWords.some(w => text.toLowerCase().includes(w)); }
+        function containsBadWords(t) { return t && badWords.some(w => t.toLowerCase().includes(w)); }
         
-        document.getElementById('feedBtn').onclick = () => { sendAnalytics('feed'); hunger = Math.min(100, hunger + 15); mood = Math.min(100, mood + 5); localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood); localStorage.setItem(`lucik_hunger_${currentChildIndex}`, hunger); updateStatsUI(); playSound('eat'); saveHistory(`🍎 Покормил ${characters[currentChar].name}`); };
+        document.getElementById('feedBtn').onclick = () => { sendAnalytics('feed'); hunger = Math.min(100, hunger + 15); mood = Math.min(100, mood + 5); localStorage.setItem(`lucik_mood_${currentChildIndex}`, mood); localStorage.setItem(`lucik_hunger_${currentChildIndex}`, hunger); updateStatsUI(); playSound('eat'); saveHistory('🍎 Покормил'); };
         document.getElementById('gamesBtn').onclick = () => showGameMenu();
         document.getElementById('roomBtn').onclick = () => showRoomMenu();
         
         let isListening = false, isWaiting = false;
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition; let rec = null;
         if (SpeechRec) { rec = new SpeechRec(); rec.lang = 'ru-RU'; rec.continuous = false; }
-        document.getElementById('micBtn').onclick = () => { if (!rec) { speak("Голос не поддерживается"); return; } if (isListening) return; if (isWaiting) { speak("Подожди, я ещё отвечаю..."); return; } isListening = true; document.getElementById('micBtn').classList.add('recording'); document.getElementById('avatar').classList.add('listening'); rec.start(); sendAnalytics('talk_start'); };
-        if (rec) { rec.onresult = async (e) => { const text = e.results[0][0].transcript; document.getElementById('micBtn').classList.remove('recording'); document.getElementById('avatar').classList.remove('listening'); isListening = false; saveHistory(`👶 ${childName}: ${text}`); updateAchievement('first_talk'); const lower = text.toLowerCase(); if (lower.includes('темнот')) updateFear('темноты'); else if (lower.includes('врач')) updateFear('врачей'); else if (lower.includes('один')) updateFear('одиночества'); else if (lower.includes('обид')) updateFear('обиды'); else if (lower.includes('новое')) updateFear('нового'); else if (lower.includes('собака') || lower.includes('кошка')) updateFear('животных'); isWaiting = true; const answer = await askDeepSeek(text); isWaiting = false; saveHistory(`🦁 ${characters[currentChar].name}: ${answer}`); speak(answer); purr(); }; rec.onerror = () => { document.getElementById('micBtn').classList.remove('recording'); document.getElementById('avatar').classList.remove('listening'); isListening = false; speak("Не расслышал, скажи ещё раз!"); }; }
+        document.getElementById('micBtn').onclick = () => { if (!rec) { speak("Голос не поддерживается"); return; } if (isListening) return; if (isWaiting) { speak("Подожди..."); return; } isListening = true; document.getElementById('micBtn').classList.add('recording'); document.getElementById('avatar').classList.add('listening'); rec.start(); sendAnalytics('talk_start'); };
+        if (rec) { rec.onresult = async (e) => { const text = e.results[0][0].transcript; document.getElementById('micBtn').classList.remove('recording'); document.getElementById('avatar').classList.remove('listening'); isListening = false; saveHistory(`👶 ${childName}: ${text}`); updateAchievement('first_talk'); const l = text.toLowerCase(); if (l.includes('темнот')) updateFear('темноты'); else if (l.includes('врач')) updateFear('врачей'); else if (l.includes('один')) updateFear('одиночества'); else if (l.includes('обид')) updateFear('обиды'); else if (l.includes('новое')) updateFear('нового'); else if (l.includes('собака') || l.includes('кошка')) updateFear('животных'); isWaiting = true; const answer = await askDeepSeek(text); isWaiting = false; saveHistory(`🦁 ${characters[currentChar].name}: ${answer}`); speak(answer); purr(); }; rec.onerror = () => { document.getElementById('micBtn').classList.remove('recording'); document.getElementById('avatar').classList.remove('listening'); isListening = false; speak("Не расслышал, скажи ещё раз!"); }; }
         
-        document.getElementById('parentBtn').onclick = () => { if (!savedPin) { const pin = prompt('Создайте пароль для входа в Штаб (4-6 цифр):'); if (pin && pin.length >= 4 && /^\d+$/.test(pin)) { localStorage.setItem('parentPin', encodePin(pin)); savedPin = encodePin(pin); alert('Пароль создан! Теперь вы можете войти в Штаб.'); window.location.href = '/parent.html'; } else alert('Пароль должен содержать 4-6 цифр!'); } else { const pin = prompt('Введите пароль для входа в Штаб:'); if (pin === decodePin(savedPin)) window.location.href = '/parent.html'; else if (pin !== null) alert('Неверный пароль!'); } };
+        document.getElementById('parentBtn').onclick = () => { if (!savedPin) { const pin = prompt('Создайте пароль (4-6 цифр):'); if (pin && pin.length >= 4 && /^\d+$/.test(pin)) { localStorage.setItem('parentPin', encodePin(pin)); savedPin = encodePin(pin); alert('Пароль создан!'); window.location.href = '/parent.html'; } else alert('4-6 цифр!'); } else { const pin = prompt('Введите пароль:'); if (pin === decodePin(savedPin)) window.location.href = '/parent.html'; else if (pin !== null) alert('Неверный пароль!'); } };
         
-        updateAvatarLock(); updateAvatarLabel(); updateStatsUI(); changeCharacter(currentChar);
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW error', e)); }
-        function updateTimeTheme() { const hour = new Date().getHours(); if (hour >= 18 || hour < 6) document.body.classList.add('night'); else document.body.classList.remove('night'); }
+        updateAvatarLock(); updateAvatarLabel(); updateStatsUI(); updateChildNameLabel();
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(() => {}); }
+        function updateTimeTheme() { document.body.classList.toggle('night', new Date().getHours() >= 18 || new Date().getHours() < 6); }
         updateTimeTheme(); setInterval(updateTimeTheme, 60000);
-        speak(`Мяу! Привет, ${childName}! Нажми на микрофон, и мы подружимся!`);
+        
+        // Приветствие после полной инициализации (голосом аватара)
+        speak(`Привет, ${childName}! Нажми на микрофон, и мы подружимся!`);
     </script>
 </body>
 </html>
