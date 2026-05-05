@@ -1,4 +1,4 @@
-// api/generate.js — DeepSeek API (версия от 6 мая 2026)
+// api/generate.js — DeepSeek API (версия от 6 мая 2026, правки 02:15)
 import { Pool } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 
@@ -9,6 +9,37 @@ const pool = new Pool({
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// ========== ФРАЗЫ-ЗАГЛУШКИ ДЛЯ ВСЕХ ПЕРСОНАЖЕЙ ==========
+const FALLBACKS = {
+    tired: {
+        lucik: "Мурр... Я немного устал. Давай поиграем?",
+        mom:   "Я немного устала, давай поиграем, родной?",
+        dad:   "Устал немного. Давай поиграем?",
+        kid1:  "Фух, устал! Давай поиграем?",
+        kid2:  "Я устала... Давай поиграем?"
+    },
+    confused: {
+        lucik: "Мурр... Я немного задумался. Давай ещё раз?",
+        mom:   "Ой, я задумалась... Давай ещё раз, солнышко?",
+        dad:   "Хм, задумался. Давай ещё раз?",
+        kid1:  "Ой, я задумался! Давай ещё разок?",
+        kid2:  "Я задумалась... Давай ещё раз?"
+    },
+    listening: {
+        lucik: "Мурр... Я тебя слушаю!",
+        mom:   "Я тебя слушаю, мой хороший!",
+        dad:   "Я слушаю, продолжай!",
+        kid1:  "Я слушаю! Рассказывай!",
+        kid2:  "Я тебя слушаю..."
+    }
+};
+
+function safeFallback(key, character) {
+    const set = FALLBACKS[key] || FALLBACKS['confused'];
+    return set[character] || set['lucik'];
+}
+
+// ========== ПРОМПТЫ ПЕРСОНАЖЕЙ ==========
 const CHARACTER_PROMPTS = {
     lucik: `Ты — Люцик, волшебный персонаж, который помогает детям справляться со страхами.
 
@@ -115,6 +146,7 @@ const CHARACTER_PROMPTS = {
 🦊 **7-12 лет:** Спокойный, понимающий.`
 };
 
+// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
 async function getTodayStoryCount(userId) {
     try {
         const client = await pool.connect();
@@ -141,7 +173,6 @@ async function saveStory(userId, userEmail, childName, story, fear) {
     } catch (error) { console.error('Ошибка сохранения:', error); }
 }
 
-// Оценка качества диалога (для будущего обучения ИИ)
 async function saveDialogueScore(userId, childName, detectedFear, story, score) {
     try {
         const client = await pool.connect();
@@ -167,6 +198,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
 
     try {
+        // ========== АВТОРИЗАЦИЯ ==========
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ error: 'Требуется авторизация' });
@@ -198,11 +230,11 @@ export default async function handler(req, res) {
 
         // ========== ОНБОРДИНГ (ПЕРВОЕ СООБЩЕНИЕ) ==========
         const isFirstMessage = (history || []).length === 0;
-        
+
         if (isFirstMessage && !isLong) {
             const age = parseInt(childAge) || 5;
             let greeting;
-            
+
             if (age <= 7) {
                 const greetings = {
                     lucik: `Мурр, привет, ${childName}! Я — котик Люцик. Я волшебный — умею помогать, когда страшно или грустно. А ещё я люблю сказки и игры! Расскажи, как у тебя дела?`,
@@ -222,7 +254,7 @@ export default async function handler(req, res) {
                 };
                 greeting = greetings[character] || greetings.lucik;
             }
-            
+
             return res.status(200).json({
                 story: greeting,
                 detectedFear: null,
@@ -238,7 +270,7 @@ export default async function handler(req, res) {
             const todayCount = await getTodayStoryCount(userId);
             if (todayCount >= maxStories) {
                 return res.status(200).json({
-                    story: "Я сегодня уже много рассказывал. Давай завтра продолжим? А сейчас можем поиграть!",
+                    story: safeFallback('tired', character),
                     detectedFear: null,
                     limitReached: true
                 });
@@ -249,14 +281,14 @@ export default async function handler(req, res) {
         const apiKey = process.env.DEEPSEEK_API_KEY;
         if (!apiKey) {
             return res.status(200).json({
-                story: "Что-то я задумался. Давай ещё раз?",
+                story: safeFallback('confused', character),
                 detectedFear: null
             });
         }
 
         const age = parseInt(childAge) || 5;
         let systemPrompt = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
-        
+
         if (age <= 7) {
             systemPrompt += `\n\nСЕЙЧАС ТЫ В РЕЖИМЕ ДОШКОЛЬНИКА (3-7 лет). Ребёнка зовут ${childName}, ему ${age} лет. Говори просто, коротко, с мурлыканьем (если ты Люцик).`;
         } else {
@@ -267,7 +299,8 @@ export default async function handler(req, res) {
             systemPrompt += `\n\nРасскажи длинную, спокойную сказку на ночь. Учитывай возраст ребёнка.`;
         }
 
-        const historyMessages = (history || []).slice(-8).map(msg => ({
+        // ========== ПРАВКА №3: КОНТЕКСТ 20 СООБЩЕНИЙ ==========
+        const historyMessages = (history || []).slice(-20).map(msg => ({
             role: msg.role,
             content: msg.content
         }));
@@ -297,24 +330,24 @@ export default async function handler(req, res) {
 
         if (data.error) {
             return res.status(200).json({
-                story: "Мурр... Я немного устал. Давай поиграем?",
+                story: safeFallback('tired', character),
                 detectedFear: null
             });
         }
 
-        let story = data.choices?.[0]?.message?.content || "Я тебя слушаю!";
-        
+        let story = data.choices?.[0]?.message?.content || safeFallback('listening', character);
+
         // ФИЛЬТР МУСОРНЫХ ОТВЕТОВ (серверный уровень)
         const badPatterns = ['Люцик 31', 'Люцик 02', 'ошибка', 'error', 'Error', 'undefined', 'null', 'NaN'];
         if (!story || badPatterns.some(p => story.includes(p)) || story.length < 2) {
-            story = "Мурр... Я немного задумался. Давай ещё раз?";
+            story = safeFallback('confused', character);
         }
-        
+
         story = story.replace(/^\d+\s*/, '').trim();
-        if (!story || story.length < 2) story = "Мурр... Я тебя слушаю!";
+        if (!story || story.length < 2) story = safeFallback('listening', character);
 
         // Оценка качества ответа
-        let dialogueScore = 3; // Базовая оценка
+        let dialogueScore = 3;
         if (story.length > 50 && !badPatterns.some(p => story.includes(p))) dialogueScore = 4;
         if (story.length > 100 && (story.includes('сказк') || story.includes('истор'))) dialogueScore = 5;
 
@@ -330,7 +363,7 @@ export default async function handler(req, res) {
             'школы': ['школа', 'оценка', 'контрольная', 'урок', 'учитель', 'двойка'],
             'буллинга': ['дразнят', 'обзывают', 'смеются', 'толкают', 'бойкот']
         };
-        
+
         const lowerText = (userSpeech || '').toLowerCase();
         for (const [fear, keywords] of Object.entries(fearKeywords)) {
             if (keywords.some(kw => lowerText.includes(kw))) {
@@ -353,8 +386,9 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('Ошибка в generate.js:', error);
+        const character = req.body?.character || 'lucik';
         res.status(200).json({
-            story: "Что-то пошло не так. Давай ещё раз?",
+            story: safeFallback('confused', character),
             detectedFear: null
         });
     }
