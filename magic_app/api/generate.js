@@ -1,4 +1,4 @@
-// api/generate.js — DeepSeek API (версия от 5 мая 2026)
+// api/generate.js — DeepSeek API (версия от 6 мая 2026)
 import { Pool } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 
@@ -139,6 +139,19 @@ async function saveStory(userId, userEmail, childName, story, fear) {
         );
         client.release();
     } catch (error) { console.error('Ошибка сохранения:', error); }
+}
+
+// Оценка качества диалога (для будущего обучения ИИ)
+async function saveDialogueScore(userId, childName, detectedFear, story, score) {
+    try {
+        const client = await pool.connect();
+        await client.query(
+            `INSERT INTO analytics (event_type, user_id, child_name, event_data) 
+             VALUES ($1, $2, $3, $4)`,
+            ['dialogue_scored', userId, childName, JSON.stringify({ fear: detectedFear, story: story.substring(0, 200), score })]
+        );
+        client.release();
+    } catch (error) { console.error('Ошибка сохранения оценки:', error); }
 }
 
 export default async function handler(req, res) {
@@ -291,13 +304,19 @@ export default async function handler(req, res) {
 
         let story = data.choices?.[0]?.message?.content || "Я тебя слушаю!";
         
-        // ФИЛЬТР МУСОРНЫХ ОТВЕТОВ
-        if (!story || story.includes('Люцик 31') || story.includes('Люцик 02') || story.includes('ошибка') || story.includes('error') || story.length < 2) {
+        // ФИЛЬТР МУСОРНЫХ ОТВЕТОВ (серверный уровень)
+        const badPatterns = ['Люцик 31', 'Люцик 02', 'ошибка', 'error', 'Error', 'undefined', 'null', 'NaN'];
+        if (!story || badPatterns.some(p => story.includes(p)) || story.length < 2) {
             story = "Мурр... Я немного задумался. Давай ещё раз?";
         }
         
         story = story.replace(/^\d+\s*/, '').trim();
         if (!story || story.length < 2) story = "Мурр... Я тебя слушаю!";
+
+        // Оценка качества ответа
+        let dialogueScore = 3; // Базовая оценка
+        if (story.length > 50 && !badPatterns.some(p => story.includes(p))) dialogueScore = 4;
+        if (story.length > 100 && (story.includes('сказк') || story.includes('истор'))) dialogueScore = 5;
 
         // ========== ДЕТЕКЦИЯ СТРАХОВ ==========
         let detectedFear = null;
@@ -323,11 +342,13 @@ export default async function handler(req, res) {
         // ========== СОХРАНЕНИЕ В БД ==========
         if (userId !== 'guest') {
             await saveStory(userId, userEmail, childName, story, detectedFear);
+            await saveDialogueScore(userId, childName, detectedFear, story, dialogueScore);
         }
 
         res.status(200).json({
             story: story,
-            detectedFear: detectedFear
+            detectedFear: detectedFear,
+            dialogueScore: dialogueScore
         });
 
     } catch (error) {
