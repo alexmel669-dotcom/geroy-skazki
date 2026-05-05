@@ -65,7 +65,7 @@
     </style>
 </head>
 <body>
-    <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
+        <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
     
     <div class="app-container">
         <div class="child-name-label" id="childNameLabel">👶 Загрузка...</div>
@@ -243,14 +243,19 @@
         const characters = { lucik: { name: 'Люцик', icon: 'avatar.png', premium: false }, mom: { name: 'Мама', icon: 'mom.png', premium: true }, dad: { name: 'Папа', icon: 'dad.png', premium: true }, kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: false }, kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: false } };
         let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
         
+        // ========== ПРАВКА №4: setAvatarByGender БЕЗ СБРОСА МАМЫ/ПАПЫ ==========
         function setAvatarByGender() {
             const child = getCurrentChild();
-            if (child.gender === 'girl') currentChar = 'kid1';
-            else if (child.gender === 'boy') currentChar = 'kid2';
-            else currentChar = 'lucik';
+            // Меняем персонажа по полу только если текущий — kid1/kid2/lucik
+            if (currentChar === 'kid1' || currentChar === 'kid2' || currentChar === 'lucik') {
+                if (child.gender === 'girl') currentChar = 'kid1';
+                else if (child.gender === 'boy') currentChar = 'kid2';
+            }
+            // Если мама/папа — оставляем как есть
             localStorage.setItem('currentCharacter', currentChar);
             document.getElementById('avatar').style.backgroundImage = `url('${characters[currentChar].icon}')`;
-            updateAvatarLock(); updateAvatarLabel();
+            updateAvatarLock(); 
+            updateAvatarLabel();
         }
         setAvatarByGender();
         
@@ -301,6 +306,7 @@
         function updateMoonButton() { document.getElementById('nightStoryBtn').style.display = (new Date().getHours() >= 20 || new Date().getHours() < 6) ? 'flex' : 'none'; }
         updateMoonButton(); setInterval(updateMoonButton, 60000);
         
+        // ========== ПРАВКА №5: askDeepSeek С ЗАВИСИМЫМИ ОТ ПЕРСОНАЖА ЗАГЛУШКАМИ ==========
         async function askDeepSeek(text, isLong = false) {
             if (containsBadWords(text)) return "Мяу! Давай говорить добрые слова!";
             try {
@@ -310,13 +316,21 @@
                 });
                 const token = localStorage.getItem('userToken'), headers = { 'Content-Type': 'application/json' };
                 if (token) headers['Authorization'] = `Bearer ${token}`;
-                const res = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify({ childName, childAge, userSpeech: text, isLong, history: historyForAPI }) });
+                const res = await fetch('/api/generate', { method: 'POST', headers, body: JSON.stringify({ childName, childAge, userSpeech: text, isLong, history: historyForAPI, character: currentChar }) });
                 const data = await res.json();
                 if (data.detectedFear) updateFear(data.detectedFear);
-                // Двойной фильтр мусорных ответов (клиент + сервер)
+                
                 let story = data.story;
-                if (!story || story.includes('Люцик 31') || story.includes('Люцик 02') || story.includes('ошибка') || story.includes('error') || story.length < 2) {
-                    story = "Мурр... Я немного задумался. Давай ещё раз?";
+                const badPatterns = ['Люцик 31', 'Люцик 02', 'ошибка', 'error', 'Error', 'undefined', 'null', 'NaN'];
+                if (!story || badPatterns.some(p => story.includes(p)) || story.length < 2) {
+                    const clientFallbacks = {
+                        lucik: "Мурр... Я немного задумался. Давай ещё раз?",
+                        mom:   "Ой, задумалась... Давай ещё раз, солнышко?",
+                        dad:   "Хм, задумался. Повтори?",
+                        kid1:  "Ой, я задумался! Давай ещё разок?",
+                        kid2:  "Я задумалась... Давай ещё раз?"
+                    };
+                    story = clientFallbacks[currentChar] || clientFallbacks.lucik;
                 }
                 return story;
             } catch(e) { return "Мяу! Давай ещё раз?"; }
@@ -361,7 +375,7 @@
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition; let rec = null;
         if (SpeechRec) { rec = new SpeechRec(); rec.lang = 'ru-RU'; rec.continuous = false; }
         document.getElementById('micBtn').onclick = () => { if (!rec) { speak("Голос не поддерживается"); return; } if (isListening) return; if (isWaiting) { speak("Подожди..."); return; } isListening = true; document.getElementById('micBtn').classList.add('recording'); document.getElementById('avatar').classList.add('listening'); rec.start(); sendAnalytics('talk_start'); };
-        if (rec) { rec.onresult = async (e) => { const text = e.results[0][0].transcript; document.getElementById('micBtn').classList.remove('recording'); document.getElementById('avatar').classList.remove('listening'); isListening = false; saveHistory(`👶 ${childName}: ${text}`); updateAchievement('first_talk'); const l = text.toLowerCase(); if (l.includes('темнот')) updateFear('темноты'); else if (l.includes('врач')) updateFear('врачей'); else if (l.includes('один')) updateFear('одиночества'); else if (l.includes('обид')) updateFear('обиды'); else if (l.includes('новое')) updateFear('нового'); else if (l.includes('собака') || l.includes('кошка')) updateFear('животных'); isWaiting = true; const answer = await askDeepSeek(text); isWaiting = false; saveHistory(`🦁 ${characters[currentChar].name}: ${answer}`); speak(answer); purr(); }; rec.onerror = () => { document.getElementById('micBtn').classList.remove('recording'); document.getElementById('avatar').classList.remove('listening'); isListening = false; speak("Не расслышал, скажи ещё раз!"); }; }
+        if (rec) { rec.onresult = async (e) => { const text = e.results[0][0].transcript; document.getElementById('micBtn').classList.remove('recording'); document.getElementById('avatar').classList.remove('listening'); isListening = false; saveHistory(`👶 ${childName}: ${text}`); updateAchievement('first_talk'); const l = text.toLowerCase(); if (l.includes('темнот')) updateFear('темноты'); else if (l.includes('врач')) updateFear('врачей'); else if (l.includes('один')) updateFear('одиночества'); else if (l.includes('обид')) updateFear('обиды'); else if (l.includes('новое')) updateFear('нового'); else if (l.includes('собака') || l.includes('кошка')) updateFear('животных'); isWaiting = true; const answer = await askDeepSeek(text); isWaiting = false; saveHistory(`🦁 ${characters[currentChar].name}: ${answer}`); speak(answer); if (currentChar === 'lucik') purr(); }; rec.onerror = () => { document.getElementById('micBtn').classList.remove('recording'); document.getElementById('avatar').classList.remove('listening'); isListening = false; speak("Не расслышал, скажи ещё раз!"); }; }
         
         document.getElementById('parentBtn').onclick = () => { if (!savedPin) { const pin = prompt('Создайте пароль (4-6 цифр):'); if (pin && pin.length >= 4 && /^\d+$/.test(pin)) { localStorage.setItem('parentPin', encodePin(pin)); savedPin = encodePin(pin); alert('Пароль создан!'); window.location.href = '/parent.html'; } else alert('4-6 цифр!'); } else { const pin = prompt('Введите пароль:'); if (pin === decodePin(savedPin)) window.location.href = '/parent.html'; else if (pin !== null) alert('Неверный пароль!'); } };
         
@@ -370,8 +384,11 @@
         function updateTimeTheme() { document.body.classList.toggle('night', new Date().getHours() >= 18 || new Date().getHours() < 6); }
         updateTimeTheme(); setInterval(updateTimeTheme, 60000);
         
-        // Приветствие после полной инициализации (голосом аватара)
-        speak(`Привет, ${childName}! Нажми на микрофон, и мы подружимся!`);
+        // ========== ПРАВКА №1: ОТЛОЖЕННОЕ ПРИВЕТСТВИЕ С РАЗБЛОКИРОВКОЙ АУДИО ==========
+        setTimeout(() => {
+            unlockAudio();
+            setTimeout(() => speak(`Привет, ${childName}! Нажми на микрофон, и мы подружимся!`), 500);
+        }, 1000);
     </script>
 </body>
 </html>
