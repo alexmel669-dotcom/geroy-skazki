@@ -1,6 +1,5 @@
 // api/login.js — JWT авторизация
 // Обновлено: 21 мая 2026
-// Исправлено: импорт pg, убрана колонка children (хранится в localStorage)
 
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
@@ -14,7 +13,6 @@ const pool = new Pool({
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export default async function handler(req, res) {
-    // CORS для всех доменов (для разработки и production)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -34,7 +32,6 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Email и пароль обязательны' });
         }
         
-        // Проверяем подключение к БД
         let client;
         try {
             client = await pool.connect();
@@ -45,7 +42,9 @@ export default async function handler(req, res) {
         
         try {
             const result = await client.query(
-                'SELECT id, email, password_hash FROM users WHERE email = $1',
+                `SELECT id, email, password_hash, parent_name, child_name, child_age, children 
+                 FROM users 
+                 WHERE email = $1`,
                 [email.toLowerCase().trim()]
             );
             
@@ -62,25 +61,38 @@ export default async function handler(req, res) {
                 return res.status(401).json({ error: 'Неверный email или пароль' });
             }
             
+            // Парсим детей
+            let children = [];
+            if (user.children) {
+                try {
+                    children = typeof user.children === 'string' 
+                        ? JSON.parse(user.children) 
+                        : user.children;
+                } catch { children = []; }
+            }
+            
             // Создаём JWT токен
             const token = jwt.sign(
                 { 
                     userId: user.id, 
                     email: user.email,
-                    iat: Math.floor(Date.now() / 1000)
+                    parentName: user.parent_name,
+                    childName: user.child_name,
+                    childAge: user.child_age
                 }, 
                 JWT_SECRET, 
-                { expiresIn: '30d' }  // 30 дней
+                { expiresIn: '30d' }
             );
-            
-            // Дети хранятся в localStorage на клиенте, не в БД
-            // (согласно техпаспорту)
             
             res.status(200).json({ 
                 success: true, 
                 token,
                 email: user.email,
-                userId: user.id
+                userId: user.id,
+                parentName: user.parent_name,
+                childName: user.child_name,
+                childAge: user.child_age,
+                children: children
             });
             
         } finally {
