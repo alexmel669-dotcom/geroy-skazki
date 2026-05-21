@@ -54,6 +54,7 @@
         .btn-share { background: #25D366; }
         .btn-share-vk { background: #4c75a3; }
         .btn-share-tg { background: #26A5E4; }
+        .btn-export { background: #00d2ff; }
         
         .alert-card {
             background: rgba(255, 215, 0, 0.15); border-left: 4px solid #ffd700;
@@ -78,6 +79,18 @@
             position: fixed; top: 20px; right: 20px;
             background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
             padding: 8px 15px; border-radius: 30px; font-size: 12px; z-index: 10; color: white;
+            cursor: pointer;
+        }
+        
+        .pin-modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95); backdrop-filter: blur(12px);
+            border-radius: 40px; padding: 30px; z-index: 5000;
+            min-width: 280px; text-align: center; color: white;
+        }
+        .pin-modal input {
+            width: 100%; padding: 12px; font-size: 20px; text-align: center;
+            border-radius: 30px; border: none; margin: 15px 0;
         }
         
         @media (max-width: 480px) {
@@ -91,7 +104,7 @@
 <body>
     <div class="forest-bg"></div>
     
-    <div class="lock-icon">🔒 Родительская зона</div>
+    <div class="lock-icon" id="lockIcon">🔒 Родительская зона</div>
     
     <div class="container">
         <h1>🌲 Штаб Создателя</h1>
@@ -114,6 +127,8 @@
             
             <h3>📒 История разговоров</h3>
             <div class="history-list" id="historyList">Пока тишина...</div>
+            
+            <button id="exportBtn" class="btn-export" style="margin-top: 10px; width: 100%;">📥 Экспорт данных (JSON)</button>
         </div>
         
         <div class="card">
@@ -142,11 +157,62 @@
         
         <a href="/app.html" style="display: block; text-align: center; margin-top: 15px; color: #a4d4a4;">← На главный экран</a>
     </div>
-        <script>
+    
+    <script>
         // Шифрование пина
         const PIN_SALT = 'lucik_magic_2024';
         function encodePin(pin) { return btoa(pin.split('').reverse().join('') + ':' + PIN_SALT); }
         function decodePin(enc) { try { return atob(enc).split(':')[0].split('').reverse().join(''); } catch { return ''; } }
+        
+        // ========== PIN-КОД ДОСТУПА ==========
+        let isUnlocked = false;
+        
+        function showPinModal() {
+            const modal = document.createElement('div');
+            modal.className = 'pin-modal';
+            modal.innerHTML = `
+                <h3>🔒 Родительская зона</h3>
+                <p>Введите PIN-код для доступа</p>
+                <input type="password" id="pinInput" placeholder="••••" maxlength="6" inputmode="numeric" pattern="\\d*">
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button id="pinSubmit" style="background: #4CAF50;">Войти</button>
+                    <button id="pinCancel" style="background: #ff4081;">Отмена</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            const savedPin = localStorage.getItem('parentPin');
+            
+            document.getElementById('pinSubmit').onclick = () => {
+                const inputPin = document.getElementById('pinInput').value;
+                if (!savedPin) {
+                    // Первый вход - создаём PIN
+                    if (inputPin && inputPin.length >= 4 && /^\d+$/.test(inputPin)) {
+                        localStorage.setItem('parentPin', encodePin(inputPin));
+                        isUnlocked = true;
+                        modal.remove();
+                        initParentPage();
+                    } else {
+                        alert('Введите PIN-код (4-6 цифр)');
+                    }
+                } else {
+                    // Проверяем PIN
+                    if (inputPin === decodePin(savedPin)) {
+                        isUnlocked = true;
+                        modal.remove();
+                        initParentPage();
+                    } else {
+                        alert('Неверный PIN-код');
+                        window.location.href = '/app.html';
+                    }
+                }
+            };
+            
+            document.getElementById('pinCancel').onclick = () => {
+                modal.remove();
+                window.location.href = '/app.html';
+            };
+        }
         
         // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
         async function checkAuthAndRedirect() {
@@ -161,31 +227,34 @@
                 });
                 const data = await response.json();
                 if (!data.valid) {
-                    localStorage.removeItem('userToken'); localStorage.removeItem('userEmail');
-                    localStorage.removeItem('guestMode'); window.location.href = '/'; return false;
+                    localStorage.removeItem('userToken'); 
+                    localStorage.removeItem('userEmail');
+                    localStorage.removeItem('guestMode'); 
+                    window.location.href = '/'; 
+                    return false;
                 }
                 return true;
             } catch (error) { return true; }
         }
         
-        checkAuthAndRedirect();
-        
         // ========== ДАННЫЕ ДЕТЕЙ ==========
         let children = [];
         let currentChildIndex = 0;
         
-        try {
-            const saved = localStorage.getItem('children');
-            if (saved) children = JSON.parse(saved);
-            currentChildIndex = parseInt(localStorage.getItem('currentChildIndex') || '0');
-            if (currentChildIndex >= children.length) currentChildIndex = 0;
-        } catch { children = []; }
-        
-        if (children.length === 0) {
-            const oldName = localStorage.getItem('childName') || 'малыш';
-            const oldAge = parseInt(localStorage.getItem('childAge') || '5');
-            children = [{ name: oldName, age: oldAge, gender: 'boy' }];
-            localStorage.setItem('children', JSON.stringify(children));
+        function loadChildrenData() {
+            try {
+                const saved = localStorage.getItem('children');
+                if (saved) children = JSON.parse(saved);
+                currentChildIndex = parseInt(localStorage.getItem('currentChildIndex') || '0');
+                if (currentChildIndex >= children.length) currentChildIndex = 0;
+            } catch { children = []; }
+            
+            if (children.length === 0) {
+                const oldName = localStorage.getItem('childName') || 'малыш';
+                const oldAge = parseInt(localStorage.getItem('childAge') || '5');
+                children = [{ name: oldName, age: oldAge, gender: 'boy' }];
+                localStorage.setItem('children', JSON.stringify(children));
+            }
         }
         
         function getCurrentChild() {
@@ -211,48 +280,78 @@
         
         // Переключение по тапу/свайпу
         let childTouchStart = 0;
-        document.getElementById('childIndicator').addEventListener('touchstart', (e) => {
-            childTouchStart = e.changedTouches[0].screenX;
-        });
-        document.getElementById('childIndicator').addEventListener('touchend', (e) => {
-            const diff = e.changedTouches[0].screenX - childTouchStart;
-            if (Math.abs(diff) > 40) switchChild(diff > 0 ? -1 : 1);
-        });
-        document.getElementById('childIndicator').addEventListener('click', () => {
-            if (children.length > 1) switchChild(1);
-        });
+        const indicator = document.getElementById('childIndicator');
+        if (indicator) {
+            indicator.addEventListener('touchstart', (e) => {
+                childTouchStart = e.changedTouches[0].screenX;
+            });
+            indicator.addEventListener('touchend', (e) => {
+                const diff = e.changedTouches[0].screenX - childTouchStart;
+                if (Math.abs(diff) > 40) switchChild(diff > 0 ? -1 : 1);
+            });
+            indicator.addEventListener('click', () => {
+                if (children.length > 1) switchChild(1);
+            });
+        }
         
-        let isPremium = localStorage.getItem('isPremium') === 'true';
+        // ========== ОТПРАВКА АНАЛИТИКИ ==========
+        function sendAnalytics(eventType, eventData = {}) {
+            const token = localStorage.getItem('userToken');
+            const child = getCurrentChild();
+            fetch('/api/analytics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    event_type: eventType,
+                    user_id: token ? token.slice(0, 50) : null,
+                    child_name: child.name,
+                    child_age: child.age,
+                    event_data: eventData
+                })
+            }).catch(() => {});
+        }
         
         function updateUI() {
             const idx = currentChildIndex;
             
             // Страхи
             const fearData = localStorage.getItem(`fearStats_${idx}`);
-            const fearStats = fearData ? JSON.parse(fearData) : JSON.parse('{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+            const fearStats = fearData ? JSON.parse(fearData) : {"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0};
             
-            document.getElementById('fearStats').innerHTML = `
-                <div class="stat-item">😨 Темнота: ${fearStats.темноты || 0}</div>
-                <div class="stat-item">🏥 Врачи: ${fearStats.врачей || 0}</div>
-                <div class="stat-item">🧸 Одиночество: ${fearStats.одиночества || 0}</div>
-                <div class="stat-item">🌟 Новое: ${fearStats.нового || 0}</div>
-                <div class="stat-item">💔 Обиды: ${fearStats.обиды || 0}</div>
-                <div class="stat-item">🐕 Животные: ${fearStats.животных || 0}</div>
-            `;
+            const fearStatsDiv = document.getElementById('fearStats');
+            if (fearStatsDiv) {
+                fearStatsDiv.innerHTML = `
+                    <div class="stat-item">😨 Темнота: ${fearStats.темноты || 0}</div>
+                    <div class="stat-item">🏥 Врачи: ${fearStats.врачей || 0}</div>
+                    <div class="stat-item">🧸 Одиночество: ${fearStats.одиночества || 0}</div>
+                    <div class="stat-item">🌟 Новое: ${fearStats.нового || 0}</div>
+                    <div class="stat-item">💔 Обиды: ${fearStats.обиды || 0}</div>
+                    <div class="stat-item">🐕 Животные: ${fearStats.животных || 0}</div>
+                `;
+            }
             
             // История
             const historyData = localStorage.getItem(`storyHistory_${idx}`);
             const conversationHistory = historyData ? JSON.parse(historyData) : [];
-            document.getElementById('historyList').innerHTML = conversationHistory.slice(-15).map(i => `<div class="history-item">${i}</div>`).join('') || "Пока тишина...";
+            const historyListDiv = document.getElementById('historyList');
+            if (historyListDiv) {
+                historyListDiv.innerHTML = conversationHistory.slice(-15).map(i => `<div class="history-item">${i}</div>`).join('') || "Пока тишина...";
+            }
             
             // Оповещение о страхе
             const pendingFearAlert = localStorage.getItem('pendingFearAlert');
             const pendingFearText = localStorage.getItem('pendingFearText') || '';
-            if (pendingFearAlert === 'true' && pendingFearText) {
-                document.getElementById('fearAlert').style.display = 'block';
-                document.getElementById('alertContent').innerHTML = `📢 <strong>Люцик заметил:</strong><br>Ребёнок сказал: "${pendingFearText}"<br><span style="font-size:12px;">Хотите получить совет?</span>`;
-            } else {
-                document.getElementById('fearAlert').style.display = 'none';
+            const fearAlertDiv = document.getElementById('fearAlert');
+            if (fearAlertDiv) {
+                if (pendingFearAlert === 'true' && pendingFearText) {
+                    fearAlertDiv.style.display = 'block';
+                    const alertContentDiv = document.getElementById('alertContent');
+                    if (alertContentDiv) {
+                        alertContentDiv.innerHTML = `📢 <strong>Люцик заметил:</strong><br>Ребёнок сказал: "${pendingFearText}"<br><span style="font-size:12px;">Хотите получить совет?</span>`;
+                    }
+                } else {
+                    fearAlertDiv.style.display = 'none';
+                }
             }
             
             // Достижения
@@ -269,27 +368,84 @@
                     ${ach.progress ? `<div style="font-size:10px;">${ach.progress}/${ach.target}</div>` : ''}
                 </div>`;
             }
-            document.getElementById('achievementsList').innerHTML = html || 'Пока нет достижений';
+            const achievementsListDiv = document.getElementById('achievementsList');
+            if (achievementsListDiv) {
+                achievementsListDiv.innerHTML = html || 'Пока нет достижений';
+            }
+        }
+        
+        // ========== ЭКСПОРТ ДАННЫХ ==========
+        function exportData() {
+            const idx = currentChildIndex;
+            const child = getCurrentChild();
+            
+            const fearData = localStorage.getItem(`fearStats_${idx}`);
+            const fearStats = fearData ? JSON.parse(fearData) : {};
+            
+            const historyData = localStorage.getItem(`storyHistory_${idx}`);
+            const conversationHistory = historyData ? JSON.parse(historyData) : [];
+            
+            const achData = localStorage.getItem(`achievements_${idx}`);
+            const achievements = achData ? JSON.parse(achData) : {};
+            
+            const exportObj = {
+                exportedAt: new Date().toISOString(),
+                child: child,
+                fearStats: fearStats,
+                conversationHistory: conversationHistory,
+                achievements: achievements,
+                bravery: localStorage.getItem(`lucik_bravery_${idx}`) || 0,
+                mood: localStorage.getItem(`lucik_mood_${idx}`) || 70,
+                storyCount: localStorage.getItem(`storyCount_${idx}`) || 0,
+                fishScore: localStorage.getItem(`fishScore_${idx}`) || 0
+            };
+            
+            const dataStr = JSON.stringify(exportObj, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `lucik_export_${child.name}_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            sendAnalytics('data_export', { child_name: child.name });
         }
         
         // ========== ПОМОЩЬ ПСИХОЛОГА ==========
         async function getParentAdvice(fear) {
+            sendAnalytics('parent_advice_request', { fear: fear });
+            
             const modal = document.createElement('div');
             modal.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); border-radius:40px; padding:24px; z-index:3000; min-width:280px; max-width:90%; color:white;';
             modal.innerHTML = `<h3>🧠 Совет психолога</h3><div id="adviceResult">⏳ Загрузка...</div><button class="close-btn" style="background:#ff4081; padding:10px 20px; border-radius:30px; border:none; color:white; margin-top:15px;">Закрыть</button>`;
             document.body.appendChild(modal);
+            
             try {
                 const token = localStorage.getItem('userToken');
                 const response = await fetch('/api/parent-advice', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ fear, childAge: getCurrentChild().age, childName: getCurrentChild().name })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : ''
+                    },
+                    body: JSON.stringify({ 
+                        fear, 
+                        childAge: getCurrentChild().age, 
+                        childName: getCurrentChild().name 
+                    })
                 });
                 const data = await response.json();
-                document.getElementById('adviceResult').innerHTML = data.advice 
-                    ? `<strong>😟 Страх: "${fear}"</strong><br><br>${data.advice.replace(/\n/g, '<br>')}<br><br><small>💡 Совет сгенерирован ИИ</small>`
-                    : '❌ Не удалось получить совет.';
-            } catch(e) { document.getElementById('adviceResult').innerHTML = '❌ Ошибка соединения.'; }
+                const adviceResult = document.getElementById('adviceResult');
+                if (adviceResult) {
+                    adviceResult.innerHTML = data.advice 
+                        ? `<strong>😟 Страх: "${fear}"</strong><br><br>${data.advice.replace(/\n/g, '<br>')}<br><br><small>💡 Совет сгенерирован ИИ</small>`
+                        : '❌ Не удалось получить совет.';
+                }
+            } catch(e) {
+                const adviceResult = document.getElementById('adviceResult');
+                if (adviceResult) adviceResult.innerHTML = '❌ Ошибка соединения.';
+            }
             modal.querySelector('.close-btn').onclick = () => modal.remove();
         }
         
@@ -313,7 +469,9 @@
                 <button class="close-btn" style="background:#ff4081; padding:10px 20px; border-radius:30px; border:none; color:white; width:100%;">Закрыть</button>
             `;
             document.body.appendChild(modal);
+            
             const getAdvice = (fear) => { modal.remove(); getParentAdvice(fear); };
+            
             document.getElementById('helpDarkness').onclick = () => getAdvice('темнота');
             document.getElementById('helpDoctors').onclick = () => getAdvice('врачи, уколы, больница');
             document.getElementById('helpAlone').onclick = () => getAdvice('одиночество');
@@ -327,36 +485,75 @@
             modal.querySelector('.close-btn').onclick = () => modal.remove();
         }
         
-        document.getElementById('parentHelpBtn').onclick = showHelpModal;
-        document.getElementById('alertHelpBtn').onclick = () => {
-            const fear = localStorage.getItem('pendingFearText') || '';
-            localStorage.removeItem('pendingFearAlert');
-            localStorage.removeItem('pendingFearText');
-            updateUI();
-            getParentAdvice(fear);
-        };
-        
         // ========== ПОДЕЛИТЬСЯ ==========
         function shareApp(platform) {
-            const text = "🎉 Мой ребёнок больше не боится темноты! Люцик — волшебный кот, который помогает детям 3-12 лет справляться со страхами. Попробуйте: https://geroy-skazki.vercel.app";
+            const text = "🎉 Мой ребёнок больше не боится темноты! Люцик — волшебный кот, который помогает детям справляться со страхами. Попробуйте: https://geroy-skazki.vercel.app";
             const urls = {
                 whatsapp: `https://wa.me/?text=${encodeURIComponent(text)}`,
                 vk: `https://vk.com/share.php?url=https://geroy-skazki.vercel.app&title=Герой Сказок&description=${encodeURIComponent(text)}`,
                 telegram: `https://t.me/share/url?url=https://geroy-skazki.vercel.app&text=${encodeURIComponent(text)}`
             };
             if (urls[platform]) window.open(urls[platform], '_blank');
+            sendAnalytics('share', { platform: platform });
         }
         
-        document.getElementById('shareBtn').onclick = () => shareApp('whatsapp');
-        document.getElementById('shareVkBtn').onclick = () => shareApp('vk');
-        document.getElementById('shareTgBtn').onclick = () => shareApp('telegram');
+        // ========== ИНИЦИАЛИЗАЦИЯ СТРАНИЦЫ ==========
+        function initParentPage() {
+            loadChildrenData();
+            updateChildIndicator();
+            updateUI();
+            sendAnalytics('parent_page_view');
+            
+            // Назначаем обработчики
+            const parentHelpBtn = document.getElementById('parentHelpBtn');
+            if (parentHelpBtn) parentHelpBtn.onclick = showHelpModal;
+            
+            const alertHelpBtn = document.getElementById('alertHelpBtn');
+            if (alertHelpBtn) {
+                alertHelpBtn.onclick = () => {
+                    const fear = localStorage.getItem('pendingFearText') || '';
+                    localStorage.removeItem('pendingFearAlert');
+                    localStorage.removeItem('pendingFearText');
+                    updateUI();
+                    getParentAdvice(fear);
+                };
+            }
+            
+            const shareBtn = document.getElementById('shareBtn');
+            if (shareBtn) shareBtn.onclick = () => shareApp('whatsapp');
+            
+            const shareVkBtn = document.getElementById('shareVkBtn');
+            if (shareVkBtn) shareVkBtn.onclick = () => shareApp('vk');
+            
+            const shareTgBtn = document.getElementById('shareTgBtn');
+            if (shareTgBtn) shareTgBtn.onclick = () => shareApp('telegram');
+            
+            const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) exportBtn.onclick = exportData;
+        }
         
-        // ========== ИНИЦИАЛИЗАЦИЯ ==========
-        updateChildIndicator();
-        updateUI();
-        
-        const token = localStorage.getItem('userToken');
-        if (!token && !localStorage.getItem('guestMode')) window.location.href = '/';
+        // ========== СТАРТ ==========
+        (async function() {
+            const authOk = await checkAuthAndRedirect();
+            if (!authOk) return;
+            
+            // Проверяем PIN-код
+            const savedPin = localStorage.getItem('parentPin');
+            if (savedPin) {
+                showPinModal();
+            } else {
+                // Первый вход - создаём PIN
+                const newPin = prompt('Добро пожаловать в родительскую зону!\nСоздайте PIN-код (4-6 цифр):');
+                if (newPin && newPin.length >= 4 && /^\d+$/.test(newPin)) {
+                    localStorage.setItem('parentPin', encodePin(newPin));
+                    isUnlocked = true;
+                    initParentPage();
+                } else {
+                    alert('PIN-код должен содержать 4-6 цифр');
+                    window.location.href = '/app.html';
+                }
+            }
+        })();
     </script>
 </body>
 </html>
