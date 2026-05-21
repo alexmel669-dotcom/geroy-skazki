@@ -1,13 +1,12 @@
-// api/register.js — JWT регистрация
-// Обновлено: 21 мая 2026
-
+// api/register.js — с расширенным логированием
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 const pool = new Pool({
     connectionString: process.env.POSTGRES_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 10000
 });
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -21,8 +20,13 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
     
     if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-me') {
-        console.error('JWT_SECRET не настроен');
+        console.error('❌ JWT_SECRET не настроен');
         return res.status(500).json({ error: 'Ошибка конфигурации сервера' });
+    }
+    
+    if (!process.env.POSTGRES_URL) {
+        console.error('❌ POSTGRES_URL не настроен');
+        return res.status(500).json({ error: 'Ошибка конфигурации базы данных' });
     }
     
     try {
@@ -38,17 +42,22 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Введите корректный email' });
         }
         
-        // Валидация пароля
         if (password.length < 6) {
             return res.status(400).json({ error: 'Пароль должен быть не менее 6 символов' });
         }
         
+        console.log(`📝 Регистрация: ${email}`);
+        
         let client;
         try {
             client = await pool.connect();
+            console.log('✅ Подключение к БД установлено');
         } catch (dbError) {
-            console.error('Ошибка подключения к БД:', dbError);
-            return res.status(503).json({ error: 'База данных временно недоступна' });
+            console.error('❌ Ошибка подключения к БД:', dbError.message);
+            return res.status(503).json({ 
+                error: 'База данных временно недоступна',
+                details: dbError.message
+            });
         }
         
         try {
@@ -59,6 +68,7 @@ export default async function handler(req, res) {
             );
             
             if (existing.rows.length > 0) {
+                console.log(`❌ Email уже существует: ${email}`);
                 return res.status(409).json({ error: 'Email уже зарегистрирован' });
             }
             
@@ -66,12 +76,10 @@ export default async function handler(req, res) {
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
             
-            // Подготовка данных о детях
             const childrenData = children && children.length > 0 
                 ? JSON.stringify(children) 
                 : null;
             
-            // Создание пользователя
             const result = await client.query(
                 `INSERT INTO users (
                     email, 
@@ -95,15 +103,12 @@ export default async function handler(req, res) {
             );
             
             const user = result.rows[0];
+            console.log(`✅ Пользователь создан: ${email} (id: ${user.id})`);
             
-            // Создание JWT токена
             const token = jwt.sign(
                 { 
                     userId: user.id, 
-                    email: user.email,
-                    parentName: parentName,
-                    childName: childName,
-                    childAge: childAge
+                    email: user.email
                 }, 
                 JWT_SECRET, 
                 { expiresIn: '30d' }
@@ -114,22 +119,21 @@ export default async function handler(req, res) {
                 token,
                 email: user.email,
                 userId: user.id,
-                parentName: parentName,
-                childName: childName,
-                childAge: childAge,
-                children: children || [],
                 message: 'Регистрация успешна!'
             });
             
         } catch (queryError) {
-            console.error('Ошибка запроса к БД:', queryError);
+            console.error('❌ Ошибка запроса:', queryError);
             return res.status(500).json({ error: 'Ошибка при создании пользователя' });
         } finally {
             client.release();
         }
         
     } catch (error) {
-        console.error('Ошибка регистрации:', error);
-        res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+        console.error('❌ Ошибка регистрации:', error);
+        res.status(500).json({ 
+            error: 'Внутренняя ошибка сервера',
+            message: error.message 
+        });
     }
 }
