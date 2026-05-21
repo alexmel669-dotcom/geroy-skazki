@@ -1,6 +1,5 @@
 // api/register.js — JWT регистрация
 // Обновлено: 21 мая 2026
-// Исправлено: импорт pg, убрана колонка children (хранится в localStorage)
 
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
@@ -14,7 +13,6 @@ const pool = new Pool({
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export default async function handler(req, res) {
-    // CORS для всех доменов
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -28,7 +26,7 @@ export default async function handler(req, res) {
     }
     
     try {
-        const { email, password } = req.body;
+        const { email, password, parentName, childName, childAge, children } = req.body;
         
         if (!email || !password) {
             return res.status(400).json({ error: 'Email и пароль обязательны' });
@@ -45,7 +43,6 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Пароль должен быть не менее 6 символов' });
         }
         
-        // Проверка подключения к БД
         let client;
         try {
             client = await pool.connect();
@@ -69,12 +66,32 @@ export default async function handler(req, res) {
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
             
-            // Создание пользователя (без колонки children, согласно техпаспорту)
+            // Подготовка данных о детях
+            const childrenData = children && children.length > 0 
+                ? JSON.stringify(children) 
+                : null;
+            
+            // Создание пользователя
             const result = await client.query(
-                `INSERT INTO users (email, password_hash, created_at) 
-                 VALUES ($1, $2, NOW()) 
-                 RETURNING id, email, created_at`,
-                [email.toLowerCase().trim(), hashedPassword]
+                `INSERT INTO users (
+                    email, 
+                    password_hash, 
+                    parent_name, 
+                    child_name, 
+                    child_age, 
+                    children,
+                    created_at, 
+                    updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
+                RETURNING id, email`,
+                [
+                    email.toLowerCase().trim(), 
+                    hashedPassword, 
+                    parentName || null,
+                    childName || null,
+                    childAge ? parseInt(childAge) : null,
+                    childrenData
+                ]
             );
             
             const user = result.rows[0];
@@ -84,20 +101,23 @@ export default async function handler(req, res) {
                 { 
                     userId: user.id, 
                     email: user.email,
-                    iat: Math.floor(Date.now() / 1000)
+                    parentName: parentName,
+                    childName: childName,
+                    childAge: childAge
                 }, 
                 JWT_SECRET, 
                 { expiresIn: '30d' }
             );
-            
-            // Дети будут созданы на клиенте и сохранены в localStorage
-            // (это позволяет иметь разных детей для одного аккаунта)
             
             res.status(201).json({ 
                 success: true, 
                 token,
                 email: user.email,
                 userId: user.id,
+                parentName: parentName,
+                childName: childName,
+                childAge: childAge,
+                children: children || [],
                 message: 'Регистрация успешна!'
             });
             
