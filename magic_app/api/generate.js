@@ -1,5 +1,8 @@
-// api/generate.js — DeepSeek API (версия от 6 мая 2026, правки 02:15)
-import { Pool } from '@neondatabase/serverless';
+// api/generate.js — DeepSeek API v4 (актуальная версия для июля 2026)
+// Модель: deepseek-v4-flash
+// Обновлено: 21 мая 2026
+
+import { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
 
 const pool = new Pool({
@@ -39,111 +42,17 @@ function safeFallback(key, character) {
     return set[character] || set['lucik'];
 }
 
-// ========== ПРОМПТЫ ПЕРСОНАЖЕЙ ==========
+// ========== ПРОМПТЫ ПЕРСОНАЖЕЙ (СОКРАЩЕННЫЕ ДЛЯ ЭКОНОМИИ ТОКЕНОВ) ==========
 const CHARACTER_PROMPTS = {
-    lucik: `Ты — Люцик, волшебный персонаж, который помогает детям справляться со страхами.
+    lucik: `Ты — Люцик, добрый кот-психолог для детей. Говори просто, короткими фразами. Используй "мурр", "мяу". Всегда поддерживай диалог, не отвечай односложно. Если ребёнок боится — предложи сказку или игру. Отвечай на русском.`,
 
-🎯 **ТВОЯ ГЛАВНАЯ ЦЕЛЬ:** Живое, тёплое общение. Ты не «говорящая игрушка», ты — друг, которому можно доверить всё.
+    mom: `Ты — Мама. Говори заботливо, нежно, с уменьшительно-ласкательными словами: "солнышко", "зайка". Всегда поддерживай и успокаивай. Отвечай на русском.`,
 
-📌 **ВАЖНЕЙШЕЕ ПРАВИЛО — ПОДДЕРЖКА РАЗГОВОРА:**
-Ты ВСЕГДА поддерживаешь диалог. Никаких закрытых ответов.
-- Если ребёнок говорит «привет» → спроси, как прошёл день.
-- Если ребёнок говорит «давай поиграем» → предложи игру и начни.
-- Если ребёнок говорит «расскажи сказку» → уточни: «Про что тебе рассказать? Может, про храброго котёнка? Или про волшебный лес?»
-- Если ребёнок замолкает → не дави. Скажи: «Мяу... Я рядом. Мы можем помолчать вместе, а когда захочешь — рассказать что-нибудь».
-- НИКОГДА не отвечай одним словом или короткой фразой без продолжения.
+    dad: `Ты — Папа. Говори уверенно, подбадривай. Используй фразы: "Ты сможешь!", "Я горжусь тобой!". Отвечай на русском.`,
 
-😨 **ВЫЯВЛЕНИЕ СТРАХОВ — НЕНАВЯЗЧИВО:**
-- Ты чувствуешь настроение ребёнка. Если он говорит тихо, грустно, тревожно — мягко спроси, что его беспокоит.
-- **Правило трёх шагов:**
-  1) Отрази чувство: «Мурр... Мне кажется, ты сегодня немного грустный. Это так?»
-  2) Если ребёнок согласился — поддержи: «Спасибо, что поделился. Я с тобой».
-  3) Предложи выход: «Хочешь, я расскажу сказку про это? Или мы вместе придумаем план, как сделать так, чтобы тебе было спокойнее?»
-- Если ребёнок НЕ хочет говорить — сразу переключайся на игру или весёлую историю. Не дави.
+    kid1: `Ты — друг-сверстник (ребёнок 5-6 лет). Говори просто, по-детски, с восклицаниями. Делитесь играми и секретами. Отвечай на русском.`,
 
-📚 **СКАЗКОТЕРАПИЯ:**
-- Когда ребёнок говорит о страхе, ты можешь рассказать сказку, где герой (котёнок, зайчик, мальчик/девочка) сталкивается с ТЕМ ЖЕ страхом и справляется с ним с помощью волшебного друга, фонарика храбрости, или доброго совета.
-- Сказка должна быть короткой (3-5 предложений) и обязательно с хорошим концом.
-
----
-
-**РЕЖИМЫ В ЗАВИСИМОСТИ ОТ ВОЗРАСТА:**
-
-🐱 **3-7 лет (дошкольники):**
-- Говори просто, короткими предложениями.
-- Используй «мурр», «мяу», «мурлык» — ты котик.
-- Главные темы: темнота, монстры, врачи, оставаться без мамы, животные.
-- Сказки — простые, с повторениями.
-
-🦊 **7-12 лет (школьники):**
-- Говори как старший друг, уважительно, без мурлыканья.
-- Главные темы: школа, оценки, ссоры с друзьями, буллинг, страхи перед контрольными, одиночество, неуверенность.
-- Не используй «мурр», «мяу», «киса». Ты теперь — спокойный, понимающий персонаж.
-- Можно спрашивать про школу: «Как прошёл день в школе? Что было сложного?»
-- Сказки — более сложные, с сюжетом.`,
-
-    mom: `Ты — Мама. Говори заботливо, нежно, как самая любящая мама на свете.
-
-🎯 **ТВОЯ ЦЕЛЬ:** Быть тёплой поддержкой. Ребёнок должен чувствовать себя в безопасности.
-
-📌 **ПОДДЕРЖКА РАЗГОВОРА:**
-- Всегда спрашивай, как прошёл день, что кушал, во что играл.
-- Если ребёнок грустный — обними словами: «Солнышко моё, я рядом. Расскажи, что случилось».
-- Если ребёнок боится — мягко поддержи: «Я понимаю, это бывает страшно. Мы вместе справимся».
-
-😨 **ВЫЯВЛЕНИЕ СТРАХОВ — ненавязчиво:**
-- Через заботу: «Малыш, ты сегодня плохо спал? Тебе приснилось что-то?»
-- Через ласку: «Я вижу, ты немножко встревожен. Обними меня, и давай тихонько поговорим об этом».
-
-🐱 **3-7 лет:** Очень нежно, с уменьшительно-ласкательными словами: «зайка», «солнышко», «котёнок».
-🦊 **7-12 лет:** Тепло, но без сюсюканья. «Родной», «мой хороший».`,
-
-    dad: `Ты — Папа. Говори уверенно, подбадривай, вселяй спокойствие.
-
-🎯 **ТВОЯ ЦЕЛЬ:** Показать ребёнку, что он сильный и справится со всем.
-
-📌 **ПОДДЕРЖКА РАЗГОВОРА:**
-- Спрашивай о достижениях: «Что сегодня получилось лучше всего?»
-- Подбадривай: «Я горжусь тобой!»
-- Если ребёнок боится — скажи: «Знаешь, я тоже иногда боюсь. Но мы справимся вместе. Ты у меня смелый».
-
-😨 **ВЫЯВЛЕНИЕ СТРАХОВ — ненавязчиво:**
-- Через действие: «Давай вместе разберёмся с тем, что тебя пугает. Разложим по полочкам».
-- Через пример: «Когда я был маленьким, я тоже боялся... а потом я сделал вот что...».
-
-🐱 **3-7 лет:** По-отечески тепло: «малыш», «сынок», «дочка».
-🦊 **7-12 лет:** Как старший товарищ: «слушай», «давай подумаем вместе».`,
-
-    kid1: `Ты — друг ребёнка (примерно его ровесник). Говори просто, по-детски, весело.
-
-🎯 **ТВОЯ ЦЕЛЬ:** Быть другом, с которым можно играть и делиться.
-
-📌 **ПОДДЕРЖКА РАЗГОВОРА:**
-- Предлагай игры: «Давай поиграем в прятки! Или в догонялки!»
-- Делись выдумками: «Я сегодня придумал супер-игру!»
-- Если друг грустит — скажи: «Я тоже иногда грущу. Давай погрустим вместе, а потом придумаем что-нибудь весёлое?»
-
-😨 **ВЫЯВЛЕНИЕ СТРАХОВ — ненавязчиво:**
-- Через свой опыт: «Знаешь, я тоже боялся темноты. А потом я придумал одну штуку...»
-- Через игру: «Давай нарисуем то, чего ты боишься, и сделаем его смешным!»
-
-🐱 **3-7 лет:** Очень просто, с эмодзи и восклицаниями.
-🦊 **7-12 лет:** Как реальный друг-сверстник.`,
-
-    kid2: `Ты — друг ребёнка. Мягкий, спокойный, любишь уютные игры и истории.
-
-🎯 **ТВОЯ ЦЕЛЬ:** Быть уютным другом для тихих игр и разговоров.
-
-📌 **ПОДДЕРЖКА РАЗГОВОРА:**
-- Предлагай спокойные занятия: раскраски, пазлы, чтение.
-- Если друг грустит — просто будь рядом: «Я здесь. Мы можем просто посидеть вместе».
-
-😨 **ВЫЯВЛЕНИЕ СТРАХОВ — ненавязчиво:**
-- Через доверие: «Ты можешь рассказать мне всё. Я никому не скажу».
-- Через сказку: «Хочешь, я расскажу историю про одного мальчика, который тоже боялся...».
-
-🐱 **3-7 лет:** Мягкий, уютный тон.
-🦊 **7-12 лет:** Спокойный, понимающий.`
+    kid2: `Ты — мягкий и добрый друг. Говори спокойно, предлагай уютные игры и разговоры по душам. Отвечай на русском.`
 };
 
 // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
@@ -186,11 +95,8 @@ async function saveDialogueScore(userId, childName, detectedFear, story, score) 
 }
 
 export default async function handler(req, res) {
-    const allowedOrigins = ['https://geroy-skazki.vercel.app'];
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
+    // CORS для всех доменов (для разработки)
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
@@ -198,33 +104,46 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
 
     try {
-        // ========== АВТОРИЗАЦИЯ ==========
+        // ========== АВТОРИЗАЦИЯ (поддержка гостя) ==========
         const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Требуется авторизация' });
-        }
-
-        const token = authHeader.split(' ')[1];
-        if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-me') {
-            return res.status(500).json({ error: 'Ошибка конфигурации' });
-        }
-
-        let decoded;
-        try {
-            if (token.startsWith('guest_token_')) {
-                decoded = { userId: 'guest', email: 'guest' };
-            } else {
-                decoded = jwt.verify(token, JWT_SECRET);
+        let userId = 'guest';
+        let userEmail = 'guest@example.com';
+        
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            if (token && token !== 'null' && token !== 'undefined') {
+                try {
+                    if (token.startsWith('guest_token_')) {
+                        userId = 'guest';
+                        userEmail = 'guest';
+                    } else if (JWT_SECRET && JWT_SECRET !== 'your-secret-key-change-me') {
+                        const decoded = jwt.verify(token, JWT_SECRET);
+                        userId = decoded.userId || decoded.id;
+                        userEmail = decoded.email || 'user';
+                    }
+                } catch (jwtError) {
+                    console.log('JWT error, continuing as guest:', jwtError.message);
+                    userId = 'guest';
+                    userEmail = 'guest';
+                }
             }
-        } catch {
-            return res.status(401).json({ error: 'Неверный токен' });
         }
 
-        const userId = decoded.userId;
-        const userEmail = decoded.email;
-        const { childName = 'малыш', childAge = 5, userSpeech, isLong, history = [], character = 'lucik' } = req.body;
-
-        if (!userSpeech || userSpeech.trim().length === 0) {
+        // ========== ПРИНИМАЕМ ОБА ФОРМАТА (message И userSpeech) ==========
+        const { 
+            message,           // ← новый формат из app.html
+            userSpeech,        // ← старый формат
+            childName = 'малыш', 
+            childAge = 5, 
+            isLong = false, 
+            history = [], 
+            character = 'lucik' 
+        } = req.body;
+        
+        // Поддержка обоих форматов
+        const speech = message || userSpeech;
+        
+        if (!speech || speech.trim().length === 0) {
             return res.status(400).json({ error: 'Нет текста' });
         }
 
@@ -237,25 +156,26 @@ export default async function handler(req, res) {
 
             if (age <= 7) {
                 const greetings = {
-                    lucik: `Мурр, привет, ${childName}! Я — котик Люцик. Я волшебный — умею помогать, когда страшно или грустно. А ещё я люблю сказки и игры! Расскажи, как у тебя дела?`,
+                    lucik: `Мурр, привет, ${childName}! Я — котик Люцик. Я помогаю, когда страшно или грустно. Расскажи, как у тебя дела?`,
                     mom: `Привет, моё солнышко! Мама рядом. Как прошёл твой день, ${childName}?`,
                     dad: `Здорово, ${childName}! Папа тебя слушает. Что сегодня было интересного?`,
-                    kid1: `Привет-привет! Я твой новый друг! Давай играть? Во что ты любишь играть?`,
-                    kid2: `Привет... я твой друг. Хочешь, расскажу уютную историю? Или давай просто поболтаем?`
+                    kid1: `Привет-привет! Я твой новый друг! Давай играть?`,
+                    kid2: `Привет... я твой друг. Хочешь, поболтаем?`
                 };
                 greeting = greetings[character] || greetings.lucik;
             } else {
                 const greetings = {
-                    lucik: `Привет, ${childName}! Рад тебя слышать. Я здесь, чтобы поболтать, поддержать или помочь разобраться с тем, что волнует. Как ты сегодня?`,
-                    mom: `Родной мой, как ты? Я здесь, рассказывай всё как есть.`,
-                    dad: `Привет, ${childName}! Как прошёл день? Что было сложного, а что получилось?`,
-                    kid1: `Привет! Как жизнь? Что нового в школе? Рассказывай, я весь во внимании!`,
-                    kid2: `Привет. Я тут. Если хочешь — можем поговорить о школе, о настроении, о чём угодно.`
+                    lucik: `Привет, ${childName}! Рад тебя слышать. Как ты сегодня?`,
+                    mom: `Родной мой, как ты? Я здесь, рассказывай.`,
+                    dad: `Привет, ${childName}! Как прошёл день?`,
+                    kid1: `Привет! Как жизнь? Что нового?`,
+                    kid2: `Привет. Я тут. Как настроение?`
                 };
                 greeting = greetings[character] || greetings.lucik;
             }
 
             return res.status(200).json({
+                reply: greeting,
                 story: greeting,
                 detectedFear: null,
                 isOnboarding: true
@@ -266,10 +186,11 @@ export default async function handler(req, res) {
         const isDeveloper = (userEmail === 'alexmel669@gmail.com');
         const maxStories = isDeveloper ? 9999 : 15;
 
-        if (!isDeveloper && userId !== 'guest') {
+        if (!isDeveloper && userId !== 'guest' && userId !== 'guest_token_') {
             const todayCount = await getTodayStoryCount(userId);
             if (todayCount >= maxStories) {
                 return res.status(200).json({
+                    reply: safeFallback('tired', character),
                     story: safeFallback('tired', character),
                     detectedFear: null,
                     limitReached: true
@@ -277,10 +198,12 @@ export default async function handler(req, res) {
             }
         }
 
-        // ========== DEEPSEEK API ==========
+        // ========== DEEPSEEK API V4 (обновлено для июля 2026) ==========
         const apiKey = process.env.DEEPSEEK_API_KEY;
         if (!apiKey) {
+            console.error('DEEPSEEK_API_KEY не установлен');
             return res.status(200).json({
+                reply: safeFallback('confused', character),
                 story: safeFallback('confused', character),
                 detectedFear: null
             });
@@ -288,29 +211,31 @@ export default async function handler(req, res) {
 
         const age = parseInt(childAge) || 5;
         let systemPrompt = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
-
+        
+        // Добавляем возрастные инструкции
         if (age <= 7) {
-            systemPrompt += `\n\nСЕЙЧАС ТЫ В РЕЖИМЕ ДОШКОЛЬНИКА (3-7 лет). Ребёнка зовут ${childName}, ему ${age} лет. Говори просто, коротко, с мурлыканьем (если ты Люцик).`;
+            systemPrompt += `\n\nРебёнку ${age} лет. Говори очень просто, короткими предложениями.`;
         } else {
-            systemPrompt += `\n\nСЕЙЧАС ТЫ В РЕЖИМЕ ШКОЛЬНИКА (7-12 лет). Ребёнка зовут ${childName}, ему ${age} лет. Говори как старший друг, без мурлыканья. Важны темы: школа, оценки, друзья, буллинг, самооценка.`;
+            systemPrompt += `\n\nРебёнку ${age} лет. Говори как старший друг, без сюсюканья.`;
         }
 
         if (isLong) {
-            systemPrompt += `\n\nРасскажи длинную, спокойную сказку на ночь. Учитывай возраст ребёнка.`;
+            systemPrompt += `\n\nРасскажи короткую, спокойную сказку на ночь (3-5 предложений).`;
         }
 
-        // ========== ПРАВКА №3: КОНТЕКСТ 20 СООБЩЕНИЙ ==========
-        const historyMessages = (history || []).slice(-20).map(msg => ({
-            role: msg.role,
+        // Формируем историю (последние 10 сообщений для контекста)
+        const historyMessages = (history || []).slice(-10).map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'assistant',
             content: msg.content
         }));
 
         const messages = [
             { role: "system", content: systemPrompt },
             ...historyMessages,
-            { role: "user", content: userSpeech }
+            { role: "user", content: speech }
         ];
 
+        // ✅ ИСПОЛЬЗУЕМ НОВУЮ МОДЕЛЬ deepseek-v4-flash (актуально для июля 2026)
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -318,53 +243,48 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: 'deepseek-chat',
+                model: 'deepseek-v4-flash',  // ← НОВАЯ МОДЕЛЬ (будет работать и после июля 2026)
                 messages: messages,
                 temperature: 0.7,
-                max_tokens: isLong ? 1000 : 200,
+                max_tokens: isLong ? 500 : 200,
                 stream: false
             })
         });
 
         const data = await response.json();
 
-        if (data.error) {
+        if (data.error || !data.choices || !data.choices[0]) {
+            console.error('DeepSeek API error:', data.error);
             return res.status(200).json({
-                story: safeFallback('tired', character),
+                reply: safeFallback('confused', character),
+                story: safeFallback('confused', character),
                 detectedFear: null
             });
         }
 
-        let story = data.choices?.[0]?.message?.content || safeFallback('listening', character);
+        let reply = data.choices[0]?.message?.content || safeFallback('listening', character);
 
-        // ФИЛЬТР МУСОРНЫХ ОТВЕТОВ (серверный уровень)
+        // Фильтр мусорных ответов
         const badPatterns = ['Люцик 31', 'Люцик 02', 'ошибка', 'error', 'Error', 'undefined', 'null', 'NaN'];
-        if (!story || badPatterns.some(p => story.includes(p)) || story.length < 2) {
-            story = safeFallback('confused', character);
+        if (!reply || badPatterns.some(p => reply.includes(p)) || reply.length < 2) {
+            reply = safeFallback('confused', character);
         }
 
-        story = story.replace(/^\d+\s*/, '').trim();
-        if (!story || story.length < 2) story = safeFallback('listening', character);
-
-        // Оценка качества ответа
-        let dialogueScore = 3;
-        if (story.length > 50 && !badPatterns.some(p => story.includes(p))) dialogueScore = 4;
-        if (story.length > 100 && (story.includes('сказк') || story.includes('истор'))) dialogueScore = 5;
+        reply = reply.replace(/^\d+\s*/, '').trim();
+        if (!reply || reply.length < 2) reply = safeFallback('listening', character);
 
         // ========== ДЕТЕКЦИЯ СТРАХОВ ==========
         let detectedFear = null;
         const fearKeywords = {
-            'темноты': ['темнот', 'темно', 'монстр', 'под кроватью', 'ночью'],
-            'врачей': ['врач', 'укол', 'больница', 'доктор', 'лечить'],
-            'одиночества': ['один', 'одна', 'никого', 'скучно одному', 'без мамы', 'без папы'],
-            'обиды': ['обидели', 'обидно', 'поссорился', 'подрался', 'отобрали'],
-            'нового': ['новое', 'незнаком', 'перемена', 'переезд', 'новая школа'],
-            'животных': ['собака', 'кошка', 'паук', 'насекомое', 'укусит'],
-            'школы': ['школа', 'оценка', 'контрольная', 'урок', 'учитель', 'двойка'],
-            'буллинга': ['дразнят', 'обзывают', 'смеются', 'толкают', 'бойкот']
+            'темноты': ['темнот', 'темно', 'монстр', 'под кроватью', 'ночью', 'боюсь темноты'],
+            'врачей': ['врач', 'укол', 'больница', 'доктор', 'лечить', 'зуб', 'прививк'],
+            'одиночества': ['один', 'одна', 'никого', 'скучно одному', 'без мамы', 'без папы', 'остался один'],
+            'обиды': ['обидели', 'обидно', 'поссорился', 'подрался', 'отобрали', 'не дали'],
+            'нового': ['новое', 'незнаком', 'перемена', 'переезд', 'новая школа', 'первый раз'],
+            'животных': ['собака', 'кошка', 'паук', 'насекомое', 'укусит', 'боюсь собак']
         };
 
-        const lowerText = (userSpeech || '').toLowerCase();
+        const lowerText = (speech || '').toLowerCase();
         for (const [fear, keywords] of Object.entries(fearKeywords)) {
             if (keywords.some(kw => lowerText.includes(kw))) {
                 detectedFear = fear;
@@ -372,14 +292,21 @@ export default async function handler(req, res) {
             }
         }
 
+        // Оценка качества ответа
+        let dialogueScore = 3;
+        if (reply.length > 50 && !badPatterns.some(p => reply.includes(p))) dialogueScore = 4;
+        if (reply.length > 100 && (reply.includes('сказк') || reply.includes('истор'))) dialogueScore = 5;
+
         // ========== СОХРАНЕНИЕ В БД ==========
-        if (userId !== 'guest') {
-            await saveStory(userId, userEmail, childName, story, detectedFear);
-            await saveDialogueScore(userId, childName, detectedFear, story, dialogueScore);
+        if (userId !== 'guest' && userId !== 'guest_token_') {
+            await saveStory(userId, userEmail, childName, reply, detectedFear);
+            await saveDialogueScore(userId, childName, detectedFear, reply, dialogueScore);
         }
 
+        // Возвращаем в обоих форматах для совместимости
         res.status(200).json({
-            story: story,
+            reply: reply,      // ← новый формат
+            story: reply,      // ← старый формат
             detectedFear: detectedFear,
             dialogueScore: dialogueScore
         });
@@ -388,6 +315,7 @@ export default async function handler(req, res) {
         console.error('Ошибка в generate.js:', error);
         const character = req.body?.character || 'lucik';
         res.status(200).json({
+            reply: safeFallback('confused', character),
             story: safeFallback('confused', character),
             detectedFear: null
         });
