@@ -96,7 +96,7 @@
     </div>
     
     <script>
-        // Шифрование пина
+                // Шифрование пина
         const PIN_SALT = 'lucik_magic_2024';
         function encodePin(pin) { return btoa(pin.split('').reverse().join('') + ':' + PIN_SALT); }
         function decodePin(enc) { try { return atob(enc).split(':')[0].split('').reverse().join(''); } catch { return ''; } }
@@ -184,7 +184,8 @@
             localStorage.setItem(`fishScore_${idx}`, window.fishScore);
             localStorage.setItem(`storyCount_${idx}`, window.storyCount);
         }
-                // ========== СМЕНА РЕБЁНКА ==========
+        
+        // ========== СМЕНА РЕБЁНКА ==========
         function applyChildSwitch() {
             if (currentChildIndex === GUEST_INDEX) {
                 window.childName = 'гость';
@@ -381,7 +382,7 @@
             if (locked) { av.classList.add('premium-locked'); lo.style.display = 'flex'; } 
             else { av.classList.remove('premium-locked'); lo.style.display = 'none'; } 
         }
-                // ========== ОЗВУЧКА (БЕЗ АВТОЗАПУСКА) ==========
+                // ========== ОЗВУЧКА (с поддержкой fallback и emotion) ==========
         let currentAudio = null, isAudioPlaying = false, audioUnlocked = false;
         
         function unlockAudio() { 
@@ -414,21 +415,71 @@
                             return; 
                         } 
                     } 
-                    if (currentAudio) { currentAudio.pause(); currentAudio = null; } 
-                    const tok = localStorage.getItem('userToken'), headers = { 'Content-Type': 'application/json' }; 
-                    if (tok) headers['Authorization'] = `Bearer ${tok}`; 
-                    const resp = await fetch('/api/tts', { method: 'POST', headers, body: JSON.stringify({ text: txt, voice, emotion, speed: 1.0 }) }); 
-                    if (!resp.ok) throw new Error('TTS error'); 
+                    if (currentAudio) { 
+                        currentAudio.pause(); 
+                        currentAudio = null; 
+                    } 
+                    
+                    const tok = localStorage.getItem('userToken'); 
+                    const headers = { 'Content-Type': 'application/json' }; 
+                    if (tok && tok !== 'null' && tok !== 'undefined') { 
+                        headers['Authorization'] = `Bearer ${tok}`; 
+                    } 
+                    
+                    const resp = await fetch('/api/tts', { 
+                        method: 'POST', 
+                        headers, 
+                        body: JSON.stringify({ 
+                            text: txt, 
+                            voice: voice, 
+                            emotion: emotion, 
+                            speed: 1.0 
+                        }) 
+                    });
+                    
+                    const contentType = resp.headers.get('content-type');
+                    if (!resp.ok || (contentType && contentType.includes('application/json'))) {
+                        const errorData = await resp.json().catch(() => ({}));
+                        if (errorData.useFallback) {
+                            console.log('TTS fallback triggered');
+                            fallbackSpeak(txt);
+                            resolve();
+                            return;
+                        }
+                        throw new Error(`TTS error: ${resp.status}`);
+                    }
+                    
                     const blob = await resp.blob(); 
-                    if (blob.size < 100) throw new Error('Small'); 
+                    if (!blob || blob.size < 100) throw new Error('Small audio'); 
+                    
                     const url = URL.createObjectURL(blob); 
                     const a = new Audio(url); 
                     currentAudio = a; 
-                    a.onplay = () => { isAudioPlaying = true; document.getElementById('avatar').classList.add('talking'); }; 
-                    a.onended = () => { isAudioPlaying = false; document.getElementById('avatar').classList.remove('talking'); URL.revokeObjectURL(url); resolve(); }; 
-                    a.onerror = () => { isAudioPlaying = false; document.getElementById('avatar').classList.remove('talking'); URL.revokeObjectURL(url); fallbackSpeak(txt); resolve(); }; 
+                    
+                    a.onplay = () => { 
+                        isAudioPlaying = true; 
+                        document.getElementById('avatar').classList.add('talking'); 
+                    }; 
+                    
+                    a.onended = () => { 
+                        isAudioPlaying = false; 
+                        document.getElementById('avatar').classList.remove('talking'); 
+                        URL.revokeObjectURL(url); 
+                        resolve(); 
+                    }; 
+                    
+                    a.onerror = (err) => { 
+                        console.error('Audio playback error:', err);
+                        isAudioPlaying = false; 
+                        document.getElementById('avatar').classList.remove('talking'); 
+                        URL.revokeObjectURL(url); 
+                        fallbackSpeak(txt); 
+                        resolve(); 
+                    }; 
+                    
                     await a.play(); 
                 } catch(e) { 
+                    console.error('TTS exception:', e);
                     fallbackSpeak(txt); 
                     resolve(); 
                 } 
@@ -488,7 +539,6 @@
             clearTimeout(longPressTimer); 
         });
         
-        // СВАЙП для смены ребёнка
         avatarEl.addEventListener('touchend', (e) => {
             if (longPressTimer) { clearTimeout(longPressTimer); return; }
             const diff = e.changedTouches[0].screenX - touchStart;
@@ -512,7 +562,7 @@
         updateMoonButton(); 
         setInterval(updateMoonButton, 60000);
         
-        // ========== DEEPSEEK API (ОБНОВЛЁН ДЛЯ V4) ==========
+        // ========== DEEPSEEK API ==========
         async function askDeepSeek(text, isLong = false) {
             if (containsBadWords(text)) return "Мяу! Давай говорить добрые слова!";
             try {
@@ -521,12 +571,12 @@
                     return { role: isUser ? "user" : "assistant", content: item.replace(/^[^:]+:/, '').trim() };
                 });
                 const token = localStorage.getItem('userToken'), headers = { 'Content-Type': 'application/json' };
-                if (token) headers['Authorization'] = `Bearer ${token}`;
+                if (token && token !== 'null') headers['Authorization'] = `Bearer ${token}`;
                 const res = await fetch('/api/generate', { 
                     method: 'POST', 
                     headers, 
                     body: JSON.stringify({ 
-                        message: text,  // ← ИСПРАВЛЕНО: было userSpeech, стало message
+                        message: text,
                         history: historyForAPI, 
                         character: currentChar,
                         childName: window.childName,
@@ -535,7 +585,7 @@
                 });
                 const data = await res.json();
                 if (data.detectedFear) updateFear(data.detectedFear);
-                let story = data.reply || data.story;  // ← ИСПРАВЛЕНО: поддержка обоих форматов
+                let story = data.reply || data.story;
                 const badPatterns = ['Люцик 31', 'Люцик 02', 'ошибка', 'error', 'Error', 'undefined', 'null', 'NaN'];
                 if (!story || badPatterns.some(p => story.includes(p)) || story.length < 2) {
                     const clientFallbacks = { lucik: "Мурр... Я немного задумался. Давай ещё раз?", mom: "Ой, задумалась... Давай ещё раз, солнышко?", dad: "Хм, задумался. Повтори?", kid1: "Ой, я задумался! Давай ещё разок?", kid2: "Я задумалась... Давай ещё раз?" };
@@ -549,11 +599,12 @@
             }
         }
         
-        // Разблокировка аудио ТОЛЬКО по клику (никакого авто-приветствия!)
+        // Разблокировка аудио по клику
         document.addEventListener('touchstart', unlockAudio, { once: true });
         document.addEventListener('click', unlockAudio, { once: true });
         document.getElementById('micBtn').addEventListener('click', unlockAudio, { once: true });
-                // ========== ИГРЫ ==========
+        
+        // ========== ИГРЫ ==========
         let gameActive = false, gameInterval = null, gameTimerInterval = null;
         
         function startFishGame() { 
@@ -621,7 +672,6 @@
             gameInterval = setInterval(() => { if (gameActive) moveFish(); }, 1500); 
         }
         
-        // ИГРЫ: Memory, Puzzle, Coloring, Emotion (оставляем без изменений, они работают)
         let memoryCards = [], memoryFlipped = [], memoryLocked = false, memoryMatches = 0;
         function startMemoryGame() { 
             sendAnalytics('game_memory'); 
@@ -702,7 +752,6 @@
             } 
         }
         
-        // Быстрая заглушка для других игр (чтобы не было ошибок)
         function startPuzzleGame() { alert('🧩 Пазл скоро появится!'); }
         function startColoringGame() { alert('🎨 Раскраска скоро появится!'); }
         function startEmotionGame() { alert('😊 Игра на эмоции скоро появится!'); }
@@ -802,7 +851,7 @@
                 saveHistory(`👶 ${window.childName}: ${text}`); 
                 updateAchievement('first_talk');
                 
-                // ========== ПЕРЕХВАТ: ГОСТЬ НАЗВАЛ СВОЁ ИМЯ ==========
+                // Перехват: гость назвал своё имя
                 if (currentChildIndex === GUEST_INDEX) {
                     const foundIndex = children.findIndex(child => lowerText.includes(child.name.toLowerCase()));
                     if (foundIndex >= 0) {
@@ -824,7 +873,7 @@
                     }
                 }
                 
-                // ========== ПЕРЕХВАТ: «Я НЕ МАША, Я САША» ==========
+                // Перехват: «Я не Маша, я Саша»
                 if (currentChildIndex >= 0) {
                     const switchMatch = lowerText.match(/я не (\w+)[,\s]*я (\w+)/i);
                     if (switchMatch) {
@@ -850,7 +899,7 @@
                     }
                 }
                 
-                // ========== ДЕТЕКЦИЯ СТРАХОВ (ИСПРАВЛЕНО: lowerText вместо l) ==========
+                // Детекция страхов (ИСПРАВЛЕНО: lowerText вместо l)
                 if (lowerText.includes('темнот')) updateFear('темноты');
                 else if (lowerText.includes('врач')) updateFear('врачей');
                 else if (lowerText.includes('один') || lowerText.includes('одна')) updateFear('одиночества');
@@ -905,10 +954,8 @@
         updateTimeTheme(); 
         setInterval(updateTimeTheme, 60000);
         
-        // ========== ПРИВЕТСТВИЕ (БЕЗ АВТО-ЗВУКА, ТОЛЬКО ТЕКСТ В КОНСОЛИ) ==========
-        // ✅ Исправлено: нет авто-озвучки, только текст в чате (если бы был чат)
+        // Приветствие только в консоли, без звука (избегаем ошибки AudioContext)
         console.log(`✅ Приложение готово! Привет, ${window.childName}! Нажми на микрофон.`);
-        // Приветствие будет только по первому клику на микрофон
     </script>
 </body>
 </html>
