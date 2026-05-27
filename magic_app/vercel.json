@@ -1,28 +1,20 @@
 {
-  "functions": {
-    "api/generate.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/tts.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/login.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/register.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/verify-token.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/parent-advice.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/analytics.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/admin-stats.js": {
-      "runtime": "nodejs20.x"
-    }
-  }
+  "version": 2,
+  "builds": [
+    { "src": "api/*.js", "use": "@vercel/node" },
+    { "src": "*.html", "use": "@vercel/static" },
+    { "src": "manifest.json", "use": "@vercel/static" },
+    { "src": "sw.js", "use": "@vercel/static" },
+    { "src": "images/*", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/app", "dest": "/app.html" },
+    { "src": "/parent", "dest": "/parent.html" },
+    { "src": "/admin", "dest": "/admin.html" },
+    { "src": "/privacy", "dest": "/privacy.html" },
+    { "src": "/terms", "dest": "/terms.html" },
+    { "src": "/", "dest": "/index.html" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
 }
