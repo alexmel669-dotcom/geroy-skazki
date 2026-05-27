@@ -38,7 +38,9 @@ body.night .avatar-label { color: #f0e6d0; opacity: 0.5; }
 .avatar.premium-locked { filter: grayscale(0.7); opacity: 0.6; }
 .avatar.talking { animation: pulse 0.5s infinite, blink 4s infinite; filter: drop-shadow(0 0 15px #00d2ff); }
 .avatar.listening { animation: pulse 1s infinite, blink 4s infinite; filter: drop-shadow(0 0 15px #4CAF50); }
+.avatar.thinking { animation: thinking 1.5s infinite; filter: drop-shadow(0 0 15px #ffd700); }
 @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes thinking { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.7; } }
 .lock-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; background: rgba(0,0,0,0.6); border-radius: 50%; padding: 10px; pointer-events: none; }
 .child-select-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); backdrop-filter: blur(12px); border-radius: 40px; padding: 24px; z-index: 3000; min-width: 250px; text-align: center; color: white; border: 1px solid rgba(255,255,255,0.2); }
 .child-select-menu button { display: block; width: 100%; margin: 8px 0; padding: 12px 20px; border-radius: 60px; border: none; font-size: 18px; cursor: pointer; color: white; }
@@ -85,27 +87,22 @@ body.night .action-btn { background: rgba(0,0,0,0.5); }
     <div class="avatar-label" id="avatarLabel">🖼️ Образец аватара</div>
   </div>
   <div class="action-buttons">
-    <button class="action-btn" id="feedBtn">🍎</button>
-    <button class="action-btn" id="gamesBtn">🎮</button>
-    <button class="action-btn" id="roomBtn">🏠</button>
+    <button class="action-btn" id="feedBtn" aria-label="Покормить">🍎</button>
+    <button class="action-btn" id="gamesBtn" aria-label="Игры">🎮</button>
+    <button class="action-btn" id="roomBtn" aria-label="Комната">🏠</button>
   </div>
   <div class="mic-container">
-    <button class="mic-btn" id="micBtn">🎤</button>
+    <button class="mic-btn" id="micBtn" aria-label="Голосовой ввод">🎤</button>
   </div>
 </div>
 <script>
-// ========== БЕЗОПАСНОЕ ХРАНЕНИЕ PIN-кода ==========
+// ========== БЕЗОПАСНОЕ ХРАНЕНИЕ PIN-кода (ИСПРАВЛЕНО: SHA-256 вместо btoa) ==========
 async function hashPin(pin) {
   const encoder = new TextEncoder();
   const data = encoder.encode(pin + '_lucik_salt_2024');
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function encodePin(pin) {
-  // Временно используем SHA-256 через асинхронный вызов при создании
-  return pin; // Будет заменено на хеш при сохранении
 }
 
 async function verifyPin(inputPin) {
@@ -121,26 +118,49 @@ async function createPin(pin) {
   return hash;
 }
 
-// ========== ДАННЫЕ ДЕТЕЙ ==========
-let children = [];
-let currentChildIndex = 0;
+// ========== СОСТОЯНИЕ ПРИЛОЖЕНИЯ (ИСПРАВЛЕНО: единый объект вместо window.*) ==========
+const appState = {
+  children: [],
+  currentChildIndex: 0,
+  mood: 70,
+  hunger: 60,
+  energy: 50,
+  bravery: 0,
+  fishScore: 0,
+  storyCount: 0,
+  fearStats: {"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0},
+  conversationHistory: [],
+  currentChar: 'lucik',
+  isPremium: localStorage.getItem('isPremium') === 'true',
+  isListening: false,
+  isWaiting: false,
+  gameActive: false,
+  gameInterval: null,
+  gameTimerInterval: null,
+  memoryCards: [],
+  memoryFlipped: [],
+  memoryLocked: false,
+  memoryMatches: 0
+};
+
 const GUEST_INDEX = -1;
 
+// ========== ДАННЫЕ ДЕТЕЙ (ИСПРАВЛЕНО: миграция старого формата) ==========
 try {
   const saved = localStorage.getItem('children');
-  if (saved) children = JSON.parse(saved);
-  currentChildIndex = parseInt(localStorage.getItem('currentChildIndex') || '0');
-  if (currentChildIndex >= children.length) currentChildIndex = 0;
+  if (saved) appState.children = JSON.parse(saved);
+  appState.currentChildIndex = parseInt(localStorage.getItem('currentChildIndex') || '0');
+  if (appState.currentChildIndex >= appState.children.length) appState.currentChildIndex = 0;
 } catch {
-  children = [];
+  appState.children = [];
 }
 
-if (children.length === 0) {
+if (appState.children.length === 0) {
   const oldName = localStorage.getItem('childName') || 'малыш';
   const oldAge = parseInt(localStorage.getItem('childAge') || '5');
-  children = [{ name: oldName, age: oldAge, gender: 'boy' }];
-  currentChildIndex = 0;
-  localStorage.setItem('children', JSON.stringify(children));
+  appState.children = [{ name: oldName, age: oldAge, gender: 'boy' }];
+  appState.currentChildIndex = 0;
+  localStorage.setItem('children', JSON.stringify(appState.children));
   localStorage.setItem('currentChildIndex', '0');
   const oldFear = localStorage.getItem('fearStats'), oldHistory = localStorage.getItem('storyHistory');
   if (oldFear) localStorage.setItem('fearStats_0', oldFear);
@@ -148,13 +168,13 @@ if (children.length === 0) {
 }
 
 function getCurrentChild() {
-  if (currentChildIndex === GUEST_INDEX) return { name: 'гость', age: 5, gender: 'unknown' };
-  if (currentChildIndex >= children.length) currentChildIndex = 0;
-  return children[currentChildIndex] || { name: 'малыш', age: 5, gender: 'boy' };
+  if (appState.currentChildIndex === GUEST_INDEX) return { name: 'гость', age: 5, gender: 'unknown' };
+  if (appState.currentChildIndex >= appState.children.length) appState.currentChildIndex = 0;
+  return appState.children[appState.currentChildIndex] || { name: 'малыш', age: 5, gender: 'boy' };
 }
 
 function updateChildNameLabel() {
-  if (currentChildIndex === GUEST_INDEX) {
+  if (appState.currentChildIndex === GUEST_INDEX) {
     document.getElementById('childNameLabel').textContent = '🐱 Кто здесь?';
     return;
   }
@@ -164,59 +184,104 @@ function updateChildNameLabel() {
 
 function updateAvatarLabel() {
   const label = document.getElementById('avatarLabel');
-  if (currentChildIndex === GUEST_INDEX) {
+  if (appState.currentChildIndex === GUEST_INDEX) {
     label.innerHTML = '🐱 Гость — назови себя!';
-  } else if (currentChar === 'kid1' || currentChar === 'kid2') {
+  } else if (appState.currentChar === 'kid1' || appState.currentChar === 'kid2') {
     label.innerHTML = '🖼️ Образец аватара<br><small style="opacity:0.7;">🌟 Премиум: загрузка фото</small>';
-  } else if (currentChar === 'mom' || currentChar === 'dad') {
+  } else if (appState.currentChar === 'mom' || appState.currentChar === 'dad') {
     label.innerHTML = '🌟 Премиум-аватар';
   } else {
     label.innerHTML = '🖼️ Образец аватара';
   }
 }
 
+// ========== ЗАГРУЗКА/СОХРАНЕНИЕ ДАННЫХ РЕБЁНКА (ИСПРАВЛЕНО: формат истории) ==========
 function loadChildData(index) {
   if (index === GUEST_INDEX) {
-    window.fearStats = {"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0};
-    window.conversationHistory = [];
-    window.mood = 70;
-    window.hunger = 60;
-    window.energy = 50;
-    window.bravery = 0;
-    window.fishScore = 0;
-    window.storyCount = 0;
+    appState.fearStats = {"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0};
+    appState.conversationHistory = [];
+    appState.mood = 70;
+    appState.hunger = 60;
+    appState.energy = 50;
+    appState.bravery = 0;
+    appState.fishScore = 0;
+    appState.storyCount = 0;
     return;
   }
   const idx = index || 0;
-  window.fearStats = JSON.parse(localStorage.getItem(`fearStats_${idx}`) || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
-  window.conversationHistory = JSON.parse(localStorage.getItem(`storyHistory_${idx}`) || '[]');
-  window.mood = parseInt(localStorage.getItem(`lucik_mood_${idx}`) || '70');
-  window.hunger = parseInt(localStorage.getItem(`lucik_hunger_${idx}`) || '60');
-  window.energy = parseInt(localStorage.getItem(`lucik_energy_${idx}`) || '50');
-  window.bravery = parseInt(localStorage.getItem(`lucik_bravery_${idx}`) || '0');
-  window.fishScore = parseInt(localStorage.getItem(`fishScore_${idx}`) || '0');
-  window.storyCount = parseInt(localStorage.getItem(`storyCount_${idx}`) || '0');
+  appState.fearStats = JSON.parse(localStorage.getItem(`fearStats_${idx}`) || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+  
+  // ИСПРАВЛЕНО: загружаем историю в новом формате {role, content}
+  const rawHistory = JSON.parse(localStorage.getItem(`storyHistory_${idx}`) || '[]');
+  if (rawHistory.length > 0 && typeof rawHistory[0] === 'string') {
+    // Миграция старого формата (строки) в новый (объекты)
+    appState.conversationHistory = rawHistory.map(item => {
+      const isUser = item.includes('👶');
+      return {
+        role: isUser ? 'user' : 'assistant',
+        content: item.replace(/^[^:]+:\s*/, '').trim()
+      };
+    });
+    localStorage.setItem(`storyHistory_${idx}`, JSON.stringify(appState.conversationHistory));
+  } else {
+    appState.conversationHistory = rawHistory;
+  }
+  
+  appState.mood = parseInt(localStorage.getItem(`lucik_mood_${idx}`) || '70');
+  appState.hunger = parseInt(localStorage.getItem(`lucik_hunger_${idx}`) || '60');
+  appState.energy = parseInt(localStorage.getItem(`lucik_energy_${idx}`) || '50');
+  appState.bravery = parseInt(localStorage.getItem(`lucik_bravery_${idx}`) || '0');
+  appState.fishScore = parseInt(localStorage.getItem(`fishScore_${idx}`) || '0');
+  appState.storyCount = parseInt(localStorage.getItem(`storyCount_${idx}`) || '0');
 }
 
 function saveChildData(index) {
   if (index === GUEST_INDEX) return;
   const idx = index || 0;
-  localStorage.setItem(`fearStats_${idx}`, JSON.stringify(window.fearStats));
-  localStorage.setItem(`storyHistory_${idx}`, JSON.stringify(window.conversationHistory));
-  localStorage.setItem(`lucik_mood_${idx}`, window.mood);
-  localStorage.setItem(`lucik_hunger_${idx}`, window.hunger);
-  localStorage.setItem(`lucik_energy_${idx}`, window.energy);
-  localStorage.setItem(`lucik_bravery_${idx}`, window.bravery);
-  localStorage.setItem(`fishScore_${idx}`, window.fishScore);
-  localStorage.setItem(`storyCount_${idx}`, window.storyCount);
+  localStorage.setItem(`fearStats_${idx}`, JSON.stringify(appState.fearStats));
+  localStorage.setItem(`storyHistory_${idx}`, JSON.stringify(appState.conversationHistory));
+  localStorage.setItem(`lucik_mood_${idx}`, appState.mood);
+  localStorage.setItem(`lucik_hunger_${idx}`, appState.hunger);
+  localStorage.setItem(`lucik_energy_${idx}`, appState.energy);
+  localStorage.setItem(`lucik_bravery_${idx}`, appState.bravery);
+  localStorage.setItem(`fishScore_${idx}`, appState.fishScore);
+  localStorage.setItem(`storyCount_${idx}`, appState.storyCount);
 }
 
-// ========== СМЕНА РЕБЁНКА ==========
+// ========== СЕРВЕРНАЯ СИНХРОНИЗАЦИЯ (ИСПРАВЛЕНО: новая функция) ==========
+async function syncToServer() {
+  const token = localStorage.getItem('userToken');
+  if (!token || token === 'null' || localStorage.getItem('guestMode') === 'true') return;
+  if (appState.currentChildIndex === GUEST_INDEX) return;
+  
+  try {
+    const child = getCurrentChild();
+    await fetch('/api/sync-child-data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        childName: child.name,
+        childAge: child.age,
+        fearStats: appState.fearStats,
+        bravery: appState.bravery,
+        fishScore: appState.fishScore,
+        storyCount: appState.storyCount,
+        conversationHistory: appState.conversationHistory.slice(-20)
+      })
+    });
+  } catch(e) {
+    console.error('Sync failed:', e);
+  }
+}
+  // ========== СМЕНА РЕБЁНКА ==========
 function applyChildSwitch() {
-  if (currentChildIndex === GUEST_INDEX) {
+  if (appState.currentChildIndex === GUEST_INDEX) {
     window.childName = 'гость';
     window.childAge = 5;
-    currentChar = 'lucik';
+    appState.currentChar = 'lucik';
     localStorage.setItem('currentCharacter', 'lucik');
     loadChildData(GUEST_INDEX);
     document.getElementById('avatar').style.backgroundImage = "url('avatar.png')";
@@ -226,40 +291,41 @@ function applyChildSwitch() {
     updateStatsUI();
     setTimeout(() => speak("Мурр... А ты кто? Давай знакомиться!"), 300);
   } else {
-    localStorage.setItem('currentChildIndex', currentChildIndex);
+    localStorage.setItem('currentChildIndex', appState.currentChildIndex);
     const child = getCurrentChild();
     window.childName = child.name;
     window.childAge = child.age;
     localStorage.setItem('childName', window.childName);
     localStorage.setItem('childAge', window.childAge);
-    loadChildData(currentChildIndex);
+    loadChildData(appState.currentChildIndex);
     setAvatarByGender();
     updateChildNameLabel();
     updateStatsUI();
     updateAvatarLock();
     updateAvatarLabel();
     setTimeout(() => speak(`Привет, ${window.childName}!`), 300);
+    syncToServer();
   }
 }
 
 function switchChild(index) {
-  if (children.length <= 1 && index !== GUEST_INDEX) return;
-  saveChildData(currentChildIndex);
-  currentChildIndex = index;
+  if (appState.children.length <= 1 && index !== GUEST_INDEX) return;
+  saveChildData(appState.currentChildIndex);
+  appState.currentChildIndex = index;
   applyChildSwitch();
 }
 
 function showChildSelectMenu() {
-  if (children.length <= 1) return;
+  if (appState.children.length <= 1) return;
   const menu = document.createElement('div');
   menu.className = 'child-select-menu';
   let btns = '';
-  children.forEach((child, i) => {
-    const cls = (i === currentChildIndex) ? 'active-child' : 'inactive-child';
+  appState.children.forEach((child, i) => {
+    const cls = (i === appState.currentChildIndex) ? 'active-child' : 'inactive-child';
     const icon = child.gender === 'girl' ? '👧' : '👦';
     btns += `<button class="${cls}" data-index="${i}">${icon} ${child.name}, ${child.age} лет</button>`;
   });
-  const guestCls = (currentChildIndex === GUEST_INDEX) ? 'active-child' : 'inactive-child';
+  const guestCls = (appState.currentChildIndex === GUEST_INDEX) ? 'active-child' : 'inactive-child';
   btns += `<button class="${guestCls}" data-index="-1">🐱 Гость (Люцик)</button>`;
   menu.innerHTML = `<h3 style="margin-bottom:15px;">Кто играет?</h3>${btns}<button class="close-btn" style="margin-top:10px;">Закрыть</button>`;
   document.body.appendChild(menu);
@@ -267,7 +333,7 @@ function showChildSelectMenu() {
     btn.onclick = () => {
       const idx = parseInt(btn.dataset.index);
       menu.remove();
-      if (idx !== currentChildIndex) switchChild(idx);
+      if (idx !== appState.currentChildIndex) switchChild(idx);
     };
   });
   menu.querySelector('.close-btn').onclick = () => menu.remove();
@@ -298,7 +364,7 @@ async function checkAuthAndRedirect() {
   }
 }
 
-// ========== БЕЗОПАСНАЯ АНАЛИТИКА (без токена) ==========
+// ========== БЕЗОПАСНАЯ АНАЛИТИКА (ИСПРАВЛЕНО: userId из payload токена) ==========
 function getUserIdFromToken() {
   const token = localStorage.getItem('userToken');
   if (!token) return null;
@@ -328,7 +394,8 @@ function sendAnalytics(eventType, eventData = {}) {
     })
   }).catch(() => {});
 }
-    // ========== ЗВУКИ ==========
+
+// ========== ЗВУКИ ==========
 let audioCtx = null;
 function initAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -359,7 +426,7 @@ function playSound(s) {
 
 // ========== ДОСТИЖЕНИЯ ==========
 function getAchKey() {
-  return `achievements_${currentChildIndex === GUEST_INDEX ? 'guest' : currentChildIndex}`;
+  return `achievements_${appState.currentChildIndex === GUEST_INDEX ? 'guest' : appState.currentChildIndex}`;
 }
 
 function initAchievements() {
@@ -411,13 +478,12 @@ function showAchievementNotification(name) {
 }
 
 // ========== ОСНОВНЫЕ ДАННЫЕ ==========
-let isPremium = localStorage.getItem('isPremium') === 'true';
 const curChild = getCurrentChild();
 window.childName = curChild.name;
 window.childAge = curChild.age;
 let savedPin = localStorage.getItem('parentPinHash');
-loadChildData(currentChildIndex);
-if (window.conversationHistory.length > 50) window.conversationHistory = window.conversationHistory.slice(0, 50);
+loadChildData(appState.currentChildIndex);
+if (appState.conversationHistory.length > 50) appState.conversationHistory = appState.conversationHistory.slice(0, 50);
 
 const characters = {
   lucik: { name: 'Люцик', icon: 'avatar.png', premium: false },
@@ -427,18 +493,18 @@ const characters = {
   kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: false }
 };
 
-let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
+appState.currentChar = localStorage.getItem('currentCharacter') || 'lucik';
 
 function setAvatarByGender() {
   const child = getCurrentChild();
-  if (currentChildIndex === GUEST_INDEX) {
-    currentChar = 'lucik';
-  } else if (currentChar === 'kid1' || currentChar === 'kid2' || currentChar === 'lucik') {
-    if (child.gender === 'girl') currentChar = 'kid1';
-    else if (child.gender === 'boy') currentChar = 'kid2';
+  if (appState.currentChildIndex === GUEST_INDEX) {
+    appState.currentChar = 'lucik';
+  } else if (appState.currentChar === 'kid1' || appState.currentChar === 'kid2' || appState.currentChar === 'lucik') {
+    if (child.gender === 'girl') appState.currentChar = 'kid1';
+    else if (child.gender === 'boy') appState.currentChar = 'kid2';
   }
-  localStorage.setItem('currentCharacter', currentChar);
-  document.getElementById('avatar').style.backgroundImage = `url('${characters[currentChar].icon}')`;
+  localStorage.setItem('currentCharacter', appState.currentChar);
+  document.getElementById('avatar').style.backgroundImage = `url('${characters[appState.currentChar].icon}')`;
   updateAvatarLock();
   updateAvatarLabel();
 }
@@ -449,42 +515,47 @@ updateChildNameLabel();
 sendAnalytics('app_open');
 
 window.addEventListener('beforeunload', () => {
-  saveChildData(currentChildIndex);
+  saveChildData(appState.currentChildIndex);
   sendAnalytics('session_end');
+  // ИСПРАВЛЕНО: очистка игровых интервалов
+  if (appState.gameInterval) clearInterval(appState.gameInterval);
+  if (appState.gameTimerInterval) clearInterval(appState.gameTimerInterval);
 });
 
 function updateStatsUI() {
-  document.getElementById('moodFill').style.width = window.mood + '%';
-  document.getElementById('hungerFill').style.width = window.hunger + '%';
-  document.getElementById('energyFill').style.width = window.energy + '%';
-  document.getElementById('braveryFill').style.width = window.bravery + '%';
+  document.getElementById('moodFill').style.width = appState.mood + '%';
+  document.getElementById('hungerFill').style.width = appState.hunger + '%';
+  document.getElementById('energyFill').style.width = appState.energy + '%';
+  document.getElementById('braveryFill').style.width = appState.bravery + '%';
 }
 
-function saveHistory(t) {
-  // ИСПРАВЛЕНО: добавляем в конец, а не в начало
-  window.conversationHistory.push(new Date().toLocaleTimeString() + ": " + t);
-  if (window.conversationHistory.length > 50) window.conversationHistory.shift();
-  if (currentChildIndex !== GUEST_INDEX) {
-    localStorage.setItem(`storyHistory_${currentChildIndex}`, JSON.stringify(window.conversationHistory));
+// ИСПРАВЛЕНО: сохранение истории в формате {role, content}
+function saveHistory(role, content) {
+  appState.conversationHistory.push({ role, content });
+  if (appState.conversationHistory.length > 50) appState.conversationHistory.shift();
+  if (appState.currentChildIndex !== GUEST_INDEX) {
+    localStorage.setItem(`storyHistory_${appState.currentChildIndex}`, JSON.stringify(appState.conversationHistory));
   }
 }
 
+// ИСПРАВЛЕНО: синхронизация при обновлении страха
 function updateFear(f) {
-  if (currentChildIndex === GUEST_INDEX) return;
-  if (window.fearStats[f] !== undefined) {
-    window.fearStats[f]++;
-    localStorage.setItem(`fearStats_${currentChildIndex}`, JSON.stringify(window.fearStats));
-    window.bravery = Math.min(100, window.bravery + 10);
-    localStorage.setItem(`lucik_bravery_${currentChildIndex}`, window.bravery);
+  if (appState.currentChildIndex === GUEST_INDEX) return;
+  if (appState.fearStats[f] !== undefined) {
+    appState.fearStats[f]++;
+    localStorage.setItem(`fearStats_${appState.currentChildIndex}`, JSON.stringify(appState.fearStats));
+    appState.bravery = Math.min(100, appState.bravery + 10);
+    localStorage.setItem(`lucik_bravery_${appState.currentChildIndex}`, appState.bravery);
     updateAchievement('brave_kid');
     sendAnalytics('fear_detected', { fear: f });
     updateStatsUI();
+    syncToServer();
   }
 }
 
 function updateAvatarLock() {
   const av = document.getElementById('avatar'), lo = document.getElementById('lockOverlay');
-  const locked = characters[currentChar].premium && !isPremium;
+  const locked = characters[appState.currentChar].premium && !appState.isPremium;
   if (locked) {
     av.classList.add('premium-locked');
     lo.style.display = 'flex';
@@ -493,8 +564,7 @@ function updateAvatarLock() {
     lo.style.display = 'none';
   }
 }
-
-// ========== ОЗВУЧКА (исправлен AudioContext) ==========
+  // ========== ОЗВУЧКА ==========
 let currentAudio = null, isAudioPlaying = false, audioUnlocked = false;
 
 function unlockAudio() {
@@ -587,31 +657,32 @@ async function speakWithYandex(txt, voice = 'lucik', emotion = 'good') {
 async function speak(t) {
   const cleanText = t.replace(/[*_#]/g, '');
   try {
-    await speakWithYandex(cleanText, currentChar, 'good');
+    await speakWithYandex(cleanText, appState.currentChar, 'good');
   } catch(e) {
     fallbackSpeak(cleanText);
   }
 }
 
 function purr() {
-  if (currentChar !== 'lucik') return;
+  if (appState.currentChar !== 'lucik') return;
   unlockAudio();
   speakWithYandex("Муррр!", 'lucik', 'friendly').catch(() => {});
 }
 
 function changeCharacter(charId) {
-  if (characters[charId].premium && !isPremium) {
+  if (characters[charId].premium && !appState.isPremium) {
     alert('🌟 Оформите подписку!');
     return;
   }
-  currentChar = charId;
+  appState.currentChar = charId;
   document.getElementById('avatar').style.backgroundImage = `url('${characters[charId].icon}')`;
   localStorage.setItem('currentCharacter', charId);
   updateAvatarLock();
   updateAvatarLabel();
   speak(`Теперь я ${characters[charId].name}!`);
 }
-    // ========== СВАЙП И ДОЛГОЕ НАЖАТИЕ (исправлен конфликт) ==========
+
+// ========== СВАЙП И ДОЛГОЕ НАЖАТИЕ (ИСПРАВЛЕНО: единый обработчик) ==========
 let longPressTimer = null;
 let touchStartX = 0;
 const avatarEl = document.getElementById('avatar');
@@ -624,24 +695,26 @@ avatarEl.addEventListener('touchstart', (e) => {
   touchStartX = e.changedTouches[0].screenX;
 });
 
-// ЕДИНЫЙ обработчик touchend (было два конфликтующих)
+// ИСПРАВЛЕНО: единый обработчик touchend
 avatarEl.addEventListener('touchend', (e) => {
+  // Сначала проверяем долгое нажатие
   if (longPressTimer) {
     clearTimeout(longPressTimer);
     longPressTimer = null;
     return;
   }
   
+  // Затем проверяем свайп
   const diff = e.changedTouches[0].screenX - touchStartX;
-  if (Math.abs(diff) > 50 && children.length >= 1) {
-    saveChildData(currentChildIndex);
+  if (Math.abs(diff) > 50 && appState.children.length >= 1) {
+    saveChildData(appState.currentChildIndex);
     const direction = diff > 0 ? 1 : -1;
-    if (currentChildIndex === GUEST_INDEX) {
-      currentChildIndex = (direction > 0) ? children.length - 1 : 0;
+    if (appState.currentChildIndex === GUEST_INDEX) {
+      appState.currentChildIndex = (direction > 0) ? appState.children.length - 1 : 0;
     } else {
-      currentChildIndex += direction;
-      if (currentChildIndex >= children.length) currentChildIndex = 0;
-      if (currentChildIndex < 0) currentChildIndex = children.length - 1;
+      appState.currentChildIndex += direction;
+      if (appState.currentChildIndex >= appState.children.length) appState.currentChildIndex = 0;
+      if (appState.currentChildIndex < 0) appState.currentChildIndex = appState.children.length - 1;
     }
     applyChildSwitch();
   }
@@ -673,19 +746,17 @@ avatarEl.addEventListener('mouseleave', () => {
   }
 });
 
-// ========== API DEEPSEEK (исправлена история) ==========
+// ========== API DEEPSEEK (ИСПРАВЛЕНО: формат истории, fearStats, индикатор загрузки) ==========
 async function askDeepSeek(text, isLong = false) {
   if (containsBadWords(text)) return "Мяу! Давай говорить добрые слова!";
   
+  // ИСПРАВЛЕНО: индикатор загрузки
+  const avatar = document.getElementById('avatar');
+  avatar.classList.add('thinking');
+  
   try {
-    // ИСПРАВЛЕНО: теперь берем последние 12 (самые новые)
-    const historyForAPI = (window.conversationHistory || []).slice(-12).map(item => {
-      const isUser = item.includes(`👶 ${window.childName}:`) || item.includes(`👶 гость:`);
-      return {
-        role: isUser ? "user" : "assistant",
-        content: item.replace(/^[^:]+:/, '').trim()
-      };
-    });
+    // ИСПРАВЛЕНО: история в формате {role, content}
+    const historyForAPI = (appState.conversationHistory || []).slice(-12);
     
     const token = localStorage.getItem('userToken');
     const headers = { 'Content-Type': 'application/json' };
@@ -697,16 +768,19 @@ async function askDeepSeek(text, isLong = false) {
       body: JSON.stringify({
         message: text,
         history: historyForAPI,
-        character: currentChar,
+        character: appState.currentChar,
         childName: window.childName,
-        childAge: window.childAge
+        childAge: window.childAge,
+        isLong: isLong,  // ИСПРАВЛЕНО: передача isLong
+        fearStats: appState.fearStats || {}  // ИСПРАВЛЕНО: передача fearStats
       })
     });
     
     const data = await res.json();
     if (data.detectedFear) updateFear(data.detectedFear);
     
-    let story = data.reply || data.story;
+    // ИСПРАВЛЕНО: только reply, без story
+    let story = data.reply;
     const badPatterns = ['Люцик 31', 'Люцик 02', 'ошибка', 'error', 'Error', 'undefined', 'null', 'NaN'];
     
     if (!story || badPatterns.some(p => story.includes(p)) || story.length < 2) {
@@ -717,7 +791,7 @@ async function askDeepSeek(text, isLong = false) {
         kid1: "Ой, я задумался! Давай ещё разок?",
         kid2: "Я задумалась... Давай ещё раз?"
       };
-      story = clientFallbacks[currentChar] || clientFallbacks.lucik;
+      story = clientFallbacks[appState.currentChar] || clientFallbacks.lucik;
     }
     return story;
   } catch(e) {
@@ -729,7 +803,9 @@ async function askDeepSeek(text, isLong = false) {
       kid1: "Ой, давай ещё раз!",
       kid2: "Давай ещё раз?"
     };
-    return catchFallbacks[currentChar] || catchFallbacks.lucik;
+    return catchFallbacks[appState.currentChar] || catchFallbacks.lucik;
+  } finally {
+    avatar.classList.remove('thinking');
   }
 }
 
@@ -738,15 +814,23 @@ document.addEventListener('touchstart', unlockAudio, { once: true });
 document.addEventListener('click', unlockAudio, { once: true });
 document.getElementById('micBtn').addEventListener('click', unlockAudio, { once: true });
 
-// ========== ИГРЫ (все реализованы) ==========
-let gameActive = false, gameInterval = null, gameTimerInterval = null;
+// ========== ИГРЫ ==========
 
-function startFishGame() {
-  if (gameActive) return;
-  gameActive = true;
-  sendAnalytics('game_fish');
+// ИСПРАВЛЕНО: Рыбалка с уровнями и очисткой интервалов
+function startFishGame(level = 1) {
+  if (appState.gameActive) return;
+  appState.gameActive = true;
   
-  let score = 0, timeLeft = 30;
+  const config = {
+    1: { fishCount: 10, time: 30 },
+    2: { fishCount: 20, time: 30 },
+    3: { fishCount: 30, time: 30 }
+  };
+  const { fishCount, time } = config[level] || config[1];
+  
+  sendAnalytics('game_fish', { level });
+  
+  let score = 0, timeLeft = time;
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:space-between;';
   
@@ -762,17 +846,21 @@ function startFishGame() {
   
   const scoreDisplay = document.createElement('div');
   scoreDisplay.style.cssText = 'color:white; font-size:24px; margin-bottom:10px;';
-  scoreDisplay.innerText = `🐟 Счёт: 0 | ⏱️ Осталось: ${timeLeft} сек`;
+  scoreDisplay.innerText = `🐟 Счёт: 0/${fishCount} | ⏱️ Осталось: ${timeLeft} сек`;
   
   const closeBtn = document.createElement('button');
   closeBtn.innerText = 'Закрыть';
   closeBtn.style.cssText = 'padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-  closeBtn.onclick = () => {
-    clearInterval(gameInterval);
-    clearInterval(gameTimerInterval);
+  
+  // ИСПРАВЛЕНО: очистка интервалов при закрытии
+  function cleanupGame() {
+    clearInterval(appState.gameInterval);
+    clearInterval(appState.gameTimerInterval);
+    appState.gameActive = false;
     container.remove();
-    gameActive = false;
-  };
+  }
+  
+  closeBtn.onclick = cleanupGame;
   
   bottomBar.appendChild(scoreDisplay);
   bottomBar.appendChild(closeBtn);
@@ -791,60 +879,64 @@ function startFishGame() {
   }
   
   fish.onclick = () => {
-    if (!gameActive) return;
+    if (!appState.gameActive) return;
     score++;
-    window.fishScore++;
-    if (currentChildIndex !== GUEST_INDEX) {
-      localStorage.setItem(`fishScore_${currentChildIndex}`, window.fishScore);
+    appState.fishScore++;
+    if (appState.currentChildIndex !== GUEST_INDEX) {
+      localStorage.setItem(`fishScore_${appState.currentChildIndex}`, appState.fishScore);
     }
     updateAchievement('fish_catcher', 1);
-    scoreDisplay.innerText = `🐟 Счёт: ${score} | ⏱️ Осталось: ${timeLeft} сек`;
+    scoreDisplay.innerText = `🐟 Счёт: ${score}/${fishCount} | ⏱️ Осталось: ${timeLeft} сек`;
     moveFish();
     playSound('click');
-    window.hunger = Math.min(100, window.hunger + 3);
-    window.mood = Math.min(100, window.mood + 3);
+    appState.hunger = Math.min(100, appState.hunger + 3);
+    appState.mood = Math.min(100, appState.mood + 3);
     updateStatsUI();
+    
+    if (score >= fishCount) {
+      cleanupGame();
+      speak(`Ура! Ты поймал всех рыбок! Уровень ${level} пройден!`);
+      sendAnalytics('game_fish_complete', { score, level });
+    }
   };
   
   moveFish();
   
-  // ИСПРАВЛЕНО: интервалы создаются отдельно
-  gameInterval = setInterval(() => {
-    if (gameActive) moveFish();
+  appState.gameInterval = setInterval(() => {
+    if (appState.gameActive) moveFish();
   }, 1500);
   
-  gameTimerInterval = setInterval(() => {
-    if (!gameActive) return;
+  appState.gameTimerInterval = setInterval(() => {
+    if (!appState.gameActive) return;
     timeLeft--;
     if (timeLeft <= 0) {
-      clearInterval(gameTimerInterval);
-      clearInterval(gameInterval);
-      gameActive = false;
+      clearInterval(appState.gameTimerInterval);
+      clearInterval(appState.gameInterval);
+      appState.gameActive = false;
       scoreDisplay.innerText = `🎉 Ты поймал ${score} рыбок! 🎉`;
       fish.style.display = 'none';
       speak(`Игра окончена! Ты поймал ${score} рыбок!`);
-      sendAnalytics('game_fish', { score: score });
+      sendAnalytics('game_fish_end', { score, level });
     } else {
-      scoreDisplay.innerText = `🐟 Счёт: ${score} | ⏱️ Осталось: ${timeLeft} сек`;
+      scoreDisplay.innerText = `🐟 Счёт: ${score}/${fishCount} | ⏱️ Осталось: ${timeLeft} сек`;
     }
   }, 1000);
 }
 
-// ========== МЕМОРИ ==========
-let memoryCards = [], memoryFlipped = [], memoryLocked = false, memoryMatches = 0;
-
+// ИСПРАВЛЕНО: Мемори со сбросом состояния
 function startMemoryGame() {
   sendAnalytics('game_memory');
   const emojis = ['😊','😢','😨','😡','😴','😍'];
-  memoryCards = [...emojis, ...emojis];
+  appState.memoryCards = [...emojis, ...emojis];
   
-  for (let i = memoryCards.length - 1; i > 0; i--) {
+  for (let i = appState.memoryCards.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [memoryCards[i], memoryCards[j]] = [memoryCards[j], memoryCards[i]];
+    [appState.memoryCards[i], appState.memoryCards[j]] = [appState.memoryCards[j], appState.memoryCards[i]];
   }
   
-  memoryFlipped = new Array(memoryCards.length).fill(false);
-  memoryMatches = 0;
+  appState.memoryFlipped = new Array(appState.memoryCards.length).fill(false);
+  appState.memoryMatches = 0;
+  appState.memoryLocked = false;
   
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
@@ -857,7 +949,7 @@ function startMemoryGame() {
   board.style.cssText = 'display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; max-width:400px; width:90%; margin:0 auto;';
   
   const cards = [];
-  for (let i = 0; i < memoryCards.length; i++) {
+  for (let i = 0; i < appState.memoryCards.length; i++) {
     const card = document.createElement('div');
     card.style.cssText = 'aspect-ratio:1; background:#4a4a6a; border-radius:15px; display:flex; align-items:center; justify-content:center; font-size:40px; cursor:pointer; transition:0.3s;';
     card.dataset.index = i;
@@ -868,12 +960,15 @@ function startMemoryGame() {
   
   const scoreDisplay = document.createElement('div');
   scoreDisplay.style.cssText = 'color:white; margin-top:20px; font-size:20px;';
-  scoreDisplay.textContent = `Найдено пар: ${memoryMatches} / 6`;
+  scoreDisplay.textContent = `Найдено пар: ${appState.memoryMatches} / 6`;
   
   const closeBtn = document.createElement('button');
   closeBtn.textContent = 'Закрыть';
   closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
-  closeBtn.onclick = () => container.remove();
+  closeBtn.onclick = () => {
+    appState.memoryLocked = false; // ИСПРАВЛЕНО: сброс блокировки
+    container.remove();
+  };
   
   container.appendChild(title);
   container.appendChild(board);
@@ -884,22 +979,22 @@ function startMemoryGame() {
   let firstIndex = null, firstCard = null;
   
   function flipCard(idx, card) {
-    if (memoryLocked || memoryFlipped[idx]) return;
-    memoryFlipped[idx] = true;
-    card.textContent = memoryCards[idx];
+    if (appState.memoryLocked || appState.memoryFlipped[idx]) return;
+    appState.memoryFlipped[idx] = true;
+    card.textContent = appState.memoryCards[idx];
     card.style.background = '#6c6caa';
     
     if (firstIndex === null) {
       firstIndex = idx;
       firstCard = card;
     } else {
-      if (memoryCards[firstIndex] === memoryCards[idx]) {
-        memoryMatches++;
-        scoreDisplay.textContent = `Найдено пар: ${memoryMatches} / 6`;
+      if (appState.memoryCards[firstIndex] === appState.memoryCards[idx]) {
+        appState.memoryMatches++;
+        scoreDisplay.textContent = `Найдено пар: ${appState.memoryMatches} / 6`;
         firstIndex = null;
         firstCard = null;
         playSound('success');
-        if (memoryMatches === 6) {
+        if (appState.memoryMatches === 6) {
           updateAchievement('memory_champion');
           setTimeout(() => {
             alert('🎉 Ты нашёл все пары!');
@@ -908,24 +1003,23 @@ function startMemoryGame() {
           }, 500);
         }
       } else {
-        memoryLocked = true;
+        appState.memoryLocked = true;
         setTimeout(() => {
-          memoryFlipped[firstIndex] = false;
-          memoryFlipped[idx] = false;
+          appState.memoryFlipped[firstIndex] = false;
+          appState.memoryFlipped[idx] = false;
           firstCard.textContent = '?';
           card.textContent = '?';
           firstCard.style.background = '#4a4a6a';
           card.style.background = '#4a4a6a';
           firstIndex = null;
           firstCard = null;
-          memoryLocked = false;
+          appState.memoryLocked = false;
         }, 1000);
       }
     }
   }
 }
-
-// ========== ПАЗЛ (реализован) ==========
+  // ========== ПАЗЛ ==========
 function startPuzzleGame() {
   sendAnalytics('game_puzzle');
   
@@ -978,7 +1072,7 @@ function startPuzzleGame() {
   document.body.appendChild(container);
 }
 
-// ========== РАСКРАСКА (реализована) ==========
+// ========== РАСКРАСКА ==========
 function startColoringGame() {
   sendAnalytics('game_coloring');
   
@@ -999,7 +1093,6 @@ function startColoringGame() {
   ctx.fillRect(0, 0, 300, 300);
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 3;
-  // Рисуем контур кота
   ctx.beginPath(); ctx.arc(150, 150, 80, 0, Math.PI*2); ctx.stroke();
   ctx.beginPath(); ctx.arc(110, 120, 15, 0, Math.PI*2); ctx.stroke();
   ctx.beginPath(); ctx.arc(190, 120, 15, 0, Math.PI*2); ctx.stroke();
@@ -1066,7 +1159,7 @@ function startColoringGame() {
   document.body.appendChild(container);
 }
 
-// ========== ЭМОЦИИ (реализованы) ==========
+// ========== ЭМОЦИИ ==========
 function startEmotionGame() {
   sendAnalytics('game_emotion');
   
@@ -1173,7 +1266,7 @@ function showGameMenu() {
   `;
   document.body.appendChild(modal);
   
-  document.getElementById('gf').onclick = () => { modal.remove(); startFishGame(); updateAchievement('game_master'); };
+  document.getElementById('gf').onclick = () => { modal.remove(); startFishGame(1); updateAchievement('game_master'); };
   document.getElementById('gm').onclick = () => { modal.remove(); startMemoryGame(); updateAchievement('game_master'); };
   document.getElementById('gp').onclick = () => { modal.remove(); startPuzzleGame(); updateAchievement('game_master'); };
   document.getElementById('gc').onclick = () => { modal.remove(); startColoringGame(); updateAchievement('game_master'); };
@@ -1195,21 +1288,21 @@ function showRoomMenu() {
   document.getElementById('cr').onclick = () => {
     modal.remove();
     sendAnalytics('room_clean');
-    window.energy = Math.min(100, window.energy + 10);
-    window.mood = Math.min(100, window.mood + 5);
-    if (currentChildIndex !== GUEST_INDEX) {
-      localStorage.setItem(`lucik_energy_${currentChildIndex}`, window.energy);
-      localStorage.setItem(`lucik_mood_${currentChildIndex}`, window.mood);
+    appState.energy = Math.min(100, appState.energy + 10);
+    appState.mood = Math.min(100, appState.mood + 5);
+    if (appState.currentChildIndex !== GUEST_INDEX) {
+      localStorage.setItem(`lucik_energy_${appState.currentChildIndex}`, appState.energy);
+      localStorage.setItem(`lucik_mood_${appState.currentChildIndex}`, appState.mood);
     }
     updateStatsUI();
     speak("Мурр! Чисто!");
     playSound('purr');
-    saveHistory('🧸 Уборка');
+    saveHistory('assistant', 'Мурр! Чисто!'); // ИСПРАВЛЕНО: формат saveHistory
   };
   
   document.getElementById('du').onclick = () => {
     modal.remove();
-    if (!isPremium) {
+    if (!appState.isPremium) {
       alert('🌟 Оформите подписку!');
       return;
     }
@@ -1222,15 +1315,15 @@ function showRoomMenu() {
 // ========== КНОПКИ ДЕЙСТВИЙ ==========
 document.getElementById('feedBtn').onclick = () => {
   sendAnalytics('feed');
-  window.hunger = Math.min(100, window.hunger + 15);
-  window.mood = Math.min(100, window.mood + 5);
-  if (currentChildIndex !== GUEST_INDEX) {
-    localStorage.setItem(`lucik_mood_${currentChildIndex}`, window.mood);
-    localStorage.setItem(`lucik_hunger_${currentChildIndex}`, window.hunger);
+  appState.hunger = Math.min(100, appState.hunger + 15);
+  appState.mood = Math.min(100, appState.mood + 5);
+  if (appState.currentChildIndex !== GUEST_INDEX) {
+    localStorage.setItem(`lucik_mood_${appState.currentChildIndex}`, appState.mood);
+    localStorage.setItem(`lucik_hunger_${appState.currentChildIndex}`, appState.hunger);
   }
   updateStatsUI();
   playSound('eat');
-  saveHistory('🍎 Покормил');
+  saveHistory('user', '🍎 Покормил'); // ИСПРАВЛЕНО: формат saveHistory
 };
 
 document.getElementById('gamesBtn').onclick = () => showGameMenu();
@@ -1242,8 +1335,7 @@ function containsBadWords(t) {
   return t && badWords.some(w => t.toLowerCase().includes(w));
 }
 
-// ========== МИКРОФОН (исправлены опечатки) ==========
-let isListening = false, isWaiting = false;
+// ========== МИКРОФОН ==========
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
 if (SpeechRec) {
@@ -1257,12 +1349,12 @@ document.getElementById('micBtn').onclick = () => {
     speak("Голос не поддерживается");
     return;
   }
-  if (isListening) return;
-  if (isWaiting) {
+  if (appState.isListening) return;
+  if (appState.isWaiting) {
     speak("Подожди...");
     return;
   }
-  isListening = true;
+  appState.isListening = true;
   document.getElementById('micBtn').classList.add('recording');
   document.getElementById('avatar').classList.add('listening');
   rec.start();
@@ -1274,64 +1366,66 @@ if (rec) {
     const text = e.results[0][0].transcript;
     document.getElementById('micBtn').classList.remove('recording');
     document.getElementById('avatar').classList.remove('listening');
-    isListening = false;
+    appState.isListening = false;
     const lowerText = text.toLowerCase();
-    saveHistory(`👶 ${window.childName}: ${text}`);
+    
+    // ИСПРАВЛЕНО: формат saveHistory
+    saveHistory('user', text);
     updateAchievement('first_talk');
     
     // Перехват: гость находит свое имя
-    if (currentChildIndex === GUEST_INDEX) {
-      const foundIndex = children.findIndex(child => lowerText.includes(child.name.toLowerCase()));
+    if (appState.currentChildIndex === GUEST_INDEX) {
+      const foundIndex = appState.children.findIndex(child => lowerText.includes(child.name.toLowerCase()));
       if (foundIndex >= 0) {
         saveChildData(GUEST_INDEX);
-        currentChildIndex = foundIndex;
-        const child = children[foundIndex];
+        appState.currentChildIndex = foundIndex;
+        const child = appState.children[foundIndex];
         window.childName = child.name;
         window.childAge = child.age;
-        localStorage.setItem('currentChildIndex', currentChildIndex);
+        localStorage.setItem('currentChildIndex', appState.currentChildIndex);
         localStorage.setItem('childName', window.childName);
         localStorage.setItem('childAge', window.childAge);
-        loadChildData(currentChildIndex);
+        loadChildData(appState.currentChildIndex);
         setAvatarByGender();
         updateChildNameLabel();
         updateStatsUI();
         updateAvatarLock();
         updateAvatarLabel();
         const answer = `${window.childName}! Точно, как я мог перепутать? Мурр... Привет, ${window.childName}! Как у тебя дела?`;
-        saveHistory(`🦁 Люцик: ${answer}`);
+        saveHistory('assistant', answer);
         speak(answer);
         return;
       }
     }
     
     // Перехват: «Я не Маша, я Саша»
-    if (currentChildIndex >= 0) {
+    if (appState.currentChildIndex >= 0) {
       const switchMatch = lowerText.match(/я не (\w+)[,\s]*я (\w+)/i);
       if (switchMatch) {
         const newName = switchMatch[2].toLowerCase();
-        const foundIndex = children.findIndex(child => child.name.toLowerCase() === newName);
-        if (foundIndex >= 0 && foundIndex !== currentChildIndex) {
-          saveChildData(currentChildIndex);
-          currentChildIndex = foundIndex;
-          const child = children[foundIndex];
+        const foundIndex = appState.children.findIndex(child => child.name.toLowerCase() === newName);
+        if (foundIndex >= 0 && foundIndex !== appState.currentChildIndex) {
+          saveChildData(appState.currentChildIndex);
+          appState.currentChildIndex = foundIndex;
+          const child = appState.children[foundIndex];
           window.childName = child.name;
           window.childAge = child.age;
-          localStorage.setItem('currentChildIndex', currentChildIndex);
+          localStorage.setItem('currentChildIndex', appState.currentChildIndex);
           localStorage.setItem('childName', window.childName);
           localStorage.setItem('childAge', window.childAge);
-          loadChildData(currentChildIndex);
+          loadChildData(appState.currentChildIndex);
           setAvatarByGender();
           updateChildNameLabel();
           updateStatsUI();
           const answer = `Ой, ${window.childName}, прости! Я перепутал. Так о чём мы говорили?`;
-          saveHistory(`🦁 Люцик: ${answer}`);
+          saveHistory('assistant', answer);
           speak(answer);
           return;
         }
       }
     }
     
-    // Детекция страхов (исправлено: везде lowerText)
+    // Детекция страхов
     if (lowerText.includes('темнот')) updateFear('темноты');
     else if (lowerText.includes('врач')) updateFear('врачей');
     else if (lowerText.includes('один') || lowerText.includes('одна')) updateFear('одиночества');
@@ -1339,23 +1433,25 @@ if (rec) {
     else if (lowerText.includes('нов') && (lowerText.includes('боюсь') || lowerText.includes('страш'))) updateFear('нового');
     else if (lowerText.includes('собака') || lowerText.includes('кошка') || lowerText.includes('животн')) updateFear('животных');
     
-    isWaiting = true;
+    appState.isWaiting = true;
     const answer = await askDeepSeek(text, false);
-    isWaiting = false;
-    saveHistory(`🦁 ${characters[currentChar].name}: ${answer}`);
+    appState.isWaiting = false;
+    
+    // ИСПРАВЛЕНО: формат saveHistory
+    saveHistory('assistant', answer);
     speak(answer);
-    if (currentChar === 'lucik') purr();
+    if (appState.currentChar === 'lucik') purr();
   };
   
   rec.onerror = () => {
     document.getElementById('micBtn').classList.remove('recording');
     document.getElementById('avatar').classList.remove('listening');
-    isListening = false;
+    appState.isListening = false;
     speak("Не расслышал, скажи ещё раз!");
   };
 }
 
-// ========== РОДИТЕЛЬСКАЯ КНОПКА (исправлен PIN) ==========
+// ========== РОДИТЕЛЬСКАЯ КНОПКА (ИСПРАВЛЕНО: SHA-256 PIN) ==========
 document.getElementById('parentBtn').onclick = async () => {
   if (!savedPin) {
     const pin = prompt('Создайте пароль (4-6 цифр):');
