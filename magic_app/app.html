@@ -1,961 +1,1397 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Герой Сказок — Люцик</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦁</text></svg>">
-    <style>
-        * { user-select: none; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body { margin: 0; min-height: 100vh; font-family: 'Segoe UI', 'Comic Neue', system-ui, sans-serif; color: #3a2a1a; background-image: url('app-bg.png'); background-size: cover; background-position: center; background-attachment: fixed; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        body.night { background-image: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url('app-bg.png'); background-size: cover; background-position: center; background-attachment: fixed; }
-        
-        .app-container { max-width: 500px; width: 100%; min-height: 85vh; display: flex; flex-direction: column; justify-content: space-between; }
-        
-        .child-name-label { text-align: center; font-size: 14px; font-weight: bold; color: #3a2a1a; margin-bottom: 5px; opacity: 0.7; }
-        body.night .child-name-label { color: #f0e6d0; opacity: 0.5; }
-        
-        .stats { display: flex; justify-content: space-around; background: rgba(0,0,0,0.25); backdrop-filter: blur(8px); padding: 12px 16px; border-radius: 60px; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-        .stat { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: bold; color: #3a2a1a; background: rgba(255,255,255,0.3); padding: 5px 12px; border-radius: 40px; }
-        body.night .stat { color: #f0e6d0; background: rgba(0,0,0,0.5); }
-        .stat-bar { width: 60px; height: 8px; background: rgba(0,0,0,0.25); border-radius: 10px; overflow: hidden; }
-        .stat-fill { height: 100%; border-radius: 10px; transition: width 0.3s ease; }
-        #moodFill { background: #ff9f4a; } #hungerFill { background: #4CAF50; } #energyFill { background: #00d2ff; } #braveryFill { background: #ffd700; }
-        
-        .avatar-container { display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 20px 0; position: relative; }
-        .avatar-label { font-size: 11px; opacity: 0.6; margin-top: 8px; text-align: center; color: #3a2a1a; }
-        body.night .avatar-label { color: #f0e6d0; opacity: 0.5; }
-        
-        .avatar { width: 220px; height: 220px; background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; transition: 0.2s; animation: blink 4s infinite; }
-        @keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
-        .avatar.premium-locked { filter: grayscale(0.7); opacity: 0.6; }
-        .avatar.talking { animation: pulse 0.5s infinite, blink 4s infinite; filter: drop-shadow(0 0 15px #00d2ff); }
-        .avatar.listening { animation: pulse 1s infinite, blink 4s infinite; filter: drop-shadow(0 0 15px #4CAF50); }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        
-        .lock-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; background: rgba(0,0,0,0.6); border-radius: 50%; padding: 10px; pointer-events: none; }
-        
-        .child-select-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); backdrop-filter: blur(12px); border-radius: 40px; padding: 24px; z-index: 3000; min-width: 250px; text-align: center; color: white; border: 1px solid rgba(255,255,255,0.2); }
-        .child-select-menu button { display: block; width: 100%; margin: 8px 0; padding: 12px 20px; border-radius: 60px; border: none; font-size: 18px; cursor: pointer; color: white; }
-        .child-select-menu .active-child { background: #8bc34a; color: #1a3a2a; font-weight: bold; }
-        .child-select-menu .inactive-child { background: rgba(255,255,255,0.15); }
-        .child-select-menu .close-btn { background: #ff4081; }
-        
-        .action-buttons { display: flex; justify-content: center; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
-        .action-btn { background: rgba(255,255,255,0.35); backdrop-filter: blur(4px); border: none; border-radius: 60px; padding: 12px 20px; min-width: 70px; font-size: 28px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .action-btn:active { transform: scale(0.96); }
-        body.night .action-btn { background: rgba(0,0,0,0.5); }
-        
-        .mic-container { display: flex; justify-content: center; margin: 15px 0; }
-        .mic-btn { width: 100px; height: 100px; background: #ff4081; border: none; border-radius: 50%; font-size: 52px; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.2); transition: 0.2s; }
-        .mic-btn:active { transform: scale(0.95); }
-        .mic-btn.recording { background: #4CAF50; animation: pulse 1s infinite; }
-        
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); backdrop-filter: blur(12px); border-radius: 40px; padding: 24px; z-index: 2000; min-width: 280px; max-width: 95%; max-height: 85%; overflow-y: auto; text-align: center; color: white; border: 1px solid rgba(255,255,255,0.2); }
-        .modal button { margin: 8px; padding: 12px 20px; min-width: 70px; min-height: 48px; font-size: 18px; border-radius: 60px; border: none; cursor: pointer; touch-action: manipulation; }
-        .modal .close-btn { background: #ff4081; color: white; }
-        
-        .parent-btn { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); padding: 8px 16px; border-radius: 30px; cursor: pointer; z-index: 100; color: white; font-size: 14px; }
-        
-        @keyframes achievementPop { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 80% { transform: translate(-50%, -50%) scale(1.1); } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
-        
-        @media (max-width: 480px) { body { padding: 12px; } .avatar { width: 180px; height: 180px; } .action-btn { padding: 10px 16px; min-width: 60px; font-size: 24px; } .mic-btn { width: 80px; height: 80px; font-size: 44px; } .stat-bar { width: 45px; } .stat { font-size: 12px; padding: 3px 10px; } .modal button { padding: 10px 16px; font-size: 16px; } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Герой Сказок — Люцик</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦁</text></svg>">
+<style>
+* { user-select: none; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh;
+  font-family: 'Segoe UI', 'Comic Neue', system-ui, sans-serif;
+  color: #3a2a1a;
+  background-image: url('app-bg.png');
+  background-size: cover; background-position: center; background-attachment: fixed;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px;
+}
+body.night {
+  background-image: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url('app-bg.png');
+  background-size: cover; background-position: center; background-attachment: fixed;
+}
+.app-container { max-width: 500px; width: 100%; min-height: 85vh; display: flex; flex-direction: column; justify-content: space-between; }
+.child-name-label { text-align: center; font-size: 14px; font-weight: bold; color: #3a2a1a; margin-bottom: 5px; opacity: 0.7; }
+body.night .child-name-label { color: #f0e6d0; opacity: 0.5; }
+.stats { display: flex; justify-content: space-around; background: rgba(0,0,0,0.25); backdrop-filter: blur(8px); padding: 12px 16px; border-radius: 60px; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.stat { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: bold; color: #3a2a1a; background: rgba(255,255,255,0.3); padding: 5px 12px; border-radius: 40px; }
+body.night .stat { color: #f0e6d0; background: rgba(0,0,0,0.5); }
+.stat-bar { width: 60px; height: 8px; background: rgba(0,0,0,0.25); border-radius: 10px; overflow: hidden; }
+.stat-fill { height: 100%; border-radius: 10px; transition: width 0.3s ease; }
+#moodFill { background: #ff9f4a; } #hungerFill { background: #4CAF50; } #energyFill { background: #00d2ff; } #braveryFill { background: #ffd700; }
+.avatar-container { display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 20px 0; position: relative; }
+.avatar-label { font-size: 11px; opacity: 0.6; margin-top: 8px; text-align: center; color: #3a2a1a; }
+body.night .avatar-label { color: #f0e6d0; opacity: 0.5; }
+.avatar { width: 220px; height: 220px; background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; transition: 0.2s; animation: blink 4s infinite; }
+@keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+.avatar.premium-locked { filter: grayscale(0.7); opacity: 0.6; }
+.avatar.talking { animation: pulse 0.5s infinite, blink 4s infinite; filter: drop-shadow(0 0 15px #00d2ff); }
+.avatar.listening { animation: pulse 1s infinite, blink 4s infinite; filter: drop-shadow(0 0 15px #4CAF50); }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+.lock-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; background: rgba(0,0,0,0.6); border-radius: 50%; padding: 10px; pointer-events: none; }
+.child-select-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); backdrop-filter: blur(12px); border-radius: 40px; padding: 24px; z-index: 3000; min-width: 250px; text-align: center; color: white; border: 1px solid rgba(255,255,255,0.2); }
+.child-select-menu button { display: block; width: 100%; margin: 8px 0; padding: 12px 20px; border-radius: 60px; border: none; font-size: 18px; cursor: pointer; color: white; }
+.child-select-menu .active-child { background: #8bc34a; color: #1a3a2a; font-weight: bold; }
+.child-select-menu .inactive-child { background: rgba(255,255,255,0.15); }
+.child-select-menu .close-btn { background: #ff4081; }
+.action-buttons { display: flex; justify-content: center; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
+.action-btn { background: rgba(255,255,255,0.35); backdrop-filter: blur(4px); border: none; border-radius: 60px; padding: 12px 20px; min-width: 70px; font-size: 28px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.action-btn:active { transform: scale(0.96); }
+body.night .action-btn { background: rgba(0,0,0,0.5); }
+.mic-container { display: flex; justify-content: center; margin: 15px 0; }
+.mic-btn { width: 100px; height: 100px; background: #ff4081; border: none; border-radius: 50%; font-size: 52px; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.2); transition: 0.2s; }
+.mic-btn:active { transform: scale(0.95); }
+.mic-btn.recording { background: #4CAF50; animation: pulse 1s infinite; }
+.modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); backdrop-filter: blur(12px); border-radius: 40px; padding: 24px; z-index: 2000; min-width: 280px; max-width: 95%; max-height: 85%; overflow-y: auto; text-align: center; color: white; border: 1px solid rgba(255,255,255,0.2); }
+.modal button { margin: 8px; padding: 12px 20px; min-width: 70px; min-height: 48px; font-size: 18px; border-radius: 60px; border: none; cursor: pointer; touch-action: manipulation; }
+.modal .close-btn { background: #ff4081; color: white; }
+.parent-btn { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); padding: 8px 16px; border-radius: 30px; cursor: pointer; z-index: 100; color: white; font-size: 14px; }
+@keyframes achievementPop { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 80% { transform: translate(-50%, -50%) scale(1.1); } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+@media (max-width: 480px) {
+  body { padding: 12px; }
+  .avatar { width: 180px; height: 180px; }
+  .action-btn { padding: 10px 16px; min-width: 60px; font-size: 24px; }
+  .mic-btn { width: 80px; height: 80px; font-size: 44px; }
+  .stat-bar { width: 45px; }
+  .stat { font-size: 12px; padding: 3px 10px; }
+  .modal button { padding: 10px 16px; font-size: 16px; }
+}
+</style>
 </head>
 <body>
-    <div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
+<div class="parent-btn" id="parentBtn">⚙️ Родителям</div>
+<div class="app-container">
+  <div class="child-name-label" id="childNameLabel">👶 Загрузка...</div>
+  <div class="stats">
+    <div class="stat">😊 <div class="stat-bar"><div class="stat-fill" id="moodFill" style="width: 70%"></div></div></div>
+    <div class="stat">🍽️ <div class="stat-bar"><div class="stat-fill" id="hungerFill" style="width: 60%"></div></div></div>
+    <div class="stat">⚡ <div class="stat-bar"><div class="stat-fill" id="energyFill" style="width: 50%"></div></div></div>
+    <div class="stat">⭐ <div class="stat-bar"><div class="stat-fill" id="braveryFill" style="width: 0%"></div></div></div>
+  </div>
+  <div class="avatar-container" id="avatarContainer">
+    <div class="avatar" id="avatar" style="background-image: url('avatar.png');"></div>
+    <div id="lockOverlay" class="lock-overlay" style="display:none;">🔒</div>
+    <div class="avatar-label" id="avatarLabel">🖼️ Образец аватара</div>
+  </div>
+  <div class="action-buttons">
+    <button class="action-btn" id="feedBtn">🍎</button>
+    <button class="action-btn" id="gamesBtn">🎮</button>
+    <button class="action-btn" id="roomBtn">🏠</button>
+  </div>
+  <div class="mic-container">
+    <button class="mic-btn" id="micBtn">🎤</button>
+  </div>
+</div>
+<script>
+// ========== БЕЗОПАСНОЕ ХРАНЕНИЕ PIN-кода ==========
+async function hashPin(pin) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin + '_lucik_salt_2024');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function encodePin(pin) {
+  // Временно используем SHA-256 через асинхронный вызов при создании
+  return pin; // Будет заменено на хеш при сохранении
+}
+
+async function verifyPin(inputPin) {
+  const storedHash = localStorage.getItem('parentPinHash');
+  if (!storedHash) return false;
+  const inputHash = await hashPin(inputPin);
+  return inputHash === storedHash;
+}
+
+async function createPin(pin) {
+  const hash = await hashPin(pin);
+  localStorage.setItem('parentPinHash', hash);
+  return hash;
+}
+
+// ========== ДАННЫЕ ДЕТЕЙ ==========
+let children = [];
+let currentChildIndex = 0;
+const GUEST_INDEX = -1;
+
+try {
+  const saved = localStorage.getItem('children');
+  if (saved) children = JSON.parse(saved);
+  currentChildIndex = parseInt(localStorage.getItem('currentChildIndex') || '0');
+  if (currentChildIndex >= children.length) currentChildIndex = 0;
+} catch {
+  children = [];
+}
+
+if (children.length === 0) {
+  const oldName = localStorage.getItem('childName') || 'малыш';
+  const oldAge = parseInt(localStorage.getItem('childAge') || '5');
+  children = [{ name: oldName, age: oldAge, gender: 'boy' }];
+  currentChildIndex = 0;
+  localStorage.setItem('children', JSON.stringify(children));
+  localStorage.setItem('currentChildIndex', '0');
+  const oldFear = localStorage.getItem('fearStats'), oldHistory = localStorage.getItem('storyHistory');
+  if (oldFear) localStorage.setItem('fearStats_0', oldFear);
+  if (oldHistory) localStorage.setItem('storyHistory_0', oldHistory);
+}
+
+function getCurrentChild() {
+  if (currentChildIndex === GUEST_INDEX) return { name: 'гость', age: 5, gender: 'unknown' };
+  if (currentChildIndex >= children.length) currentChildIndex = 0;
+  return children[currentChildIndex] || { name: 'малыш', age: 5, gender: 'boy' };
+}
+
+function updateChildNameLabel() {
+  if (currentChildIndex === GUEST_INDEX) {
+    document.getElementById('childNameLabel').textContent = '🐱 Кто здесь?';
+    return;
+  }
+  const child = getCurrentChild();
+  document.getElementById('childNameLabel').textContent = child.name + ', ' + child.age + ' лет';
+}
+
+function updateAvatarLabel() {
+  const label = document.getElementById('avatarLabel');
+  if (currentChildIndex === GUEST_INDEX) {
+    label.innerHTML = '🐱 Гость — назови себя!';
+  } else if (currentChar === 'kid1' || currentChar === 'kid2') {
+    label.innerHTML = '🖼️ Образец аватара<br><small style="opacity:0.7;">🌟 Премиум: загрузка фото</small>';
+  } else if (currentChar === 'mom' || currentChar === 'dad') {
+    label.innerHTML = '🌟 Премиум-аватар';
+  } else {
+    label.innerHTML = '🖼️ Образец аватара';
+  }
+}
+
+function loadChildData(index) {
+  if (index === GUEST_INDEX) {
+    window.fearStats = {"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0};
+    window.conversationHistory = [];
+    window.mood = 70;
+    window.hunger = 60;
+    window.energy = 50;
+    window.bravery = 0;
+    window.fishScore = 0;
+    window.storyCount = 0;
+    return;
+  }
+  const idx = index || 0;
+  window.fearStats = JSON.parse(localStorage.getItem(`fearStats_${idx}`) || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
+  window.conversationHistory = JSON.parse(localStorage.getItem(`storyHistory_${idx}`) || '[]');
+  window.mood = parseInt(localStorage.getItem(`lucik_mood_${idx}`) || '70');
+  window.hunger = parseInt(localStorage.getItem(`lucik_hunger_${idx}`) || '60');
+  window.energy = parseInt(localStorage.getItem(`lucik_energy_${idx}`) || '50');
+  window.bravery = parseInt(localStorage.getItem(`lucik_bravery_${idx}`) || '0');
+  window.fishScore = parseInt(localStorage.getItem(`fishScore_${idx}`) || '0');
+  window.storyCount = parseInt(localStorage.getItem(`storyCount_${idx}`) || '0');
+}
+
+function saveChildData(index) {
+  if (index === GUEST_INDEX) return;
+  const idx = index || 0;
+  localStorage.setItem(`fearStats_${idx}`, JSON.stringify(window.fearStats));
+  localStorage.setItem(`storyHistory_${idx}`, JSON.stringify(window.conversationHistory));
+  localStorage.setItem(`lucik_mood_${idx}`, window.mood);
+  localStorage.setItem(`lucik_hunger_${idx}`, window.hunger);
+  localStorage.setItem(`lucik_energy_${idx}`, window.energy);
+  localStorage.setItem(`lucik_bravery_${idx}`, window.bravery);
+  localStorage.setItem(`fishScore_${idx}`, window.fishScore);
+  localStorage.setItem(`storyCount_${idx}`, window.storyCount);
+}
+
+// ========== СМЕНА РЕБЁНКА ==========
+function applyChildSwitch() {
+  if (currentChildIndex === GUEST_INDEX) {
+    window.childName = 'гость';
+    window.childAge = 5;
+    currentChar = 'lucik';
+    localStorage.setItem('currentCharacter', 'lucik');
+    loadChildData(GUEST_INDEX);
+    document.getElementById('avatar').style.backgroundImage = "url('avatar.png')";
+    updateAvatarLock();
+    updateAvatarLabel();
+    updateChildNameLabel();
+    updateStatsUI();
+    setTimeout(() => speak("Мурр... А ты кто? Давай знакомиться!"), 300);
+  } else {
+    localStorage.setItem('currentChildIndex', currentChildIndex);
+    const child = getCurrentChild();
+    window.childName = child.name;
+    window.childAge = child.age;
+    localStorage.setItem('childName', window.childName);
+    localStorage.setItem('childAge', window.childAge);
+    loadChildData(currentChildIndex);
+    setAvatarByGender();
+    updateChildNameLabel();
+    updateStatsUI();
+    updateAvatarLock();
+    updateAvatarLabel();
+    setTimeout(() => speak(`Привет, ${window.childName}!`), 300);
+  }
+}
+
+function switchChild(index) {
+  if (children.length <= 1 && index !== GUEST_INDEX) return;
+  saveChildData(currentChildIndex);
+  currentChildIndex = index;
+  applyChildSwitch();
+}
+
+function showChildSelectMenu() {
+  if (children.length <= 1) return;
+  const menu = document.createElement('div');
+  menu.className = 'child-select-menu';
+  let btns = '';
+  children.forEach((child, i) => {
+    const cls = (i === currentChildIndex) ? 'active-child' : 'inactive-child';
+    const icon = child.gender === 'girl' ? '👧' : '👦';
+    btns += `<button class="${cls}" data-index="${i}">${icon} ${child.name}, ${child.age} лет</button>`;
+  });
+  const guestCls = (currentChildIndex === GUEST_INDEX) ? 'active-child' : 'inactive-child';
+  btns += `<button class="${guestCls}" data-index="-1">🐱 Гость (Люцик)</button>`;
+  menu.innerHTML = `<h3 style="margin-bottom:15px;">Кто играет?</h3>${btns}<button class="close-btn" style="margin-top:10px;">Закрыть</button>`;
+  document.body.appendChild(menu);
+  menu.querySelectorAll('button[data-index]').forEach(btn => {
+    btn.onclick = () => {
+      const idx = parseInt(btn.dataset.index);
+      menu.remove();
+      if (idx !== currentChildIndex) switchChild(idx);
+    };
+  });
+  menu.querySelector('.close-btn').onclick = () => menu.remove();
+}
+
+// ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
+async function checkAuthAndRedirect() {
+  const token = localStorage.getItem('userToken');
+  const guestMode = localStorage.getItem('guestMode') === 'true';
+  if (guestMode) return true;
+  if (!token) {
+    window.location.href = '/';
+    return false;
+  }
+  try {
+    const r = await fetch('/api/verify-token', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    const d = await r.json();
+    if (!d.valid) {
+      localStorage.removeItem('userToken');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('guestMode');
+      window.location.href = '/';
+      return false;
+    }
+    return true;
+  } catch (e) {
+    return true;
+  }
+}
+
+// ========== БЕЗОПАСНАЯ АНАЛИТИКА (без токена) ==========
+function getUserIdFromToken() {
+  const token = localStorage.getItem('userToken');
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.userId || payload.id || payload.sub || null;
+  } catch {
+    return null;
+  }
+}
+
+function sendAnalytics(eventType, eventData = {}) {
+  const userEmail = localStorage.getItem('userEmail');
+  const guestMode = localStorage.getItem('guestMode') === 'true';
+  const userId = guestMode ? 'guest_' + Date.now() : getUserIdFromToken();
+  
+  fetch('/api/analytics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      event_type: eventType,
+      user_id: userId,
+      user_email: userEmail && !userEmail.startsWith('guest_') ? userEmail : null,
+      child_name: window.childName,
+      child_age: window.childAge,
+      event_data: eventData
+    })
+  }).catch(() => {});
+}
+    // ========== ЗВУКИ ==========
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playSound(s) {
+  try {
+    const ctx = initAudio(), o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    const sounds = {
+      'eat': { f: 523.25, d: 0.2, t: 'sine' },
+      'purr': { f: 130.81, d: 0.5, t: 'sine' },
+      'laugh': { f: 659.25, d: 0.15, t: 'square' },
+      'click': { f: 880, d: 0.05, t: 'sine' },
+      'success': { f: 523.25, d: 0.2, t: 'sine' },
+      'fail': { f: 220, d: 0.3, t: 'sawtooth' },
+      'victory': { f: 783.99, d: 0.3, t: 'sine' },
+      'achievement': { f: 1046.50, d: 0.4, t: 'sine' },
+      'paint': { f: 440, d: 0.03, t: 'sine' }
+    };
+    const sound = sounds[s] || sounds['click'];
+    o.type = sound.t; o.frequency.value = sound.f; g.gain.value = 0.25;
+    o.start(); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + sound.d);
+    o.stop(ctx.currentTime + sound.d);
+  } catch(e) {}
+}
+
+// ========== ДОСТИЖЕНИЯ ==========
+function getAchKey() {
+  return `achievements_${currentChildIndex === GUEST_INDEX ? 'guest' : currentChildIndex}`;
+}
+
+function initAchievements() {
+  const k = getAchKey();
+  if (!localStorage.getItem(k)) {
+    const achievements = {
+      'first_talk': { name: '🎤 Первый разговор', desc: 'Первый разговор', earned: false },
+      'brave_kid': { name: '🦁 Храбрый малыш', desc: 'Победил страх', earned: false },
+      'story_lover': { name: '🌙 Сказочник', desc: '10 сказок', earned: false, progress: 0, target: 10 },
+      'game_master': { name: '🎮 Игроман', desc: 'Все игры', earned: false },
+      'fish_catcher': { name: '🐟 Рыболов', desc: '30 рыбок', earned: false, progress: 0, target: 30 },
+      'memory_champion': { name: '🧠 Чемпион', desc: 'Мемори', earned: false },
+      'puzzle_solver': { name: '🧩 Собиратель', desc: 'Пазл', earned: false },
+      'artist': { name: '🎨 Художник', desc: 'Раскраска', earned: false },
+      'emotion_master': { name: '😊 Мастер эмоций', desc: 'Все эмоции', earned: false }
+    };
+    localStorage.setItem(k, JSON.stringify(achievements));
+  }
+}
+
+function updateAchievement(id, p = null) {
+  const k = getAchKey();
+  const a = JSON.parse(localStorage.getItem(k));
+  if (a[id] && !a[id].earned) {
+    if (p !== null) {
+      a[id].progress = (a[id].progress || 0) + p;
+      if (a[id].progress >= a[id].target) {
+        a[id].earned = true;
+        a[id].date = new Date().toISOString();
+        playSound('achievement');
+        showAchievementNotification(a[id].name);
+      }
+    } else {
+      a[id].earned = true;
+      a[id].date = new Date().toISOString();
+      playSound('achievement');
+      showAchievementNotification(a[id].name);
+    }
+    localStorage.setItem(k, JSON.stringify(a));
+  }
+}
+
+function showAchievementNotification(name) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#ffd700,#ff9f4a); color:#3a2a1a; padding:20px 30px; border-radius:60px; z-index:5000; text-align:center; animation:achievementPop 0.5s ease-out; font-weight:bold;';
+  el.innerHTML = `<strong>🏆 НАГРАДА!</strong><br>${name}`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ========== ОСНОВНЫЕ ДАННЫЕ ==========
+let isPremium = localStorage.getItem('isPremium') === 'true';
+const curChild = getCurrentChild();
+window.childName = curChild.name;
+window.childAge = curChild.age;
+let savedPin = localStorage.getItem('parentPinHash');
+loadChildData(currentChildIndex);
+if (window.conversationHistory.length > 50) window.conversationHistory = window.conversationHistory.slice(0, 50);
+
+const characters = {
+  lucik: { name: 'Люцик', icon: 'avatar.png', premium: false },
+  mom: { name: 'Мама', icon: 'mom.png', premium: true },
+  dad: { name: 'Папа', icon: 'dad.png', premium: true },
+  kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: false },
+  kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: false }
+};
+
+let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
+
+function setAvatarByGender() {
+  const child = getCurrentChild();
+  if (currentChildIndex === GUEST_INDEX) {
+    currentChar = 'lucik';
+  } else if (currentChar === 'kid1' || currentChar === 'kid2' || currentChar === 'lucik') {
+    if (child.gender === 'girl') currentChar = 'kid1';
+    else if (child.gender === 'boy') currentChar = 'kid2';
+  }
+  localStorage.setItem('currentCharacter', currentChar);
+  document.getElementById('avatar').style.backgroundImage = `url('${characters[currentChar].icon}')`;
+  updateAvatarLock();
+  updateAvatarLabel();
+}
+
+setAvatarByGender();
+initAchievements();
+updateChildNameLabel();
+sendAnalytics('app_open');
+
+window.addEventListener('beforeunload', () => {
+  saveChildData(currentChildIndex);
+  sendAnalytics('session_end');
+});
+
+function updateStatsUI() {
+  document.getElementById('moodFill').style.width = window.mood + '%';
+  document.getElementById('hungerFill').style.width = window.hunger + '%';
+  document.getElementById('energyFill').style.width = window.energy + '%';
+  document.getElementById('braveryFill').style.width = window.bravery + '%';
+}
+
+function saveHistory(t) {
+  // ИСПРАВЛЕНО: добавляем в конец, а не в начало
+  window.conversationHistory.push(new Date().toLocaleTimeString() + ": " + t);
+  if (window.conversationHistory.length > 50) window.conversationHistory.shift();
+  if (currentChildIndex !== GUEST_INDEX) {
+    localStorage.setItem(`storyHistory_${currentChildIndex}`, JSON.stringify(window.conversationHistory));
+  }
+}
+
+function updateFear(f) {
+  if (currentChildIndex === GUEST_INDEX) return;
+  if (window.fearStats[f] !== undefined) {
+    window.fearStats[f]++;
+    localStorage.setItem(`fearStats_${currentChildIndex}`, JSON.stringify(window.fearStats));
+    window.bravery = Math.min(100, window.bravery + 10);
+    localStorage.setItem(`lucik_bravery_${currentChildIndex}`, window.bravery);
+    updateAchievement('brave_kid');
+    sendAnalytics('fear_detected', { fear: f });
+    updateStatsUI();
+  }
+}
+
+function updateAvatarLock() {
+  const av = document.getElementById('avatar'), lo = document.getElementById('lockOverlay');
+  const locked = characters[currentChar].premium && !isPremium;
+  if (locked) {
+    av.classList.add('premium-locked');
+    lo.style.display = 'flex';
+  } else {
+    av.classList.remove('premium-locked');
+    lo.style.display = 'none';
+  }
+}
+
+// ========== ОЗВУЧКА (исправлен AudioContext) ==========
+let currentAudio = null, isAudioPlaying = false, audioUnlocked = false;
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume().then(() => {
+    audioUnlocked = true;
+    console.log('Аудио разблокировано');
+  }).catch(() => {});
+}
+
+function fallbackSpeak(t) {
+  const cleanText = t.replace(/[*_#]/g, '');
+  const u = new SpeechSynthesisUtterance(cleanText);
+  u.lang = 'ru-RU';
+  u.rate = 0.9;
+  u.onstart = () => document.getElementById('avatar').classList.add('talking');
+  u.onend = () => document.getElementById('avatar').classList.remove('talking');
+  window.speechSynthesis.speak(u);
+}
+
+async function speakWithYandex(txt, voice = 'lucik', emotion = 'good') {
+  return new Promise(async (resolve) => {
+    try {
+      if (!audioUnlocked) {
+        await new Promise(r => setTimeout(r, 500));
+        if (!audioUnlocked) {
+          fallbackSpeak(txt);
+          resolve();
+          return;
+        }
+      }
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+      }
+      const token = localStorage.getItem('userToken');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token && token !== 'null' && token !== 'undefined') {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const resp = await fetch('/api/tts', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ text: txt, voice: voice, emotion: emotion, speed: 1.0 })
+      });
+      const contentType = resp.headers.get('content-type');
+      if (!resp.ok || (contentType && contentType.includes('application/json'))) {
+        const errorData = await resp.json().catch(() => ({}));
+        if (errorData.useFallback) {
+          console.log('TTS fallback triggered');
+          fallbackSpeak(txt);
+          resolve();
+          return;
+        }
+        throw new Error(`TTS error: ${resp.status}`);
+      }
+      const blob = await resp.blob();
+      if (!blob || blob.size < 100) throw new Error('Small audio');
+      const url = URL.createObjectURL(blob);
+      const a = new Audio(url);
+      currentAudio = a;
+      a.onplay = () => {
+        isAudioPlaying = true;
+        document.getElementById('avatar').classList.add('talking');
+      };
+      a.onended = () => {
+        isAudioPlaying = false;
+        document.getElementById('avatar').classList.remove('talking');
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      a.onerror = (err) => {
+        console.error('Audio playback error:', err);
+        isAudioPlaying = false;
+        document.getElementById('avatar').classList.remove('talking');
+        URL.revokeObjectURL(url);
+        fallbackSpeak(txt);
+        resolve();
+      };
+      await a.play();
+    } catch(e) {
+      console.error('TTS exception:', e);
+      fallbackSpeak(txt);
+      resolve();
+    }
+  });
+}
+
+async function speak(t) {
+  const cleanText = t.replace(/[*_#]/g, '');
+  try {
+    await speakWithYandex(cleanText, currentChar, 'good');
+  } catch(e) {
+    fallbackSpeak(cleanText);
+  }
+}
+
+function purr() {
+  if (currentChar !== 'lucik') return;
+  unlockAudio();
+  speakWithYandex("Муррр!", 'lucik', 'friendly').catch(() => {});
+}
+
+function changeCharacter(charId) {
+  if (characters[charId].premium && !isPremium) {
+    alert('🌟 Оформите подписку!');
+    return;
+  }
+  currentChar = charId;
+  document.getElementById('avatar').style.backgroundImage = `url('${characters[charId].icon}')`;
+  localStorage.setItem('currentCharacter', charId);
+  updateAvatarLock();
+  updateAvatarLabel();
+  speak(`Теперь я ${characters[charId].name}!`);
+}
+    // ========== СВАЙП И ДОЛГОЕ НАЖАТИЕ (исправлен конфликт) ==========
+let longPressTimer = null;
+let touchStartX = 0;
+const avatarEl = document.getElementById('avatar');
+
+avatarEl.addEventListener('touchstart', (e) => {
+  longPressTimer = setTimeout(() => {
+    showChildSelectMenu();
+    longPressTimer = null;
+  }, 800);
+  touchStartX = e.changedTouches[0].screenX;
+});
+
+// ЕДИНЫЙ обработчик touchend (было два конфликтующих)
+avatarEl.addEventListener('touchend', (e) => {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+    return;
+  }
+  
+  const diff = e.changedTouches[0].screenX - touchStartX;
+  if (Math.abs(diff) > 50 && children.length >= 1) {
+    saveChildData(currentChildIndex);
+    const direction = diff > 0 ? 1 : -1;
+    if (currentChildIndex === GUEST_INDEX) {
+      currentChildIndex = (direction > 0) ? children.length - 1 : 0;
+    } else {
+      currentChildIndex += direction;
+      if (currentChildIndex >= children.length) currentChildIndex = 0;
+      if (currentChildIndex < 0) currentChildIndex = children.length - 1;
+    }
+    applyChildSwitch();
+  }
+});
+
+avatarEl.addEventListener('touchmove', () => {
+  clearTimeout(longPressTimer);
+  longPressTimer = null;
+});
+
+avatarEl.addEventListener('mousedown', () => {
+  longPressTimer = setTimeout(() => {
+    showChildSelectMenu();
+    longPressTimer = null;
+  }, 800);
+});
+
+avatarEl.addEventListener('mouseup', () => {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+});
+
+avatarEl.addEventListener('mouseleave', () => {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+});
+
+// ========== API DEEPSEEK (исправлена история) ==========
+async function askDeepSeek(text, isLong = false) {
+  if (containsBadWords(text)) return "Мяу! Давай говорить добрые слова!";
+  
+  try {
+    // ИСПРАВЛЕНО: теперь берем последние 12 (самые новые)
+    const historyForAPI = (window.conversationHistory || []).slice(-12).map(item => {
+      const isUser = item.includes(`👶 ${window.childName}:`) || item.includes(`👶 гость:`);
+      return {
+        role: isUser ? "user" : "assistant",
+        content: item.replace(/^[^:]+:/, '').trim()
+      };
+    });
     
-    <div class="app-container">
-        <div class="child-name-label" id="childNameLabel">👶 Загрузка...</div>
-        
-        <div class="stats">
-            <div class="stat">😊 <div class="stat-bar"><div class="stat-fill" id="moodFill" style="width: 70%"></div></div></div>
-            <div class="stat">🍽️ <div class="stat-bar"><div class="stat-fill" id="hungerFill" style="width: 60%"></div></div></div>
-            <div class="stat">⚡ <div class="stat-bar"><div class="stat-fill" id="energyFill" style="width: 50%"></div></div></div>
-            <div class="stat">⭐ <div class="stat-bar"><div class="stat-fill" id="braveryFill" style="width: 0%"></div></div></div>
-        </div>
-        
-        <div class="avatar-container" id="avatarContainer">
-            <div class="avatar" id="avatar" style="background-image: url('avatar.png');"></div>
-            <div id="lockOverlay" class="lock-overlay" style="display: none;">🔒</div>
-            <div class="avatar-label" id="avatarLabel">🖼️ Образец аватара</div>
-        </div>
-        
-        <div class="action-buttons">
-            <button class="action-btn" id="feedBtn">🍎</button>
-            <button class="action-btn" id="gamesBtn">🎮</button>
-            <button class="action-btn" id="roomBtn">🏠</button>
-            <button class="action-btn" id="nightStoryBtn" style="display: none;">🌙</button>
-        </div>
-        
-        <div class="mic-container">
-            <button class="mic-btn" id="micBtn">🎤</button>
-        </div>
+    const token = localStorage.getItem('userToken');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token && token !== 'null') headers['Authorization'] = `Bearer ${token}`;
+    
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        message: text,
+        history: historyForAPI,
+        character: currentChar,
+        childName: window.childName,
+        childAge: window.childAge
+      })
+    });
+    
+    const data = await res.json();
+    if (data.detectedFear) updateFear(data.detectedFear);
+    
+    let story = data.reply || data.story;
+    const badPatterns = ['Люцик 31', 'Люцик 02', 'ошибка', 'error', 'Error', 'undefined', 'null', 'NaN'];
+    
+    if (!story || badPatterns.some(p => story.includes(p)) || story.length < 2) {
+      const clientFallbacks = {
+        lucik: "Мурр... Я немного задумался. Давай ещё раз?",
+        mom: "Ой, задумалась... Давай ещё раз, солнышко?",
+        dad: "Хм, задумался. Повтори?",
+        kid1: "Ой, я задумался! Давай ещё разок?",
+        kid2: "Я задумалась... Давай ещё раз?"
+      };
+      story = clientFallbacks[currentChar] || clientFallbacks.lucik;
+    }
+    return story;
+  } catch(e) {
+    console.error('Ошибка DeepSeek:', e);
+    const catchFallbacks = {
+      lucik: "Мурр... Давай ещё раз?",
+      mom: "Ой, что-то пошло не так. Давай ещё раз, солнышко?",
+      dad: "Хм, повтори ещё раз?",
+      kid1: "Ой, давай ещё раз!",
+      kid2: "Давай ещё раз?"
+    };
+    return catchFallbacks[currentChar] || catchFallbacks.lucik;
+  }
+}
+
+// Разблокировка аудио
+document.addEventListener('touchstart', unlockAudio, { once: true });
+document.addEventListener('click', unlockAudio, { once: true });
+document.getElementById('micBtn').addEventListener('click', unlockAudio, { once: true });
+
+// ========== ИГРЫ (все реализованы) ==========
+let gameActive = false, gameInterval = null, gameTimerInterval = null;
+
+function startFishGame() {
+  if (gameActive) return;
+  gameActive = true;
+  sendAnalytics('game_fish');
+  
+  let score = 0, timeLeft = 30;
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:space-between;';
+  
+  const fishArea = document.createElement('div');
+  fishArea.style.cssText = 'flex:1; position:relative; width:100%;';
+  
+  const fish = document.createElement('div');
+  fish.innerText = '🐟';
+  fish.style.cssText = 'font-size:60px; position:absolute; cursor:pointer;';
+  
+  const bottomBar = document.createElement('div');
+  bottomBar.style.cssText = 'padding:20px; text-align:center; width:100%;';
+  
+  const scoreDisplay = document.createElement('div');
+  scoreDisplay.style.cssText = 'color:white; font-size:24px; margin-bottom:10px;';
+  scoreDisplay.innerText = `🐟 Счёт: 0 | ⏱️ Осталось: ${timeLeft} сек`;
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.innerText = 'Закрыть';
+  closeBtn.style.cssText = 'padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
+  closeBtn.onclick = () => {
+    clearInterval(gameInterval);
+    clearInterval(gameTimerInterval);
+    container.remove();
+    gameActive = false;
+  };
+  
+  bottomBar.appendChild(scoreDisplay);
+  bottomBar.appendChild(closeBtn);
+  fishArea.appendChild(fish);
+  container.appendChild(fishArea);
+  container.appendChild(bottomBar);
+  document.body.appendChild(container);
+  
+  function moveFish() {
+    const maxX = fishArea.clientWidth - 80;
+    const maxY = fishArea.clientHeight - 80;
+    if (maxX > 0 && maxY > 0) {
+      fish.style.left = Math.random() * maxX + 'px';
+      fish.style.top = Math.random() * maxY + 'px';
+    }
+  }
+  
+  fish.onclick = () => {
+    if (!gameActive) return;
+    score++;
+    window.fishScore++;
+    if (currentChildIndex !== GUEST_INDEX) {
+      localStorage.setItem(`fishScore_${currentChildIndex}`, window.fishScore);
+    }
+    updateAchievement('fish_catcher', 1);
+    scoreDisplay.innerText = `🐟 Счёт: ${score} | ⏱️ Осталось: ${timeLeft} сек`;
+    moveFish();
+    playSound('click');
+    window.hunger = Math.min(100, window.hunger + 3);
+    window.mood = Math.min(100, window.mood + 3);
+    updateStatsUI();
+  };
+  
+  moveFish();
+  
+  // ИСПРАВЛЕНО: интервалы создаются отдельно
+  gameInterval = setInterval(() => {
+    if (gameActive) moveFish();
+  }, 1500);
+  
+  gameTimerInterval = setInterval(() => {
+    if (!gameActive) return;
+    timeLeft--;
+    if (timeLeft <= 0) {
+      clearInterval(gameTimerInterval);
+      clearInterval(gameInterval);
+      gameActive = false;
+      scoreDisplay.innerText = `🎉 Ты поймал ${score} рыбок! 🎉`;
+      fish.style.display = 'none';
+      speak(`Игра окончена! Ты поймал ${score} рыбок!`);
+      sendAnalytics('game_fish', { score: score });
+    } else {
+      scoreDisplay.innerText = `🐟 Счёт: ${score} | ⏱️ Осталось: ${timeLeft} сек`;
+    }
+  }, 1000);
+}
+
+// ========== МЕМОРИ ==========
+let memoryCards = [], memoryFlipped = [], memoryLocked = false, memoryMatches = 0;
+
+function startMemoryGame() {
+  sendAnalytics('game_memory');
+  const emojis = ['😊','😢','😨','😡','😴','😍'];
+  memoryCards = [...emojis, ...emojis];
+  
+  for (let i = memoryCards.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [memoryCards[i], memoryCards[j]] = [memoryCards[j], memoryCards[i]];
+  }
+  
+  memoryFlipped = new Array(memoryCards.length).fill(false);
+  memoryMatches = 0;
+  
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
+  
+  const title = document.createElement('h2');
+  title.textContent = '🧠 Найди пару';
+  title.style.cssText = 'color:white; margin-bottom:20px;';
+  
+  const board = document.createElement('div');
+  board.style.cssText = 'display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; max-width:400px; width:90%; margin:0 auto;';
+  
+  const cards = [];
+  for (let i = 0; i < memoryCards.length; i++) {
+    const card = document.createElement('div');
+    card.style.cssText = 'aspect-ratio:1; background:#4a4a6a; border-radius:15px; display:flex; align-items:center; justify-content:center; font-size:40px; cursor:pointer; transition:0.3s;';
+    card.dataset.index = i;
+    card.onclick = () => flipCard(i, card);
+    cards.push(card);
+    board.appendChild(card);
+  }
+  
+  const scoreDisplay = document.createElement('div');
+  scoreDisplay.style.cssText = 'color:white; margin-top:20px; font-size:20px;';
+  scoreDisplay.textContent = `Найдено пар: ${memoryMatches} / 6`;
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Закрыть';
+  closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
+  closeBtn.onclick = () => container.remove();
+  
+  container.appendChild(title);
+  container.appendChild(board);
+  container.appendChild(scoreDisplay);
+  container.appendChild(closeBtn);
+  document.body.appendChild(container);
+  
+  let firstIndex = null, firstCard = null;
+  
+  function flipCard(idx, card) {
+    if (memoryLocked || memoryFlipped[idx]) return;
+    memoryFlipped[idx] = true;
+    card.textContent = memoryCards[idx];
+    card.style.background = '#6c6caa';
+    
+    if (firstIndex === null) {
+      firstIndex = idx;
+      firstCard = card;
+    } else {
+      if (memoryCards[firstIndex] === memoryCards[idx]) {
+        memoryMatches++;
+        scoreDisplay.textContent = `Найдено пар: ${memoryMatches} / 6`;
+        firstIndex = null;
+        firstCard = null;
+        playSound('success');
+        if (memoryMatches === 6) {
+          updateAchievement('memory_champion');
+          setTimeout(() => {
+            alert('🎉 Ты нашёл все пары!');
+            playSound('victory');
+            container.remove();
+          }, 500);
+        }
+      } else {
+        memoryLocked = true;
+        setTimeout(() => {
+          memoryFlipped[firstIndex] = false;
+          memoryFlipped[idx] = false;
+          firstCard.textContent = '?';
+          card.textContent = '?';
+          firstCard.style.background = '#4a4a6a';
+          card.style.background = '#4a4a6a';
+          firstIndex = null;
+          firstCard = null;
+          memoryLocked = false;
+        }, 1000);
+      }
+    }
+  }
+}
+
+// ========== ПАЗЛ (реализован) ==========
+function startPuzzleGame() {
+  sendAnalytics('game_puzzle');
+  
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
+  
+  const title = document.createElement('h2');
+  title.textContent = '🧩 Собери пазл';
+  title.style.cssText = 'color:white; margin-bottom:20px;';
+  
+  const board = document.createElement('div');
+  board.style.cssText = 'display:grid; grid-template-columns:repeat(3, 1fr); gap:5px; max-width:350px; width:90%; margin:0 auto;';
+  
+  const pieces = ['🌟','🌈','🦁','🐱','🎨','🎮','🧩','🍎','🎉'];
+  const shuffled = [...pieces].sort(() => Math.random() - 0.5);
+  const correctOrder = [...pieces];
+  
+  shuffled.forEach((piece, i) => {
+    const cell = document.createElement('div');
+    cell.style.cssText = 'aspect-ratio:1; background:#4a4a6a; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:40px; cursor:pointer;';
+    cell.textContent = piece;
+    cell.onclick = () => {
+      const current = Array.from(board.children).map(c => c.textContent);
+      const idx = current.indexOf(piece);
+      const emptyIdx = current.indexOf('');
+      if (Math.abs(idx - emptyIdx) === 1 || Math.abs(idx - emptyIdx) === 3) {
+        board.children[emptyIdx].textContent = piece;
+        cell.textContent = '';
+        if (JSON.stringify(Array.from(board.children).map(c => c.textContent)) === JSON.stringify(correctOrder)) {
+          updateAchievement('puzzle_solver');
+          setTimeout(() => {
+            alert('🎉 Ты собрал пазл!');
+            playSound('victory');
+            container.remove();
+          }, 500);
+        }
+      }
+    };
+    board.appendChild(cell);
+  });
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Закрыть';
+  closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
+  closeBtn.onclick = () => container.remove();
+  
+  container.appendChild(title);
+  container.appendChild(board);
+  container.appendChild(closeBtn);
+  document.body.appendChild(container);
+}
+
+// ========== РАСКРАСКА (реализована) ==========
+function startColoringGame() {
+  sendAnalytics('game_coloring');
+  
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
+  
+  const title = document.createElement('h2');
+  title.textContent = '🎨 Раскрась Люцика';
+  title.style.cssText = 'color:white; margin-bottom:20px;';
+  
+  const canvas = document.createElement('canvas');
+  canvas.width = 300;
+  canvas.height = 300;
+  canvas.style.cssText = 'background:white; border-radius:15px; cursor:crosshair; max-width:90%;';
+  
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fillRect(0, 0, 300, 300);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 3;
+  // Рисуем контур кота
+  ctx.beginPath(); ctx.arc(150, 150, 80, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(110, 120, 15, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(190, 120, 15, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(130, 160); ctx.lineTo(170, 160); ctx.stroke();
+  
+  let currentColor = '#ff4081';
+  let isDrawing = false;
+  
+  canvas.onmousedown = () => { isDrawing = true; };
+  canvas.onmouseup = () => { isDrawing = false; playSound('paint'); };
+  canvas.onmouseleave = () => { isDrawing = false; };
+  canvas.onmousemove = (e) => {
+    if (!isDrawing) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ctx.fillStyle = currentColor;
+    ctx.beginPath();
+    ctx.arc(x, y, 10, 0, Math.PI*2);
+    ctx.fill();
+  };
+  
+  canvas.ontouchstart = (e) => { e.preventDefault(); isDrawing = true; };
+  canvas.ontouchend = () => { isDrawing = false; playSound('paint'); };
+  canvas.ontouchmove = (e) => {
+    if (!isDrawing) return;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const x = e.touches[0].clientX - rect.left;
+    const y = e.touches[0].clientY - rect.top;
+    ctx.fillStyle = currentColor;
+    ctx.beginPath();
+    ctx.arc(x, y, 10, 0, Math.PI*2);
+    ctx.fill();
+  };
+  
+  const colors = document.createElement('div');
+  colors.style.cssText = 'display:flex; gap:10px; margin:15px 0; flex-wrap:wrap; justify-content:center;';
+  ['#ff4081','#4CAF50','#00d2ff','#ffd700','#9b59b6','#ff9f4a'].forEach(color => {
+    const btn = document.createElement('button');
+    btn.style.cssText = `width:40px; height:40px; border-radius:50%; background:${color}; border:3px solid ${currentColor === color ? 'white' : 'transparent'}; cursor:pointer;`;
+    btn.onclick = () => {
+      currentColor = color;
+      Array.from(colors.children).forEach(b => b.style.border = '3px solid transparent');
+      btn.style.border = '3px solid white';
+    };
+    colors.appendChild(btn);
+  });
+  
+  const doneBtn = document.createElement('button');
+  doneBtn.textContent = 'Готово!';
+  doneBtn.style.cssText = 'margin-top:10px; padding:10px 20px; border-radius:30px; background:#4CAF50; color:white; border:none;';
+  doneBtn.onclick = () => {
+    updateAchievement('artist');
+    alert('🎨 Отличная работа!');
+    playSound('victory');
+    container.remove();
+  };
+  
+  container.appendChild(title);
+  container.appendChild(canvas);
+  container.appendChild(colors);
+  container.appendChild(doneBtn);
+  document.body.appendChild(container);
+}
+
+// ========== ЭМОЦИИ (реализованы) ==========
+function startEmotionGame() {
+  sendAnalytics('game_emotion');
+  
+  const emotions = [
+    { emoji: '😊', name: 'радость' },
+    { emoji: '😢', name: 'грусть' },
+    { emoji: '😨', name: 'страх' },
+    { emoji: '😡', name: 'злость' },
+    { emoji: '😴', name: 'сонливость' },
+    { emoji: '😍', name: 'любовь' }
+  ];
+  
+  let score = 0;
+  let currentEmotion = emotions[Math.floor(Math.random() * emotions.length)];
+  
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;';
+  
+  const emojiDisplay = document.createElement('div');
+  emojiDisplay.style.cssText = 'font-size:100px; margin:20px 0;';
+  emojiDisplay.textContent = currentEmotion.emoji;
+  
+  const question = document.createElement('div');
+  question.style.cssText = 'color:white; font-size:24px; margin:10px 0;';
+  question.textContent = 'Что я чувствую?';
+  
+  const scoreDisplay = document.createElement('div');
+  scoreDisplay.style.cssText = 'color:white; font-size:20px; margin:10px 0;';
+  scoreDisplay.textContent = `Правильно: ${score}/5`;
+  
+  const options = document.createElement('div');
+  options.style.cssText = 'display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-width:400px;';
+  
+  function shuffleArray(arr) {
+    return arr.sort(() => Math.random() - 0.5);
+  }
+  
+  function updateQuestion() {
+    if (score >= 5) {
+      updateAchievement('emotion_master');
+      alert('🎉 Ты угадал все эмоции!');
+      playSound('victory');
+      container.remove();
+      return;
+    }
+    currentEmotion = emotions[Math.floor(Math.random() * emotions.length)];
+    emojiDisplay.textContent = currentEmotion.emoji;
+    
+    const answers = shuffleArray([...emotions]).slice(0, 3);
+    if (!answers.includes(currentEmotion)) {
+      answers[Math.floor(Math.random() * 3)] = currentEmotion;
+    }
+    
+    options.innerHTML = '';
+    answers.forEach(em => {
+      const btn = document.createElement('button');
+      btn.textContent = em.name;
+      btn.style.cssText = 'padding:15px 25px; border-radius:30px; background:#4a4a6a; color:white; border:none; font-size:18px; cursor:pointer;';
+      btn.onclick = () => {
+        if (em.name === currentEmotion.name) {
+          score++;
+          scoreDisplay.textContent = `Правильно: ${score}/5`;
+          playSound('success');
+          speak('Правильно! Молодец!');
+          updateQuestion();
+        } else {
+          playSound('fail');
+          speak('Попробуй ещё раз!');
+        }
+      };
+      options.appendChild(btn);
+    });
+  }
+  
+  updateQuestion();
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Закрыть';
+  closeBtn.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;';
+  closeBtn.onclick = () => container.remove();
+  
+  container.appendChild(emojiDisplay);
+  container.appendChild(question);
+  container.appendChild(options);
+  container.appendChild(scoreDisplay);
+  container.appendChild(closeBtn);
+  document.body.appendChild(container);
+}
+
+// ========== МЕНЮ ИГР ==========
+function showGameMenu() {
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <h3 style="margin-bottom:20px;">🎮 Выбери игру</h3>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
+      <button id="gf" style="background:#4aa3df;">🐟 Поймай рыбку</button>
+      <button id="gm" style="background:#9b59b6;">🧠 Мемори</button>
+      <button id="gp" style="background:#e67e22;">🧩 Пазл</button>
+      <button id="gc" style="background:#2ecc71;">🎨 Раскраска</button>
+      <button id="ge" style="background:#f1c40f;">😊 Угадай эмоции</button>
     </div>
+    <div style="margin-top:20px;"><button class="close-btn" id="cgm">Закрыть</button></div>
+  `;
+  document.body.appendChild(modal);
+  
+  document.getElementById('gf').onclick = () => { modal.remove(); startFishGame(); updateAchievement('game_master'); };
+  document.getElementById('gm').onclick = () => { modal.remove(); startMemoryGame(); updateAchievement('game_master'); };
+  document.getElementById('gp').onclick = () => { modal.remove(); startPuzzleGame(); updateAchievement('game_master'); };
+  document.getElementById('gc').onclick = () => { modal.remove(); startColoringGame(); updateAchievement('game_master'); };
+  document.getElementById('ge').onclick = () => { modal.remove(); startEmotionGame(); updateAchievement('game_master'); };
+  document.getElementById('cgm').onclick = () => modal.remove();
+}
+
+function showRoomMenu() {
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <h3 style="margin-bottom:20px;">🏠 Моя комната</h3>
+    <button id="cr" style="background:#4CAF50;">🧸 Уборка</button>
+    <button id="du" style="background:#ff9f4a;">👕 Переодеться</button>
+    <div style="margin-top:20px;"><button class="close-btn" id="crm">Закрыть</button></div>
+  `;
+  document.body.appendChild(modal);
+  
+  document.getElementById('cr').onclick = () => {
+    modal.remove();
+    sendAnalytics('room_clean');
+    window.energy = Math.min(100, window.energy + 10);
+    window.mood = Math.min(100, window.mood + 5);
+    if (currentChildIndex !== GUEST_INDEX) {
+      localStorage.setItem(`lucik_energy_${currentChildIndex}`, window.energy);
+      localStorage.setItem(`lucik_mood_${currentChildIndex}`, window.mood);
+    }
+    updateStatsUI();
+    speak("Мурр! Чисто!");
+    playSound('purr');
+    saveHistory('🧸 Уборка');
+  };
+  
+  document.getElementById('du').onclick = () => {
+    modal.remove();
+    if (!isPremium) {
+      alert('🌟 Оформите подписку!');
+      return;
+    }
+    alert('👕 Примерка изображений скоро появится!');
+  };
+  
+  document.getElementById('crm').onclick = () => modal.remove();
+}
+
+// ========== КНОПКИ ДЕЙСТВИЙ ==========
+document.getElementById('feedBtn').onclick = () => {
+  sendAnalytics('feed');
+  window.hunger = Math.min(100, window.hunger + 15);
+  window.mood = Math.min(100, window.mood + 5);
+  if (currentChildIndex !== GUEST_INDEX) {
+    localStorage.setItem(`lucik_mood_${currentChildIndex}`, window.mood);
+    localStorage.setItem(`lucik_hunger_${currentChildIndex}`, window.hunger);
+  }
+  updateStatsUI();
+  playSound('eat');
+  saveHistory('🍎 Покормил');
+};
+
+document.getElementById('gamesBtn').onclick = () => showGameMenu();
+document.getElementById('roomBtn').onclick = () => showRoomMenu();
+
+// ========== ФИЛЬТР ПЛОХИХ СЛОВ ==========
+const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись', 'пошёл', 'уйди', 'убирайся', 'хрен', 'фиг', 'блин', 'черт'];
+function containsBadWords(t) {
+  return t && badWords.some(w => t.toLowerCase().includes(w));
+}
+
+// ========== МИКРОФОН (исправлены опечатки) ==========
+let isListening = false, isWaiting = false;
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+if (SpeechRec) {
+  rec = new SpeechRec();
+  rec.lang = 'ru-RU';
+  rec.continuous = false;
+}
+
+document.getElementById('micBtn').onclick = () => {
+  if (!rec) {
+    speak("Голос не поддерживается");
+    return;
+  }
+  if (isListening) return;
+  if (isWaiting) {
+    speak("Подожди...");
+    return;
+  }
+  isListening = true;
+  document.getElementById('micBtn').classList.add('recording');
+  document.getElementById('avatar').classList.add('listening');
+  rec.start();
+  sendAnalytics('talk_start');
+};
+
+if (rec) {
+  rec.onresult = async (e) => {
+    const text = e.results[0][0].transcript;
+    document.getElementById('micBtn').classList.remove('recording');
+    document.getElementById('avatar').classList.remove('listening');
+    isListening = false;
+    const lowerText = text.toLowerCase();
+    saveHistory(`👶 ${window.childName}: ${text}`);
+    updateAchievement('first_talk');
     
-    <script>
-                // Шифрование пина
-        const PIN_SALT = 'lucik_magic_2024';
-        function encodePin(pin) { return btoa(pin.split('').reverse().join('') + ':' + PIN_SALT); }
-        function decodePin(enc) { try { return atob(enc).split(':')[0].split('').reverse().join(''); } catch { return ''; } }
-        
-        // ========== ДАННЫЕ ДЕТЕЙ ==========
-        let children = [];
-        let currentChildIndex = 0;
-        const GUEST_INDEX = -1;
-        
-        try {
-            const saved = localStorage.getItem('children');
-            if (saved) children = JSON.parse(saved);
-            currentChildIndex = parseInt(localStorage.getItem('currentChildIndex') || '0');
-            if (currentChildIndex >= children.length) currentChildIndex = 0;
-        } catch { children = []; }
-        
-        if (children.length === 0) {
-            const oldName = localStorage.getItem('childName') || 'малыш';
-            const oldAge = parseInt(localStorage.getItem('childAge') || '5');
-            children = [{ name: oldName, age: oldAge, gender: 'boy' }];
-            currentChildIndex = 0;
-            localStorage.setItem('children', JSON.stringify(children));
-            localStorage.setItem('currentChildIndex', '0');
-            const oldFear = localStorage.getItem('fearStats'), oldHistory = localStorage.getItem('storyHistory');
-            if (oldFear) localStorage.setItem('fearStats_0', oldFear);
-            if (oldHistory) localStorage.setItem('storyHistory_0', oldHistory);
-        }
-        
-        function getCurrentChild() {
-            if (currentChildIndex === GUEST_INDEX) return { name: 'гость', age: 5, gender: 'unknown' };
-            if (currentChildIndex >= children.length) currentChildIndex = 0;
-            return children[currentChildIndex] || { name: 'малыш', age: 5, gender: 'boy' };
-        }
-        
-        function updateChildNameLabel() {
-            if (currentChildIndex === GUEST_INDEX) {
-                document.getElementById('childNameLabel').textContent = '🐱 Кто здесь?';
-                return;
-            }
-            const child = getCurrentChild();
-            document.getElementById('childNameLabel').textContent = child.name + ', ' + child.age + ' лет';
-        }
-        
-        function updateAvatarLabel() {
-            const label = document.getElementById('avatarLabel');
-            if (currentChildIndex === GUEST_INDEX) {
-                label.innerHTML = '🐱 Гость — назови себя!';
-            } else if (currentChar === 'kid1' || currentChar === 'kid2') {
-                label.innerHTML = '🖼️ Образец аватара<br><small style="opacity:0.7;">🌟 Премиум: загрузка фото</small>';
-            } else if (currentChar === 'mom' || currentChar === 'dad') {
-                label.innerHTML = '🌟 Премиум-аватар';
-            } else {
-                label.innerHTML = '🖼️ Образец аватара';
-            }
-        }
-        
-        function loadChildData(index) {
-            if (index === GUEST_INDEX) {
-                window.fearStats = { "темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0 };
-                window.conversationHistory = [];
-                window.mood = 70; window.hunger = 60; window.energy = 50; window.bravery = 0;
-                window.fishScore = 0; window.storyCount = 0;
-                return;
-            }
-            const idx = index || 0;
-            window.fearStats = JSON.parse(localStorage.getItem(`fearStats_${idx}`) || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}');
-            window.conversationHistory = JSON.parse(localStorage.getItem(`storyHistory_${idx}`) || '[]');
-            window.mood = parseInt(localStorage.getItem(`lucik_mood_${idx}`) || '70');
-            window.hunger = parseInt(localStorage.getItem(`lucik_hunger_${idx}`) || '60');
-            window.energy = parseInt(localStorage.getItem(`lucik_energy_${idx}`) || '50');
-            window.bravery = parseInt(localStorage.getItem(`lucik_bravery_${idx}`) || '0');
-            window.fishScore = parseInt(localStorage.getItem(`fishScore_${idx}`) || '0');
-            window.storyCount = parseInt(localStorage.getItem(`storyCount_${idx}`) || '0');
-        }
-        
-        function saveChildData(index) {
-            if (index === GUEST_INDEX) return;
-            const idx = index || 0;
-            localStorage.setItem(`fearStats_${idx}`, JSON.stringify(window.fearStats));
-            localStorage.setItem(`storyHistory_${idx}`, JSON.stringify(window.conversationHistory));
-            localStorage.setItem(`lucik_mood_${idx}`, window.mood);
-            localStorage.setItem(`lucik_hunger_${idx}`, window.hunger);
-            localStorage.setItem(`lucik_energy_${idx}`, window.energy);
-            localStorage.setItem(`lucik_bravery_${idx}`, window.bravery);
-            localStorage.setItem(`fishScore_${idx}`, window.fishScore);
-            localStorage.setItem(`storyCount_${idx}`, window.storyCount);
-        }
-        
-        // ========== СМЕНА РЕБЁНКА ==========
-        function applyChildSwitch() {
-            if (currentChildIndex === GUEST_INDEX) {
-                window.childName = 'гость';
-                window.childAge = 5;
-                currentChar = 'lucik';
-                localStorage.setItem('currentCharacter', 'lucik');
-                loadChildData(GUEST_INDEX);
-                document.getElementById('avatar').style.backgroundImage = "url('avatar.png')";
-                updateAvatarLock(); updateAvatarLabel(); updateChildNameLabel(); updateStatsUI();
-                setTimeout(() => speak("Мурр... А ты кто? Давай знакомиться!"), 300);
-            } else {
-                localStorage.setItem('currentChildIndex', currentChildIndex);
-                const child = getCurrentChild();
-                window.childName = child.name;
-                window.childAge = child.age;
-                localStorage.setItem('childName', window.childName);
-                localStorage.setItem('childAge', window.childAge);
-                loadChildData(currentChildIndex);
-                setAvatarByGender();
-                updateChildNameLabel(); updateStatsUI(); updateAvatarLock(); updateAvatarLabel();
-                setTimeout(() => speak(`Привет, ${window.childName}!`), 300);
-            }
-        }
-        
-        function switchChild(index) {
-            if (children.length <= 1 && index !== GUEST_INDEX) return;
-            saveChildData(currentChildIndex);
-            currentChildIndex = index;
-            applyChildSwitch();
-        }
-        
-        function showChildSelectMenu() {
-            if (children.length <= 1) return;
-            const menu = document.createElement('div');
-            menu.className = 'child-select-menu';
-            let btns = '';
-            children.forEach((child, i) => {
-                const cls = (i === currentChildIndex) ? 'active-child' : 'inactive-child';
-                const icon = child.gender === 'girl' ? '👧' : '👦';
-                btns += `<button class="${cls}" data-index="${i}">${icon} ${child.name}, ${child.age} лет</button>`;
-            });
-            const guestCls = (currentChildIndex === GUEST_INDEX) ? 'active-child' : 'inactive-child';
-            btns += `<button class="${guestCls}" data-index="-1">🐱 Гость (Люцик)</button>`;
-            menu.innerHTML = `<h3 style="margin-bottom:15px;">Кто играет?</h3>${btns}<button class="close-btn" style="margin-top:10px;">Закрыть</button>`;
-            document.body.appendChild(menu);
-            menu.querySelectorAll('button[data-index]').forEach(btn => {
-                btn.onclick = () => { const idx = parseInt(btn.dataset.index); menu.remove(); if (idx !== currentChildIndex) switchChild(idx); };
-            });
-            menu.querySelector('.close-btn').onclick = () => menu.remove();
-        }
-        
-        // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
-        async function checkAuthAndRedirect() {
-            const token = localStorage.getItem('userToken');
-            const guestMode = localStorage.getItem('guestMode') === 'true';
-            if (guestMode) return true;
-            if (!token) { window.location.href = '/'; return false; }
-            try {
-                const r = await fetch('/api/verify-token', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-                const d = await r.json();
-                if (!d.valid) {
-                    localStorage.removeItem('userToken');
-                    localStorage.removeItem('userEmail');
-                    localStorage.removeItem('guestMode');
-                    window.location.href = '/';
-                    return false;
-                }
-                return true;
-            } catch (e) { return true; }
-        }
-        checkAuthAndRedirect();
-        
-        // ========== АНАЛИТИКА ==========
-        function sendAnalytics(et, ed = {}) {
-            const ut = localStorage.getItem('userToken'), ue = localStorage.getItem('userEmail'), gm = localStorage.getItem('guestMode') === 'true';
-            fetch('/api/analytics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event_type: et, user_id: ut ? ut.slice(0, 50) : (gm ? 'guest_' + Date.now() : null), user_email: ue && !ue.startsWith('guest_') ? ue : null, child_name: window.childName, child_age: parseInt(window.childAge), event_data: ed }) }).catch(() => {});
-        }
-        
-        // ========== ЗВУКИ ==========
-        let audioCtx = null;
-        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
-        function playSound(s) { 
-            try { 
-                const ctx = initAudio(), o = ctx.createOscillator(), g = ctx.createGain(); 
-                o.connect(g); g.connect(ctx.destination); 
-                const ss = { 'eat': { f: 523.25, d: 0.2, t: 'sine' }, 'purr': { f: 130.81, d: 0.5, t: 'sine' }, 'laugh': { f: 659.25, d: 0.15, t: 'square' }, 'click': { f: 880, d: 0.05, t: 'sine' }, 'success': { f: 523.25, d: 0.2, t: 'sine' }, 'fail': { f: 220, d: 0.3, t: 'sawtooth' }, 'victory': { f: 783.99, d: 0.3, t: 'sine' }, 'achievement': { f: 1046.50, d: 0.4, t: 'sine' }, 'paint': { f: 440, d: 0.03, t: 'sine' } }, 
-                sd = ss[s] || ss['click']; 
-                o.type = sd.t; o.frequency.value = sd.f; g.gain.value = 0.25; 
-                o.start(); 
-                g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + sd.d); 
-                o.stop(ctx.currentTime + sd.d); 
-            } catch(e) {}
-        }
-        
-        // ========== ДОСТИЖЕНИЯ ==========
-        function getAchKey() { return `achievements_${currentChildIndex === GUEST_INDEX ? 'guest' : currentChildIndex}`; }
-        function initAchievements() { 
-            const k = getAchKey(); 
-            if (!localStorage.getItem(k)) { 
-                const d = { 'first_talk': { name: '🎤 Первый разговор', desc: 'Первый разговор', earned: false }, 'brave_kid': { name: '🦁 Храбрый малыш', desc: 'Победил страх', earned: false }, 'story_lover': { name: '🌙 Сказочник', desc: '10 сказок', earned: false, progress: 0, target: 10 }, 'game_master': { name: '🎮 Игроман', desc: 'Все игры', earned: false }, 'fish_catcher': { name: '🐟 Рыболов', desc: '30 рыбок', earned: false, progress: 0, target: 30 }, 'memory_champion': { name: '🧠 Чемпион', desc: 'Мемори', earned: false }, 'puzzle_solver': { name: '🧩 Собиратель', desc: 'Пазл', earned: false }, 'artist': { name: '🎨 Художник', desc: 'Раскраска', earned: false }, 'emotion_master': { name: '😊 Мастер эмоций', desc: 'Все эмоции', earned: false } }; 
-                localStorage.setItem(k, JSON.stringify(d)); 
-            } 
-        }
-        
-        function updateAchievement(id, p = null) { 
-            const k = getAchKey(), a = JSON.parse(localStorage.getItem(k)); 
-            if (a[id] && !a[id].earned) { 
-                if (p !== null) { 
-                    a[id].progress = (a[id].progress || 0) + p; 
-                    if (a[id].progress >= a[id].target) { 
-                        a[id].earned = true; 
-                        a[id].date = new Date().toISOString(); 
-                        playSound('achievement'); 
-                        showAchievementNotification(a[id].name); 
-                    } 
-                } else { 
-                    a[id].earned = true; 
-                    a[id].date = new Date().toISOString(); 
-                    playSound('achievement'); 
-                    showAchievementNotification(a[id].name); 
-                } 
-                localStorage.setItem(k, JSON.stringify(a)); 
-            } 
-        }
-        
-        function showAchievementNotification(n) { 
-            const el = document.createElement('div'); 
-            el.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#ffd700,#ff9f4a); color:#3a2a1a; padding:20px 30px; border-radius:60px; z-index:5000; text-align:center; animation:achievementPop 0.5s ease-out; font-weight:bold;'; 
-            el.innerHTML = `<strong>🏆 НАГРАДА!</strong><br>${n}`; 
-            document.body.appendChild(el); 
-            setTimeout(() => el.remove(), 3000); 
-        }
-        
-        // ========== ОСНОВНЫЕ ДАННЫЕ ==========
-        let isPremium = localStorage.getItem('isPremium') === 'true';
-        const curChild = getCurrentChild();
-        window.childName = curChild.name;
-        window.childAge = curChild.age;
-        let savedPin = localStorage.getItem('parentPin');
+    // Перехват: гость находит свое имя
+    if (currentChildIndex === GUEST_INDEX) {
+      const foundIndex = children.findIndex(child => lowerText.includes(child.name.toLowerCase()));
+      if (foundIndex >= 0) {
+        saveChildData(GUEST_INDEX);
+        currentChildIndex = foundIndex;
+        const child = children[foundIndex];
+        window.childName = child.name;
+        window.childAge = child.age;
+        localStorage.setItem('currentChildIndex', currentChildIndex);
+        localStorage.setItem('childName', window.childName);
+        localStorage.setItem('childAge', window.childAge);
         loadChildData(currentChildIndex);
-        if (window.conversationHistory.length > 50) window.conversationHistory = window.conversationHistory.slice(0, 50);
-        
-        const characters = { lucik: { name: 'Люцик', icon: 'avatar.png', premium: false }, mom: { name: 'Мама', icon: 'mom.png', premium: true }, dad: { name: 'Папа', icon: 'dad.png', premium: true }, kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: false }, kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: false } };
-        let currentChar = localStorage.getItem('currentCharacter') || 'lucik';
-        
-        function setAvatarByGender() {
-            const child = getCurrentChild();
-            if (currentChildIndex === GUEST_INDEX) { currentChar = 'lucik'; }
-            else if (currentChar === 'kid1' || currentChar === 'kid2' || currentChar === 'lucik') {
-                if (child.gender === 'girl') currentChar = 'kid1';
-                else if (child.gender === 'boy') currentChar = 'kid2';
-            }
-            localStorage.setItem('currentCharacter', currentChar);
-            document.getElementById('avatar').style.backgroundImage = `url('${characters[currentChar].icon}')`;
-            updateAvatarLock(); updateAvatarLabel();
-        }
         setAvatarByGender();
-        
-        initAchievements();
         updateChildNameLabel();
-        sendAnalytics('app_open');
-        window.addEventListener('beforeunload', () => { saveChildData(currentChildIndex); sendAnalytics('session_end'); });
-        
-        function updateStatsUI() { 
-            document.getElementById('moodFill').style.width = window.mood + '%'; 
-            document.getElementById('hungerFill').style.width = window.hunger + '%'; 
-            document.getElementById('energyFill').style.width = window.energy + '%'; 
-            document.getElementById('braveryFill').style.width = window.bravery + '%'; 
+        updateStatsUI();
+        updateAvatarLock();
+        updateAvatarLabel();
+        const answer = `${window.childName}! Точно, как я мог перепутать? Мурр... Привет, ${window.childName}! Как у тебя дела?`;
+        saveHistory(`🦁 Люцик: ${answer}`);
+        speak(answer);
+        return;
+      }
+    }
+    
+    // Перехват: «Я не Маша, я Саша»
+    if (currentChildIndex >= 0) {
+      const switchMatch = lowerText.match(/я не (\w+)[,\s]*я (\w+)/i);
+      if (switchMatch) {
+        const newName = switchMatch[2].toLowerCase();
+        const foundIndex = children.findIndex(child => child.name.toLowerCase() === newName);
+        if (foundIndex >= 0 && foundIndex !== currentChildIndex) {
+          saveChildData(currentChildIndex);
+          currentChildIndex = foundIndex;
+          const child = children[foundIndex];
+          window.childName = child.name;
+          window.childAge = child.age;
+          localStorage.setItem('currentChildIndex', currentChildIndex);
+          localStorage.setItem('childName', window.childName);
+          localStorage.setItem('childAge', window.childAge);
+          loadChildData(currentChildIndex);
+          setAvatarByGender();
+          updateChildNameLabel();
+          updateStatsUI();
+          const answer = `Ой, ${window.childName}, прости! Я перепутал. Так о чём мы говорили?`;
+          saveHistory(`🦁 Люцик: ${answer}`);
+          speak(answer);
+          return;
         }
-        
-        function updateUI() { updateStatsUI(); }
-        
-        function saveHistory(t) { 
-            window.conversationHistory.unshift(new Date().toLocaleTimeString() + ": " + t); 
-            if (window.conversationHistory.length > 50) window.conversationHistory.pop(); 
-            if (currentChildIndex !== GUEST_INDEX) localStorage.setItem(`storyHistory_${currentChildIndex}`, JSON.stringify(window.conversationHistory)); 
-        }
-        
-        function updateFear(f) { 
-            if (currentChildIndex === GUEST_INDEX) return; 
-            if (window.fearStats[f] !== undefined) { 
-                window.fearStats[f]++; 
-                localStorage.setItem(`fearStats_${currentChildIndex}`, JSON.stringify(window.fearStats)); 
-                window.bravery = Math.min(100, window.bravery + 10); 
-                localStorage.setItem(`lucik_bravery_${currentChildIndex}`, window.bravery); 
-                updateAchievement('brave_kid'); 
-                sendAnalytics('fear_detected', { fear: f }); 
-                updateUI(); 
-            } 
-        }
-        
-        function updateAvatarLock() { 
-            const av = document.getElementById('avatar'), lo = document.getElementById('lockOverlay'), locked = characters[currentChar].premium && !isPremium; 
-            if (locked) { av.classList.add('premium-locked'); lo.style.display = 'flex'; } 
-            else { av.classList.remove('premium-locked'); lo.style.display = 'none'; } 
-        }
-                // ========== ОЗВУЧКА (с поддержкой fallback и emotion) ==========
-        let currentAudio = null, isAudioPlaying = false, audioUnlocked = false;
-        
-        function unlockAudio() { 
-            if (audioUnlocked) return; 
-            const ctx = new (window.AudioContext || window.webkitAudioContext)(); 
-            ctx.resume().then(() => { 
-                audioUnlocked = true; 
-                console.log('Audio unlocked');
-            }).catch(() => {}); 
-        }
-        
-        function fallbackSpeak(t) { 
-            const ct = t.replace(/[\*\_\#]/g, ''); 
-            const u = new SpeechSynthesisUtterance(ct); 
-            u.lang = 'ru-RU'; 
-            u.rate = 0.9; 
-            u.onstart = () => document.getElementById('avatar').classList.add('talking'); 
-            u.onend = () => document.getElementById('avatar').classList.remove('talking'); 
-            window.speechSynthesis.speak(u); 
-        }
-        
-        async function speakWithYandex(txt, voice = 'lucik', emotion = 'good') { 
-            return new Promise(async (resolve) => { 
-                try { 
-                    if (!audioUnlocked) { 
-                        await new Promise(r => setTimeout(r, 500)); 
-                        if (!audioUnlocked) { 
-                            fallbackSpeak(txt); 
-                            resolve(); 
-                            return; 
-                        } 
-                    } 
-                    if (currentAudio) { 
-                        currentAudio.pause(); 
-                        currentAudio = null; 
-                    } 
-                    
-                    const tok = localStorage.getItem('userToken'); 
-                    const headers = { 'Content-Type': 'application/json' }; 
-                    if (tok && tok !== 'null' && tok !== 'undefined') { 
-                        headers['Authorization'] = `Bearer ${tok}`; 
-                    } 
-                    
-                    const resp = await fetch('/api/tts', { 
-                        method: 'POST', 
-                        headers, 
-                        body: JSON.stringify({ 
-                            text: txt, 
-                            voice: voice, 
-                            emotion: emotion, 
-                            speed: 1.0 
-                        }) 
-                    });
-                    
-                    const contentType = resp.headers.get('content-type');
-                    if (!resp.ok || (contentType && contentType.includes('application/json'))) {
-                        const errorData = await resp.json().catch(() => ({}));
-                        if (errorData.useFallback) {
-                            console.log('TTS fallback triggered');
-                            fallbackSpeak(txt);
-                            resolve();
-                            return;
-                        }
-                        throw new Error(`TTS error: ${resp.status}`);
-                    }
-                    
-                    const blob = await resp.blob(); 
-                    if (!blob || blob.size < 100) throw new Error('Small audio'); 
-                    
-                    const url = URL.createObjectURL(blob); 
-                    const a = new Audio(url); 
-                    currentAudio = a; 
-                    
-                    a.onplay = () => { 
-                        isAudioPlaying = true; 
-                        document.getElementById('avatar').classList.add('talking'); 
-                    }; 
-                    
-                    a.onended = () => { 
-                        isAudioPlaying = false; 
-                        document.getElementById('avatar').classList.remove('talking'); 
-                        URL.revokeObjectURL(url); 
-                        resolve(); 
-                    }; 
-                    
-                    a.onerror = (err) => { 
-                        console.error('Audio playback error:', err);
-                        isAudioPlaying = false; 
-                        document.getElementById('avatar').classList.remove('talking'); 
-                        URL.revokeObjectURL(url); 
-                        fallbackSpeak(txt); 
-                        resolve(); 
-                    }; 
-                    
-                    await a.play(); 
-                } catch(e) { 
-                    console.error('TTS exception:', e);
-                    fallbackSpeak(txt); 
-                    resolve(); 
-                } 
-            }); 
-        }
-        
-        async function speak(t) { 
-            const ct = t.replace(/[\*\_\#]/g, ''); 
-            try { 
-                await speakWithYandex(ct, currentChar, 'good'); 
-            } catch(e) { 
-                fallbackSpeak(ct); 
-            } 
-        }
-        
-        function purr() { 
-            if (currentChar !== 'lucik') return; 
-            unlockAudio(); 
-            speakWithYandex("Муррр!", 'lucik', 'friendly').catch(() => {}); 
-        }
-        
-        function changeCharacter(charId) { 
-            if (characters[charId].premium && !isPremium) { 
-                alert('🌟 Оформите подписку!'); 
-                return; 
-            } 
-            currentChar = charId; 
-            document.getElementById('avatar').style.backgroundImage = `url('${characters[charId].icon}')`; 
-            localStorage.setItem('currentCharacter', charId); 
-            updateAvatarLock(); 
-            updateAvatarLabel(); 
-            speak(`Теперь я ${characters[charId].name}!`); 
-        }
-        
-        // ========== ДОЛГОЕ НАЖАТИЕ И СВАЙП ==========
-        let longPressTimer = null;
-        let touchStart = 0;
-        const avatarEl = document.getElementById('avatar');
-        
-        avatarEl.addEventListener('touchstart', (e) => { 
-            longPressTimer = setTimeout(() => { showChildSelectMenu(); }, 800); 
-            touchStart = e.changedTouches[0].screenX; 
-        });
-        avatarEl.addEventListener('touchend', () => { 
-            clearTimeout(longPressTimer); 
-        });
-        avatarEl.addEventListener('touchmove', () => { 
-            clearTimeout(longPressTimer); 
-        });
-        avatarEl.addEventListener('mousedown', () => { 
-            longPressTimer = setTimeout(() => { showChildSelectMenu(); }, 800); 
-        });
-        avatarEl.addEventListener('mouseup', () => { 
-            clearTimeout(longPressTimer); 
-        });
-        avatarEl.addEventListener('mouseleave', () => { 
-            clearTimeout(longPressTimer); 
-        });
-        
-        avatarEl.addEventListener('touchend', (e) => {
-            if (longPressTimer) { clearTimeout(longPressTimer); return; }
-            const diff = e.changedTouches[0].screenX - touchStart;
-            if (Math.abs(diff) > 50 && children.length >= 1) {
-                saveChildData(currentChildIndex);
-                const direction = diff > 0 ? 1 : -1;
-                if (currentChildIndex === GUEST_INDEX) {
-                    currentChildIndex = (direction > 0) ? children.length - 1 : 0;
-                } else if (currentChildIndex + direction >= children.length || currentChildIndex + direction < 0) {
-                    currentChildIndex = GUEST_INDEX;
-                } else {
-                    currentChildIndex += direction;
-                }
-                applyChildSwitch();
-            }
-        });
-        
-        function updateMoonButton() { 
-            document.getElementById('nightStoryBtn').style.display = (new Date().getHours() >= 20 || new Date().getHours() < 6) ? 'flex' : 'none'; 
-        }
-        updateMoonButton(); 
-        setInterval(updateMoonButton, 60000);
-        
-        // ========== DEEPSEEK API ==========
-        async function askDeepSeek(text, isLong = false) {
-            if (containsBadWords(text)) return "Мяу! Давай говорить добрые слова!";
-            try {
-                const historyForAPI = (window.conversationHistory || []).slice(-12).map(item => {
-                    const isUser = item.includes(`👶 ${window.childName}:`) || item.includes(`👶 гость:`);
-                    return { role: isUser ? "user" : "assistant", content: item.replace(/^[^:]+:/, '').trim() };
-                });
-                const token = localStorage.getItem('userToken'), headers = { 'Content-Type': 'application/json' };
-                if (token && token !== 'null') headers['Authorization'] = `Bearer ${token}`;
-                const res = await fetch('/api/generate', { 
-                    method: 'POST', 
-                    headers, 
-                    body: JSON.stringify({ 
-                        message: text,
-                        history: historyForAPI, 
-                        character: currentChar,
-                        childName: window.childName,
-                        childAge: parseInt(window.childAge)
-                    }) 
-                });
-                const data = await res.json();
-                if (data.detectedFear) updateFear(data.detectedFear);
-                let story = data.reply || data.story;
-                const badPatterns = ['Люцик 31', 'Люцик 02', 'ошибка', 'error', 'Error', 'undefined', 'null', 'NaN'];
-                if (!story || badPatterns.some(p => story.includes(p)) || story.length < 2) {
-                    const clientFallbacks = { lucik: "Мурр... Я немного задумался. Давай ещё раз?", mom: "Ой, задумалась... Давай ещё раз, солнышко?", dad: "Хм, задумался. Повтори?", kid1: "Ой, я задумался! Давай ещё разок?", kid2: "Я задумалась... Давай ещё раз?" };
-                    story = clientFallbacks[currentChar] || clientFallbacks.lucik;
-                }
-                return story;
-            } catch(e) {
-                console.error('DeepSeek error:', e);
-                const catchFallbacks = { lucik: "Мурр... Давай ещё раз?", mom: "Ой, что-то пошло не так. Давай ещё раз, солнышко?", dad: "Хм, повтори ещё раз?", kid1: "Ой, давай ещё разок!", kid2: "Давай ещё раз?" };
-                return catchFallbacks[currentChar] || catchFallbacks.lucik;
-            }
-        }
-        
-        // Разблокировка аудио по клику
-        document.addEventListener('touchstart', unlockAudio, { once: true });
-        document.addEventListener('click', unlockAudio, { once: true });
-        document.getElementById('micBtn').addEventListener('click', unlockAudio, { once: true });
-        
-        // ========== ИГРЫ ==========
-        let gameActive = false, gameInterval = null, gameTimerInterval = null;
-        
-        function startFishGame() { 
-            if (gameActive) return; 
-            gameActive = true; 
-            sendAnalytics('game_fish'); 
-            let gs = 0, tl = 30; 
-            const gc = document.createElement('div'); 
-            gc.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:space-between;'; 
-            const fa = document.createElement('div'); 
-            fa.style.cssText = 'flex:1; position:relative; width:100%;'; 
-            const f = document.createElement('div'); 
-            f.innerText = '🐟'; 
-            f.style.cssText = 'font-size:60px; position:absolute; cursor:pointer;'; 
-            const bb = document.createElement('div'); 
-            bb.style.cssText = 'padding:20px; text-align:center; width:100%;'; 
-            const sd = document.createElement('div'); 
-            sd.style.cssText = 'color:white; font-size:24px; margin-bottom:10px;'; 
-            sd.innerText = `🐟 Счёт: 0 | ⏱️ Осталось: ${tl} сек`; 
-            const cb = document.createElement('button'); 
-            cb.innerText = 'Закрыть'; 
-            cb.style.cssText = 'padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; 
-            cb.onclick = () => { clearInterval(gameInterval); clearInterval(gameTimerInterval); gc.remove(); gameActive = false; }; 
-            bb.appendChild(sd); bb.appendChild(cb); 
-            fa.appendChild(f); 
-            gc.appendChild(fa); gc.appendChild(bb); 
-            document.body.appendChild(gc); 
-            
-            function moveFish() { 
-                const mx = fa.clientWidth - 80, my = fa.clientHeight - 80; 
-                if (mx > 0 && my > 0) { 
-                    f.style.left = Math.random() * mx + 'px'; 
-                    f.style.top = Math.random() * my + 'px'; 
-                } 
-            } 
-            
-            f.onclick = () => { 
-                if (!gameActive) return; 
-                gs++; 
-                window.fishScore++; 
-                if (currentChildIndex !== GUEST_INDEX) localStorage.setItem(`fishScore_${currentChildIndex}`, window.fishScore); 
-                updateAchievement('fish_catcher', 1); 
-                sd.innerText = `🐟 Счёт: ${gs} | ⏱️ Осталось: ${tl} сек`; 
-                moveFish(); 
-                playSound('click'); 
-                window.hunger = Math.min(100, window.hunger + 3); 
-                window.mood = Math.min(100, window.mood + 3); 
-                updateStatsUI(); 
-            }; 
-            
-            moveFish(); 
-            gameTimerInterval = setInterval(() => { 
-                if (!gameActive) return; 
-                tl--; 
-                if (tl <= 0) { 
-                    clearInterval(gameTimerInterval); 
-                    clearInterval(gameInterval); 
-                    gameActive = false; 
-                    sd.innerText = `🎉 Ты поймал ${gs} рыбок! 🎉`; 
-                    f.style.display = 'none'; 
-                    speak(`Игра окончена! Ты поймал ${gs} рыбок!`); 
-                    sendAnalytics('game_fish', { score: gs }); 
-                } else sd.innerText = `🐟 Счёт: ${gs} | ⏱️ Осталось: ${tl} сек`; 
-            }, 1000); 
-            gameInterval = setInterval(() => { if (gameActive) moveFish(); }, 1500); 
-        }
-        
-        let memoryCards = [], memoryFlipped = [], memoryLocked = false, memoryMatches = 0;
-        function startMemoryGame() { 
-            sendAnalytics('game_memory'); 
-            const em = ['😊','😢','😨','😡','😴','😍']; 
-            memoryCards = [...em, ...em]; 
-            for (let i = memoryCards.length - 1; i > 0; i--) { 
-                const j = Math.floor(Math.random() * (i + 1)); 
-                [memoryCards[i], memoryCards[j]] = [memoryCards[j], memoryCards[i]]; 
-            } 
-            memoryFlipped = new Array(memoryCards.length).fill(false); 
-            memoryMatches = 0; 
-            const gc = document.createElement('div'); 
-            gc.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center;'; 
-            const t = document.createElement('h2'); 
-            t.textContent = '🧠 Найди пару'; 
-            t.style.color = 'white'; 
-            t.style.marginBottom = '20px'; 
-            const board = document.createElement('div'); 
-            board.style.cssText = 'display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; max-width:400px; width:90%; margin:0 auto;'; 
-            const cards = []; 
-            for (let i = 0; i < memoryCards.length; i++) { 
-                const c = document.createElement('div'); 
-                c.style.cssText = 'aspect-ratio:1; background:#4a4a6a; border-radius:15px; display:flex; align-items:center; justify-content:center; font-size:40px; cursor:pointer; transition:0.3s;'; 
-                c.dataset.index = i; 
-                c.onclick = () => flipCard(i, c); 
-                cards.push(c); 
-                board.appendChild(c); 
-            } 
-            const sd = document.createElement('div'); 
-            sd.style.cssText = 'color:white; margin-top:20px; font-size:20px;'; 
-            sd.textContent = `Найдено пар: ${memoryMatches} / 6`; 
-            const cb = document.createElement('button'); 
-            cb.textContent = 'Закрыть'; 
-            cb.style.cssText = 'margin-top:20px; padding:10px 20px; border-radius:30px; background:#ff4081; color:white; border:none;'; 
-            cb.onclick = () => gc.remove(); 
-            gc.appendChild(t); gc.appendChild(board); gc.appendChild(sd); gc.appendChild(cb); 
-            document.body.appendChild(gc); 
-            
-            let fi = null, fc = null; 
-            function flipCard(idx, card) { 
-                if (memoryLocked || memoryFlipped[idx]) return; 
-                memoryFlipped[idx] = true; 
-                card.textContent = memoryCards[idx]; 
-                card.style.background = '#6c6caa'; 
-                if (fi === null) { 
-                    fi = idx; 
-                    fc = card; 
-                } else { 
-                    if (memoryCards[fi] === memoryCards[idx]) { 
-                        memoryMatches++; 
-                        sd.textContent = `Найдено пар: ${memoryMatches} / 6`; 
-                        fi = null; 
-                        fc = null; 
-                        playSound('success'); 
-                        if (memoryMatches === 6) { 
-                            updateAchievement('memory_champion'); 
-                            setTimeout(() => { 
-                                alert('🎉 Ты нашёл все пары!'); 
-                                playSound('victory'); 
-                                gc.remove(); 
-                            }, 500); 
-                        } 
-                    } else { 
-                        memoryLocked = true; 
-                        setTimeout(() => { 
-                            memoryFlipped[fi] = false; 
-                            memoryFlipped[idx] = false; 
-                            fc.textContent = '?'; 
-                            card.textContent = '?'; 
-                            fc.style.background = '#4a4a6a'; 
-                            card.style.background = '#4a4a6a'; 
-                            fi = null; 
-                            fc = null; 
-                            memoryLocked = false; 
-                        }, 1000); 
-                    } 
-                } 
-            } 
-        }
-        
-        function startPuzzleGame() { alert('🧩 Пазл скоро появится!'); }
-        function startColoringGame() { alert('🎨 Раскраска скоро появится!'); }
-        function startEmotionGame() { alert('😊 Игра на эмоции скоро появится!'); }
-        
-        function showGameMenu() { 
-            const m = document.createElement('div'); 
-            m.className = 'modal'; 
-            m.innerHTML = `<h3 style="margin-bottom:20px;">🎮 Выбери игру</h3><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;"><button id="gf" style="background:#4aa3df;">🐟 Поймай рыбку</button><button id="gm" style="background:#9b59b6;">🧠 Мемори</button><button id="gp" style="background:#e67e22;">🧩 Пазл</button><button id="gc" style="background:#2ecc71;">🎨 Раскраска</button><button id="ge" style="background:#f1c40f;">😊 Угадай эмоцию</button></div><div style="margin-top:20px;"><button class="close-btn" id="cgm">Закрыть</button></div>`; 
-            document.body.appendChild(m); 
-            document.getElementById('gf').onclick = () => { m.remove(); startFishGame(); updateAchievement('game_master'); }; 
-            document.getElementById('gm').onclick = () => { m.remove(); startMemoryGame(); updateAchievement('game_master'); }; 
-            document.getElementById('gp').onclick = () => { m.remove(); startPuzzleGame(); updateAchievement('game_master'); }; 
-            document.getElementById('gc').onclick = () => { m.remove(); startColoringGame(); updateAchievement('game_master'); }; 
-            document.getElementById('ge').onclick = () => { m.remove(); startEmotionGame(); updateAchievement('game_master'); }; 
-            document.getElementById('cgm').onclick = () => m.remove(); 
-        }
-        
-        function showRoomMenu() { 
-            const m = document.createElement('div'); 
-            m.className = 'modal'; 
-            m.innerHTML = `<h3 style="margin-bottom:20px;">🏠 Моя комната</h3><button id="cr" style="background:#4CAF50;">🧸 Уборка</button><button id="du" style="background:#ff9f4a;">👕 Переодеть</button><div style="margin-top:20px;"><button class="close-btn" id="crm">Закрыть</button></div>`; 
-            document.body.appendChild(m); 
-            document.getElementById('cr').onclick = () => { m.remove(); sendAnalytics('room_clean'); window.energy = Math.min(100, window.energy + 10); window.mood = Math.min(100, window.mood + 5); if (currentChildIndex !== GUEST_INDEX) { localStorage.setItem(`lucik_energy_${currentChildIndex}`, window.energy); localStorage.setItem(`lucik_mood_${currentChildIndex}`, window.mood); } updateStatsUI(); speak("Мурр! Чисто!"); playSound('purr'); saveHistory('🧸 Уборка'); }; 
-            document.getElementById('du').onclick = () => { m.remove(); if (!isPremium) { alert('🌟 Оформите подписку!'); return; } alert('👕 Примерка образов скоро появится!'); }; 
-            document.getElementById('crm').onclick = () => m.remove(); 
-        }
-        
-        document.getElementById('nightStoryBtn').onclick = async () => { 
-            const m = document.createElement('div'); 
-            m.className = 'modal'; 
-            m.innerHTML = '<h3>🌙 Готовлю сказку...</h3>'; 
-            document.body.appendChild(m); 
-            speak("Сейчас расскажу сказку..."); 
-            const story = await askDeepSeek("Расскажи длинную, спокойную сказку на ночь", true); 
-            m.remove(); 
-            window.storyCount++; 
-            if (currentChildIndex !== GUEST_INDEX) localStorage.setItem(`storyCount_${currentChildIndex}`, window.storyCount); 
-            updateAchievement('story_lover', 1); 
-            sendAnalytics('story_night'); 
-            const sm = document.createElement('div'); 
-            sm.className = 'modal'; 
-            sm.style.maxWidth = '90%'; 
-            sm.style.maxHeight = '70%'; 
-            sm.style.overflow = 'auto'; 
-            sm.innerHTML = `<h3>🌙 Сказка на ночь</h3><p style="margin:15px 0; line-height:1.4;">${story.replace(/\n/g, '<br>')}</p><button class="close-btn" onclick="this.parentElement.remove()">Закрыть</button>`; 
-            document.body.appendChild(sm); 
-            speak(story); 
-            saveHistory('🌙 Сказка на ночь'); 
-        };
-        
-        const badWords = ['мат', 'дурак', 'идиот', 'тупой', 'заткнись', 'пошёл', 'уйди', 'убирайся', 'хрен', 'фиг', 'блин', 'черт'];
-        function containsBadWords(t) { return t && badWords.some(w => t.toLowerCase().includes(w)); }
-        
-        document.getElementById('feedBtn').onclick = () => { 
-            sendAnalytics('feed'); 
-            window.hunger = Math.min(100, window.hunger + 15); 
-            window.mood = Math.min(100, window.mood + 5); 
-            if (currentChildIndex !== GUEST_INDEX) { 
-                localStorage.setItem(`lucik_mood_${currentChildIndex}`, window.mood); 
-                localStorage.setItem(`lucik_hunger_${currentChildIndex}`, window.hunger); 
-            } 
-            updateStatsUI(); 
-            playSound('eat'); 
-            saveHistory('🍎 Покормил'); 
-        };
-        document.getElementById('gamesBtn').onclick = () => showGameMenu();
-        document.getElementById('roomBtn').onclick = () => showRoomMenu();
-        
-        // ========== МИКРОФОН (ИСПРАВЛЕНА ОШИБКА l is not defined) ==========
-        let isListening = false, isWaiting = false;
-        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition; 
-        let rec = null;
-        if (SpeechRec) { 
-            rec = new SpeechRec(); 
-            rec.lang = 'ru-RU'; 
-            rec.continuous = false; 
-        }
-        
-        document.getElementById('micBtn').onclick = () => { 
-            if (!rec) { speak("Голос не поддерживается"); return; } 
-            if (isListening) return; 
-            if (isWaiting) { speak("Подожди..."); return; } 
-            isListening = true; 
-            document.getElementById('micBtn').classList.add('recording'); 
-            document.getElementById('avatar').classList.add('listening'); 
-            rec.start(); 
-            sendAnalytics('talk_start'); 
-        };
-        
-        if (rec) { 
-            rec.onresult = async (e) => { 
-                const text = e.results[0][0].transcript; 
-                document.getElementById('micBtn').classList.remove('recording'); 
-                document.getElementById('avatar').classList.remove('listening'); 
-                isListening = false; 
-                const lowerText = text.toLowerCase(); 
-                saveHistory(`👶 ${window.childName}: ${text}`); 
-                updateAchievement('first_talk');
-                
-                // Перехват: гость назвал своё имя
-                if (currentChildIndex === GUEST_INDEX) {
-                    const foundIndex = children.findIndex(child => lowerText.includes(child.name.toLowerCase()));
-                    if (foundIndex >= 0) {
-                        saveChildData(GUEST_INDEX);
-                        currentChildIndex = foundIndex;
-                        const child = children[foundIndex];
-                        window.childName = child.name;
-                        window.childAge = child.age;
-                        localStorage.setItem('currentChildIndex', currentChildIndex);
-                        localStorage.setItem('childName', window.childName);
-                        localStorage.setItem('childAge', window.childAge);
-                        loadChildData(currentChildIndex);
-                        setAvatarByGender();
-                        updateChildNameLabel(); updateStatsUI(); updateAvatarLock(); updateAvatarLabel();
-                        const answer = `${window.childName}! Точно, как я мог перепутать? Мурр... Привет, ${window.childName}! Как у тебя дела?`;
-                        saveHistory(`🦁 Люцик: ${answer}`);
-                        speak(answer);
-                        return;
-                    }
-                }
-                
-                // Перехват: «Я не Маша, я Саша»
-                if (currentChildIndex >= 0) {
-                    const switchMatch = lowerText.match(/я не (\w+)[,\s]*я (\w+)/i);
-                    if (switchMatch) {
-                        const newName = switchMatch[2].toLowerCase();
-                        const foundIndex = children.findIndex(child => child.name.toLowerCase() === newName);
-                        if (foundIndex >= 0 && foundIndex !== currentChildIndex) {
-                            saveChildData(currentChildIndex);
-                            currentChildIndex = foundIndex;
-                            const child = children[foundIndex];
-                            window.childName = child.name;
-                            window.childAge = child.age;
-                            localStorage.setItem('currentChildIndex', currentChildIndex);
-                            localStorage.setItem('childName', window.childName);
-                            localStorage.setItem('childAge', window.childAge);
-                            loadChildData(currentChildIndex);
-                            setAvatarByGender();
-                            updateChildNameLabel(); updateStatsUI();
-                            const answer = `Ой, ${window.childName}, прости! Я перепутал. Так о чём мы говорили?`;
-                            saveHistory(`🦁 Люцик: ${answer}`);
-                            speak(answer);
-                            return;
-                        }
-                    }
-                }
-                
-                // Детекция страхов (ИСПРАВЛЕНО: lowerText вместо l)
-                if (lowerText.includes('темнот')) updateFear('темноты');
-                else if (lowerText.includes('врач')) updateFear('врачей');
-                else if (lowerText.includes('один') || lowerText.includes('одна')) updateFear('одиночества');
-                else if (lowerText.includes('обид')) updateFear('обиды');
-                else if (lowerText.includes('нов') && (lowerText.includes('боюсь') || lowerText.includes('страш'))) updateFear('нового');
-                else if (lowerText.includes('собака') || lowerText.includes('кошка') || lowerText.includes('животн')) updateFear('животных');
-                
-                isWaiting = true; 
-                const answer = await askDeepSeek(text, false); 
-                isWaiting = false; 
-                saveHistory(`🦁 ${characters[currentChar].name}: ${answer}`); 
-                speak(answer); 
-                if (currentChar === 'lucik') purr(); 
-            }; 
-            
-            rec.onerror = () => { 
-                document.getElementById('micBtn').classList.remove('recording'); 
-                document.getElementById('avatar').classList.remove('listening'); 
-                isListening = false; 
-                speak("Не расслышал, скажи ещё раз!"); 
-            }; 
-        }
-        
-        document.getElementById('parentBtn').onclick = () => { 
-            if (!savedPin) { 
-                const pin = prompt('Создайте пароль (4-6 цифр):'); 
-                if (pin && pin.length >= 4 && /^\d+$/.test(pin)) { 
-                    localStorage.setItem('parentPin', encodePin(pin)); 
-                    savedPin = encodePin(pin); 
-                    alert('Пароль создан!'); 
-                    window.location.href = '/parent.html'; 
-                } else alert('4-6 цифр!'); 
-            } else { 
-                const pin = prompt('Введите пароль:'); 
-                if (pin === decodePin(savedPin)) window.location.href = '/parent.html'; 
-                else if (pin !== null) alert('Неверный пароль!'); 
-            } 
-        };
-        
-        updateAvatarLock(); 
-        updateAvatarLabel(); 
-        updateStatsUI(); 
-        updateChildNameLabel();
-        
-        if ('serviceWorker' in navigator) { 
-            navigator.serviceWorker.register('/sw.js').catch(() => {}); 
-        }
-        
-        function updateTimeTheme() { 
-            document.body.classList.toggle('night', new Date().getHours() >= 18 || new Date().getHours() < 6); 
-        }
-        updateTimeTheme(); 
-        setInterval(updateTimeTheme, 60000);
-        
-        // Приветствие только в консоли, без звука (избегаем ошибки AudioContext)
-        console.log(`✅ Приложение готово! Привет, ${window.childName}! Нажми на микрофон.`);
-    </script>
+      }
+    }
+    
+    // Детекция страхов (исправлено: везде lowerText)
+    if (lowerText.includes('темнот')) updateFear('темноты');
+    else if (lowerText.includes('врач')) updateFear('врачей');
+    else if (lowerText.includes('один') || lowerText.includes('одна')) updateFear('одиночества');
+    else if (lowerText.includes('обид')) updateFear('обиды');
+    else if (lowerText.includes('нов') && (lowerText.includes('боюсь') || lowerText.includes('страш'))) updateFear('нового');
+    else if (lowerText.includes('собака') || lowerText.includes('кошка') || lowerText.includes('животн')) updateFear('животных');
+    
+    isWaiting = true;
+    const answer = await askDeepSeek(text, false);
+    isWaiting = false;
+    saveHistory(`🦁 ${characters[currentChar].name}: ${answer}`);
+    speak(answer);
+    if (currentChar === 'lucik') purr();
+  };
+  
+  rec.onerror = () => {
+    document.getElementById('micBtn').classList.remove('recording');
+    document.getElementById('avatar').classList.remove('listening');
+    isListening = false;
+    speak("Не расслышал, скажи ещё раз!");
+  };
+}
+
+// ========== РОДИТЕЛЬСКАЯ КНОПКА (исправлен PIN) ==========
+document.getElementById('parentBtn').onclick = async () => {
+  if (!savedPin) {
+    const pin = prompt('Создайте пароль (4-6 цифр):');
+    if (pin && pin.length >= 4 && /^\d+$/.test(pin)) {
+      savedPin = await createPin(pin);
+      alert('Пароль создан!');
+      window.location.href = '/parent.html';
+    } else alert('4-6 цифр!');
+  } else {
+    const pin = prompt('Введите пароль:');
+    const isValid = await verifyPin(pin);
+    if (isValid) window.location.href = '/parent.html';
+    else if (pin !== null) alert('Неверный пароль!');
+  }
+};
+
+// ========== ФИНАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ ==========
+updateAvatarLock();
+updateAvatarLabel();
+updateStatsUI();
+updateChildNameLabel();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+function updateTimeTheme() {
+  const hour = new Date().getHours();
+  document.body.classList.toggle('night', hour >= 18 || hour < 6);
+}
+updateTimeTheme();
+setInterval(updateTimeTheme, 60000);
+
+checkAuthAndRedirect();
+
+console.log(`✅ Приложение готово! Привет, ${window.childName}! Нажми на микрофон.`);
+</script>
 </body>
 </html>
