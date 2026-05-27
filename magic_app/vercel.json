@@ -1,15 +1,27 @@
 {
   "functions": {
     "api/*.js": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs20.x",
+      "maxDuration": 30
     }
   },
   "rewrites": [
-    { "source": "/app.html", "destination": "/app.html" },
-    { "source": "/parent.html", "destination": "/parent.html" },
-    { "source": "/admin.html", "destination": "/admin.html" },
-    { "source": "/privacy.html", "destination": "/privacy.html" },
-    { "source": "/terms.html", "destination": "/terms.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/app", "destination": "/app.html" },
+    { "source": "/parent", "destination": "/parent.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://geroy-skazki.vercel.app" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+        { "key": "Access-Control-Allow-Credentials", "value": "true" }
+      ]
+    }
   ]
 }
