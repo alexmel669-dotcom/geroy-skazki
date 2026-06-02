@@ -1,1 +1,16 @@
-
+{
+  "name": "Люцик — Герой Сказок",
+  "short_name": "Люцик",
+  "start_url": "/app.html",
+  "display": "standalone",
+  "background_color": "#151521",
+  "theme_color": "#151521",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "assets/images/avatar.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
