@@ -1,21 +1,14 @@
 {
   "version": 2,
   "routes": [
-    { "src": "/api/login", "dest": "/api/auth/login.js" },
-    { "src": "/api/register", "dest": "/api/auth/register.js" },
-    { "src": "/api/logout", "dest": "/api/auth/logout.js" },
-    { "src": "/api/verify-token", "dest": "/api/auth/verify-token.js" },
-    { "src": "/api/generate", "dest": "/api/ai/generate.js" },
-    { "src": "/api/tts", "dest": "/api/ai/tts.js" },
-    { "src": "/api/sync-child-data", "dest": "/api/user/sync.js" },
-    { "src": "/api/admin-login", "dest": "/api/admin/login.js" },
-    { "src": "/api/admin-stats", "dest": "/api/admin/stats.js" },
-    { "src": "/api/parent-advice", "dest": "/api/parent/advice.js" },
-    { "src": "/api/send-review", "dest": "/api/feedback.js" },
-    { "src": "/api/analytics", "dest": "/api/analytics.js" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/sw.js", "dest": "/public/sw.js", "headers": { "Cache-Control": "no-cache" } },
+    { "src": "/sw.js", "dest": "/public/sw.js" },
+    { "src": "/manifest.json", "dest": "/public/manifest.json" },
     { "src": "/assets/(.*)", "dest": "/public/assets/$1" },
+    { "src": "/css/(.*)", "dest": "/public/css/$1" },
+    { "src": "/js/(.*)", "dest": "/public/js/$1" },
+    { "src": "/(.*\\.html)", "dest": "/public/$1" },
+    { "src": "/", "dest": "/public/index.html" },
     { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }
