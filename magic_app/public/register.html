@@ -1,1 +1,27 @@
-
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Регистрация — Герой Сказок</title>
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-avatar">🐱</div>
+    <h1>Регистрация</h1>
+    <p class="auth-subtitle">Создай аккаунт для своего малыша</p>
+    <form id="registerForm">
+      <input type="email" id="regEmail" placeholder="Email" required autocomplete="email">
+      <input type="password" id="regPassword" placeholder="Пароль (мин. 6 символов)" required autocomplete="new-password" minlength="6">
+      <input type="password" id="regPasswordConfirm" placeholder="Повтори пароль" required autocomplete="new-password" minlength="6">
+      <button type="submit" class="auth-btn">Зарегистрироваться</button>
+    </form>
+    <p class="auth-error" id="regError"></p>
+    <p class="auth-link">Уже есть аккаунт? <a href="login.html">Войти</a></p>
+  </div>
+</div>
+<script type="module" src="js/auth.js"></script>
+</body>
+</html>
