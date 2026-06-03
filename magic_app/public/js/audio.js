@@ -6,15 +6,12 @@ let audioUnlocked = false;
 let audioContext = null;
 let pendingSpeakPromise = null;
 
-// Разблокировка аудио (должна вызываться при взаимодействии пользователя)
+// Разблокировка аудио
 export function unlockAudio() {
   if (audioUnlocked) return;
   
   try {
-    // Создаем AudioContext
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    
-    // Воспроизводим тишину для разблокировки
     const buffer = audioContext.createBuffer(1, 1, 22050);
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
@@ -24,13 +21,12 @@ export function unlockAudio() {
     audioContext.resume().then(() => {
       audioUnlocked = true;
       console.log('🔊 Аудио разблокировано');
-    }).catch(error => {
-      console.warn('Audio context resume failed:', error);
-      audioUnlocked = true; // Все равно разрешаем попытки
+    }).catch(() => {
+      audioUnlocked = true;
     });
   } catch (error) {
     console.warn('Audio context creation failed:', error);
-    audioUnlocked = true; // Fallback
+    audioUnlocked = true;
   }
 }
 
@@ -43,7 +39,6 @@ function fallbackSpeak(text) {
       return;
     }
     
-    // Отменяем предыдущую речь
     window.speechSynthesis.cancel();
     
     const utterance = new SpeechSynthesisUtterance(text);
@@ -55,7 +50,6 @@ function fallbackSpeak(text) {
     const avatar = document.getElementById('avatar');
     let timeoutId;
     
-    // Таймаут на случай зависания
     timeoutId = setTimeout(() => {
       console.warn('Speech synthesis timeout');
       if (avatar) avatar.classList.remove('talking');
@@ -71,7 +65,6 @@ function fallbackSpeak(text) {
     utterance.onend = () => {
       clearTimeout(timeoutId);
       if (avatar) avatar.classList.remove('talking');
-      console.log('✅ Speech completed');
       resolve();
     };
     
@@ -79,15 +72,7 @@ function fallbackSpeak(text) {
       clearTimeout(timeoutId);
       console.error('Speech synthesis error:', event.error);
       if (avatar) avatar.classList.remove('talking');
-      resolve(); // Все равно резолвим, чтобы не блокировать UI
-    };
-    
-    utterance.onpause = () => {
-      console.log('Speech paused');
-    };
-    
-    utterance.onresume = () => {
-      console.log('Speech resumed');
+      resolve();
     };
     
     window.speechSynthesis.speak(utterance);
@@ -95,22 +80,19 @@ function fallbackSpeak(text) {
 }
 
 // Основная функция TTS через Яндекс
-export async function speakWithYandex(text, voice = 'lucik') {
-  // Если уже есть активный промис, ждем его
+export async function speakWithYandex(text, voice = 'alena') {
   if (pendingSpeakPromise) {
     await pendingSpeakPromise;
   }
   
   pendingSpeakPromise = new Promise(async (resolve) => {
     try {
-      // Если аудио не разблокировано или нет сети, используем fallback
       if (!audioUnlocked || !navigator.onLine) {
         await fallbackSpeak(text);
         resolve();
         return;
       }
       
-      // Останавливаем предыдущее аудио
       if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
@@ -119,7 +101,6 @@ export async function speakWithYandex(text, voice = 'lucik') {
       
       console.log('🎤 Requesting TTS:', text.substring(0, 50));
       
-      // Запрос к API с таймаутом
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), CONFIG.API_TIMEOUT);
       
@@ -145,18 +126,18 @@ export async function speakWithYandex(text, voice = 'lucik') {
         return;
       }
       
-      const blob = await response.blob();
+      // Парсим JSON ответ
+      const data = await response.json();
       
-      if (!blob || blob.size < 100) {
+      if (!data.audioUrl) {
         console.warn('TTS returned empty audio');
         await fallbackSpeak(text);
         resolve();
         return;
       }
       
-      // Создаем и воспроизводим аудио
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
+      // Создаем аудио из base64 data URL
+      const audio = new Audio(data.audioUrl);
       currentAudio = audio;
       
       const avatar = document.getElementById('avatar');
@@ -170,7 +151,6 @@ export async function speakWithYandex(text, voice = 'lucik') {
         
         function cleanup() {
           clearTimeout(audioTimeout);
-          URL.revokeObjectURL(url);
           currentAudio = null;
           if (avatar) avatar.classList.remove('talking');
         }
@@ -192,12 +172,6 @@ export async function speakWithYandex(text, voice = 'lucik') {
           audioReject(e);
         };
         
-        audio.onpause = () => {
-          if (audio.currentTime < audio.duration - 0.1) {
-            console.log('⏸️ Audio paused');
-          }
-        };
-        
         audio.play().catch(error => {
           console.error('Audio play failed:', error);
           cleanup();
@@ -210,7 +184,6 @@ export async function speakWithYandex(text, voice = 'lucik') {
     } catch (error) {
       console.error('Yandex TTS error:', error.message);
       
-      // Очищаем состояние
       if (currentAudio) {
         currentAudio.pause();
         currentAudio = null;
@@ -219,7 +192,6 @@ export async function speakWithYandex(text, voice = 'lucik') {
       const avatar = document.getElementById('avatar');
       if (avatar) avatar.classList.remove('talking');
       
-      // Используем fallback
       await fallbackSpeak(text);
       resolve();
     }
@@ -229,13 +201,11 @@ export async function speakWithYandex(text, voice = 'lucik') {
   pendingSpeakPromise = null;
 }
 
-// Упрощенный интерфейс
 export function speak(text) {
   if (!text) return Promise.resolve();
-  return speakWithYandex(text, appState?.currentChar || 'lucik');
+  return speakWithYandex(text, appState?.currentChar || 'alena');
 }
 
-// Остановка воспроизведения
 export function stopSpeaking() {
   if (currentAudio) {
     currentAudio.pause();
@@ -253,18 +223,15 @@ export function stopSpeaking() {
   pendingSpeakPromise = null;
 }
 
-// Проверка статуса аудио
 export function isAudioUnlocked() {
   return audioUnlocked;
 }
 
-// Очистка при уходе
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     stopSpeaking();
   });
   
-  // Разблокируем аудио при первом взаимодействии
   document.addEventListener('click', unlockAudio, { once: true });
   document.addEventListener('touchstart', unlockAudio, { once: true });
 }
