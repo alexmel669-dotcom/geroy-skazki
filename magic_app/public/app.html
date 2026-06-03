@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.deepseek.com https://tts.api.cloud.yandex.net https://tts.speechkit.yandexcloud.net https://geroy-skazki.vercel.app;">
   <title>Люцик — Герой Сказок</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
   <meta name="theme-color" content="#151521">
 </head>
 <body>
@@ -24,10 +26,22 @@
   </div>
 
   <div class="stats-row">
-    <div class="stat-item"><span>😊</span><div class="bar"><div class="fill" id="moodFill" style="width:70%;background:var(--yellow)"></div></div></div>
-    <div class="stat-item"><span>🍎</span><div class="bar"><div class="fill" id="hungerFill" style="width:60%;background:var(--green)"></div></div></div>
-    <div class="stat-item"><span>⚡</span><div class="bar"><div class="fill" id="energyFill" style="width:50%;background:var(--blue)"></div></div></div>
-    <div class="stat-item"><span>⭐</span><div class="bar"><div class="fill" id="braveryFill" style="width:10%;background:var(--accent)"></div></div></div>
+    <div class="stat-item">
+      <span>😊</span>
+      <div class="bar"><div class="fill" id="moodFill" style="width:70%;background:var(--yellow)"></div></div>
+    </div>
+    <div class="stat-item">
+      <span>🍎</span>
+      <div class="bar"><div class="fill" id="hungerFill" style="width:60%;background:var(--green)"></div></div>
+    </div>
+    <div class="stat-item">
+      <span>⚡</span>
+      <div class="bar"><div class="fill" id="energyFill" style="width:50%;background:var(--blue)"></div></div>
+    </div>
+    <div class="stat-item">
+      <span>⭐</span>
+      <div class="bar"><div class="fill" id="braveryFill" style="width:10%;background:var(--accent)"></div></div>
+    </div>
   </div>
 
   <div class="actions-row">
