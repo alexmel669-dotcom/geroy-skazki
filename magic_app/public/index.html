@@ -1,5 +1,132 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Люцик</title></head>
-<body><h1>Привет!</h1><a href="app.html">Войти в приложение</a></body>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Люцик — Герой Сказок</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
+  <style>
+    .landing {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .landing h1 {
+      font-size: 2rem;
+      margin: 20px 0 10px;
+    }
+    .landing .subtitle {
+      opacity: 0.7;
+      margin-bottom: 30px;
+      font-size: 1.1rem;
+    }
+    .landing .hero {
+      font-size: 100px;
+      margin: 20px 0;
+    }
+    .landing .buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 30px 0;
+    }
+    .landing .btn {
+      padding: 15px 30px;
+      border-radius: 30px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: transform 0.2s;
+    }
+    .landing .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .landing .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+    .landing .btn:hover {
+      transform: scale(1.05);
+    }
+    .landing .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 15px;
+      margin: 40px 0;
+    }
+    .landing .feature-card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 20px;
+      text-align: center;
+    }
+    .landing .feature-card .icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+    .landing .feature-card h3 {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+    .landing .feature-card p {
+      margin: 5px 0 0;
+      opacity: 0.6;
+      font-size: 0.8rem;
+    }
+    .landing footer {
+      margin-top: 40px;
+      opacity: 0.5;
+      font-size: 0.85rem;
+    }
+    .landing footer a {
+      color: var(--accent);
+      text-decoration: none;
+      margin: 0 10px;
+    }
+  </style>
+</head>
+<body>
+<div class="container landing">
+  <div class="hero">🐱</div>
+  <h1>Люцик — Герой Сказок</h1>
+  <p class="subtitle">ИИ-помощник для преодоления детских страхов через сказки и игру</p>
+  
+  <div class="buttons">
+    <a href="app.html" class="btn btn-primary">🎮 Играть</a>
+    <a href="login.html" class="btn btn-secondary">🔐 Войти</a>
+    <a href="register.html" class="btn btn-secondary">✨ Регистрация</a>
+  </div>
+  
+  <div class="features">
+    <div class="feature-card">
+      <div class="icon">🎤</div>
+      <h3>Голосовое общение</h3>
+      <p>Ребёнок говорит — Люцик отвечает</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📚</div>
+      <h3>Сказки</h3>
+      <p>Персонализированные истории</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🎮</div>
+      <h3>Игры</h3>
+      <p>Развивающие мини-игры</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📊</div>
+      <h3>Прогресс</h3>
+      <p>Отслеживание успехов</p>
+    </div>
+  </div>
+  
+  <footer>
+    <a href="privacy.html">Конфиденциальность</a>
+    <a href="terms.html">Условия</a>
+    <p>© 2024 Люцик — Герой Сказок</p>
+  </footer>
+</div>
+</body>
 </html>
