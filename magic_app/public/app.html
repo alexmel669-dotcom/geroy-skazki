@@ -1,1 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Люцик — Герой Сказок</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#151521">
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-title">🐱 Люцик</div>
+    <div class="header-buttons">
+      <button class="btn-icon" id="logoutBtn" style="display:none;">🚪</button>
+      <button class="btn-icon" id="parentBtn">⚙️</button>
+    </div>
+  </header>
 
+  <div class="avatar-section">
+    <div class="avatar" id="avatar" style="background-image:url('assets/images/avatar.png')"></div>
+    <div class="child-name" id="childNameLabel">Загрузка...</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-item"><span>😊</span><div class="bar"><div class="fill" id="moodFill" style="width:70%;background:var(--yellow)"></div></div></div>
+    <div class="stat-item"><span>🍎</span><div class="bar"><div class="fill" id="hungerFill" style="width:60%;background:var(--green)"></div></div></div>
+    <div class="stat-item"><span>⚡</span><div class="bar"><div class="fill" id="energyFill" style="width:50%;background:var(--blue)"></div></div></div>
+    <div class="stat-item"><span>⭐</span><div class="bar"><div class="fill" id="braveryFill" style="width:10%;background:var(--accent)"></div></div></div>
+  </div>
+
+  <div class="actions-row">
+    <button class="action-btn" id="feedBtn">🍎</button>
+    <button class="action-btn" id="gamesBtn">🎮</button>
+    <button class="action-btn" id="roomBtn">🏠</button>
+  </div>
+
+  <div class="mic-wrapper">
+    <button class="mic-btn" id="micBtn">🎤</button>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
