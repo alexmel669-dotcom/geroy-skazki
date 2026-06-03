@@ -13,6 +13,7 @@ export function checkRateLimit(key, maxRequests = 10, windowMs = 60000) {
 }
 
 export function getRateLimitKey(req) {
-  return req.headers.authorization?.replace('Bearer ', '') || 
-         req.headers['x-forwarded-for'] || 'unknown';
+  return req.headers['x-forwarded-for'] || 
+         req.headers['x-real-ip'] || 
+         'unknown';
 }
