@@ -13,18 +13,18 @@ export const CONFIG = {
     "обиды": 0, 
     "животных": 0
   },
-  MAX_LOCAL_STORAGE_SIZE: 4500000, // ~4.5MB safety limit
-  AUDIO_TIMEOUT: 10000, // 10 seconds timeout for audio
-  API_TIMEOUT: 15000, // 15 seconds for API calls
-  APP_VERSION: '3.4.0'
+  MAX_LOCAL_STORAGE_SIZE: 4500000,
+  AUDIO_TIMEOUT: 10000,
+  API_TIMEOUT: 15000,
+  APP_VERSION: '4.0.0'
 };
 
 export const CHARACTERS = {
-  lucik: { name: 'Люцик', icon: 'avatar.png', premium: false, voice: 'alena' },
-  mom: { name: 'Мама', icon: 'mom.png', premium: true, voice: 'alena' },
-  dad: { name: 'Папа', icon: 'dad.png', premium: true, voice: 'filipp' },
-  kid1: { name: 'Ребёнок 1', icon: 'kid1.png', premium: false, voice: 'alena' },
-  kid2: { name: 'Ребёнок 2', icon: 'kid2.png', premium: false, voice: 'alena' }
+  lucik: { name: 'Люцик', icon: 'assets/images/avatar.png', premium: false, voice: 'alena' },
+  mom: { name: 'Мама', icon: 'assets/images/mom.png', premium: true, voice: 'alena' },
+  dad: { name: 'Папа', icon: 'assets/images/dad.png', premium: true, voice: 'filipp' },
+  kid1: { name: 'Ребёнок 1', icon: 'assets/images/kid1.png', premium: false, voice: 'alena' },
+  kid2: { name: 'Ребёнок 2', icon: 'assets/images/kid2.png', premium: false, voice: 'alena' }
 };
 
 export const FALLBACK_REPLIES = {
@@ -43,7 +43,6 @@ export const FEAR_KEYWORDS = {
   'животных': ['собака', 'собаку', 'животн', 'зверь', 'кошка', 'укусит']
 };
 
-// Валидация при загрузке
 export function validateConfig() {
   if (typeof window !== 'undefined') {
     console.log(`🟢 Приложение v${CONFIG.APP_VERSION} загружено`);
