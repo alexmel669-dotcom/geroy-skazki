@@ -12,7 +12,7 @@ export function verifyAuth(req) {
   const token = getTokenFromRequest(req);
   if (!token) return null;
   try {
-    return jwt.verify(token, process.env.JWT_SECRET);
+    return jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key');
   } catch {
     return null;
   }
