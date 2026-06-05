@@ -28,7 +28,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'TTS service not configured' });
     }
 
-    // Формируем запрос к Yandex SpeechKit
     const ttsUrl = 'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize';
     
     const params = new URLSearchParams({
@@ -54,17 +53,23 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'TTS synthesis failed' });
     }
 
-    // Получаем аудио как буфер
-    const audioBuffer = await response.arrayBuffer();
-    const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+    const audioArrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(audioArrayBuffer);
+    
+    // Конвертируем в base64 вручную без Buffer
+    let binary = '';
+    for (let i = 0; i < uint8Array.length; i++) {
+      binary += String.fromCharCode(uint8Array[i]);
+    }
+    const audioBase64 = btoa(binary);
     const audioDataUrl = `data:audio/mp3;base64,${audioBase64}`;
 
-    console.log(`🔊 TTS успешно: "${text.substring(0, 50)}..." (${audioBuffer.byteLength} bytes)`);
+    console.log(`🔊 TTS успешно: "${text.substring(0, 50)}..." (${uint8Array.length} bytes)`);
 
     return res.status(200).json({ 
       audioUrl: audioDataUrl,
       format: 'mp3',
-      size: audioBuffer.byteLength
+      size: uint8Array.length
     });
 
   } catch (error) {
