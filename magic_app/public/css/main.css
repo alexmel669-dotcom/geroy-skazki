@@ -25,6 +25,14 @@ body {
   flex-direction: column;
 }
 
+/* Фон для родительского кабинета */
+body.parent-bg {
+  background: linear-gradient(180deg, rgba(20,20,40,0.85), rgba(29,29,48,0.9)), url('assets/images/parent-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: overlay;
+}
+
 .container {
   max-width: 520px;
   width: 100%;
@@ -74,6 +82,8 @@ header {
   background-size: cover;
   border: 5px solid rgba(255,255,255,0.2);
   box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  transition: background-image 0.3s;
+  cursor: pointer;
 }
 
 .avatar.talking {
@@ -230,4 +240,110 @@ header {
   border-radius: 40px;
   font-weight: 600;
   z-index: 3000;
+}
+
+/* Стили для лендинга */
+.landing {
+  text-align: center;
+  padding: 40px 20px;
+}
+.landing h1 {
+  font-size: 2rem;
+  margin: 20px 0 10px;
+}
+.landing .subtitle {
+  opacity: 0.7;
+  margin-bottom: 30px;
+  font-size: 1.1rem;
+}
+.landing .hero {
+  font-size: 100px;
+  margin: 20px 0;
+}
+.landing .buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 30px 0;
+}
+.landing .btn {
+  padding: 15px 30px;
+  border-radius: 30px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: transform 0.2s;
+}
+.landing .btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.landing .btn-secondary {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+.landing .btn:hover {
+  transform: scale(1.05);
+}
+.landing .features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 15px;
+  margin: 40px 0;
+}
+.landing .feature-card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 20px;
+  text-align: center;
+}
+.landing .feature-card .icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+.landing .feature-card h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+.landing .feature-card p {
+  margin: 5px 0 0;
+  opacity: 0.6;
+  font-size: 0.8rem;
+}
+.landing .reviews {
+  margin: 40px 0;
+}
+.landing .reviews h2 {
+  margin-bottom: 20px;
+}
+.landing .review-card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 15px;
+  text-align: left;
+}
+.landing .review-card .stars {
+  color: var(--yellow);
+  margin-bottom: 8px;
+}
+.landing .review-card .review-text {
+  opacity: 0.8;
+  font-style: italic;
+}
+.landing .review-card .review-author {
+  margin-top: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.landing footer {
+  margin-top: 40px;
+  opacity: 0.5;
+  font-size: 0.85rem;
+}
+.landing footer a {
+  color: var(--accent);
+  text-decoration: none;
+  margin: 0 10px;
 }
