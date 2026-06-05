@@ -39,8 +39,7 @@ function fallbackSpeak(text) {
       return;
     }
     
-    window.speechSynthesis.cancel();
-    
+    // Не отменяем предыдущую речь, даём доиграть
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ru-RU';
     utterance.rate = 0.9;
@@ -49,12 +48,19 @@ function fallbackSpeak(text) {
     
     const avatar = document.getElementById('avatar');
     let timeoutId;
+    let resolved = false;
+    
+    function finish() {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeoutId);
+      if (avatar) avatar.classList.remove('talking');
+      resolve();
+    }
     
     timeoutId = setTimeout(() => {
       console.warn('Speech synthesis timeout');
-      if (avatar) avatar.classList.remove('talking');
-      window.speechSynthesis.cancel();
-      resolve();
+      finish();
     }, CONFIG.AUDIO_TIMEOUT);
     
     utterance.onstart = () => {
@@ -63,20 +69,28 @@ function fallbackSpeak(text) {
     };
     
     utterance.onend = () => {
-      clearTimeout(timeoutId);
-      if (avatar) avatar.classList.remove('talking');
-      resolve();
+      console.log('✅ Speech completed');
+      finish();
     };
     
     utterance.onerror = (event) => {
-      clearTimeout(timeoutId);
       console.error('Speech synthesis error:', event.error);
-      if (avatar) avatar.classList.remove('talking');
-      resolve();
+      finish();
     };
     
     window.speechSynthesis.speak(utterance);
   });
+}
+
+// Конвертация base64 в Blob
+function base64ToBlob(base64, mimeType = 'audio/mp3') {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
 }
 
 // Основная функция TTS через Яндекс
@@ -93,9 +107,11 @@ export async function speakWithYandex(text, voice = 'alena') {
         return;
       }
       
+      // Останавливаем предыдущее аудио
       if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
+        URL.revokeObjectURL(currentAudio.src);
         currentAudio = null;
       }
       
@@ -136,28 +152,42 @@ export async function speakWithYandex(text, voice = 'alena') {
         return;
       }
       
-      // Создаем аудио из base64 data URL
-      const audio = new Audio(data.audioUrl);
+      // Извлекаем base64 из data URL и создаём Blob URL
+      const base64 = data.audioUrl.split(',')[1];
+      const blob = base64ToBlob(base64);
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const audio = new Audio(blobUrl);
       currentAudio = audio;
       
       const avatar = document.getElementById('avatar');
       
       await new Promise((audioResolve, audioReject) => {
+        let audioResolved = false;
+        
+        function cleanup() {
+          if (audioResolved) return;
+          audioResolved = true;
+          clearTimeout(audioTimeout);
+          URL.revokeObjectURL(blobUrl);
+          currentAudio = null;
+          if (avatar) avatar.classList.remove('talking');
+        }
+        
         const audioTimeout = setTimeout(() => {
           console.warn('Audio playback timeout');
           cleanup();
           audioReject(new Error('Playback timeout'));
         }, CONFIG.AUDIO_TIMEOUT);
         
-        function cleanup() {
-          clearTimeout(audioTimeout);
-          currentAudio = null;
-          if (avatar) avatar.classList.remove('talking');
-        }
-        
-        audio.onplay = () => {
-          console.log('▶️ Playing audio');
+        audio.oncanplaythrough = () => {
+          console.log('▶️ Audio ready, playing...');
           if (avatar) avatar.classList.add('talking');
+          audio.play().catch(err => {
+            console.error('Audio play failed:', err);
+            cleanup();
+            audioReject(err);
+          });
         };
         
         audio.onended = () => {
@@ -172,11 +202,8 @@ export async function speakWithYandex(text, voice = 'alena') {
           audioReject(e);
         };
         
-        audio.play().catch(error => {
-          console.error('Audio play failed:', error);
-          cleanup();
-          audioReject(error);
-        });
+        // Начинаем загрузку
+        audio.load();
       });
       
       resolve();
@@ -186,6 +213,7 @@ export async function speakWithYandex(text, voice = 'alena') {
       
       if (currentAudio) {
         currentAudio.pause();
+        URL.revokeObjectURL(currentAudio.src);
         currentAudio = null;
       }
       
@@ -210,6 +238,7 @@ export function stopSpeaking() {
   if (currentAudio) {
     currentAudio.pause();
     currentAudio.currentTime = 0;
+    URL.revokeObjectURL(currentAudio.src);
     currentAudio = null;
   }
   
