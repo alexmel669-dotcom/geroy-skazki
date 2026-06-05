@@ -48,19 +48,17 @@ async function init() {
     updateTimeTheme();
     setInterval(updateTimeTheme, 60000);
     
-    // Service Worker с отслеживанием обновлений
+    // Service Worker
     if ('serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.register('/sw.js');
         
-        // Проверка обновлений
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (!newWorker) return;
           
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // Доступна новая версия
               showModal(
                 '🔄 Обновление', 
                 'Доступна новая версия приложения. Обновить сейчас?',
@@ -86,7 +84,7 @@ async function init() {
       }
     }
     
-    // Разблокировка аудио при первом взаимодействии
+    // Разблокировка аудио
     document.addEventListener('click', unlockAudio, { once: true });
     document.addEventListener('touchstart', unlockAudio, { once: true });
     
@@ -134,6 +132,29 @@ async function init() {
         }
       }
     };
+    
+    // Свайп между персонажами
+    let touchStartX = 0;
+    if (avatar) {
+      avatar.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+      });
+      avatar.addEventListener('touchend', (e) => {
+        const diff = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(diff) > 50) {
+          const chars = Object.keys(CHARACTERS);
+          const currentIdx = chars.indexOf(appState.currentChar);
+          const newIdx = diff > 0 
+            ? (currentIdx - 1 + chars.length) % chars.length 
+            : (currentIdx + 1) % chars.length;
+          appState.currentChar = chars[newIdx];
+          localStorage.setItem('currentCharacter', appState.currentChar);
+          avatar.style.backgroundImage = `url('${CHARACTERS[appState.currentChar].icon}')`;
+          updateChildNameLabel();
+          console.log('👤 Переключились на:', CHARACTERS[appState.currentChar].name);
+        }
+      });
+    }
     
     // Инициализация микрофона
     initMic();
