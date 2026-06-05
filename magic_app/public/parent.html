@@ -5,181 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Родительский кабинет — Люцик</title>
   <link rel="stylesheet" href="css/main.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
   <style>
-    .parent-container {
-      padding: 20px;
-    }
-    .parent-container h1 {
-      font-size: 1.5rem;
-      margin-bottom: 5px;
-    }
-    .parent-container .subtitle {
-      opacity: 0.6;
-      margin-bottom: 20px;
-      font-size: 0.9rem;
-    }
-    .parent-card {
-      background: var(--card);
-      border-radius: 20px;
-      padding: 20px;
-      margin-bottom: 15px;
-    }
-    .parent-card h2 {
-      margin: 0 0 10px;
-      font-size: 1.1rem;
-    }
-    .parent-card .stat-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    .parent-card .stat-row:last-child {
-      border-bottom: none;
-    }
-    .parent-card .stat-label {
-      opacity: 0.7;
-    }
-    .parent-card .stat-value {
-      font-weight: 600;
-    }
-    .progress-bar {
-      background: rgba(255,255,255,0.1);
-      height: 8px;
-      border-radius: 10px;
-      margin-top: 5px;
-      overflow: hidden;
-    }
-    .progress-fill {
-      height: 100%;
-      border-radius: 10px;
-      background: var(--accent);
-      transition: width 0.5s;
-    }
-    .fear-item {
-      margin-bottom: 12px;
-    }
-    .fear-item .label {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 4px;
-      font-size: 0.9rem;
-    }
-    .back-btn {
-      display: inline-block;
-      padding: 10px 20px;
-      background: rgba(255,255,255,0.1);
-      color: #fff;
-      border-radius: 20px;
-      text-decoration: none;
-      margin-bottom: 20px;
-      font-size: 0.9rem;
-    }
-    .child-selector {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-    .child-chip {
-      padding: 8px 16px;
-      border-radius: 20px;
-      background: rgba(255,255,255,0.1);
-      border: none;
-      color: #fff;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-    .child-chip.active {
-      background: var(--accent);
-    }
+    body { background: linear-gradient(180deg, #141420, #1d1d30); }
+    .parent-container { padding: 20px; max-width: 600px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; }
+    .back-link { color: var(--accent); text-decoration: none; display: inline-block; margin-bottom: 20px; }
+    .card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 15px; }
+    .card h2 { margin: 0 0 12px; font-size: 1.1rem; }
+    .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .row:last-child { border-bottom: none; }
+    .label { opacity: 0.7; } .value { font-weight: 600; }
+    .fear-item { margin-bottom: 12px; }
+    .fear-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .bar-bg { background: rgba(255,255,255,0.1); height: 8px; border-radius: 10px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 10px; background: var(--accent); }
+    .badge { background: var(--accent); padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; }
+    .empty { opacity: 0.5; text-align: center; padding: 20px; }
   </style>
 </head>
 <body>
-<div class="container parent-container">
-  <a href="app.html" class="back-btn">← Назад к Люцику</a>
-  
+<div class="parent-container">
+  <a href="app.html" class="back-link">← Назад к Люцику</a>
   <h1>👨‍👩‍👧 Родительский кабинет</h1>
-  <p class="subtitle">Статистика, прогресс и настройки</p>
-  
-  <div class="child-selector">
-    <button class="child-chip active">Ребёнок 1</button>
-    <button class="child-chip">Ребёнок 2</button>
-    <button class="child-chip">+ Добавить</button>
-  </div>
-  
-  <div class="parent-card">
+  <p style="opacity:0.6; margin-bottom:20px;" id="childInfo">Статистика и прогресс</p>
+
+  <div class="card">
     <h2>📊 Общая статистика</h2>
-    <div class="stat-row">
-      <span class="stat-label">Сказок создано</span>
-      <span class="stat-value">12</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Игр сыграно</span>
-      <span class="stat-value">8</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Дней активности</span>
-      <span class="stat-value">5</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Время в приложении</span>
-      <span class="stat-value">2ч 30м</span>
-    </div>
+    <div id="statsContainer"><div class="empty">Загрузка...</div></div>
   </div>
-  
-  <div class="parent-card">
-    <h2>🎯 Прогресс по страхам</h2>
-    <div class="fear-item">
-      <div class="label"><span>Темнота</span><span>60%</span></div>
-      <div class="progress-bar"><div class="progress-fill" style="width:60%"></div></div>
-    </div>
-    <div class="fear-item">
-      <div class="label"><span>Врачи</span><span>45%</span></div>
-      <div class="progress-bar"><div class="progress-fill" style="width:45%"></div></div>
-    </div>
-    <div class="fear-item">
-      <div class="label"><span>Одиночество</span><span>30%</span></div>
-      <div class="progress-bar"><div class="progress-fill" style="width:30%"></div></div>
-    </div>
-    <div class="fear-item">
-      <div class="label"><span>Животные</span><span>75%</span></div>
-      <div class="progress-bar"><div class="progress-fill" style="width:75%"></div></div>
-    </div>
+
+  <div class="card">
+    <h2>🎯 Работа со страхами</h2>
+    <div id="fearsContainer"><div class="empty">Загрузка...</div></div>
   </div>
-  
-  <div class="parent-card">
-    <h2>⚙️ Настройки</h2>
-    <div class="stat-row">
-      <span class="stat-label">Ограничение экранного времени</span>
-      <span class="stat-value">30 мин/день</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Ночной режим</span>
-      <span class="stat-value">21:00 – 07:00</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Голосовой ассистент</span>
-      <span class="stat-value">Включен</span>
-    </div>
-  </div>
-  
-  <div class="parent-card">
+
+  <div class="card">
     <h2>📝 Последняя активность</h2>
-    <div class="stat-row">
-      <span class="stat-label">Сегодня 14:30</span>
-      <span class="stat-value">Сказка "Котёнок и темнота"</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Сегодня 12:00</span>
-      <span class="stat-value">Игра "Эмоции" — 5/5</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Вчера 18:00</span>
-      <span class="stat-value">Сказка "Храбрый зайчик"</span>
-    </div>
+    <div id="historyContainer"><div class="empty">Загрузка...</div></div>
   </div>
 </div>
+<script src="js/parent.js"></script>
 </body>
 </html>
