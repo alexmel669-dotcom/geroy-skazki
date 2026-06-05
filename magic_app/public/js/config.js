@@ -14,7 +14,7 @@ export const CONFIG = {
     "животных": 0
   },
   MAX_LOCAL_STORAGE_SIZE: 4500000,
-  AUDIO_TIMEOUT: 10000,
+  AUDIO_TIMEOUT: 15000,
   API_TIMEOUT: 15000,
   APP_VERSION: '4.0.0'
 };
@@ -24,7 +24,7 @@ export const CHARACTERS = {
   mom: { name: 'Мама', icon: 'assets/images/mom.png', premium: true, voice: 'alena' },
   dad: { name: 'Папа', icon: 'assets/images/dad.png', premium: true, voice: 'filipp' },
   kid1: { name: 'Ребёнок 1', icon: 'assets/images/kid1.png', premium: false, voice: 'alena' },
-  kid2: { name: 'Ребёнок 2', icon: 'assets/images/kid2.png', premium: false, voice: 'alena' }
+  kid2: { name: 'Ребёнок 2', icon: 'assets/images/kid2.png', premium: false, voice: 'ermil' }
 };
 
 export const FALLBACK_REPLIES = {
