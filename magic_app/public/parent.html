@@ -10,9 +10,10 @@
     .parent-container { max-width: 600px; margin: 0 auto; padding: 20px; }
     h1 { font-size: 1.5rem; margin-bottom: 5px; }
     .subtitle { opacity: 0.6; margin-bottom: 20px; font-size: 0.9rem; }
-    .back-link { display: inline-block; color: var(--accent); text-decoration: none; margin-bottom: 15px; font-size: 0.9rem; }
+    .back-link { display: inline-block; color: var(--accent); text-decoration: none; margin-bottom: 8px; font-size: 0.9rem; }
+    .site-link { display: inline-block; color: var(--accent); text-decoration: none; margin-bottom: 15px; font-size: 0.9rem; margin-left: 16px; }
     
-    .card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 15px; }
+    .card { background: rgba(35, 35, 58, 0.5); border-radius: 20px; padding: 20px; margin-bottom: 15px; backdrop-filter: blur(8px); }
     .card h2 { margin: 0 0 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
     .card h3 { margin: 16px 0 8px; font-size: 0.95rem; opacity: 0.8; }
     
@@ -44,10 +45,14 @@
     .history-item .meta { opacity: 0.4; font-size: 0.7rem; margin-top: 4px; display: flex; gap: 12px; }
     .history-item.child .msg { color: var(--blue); }
     .history-item.lucik .msg { color: var(--accent); }
+    .history-item.alerted { background: rgba(255, 64, 129, 0.12); border-radius: 10px; padding: 8px 10px; margin: 2px 0; }
+    .history-item.alerted .msg { color: #ff8a80; }
+    .alert-tag { display: inline-block; background: var(--accent); color: #fff; font-size: 0.65rem; padding: 2px 8px; border-radius: 10px; margin-left: 8px; font-weight: 600; }
     
     .children-input { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #fff; font-size: 0.9rem; margin-bottom: 8px; }
     .btn-save { padding: 8px 20px; border-radius: 20px; border: none; background: var(--green); color: #fff; font-size: 0.85rem; cursor: pointer; font-weight: 600; }
     .btn-save:hover { opacity: 0.9; }
+    .btn-attention { padding: 10px 24px; border-radius: 20px; border: none; background: var(--accent); color: #fff; font-size: 0.9rem; cursor: pointer; font-weight: 600; margin-top: 10px; display: inline-block; }
     
     .empty-state { opacity: 0.5; text-align: center; padding: 20px; font-size: 0.85rem; }
     
@@ -60,11 +65,19 @@
     .week-day.active { background: var(--accent); }
     .week-day.partial { background: rgba(255,255,255,0.1); }
     .week-day.none { background: rgba(255,255,255,0.03); }
+    
+    .attention-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+    .attention-box { background: rgba(35, 35, 58, 0.92); border-radius: 24px; padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; backdrop-filter: blur(12px); }
+    .attention-box h3 { margin: 0 0 12px; color: var(--accent); }
+    .attention-item { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; margin-bottom: 8px; border-left: 3px solid var(--yellow); }
+    .attention-item .attn-text { font-size: 0.85rem; margin-bottom: 4px; }
+    .attention-item .attn-meta { opacity: 0.4; font-size: 0.7rem; }
   </style>
 </head>
 <body>
 <div class="parent-container">
   <a href="app.html" class="back-link">← Назад к Люцику</a>
+  <a href="index.html" class="site-link">🏠 На сайт</a>
   <h1>👨‍👩‍👧 Родительский кабинет</h1>
   <p class="subtitle" id="childInfo">Статистика и прогресс</p>
   
@@ -78,6 +91,7 @@
   <div class="card">
     <h2>📊 Общая статистика</h2>
     <div id="statsContainer"><div class="empty-state">Загрузка...</div></div>
+    <button class="btn-attention" onclick="showAttentionModal()">⚠️ Обрати внимание</button>
   </div>
   
   <div class="card">
@@ -107,6 +121,16 @@
   </div>
 </div>
 
+<!-- Модальное окно "Обрати внимание" -->
+<div class="attention-modal" id="attentionModal" style="display:none;">
+  <div class="attention-box">
+    <h3>⚠️ Обрати внимание</h3>
+    <p style="opacity:0.7;font-size:0.85rem;margin:0 0 16px;">В этих сообщениях ИИ упомянул тревожные темы или личные данные. Рекомендуем просмотреть.</p>
+    <div id="attentionContent"><div class="empty-state">Нет подозрительных сообщений</div></div>
+    <button class="btn-save" style="width:100%;margin-top:16px;background:rgba(255,255,255,0.15);" onclick="document.getElementById('attentionModal').style.display='none'">Закрыть</button>
+  </div>
+</div>
+
 <script>
   let currentChildIndex = 0;
   
@@ -114,12 +138,32 @@
     return JSON.parse(localStorage.getItem('children') || '[]');
   }
   
-  function getHistory() {
-    return JSON.parse(localStorage.getItem('history') || '[]');
+  function getCurrentChildKey() {
+    const children = getChildren();
+    const child = children[currentChildIndex];
+    return child ? `stats_${child.name}` : 'stats_guest';
+  }
+  
+  function getChildStats() {
+    const key = getCurrentChildKey();
+    const data = JSON.parse(localStorage.getItem(key) || 'null');
+    if (data) return data;
+    // Совместимость со старыми данными
+    return {
+      totalStories: parseInt(localStorage.getItem('totalStories') || '0'),
+      totalGames: parseInt(localStorage.getItem('totalGames') || '0'),
+      history: JSON.parse(localStorage.getItem('history') || '[]'),
+      fearStats: JSON.parse(localStorage.getItem('fearStats') || '{"темноты":0,"врачей":0,"одиночества":0,"нового":0,"обиды":0,"животных":0}'),
+      lastActive: new Date().toISOString()
+    };
   }
   
   function getFearStats() {
-    return JSON.parse(localStorage.getItem('fearStats') || '{}');
+    return getChildStats().fearStats;
+  }
+  
+  function getHistory() {
+    return getChildStats().history || [];
   }
   
   function renderChildSelector() {
@@ -130,7 +174,7 @@
       return;
     }
     container.innerHTML = children.map((c, i) => 
-      `<button class="child-chip ${i === currentChildIndex ? 'active' : ''}" onclick="selectChild(${i})">${c.name}, ${c.age} лет</button>`
+      `<button class="child-chip ${i === currentChildIndex ? 'active' : ''}" onclick="selectChild(${i})">${c.avatarRole === 'kid1' ? '👧' : (c.avatarRole === 'kid2' ? '👦' : '🐱')} ${c.name}, ${c.age} лет</button>`
     ).join('');
   }
   
@@ -144,8 +188,9 @@
     const children = getChildren();
     const history = getHistory();
     const fearStats = getFearStats();
-    const totalStories = parseInt(localStorage.getItem('totalStories') || '0');
-    const totalGames = parseInt(localStorage.getItem('totalGames') || '0');
+    const childStats = getChildStats();
+    const totalStories = childStats.totalStories || 0;
+    const totalGames = childStats.totalGames || 0;
     const childrenNames = localStorage.getItem('childrenNames') || '';
     
     document.getElementById('childrenNamesInput').value = childrenNames;
@@ -162,21 +207,11 @@
       <div class="row"><span class="label">📱 Дней использования</span><span class="value">${calculateActiveDays(history)}</span></div>
     `;
     
-    // Прогресс
     renderProgress(fearStats, totalStories, totalGames);
-    
-    // Неделя
     renderWeekActivity(history);
-    
-    // Страхи
     renderFears(fearStats);
-    
-    // Диалоги
     renderDialogs(history);
-    
-    // Выводы
     renderInsights(fearStats, totalStories, totalGames, history);
-    
     renderChildSelector();
   }
   
@@ -279,8 +314,25 @@
     document.getElementById('fearInsight').innerHTML = insightHTML;
   }
   
+  // Ключевые слова для выделения "Обрати внимание"
+  const ATTENTION_KEYWORDS = [
+    'адрес', 'улица', 'дом', 'квартира', 'телефон', 'номер', 'звони',
+    'страх', 'страшно', 'боюсь', 'обидел', 'обида', 'плачу', 'больно',
+    'один', 'ушёл', 'ушла', 'бросил', 'помоги', 'убьют', 'фамилия', 'почта'
+  ];
+  
+  function checkAttentionWords(text) {
+    if (!text) return [];
+    const lower = text.toLowerCase();
+    const found = [];
+    ATTENTION_KEYWORDS.forEach(kw => {
+      if (lower.includes(kw)) found.push(kw);
+    });
+    return found;
+  }
+  
   function renderDialogs(history) {
-    const recentHistory = history.slice(-10).reverse();
+    const recentHistory = history.slice(-15).reverse();
     if (recentHistory.length === 0) {
       document.getElementById('dialogsContainer').innerHTML = '<div class="empty-state">Пока нет диалогов</div>';
       return;
@@ -292,15 +344,51 @@
       const time = date.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
       const isChild = h.role === 'child';
       const cls = isChild ? 'child' : 'lucik';
-      const prefix = isChild ? '👶 Ребёнок' : '🐱 Люцик';
+      const prefix = isChild ? '👶 Ребёнок' : (h.characterName ? `🐱 ${h.characterName}` : '🐱 Люцик');
+      const attentionWords = !isChild ? checkAttentionWords(h.text) : [];
+      const isAlerted = attentionWords.length > 0;
+      
       html += `
-        <div class="history-item ${cls}">
-          <div class="msg">${(h.text || '').substring(0, 120)}${(h.text && h.text.length > 120) ? '...' : ''}</div>
-          <div class="meta"><span>${prefix}</span><span>${time}</span></div>
+        <div class="history-item ${cls} ${isAlerted ? 'alerted' : ''}">
+          <div class="msg">${(h.text || '').substring(0, 150)}${(h.text && h.text.length > 150) ? '...' : ''}${isAlerted ? '<span class="alert-tag">⚠️</span>' : ''}</div>
+          <div class="meta"><span>${prefix}</span><span>${time}</span>${isAlerted ? `<span>Ключевые слова: ${attentionWords.join(', ')}</span>` : ''}</div>
         </div>
       `;
     });
     document.getElementById('dialogsContainer').innerHTML = html;
+  }
+  
+  function showAttentionModal() {
+    const history = getHistory();
+    const recentHistory = history.slice(-20).reverse();
+    const alertedItems = [];
+    
+    recentHistory.forEach(h => {
+      if (h.role !== 'child') {
+        const words = checkAttentionWords(h.text);
+        if (words.length > 0) {
+          alertedItems.push({ text: h.text, words, timestamp: h.timestamp, characterName: h.characterName || 'Люцик' });
+        }
+      }
+    });
+    
+    const content = document.getElementById('attentionContent');
+    if (alertedItems.length === 0) {
+      content.innerHTML = '<div class="empty-state">✅ Нет подозрительных сообщений</div>';
+    } else {
+      content.innerHTML = alertedItems.map(item => {
+        const date = new Date(item.timestamp || Date.now());
+        const time = date.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="attention-item">
+            <div class="attn-text">${(item.text || '').substring(0, 200)}${(item.text && item.text.length > 200) ? '...' : ''}</div>
+            <div class="attn-meta">🐱 ${item.characterName} · ${time} · Слова: ${item.words.join(', ')}</div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    document.getElementById('attentionModal').style.display = 'flex';
   }
   
   function renderInsights(fearStats, totalStories, totalGames, history) {
@@ -326,6 +414,12 @@
       if (totalStories >= 5 && totalSessions >= 3) {
         html += `<div class="insight-box good">🎯 Отличный прогресс! Продолжайте регулярные сессии 2-3 раза в неделю для закрепления результата.</div>`;
       }
+      
+      // Проверка на тревожные сообщения
+      const attentionCount = history.filter(h => h.role !== 'child' && checkAttentionWords(h.text).length > 0).length;
+      if (attentionCount > 0) {
+        html += `<div class="insight-box warn">⚠️ Обнаружено <strong>${attentionCount}</strong> ответов ИИ с тревожными темами. Нажмите «Обрати внимание» для просмотра.</div>`;
+      }
     }
     
     document.getElementById('insightsContainer').innerHTML = html || '<div class="empty-state">Недостаточно данных</div>';
@@ -339,7 +433,7 @@
     }
     localStorage.setItem('childrenNames', names);
     const namesArr = names.split(',').map(n => n.trim()).filter(n => n).slice(0, 3);
-    localStorage.setItem('children', JSON.stringify(namesArr.map((name, i) => ({ name, age: 5, index: i }))));
+    localStorage.setItem('children', JSON.stringify(namesArr.map((name, i) => ({ name, age: 5, index: i, avatarRole: 'lucik' }))));
     alert('✅ Имена сохранены!');
     currentChildIndex = 0;
     loadAllData();
