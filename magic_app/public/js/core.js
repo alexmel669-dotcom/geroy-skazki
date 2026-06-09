@@ -40,6 +40,14 @@ export const appState = {
   characterIds
 };
 
+// Синонимы для совместимости со старыми модулями
+export const getCurrentChild = getActiveChild;
+export const getCurrentChildName = getActiveChildName;
+export const getCurrentChildIndex = getActiveChildIndex;
+export const saveHistory = saveToChildHistory;
+export const updateStats = updateStatsDisplay;
+export const processVoice = processAudio;
+
 // ========================================
 // ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ
 // ========================================
@@ -50,7 +58,6 @@ export function initCore() {
   loadState();
   checkChildSelection();
   updateStatsDisplay();
-  initEventListeners();
   
   console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION} запущен`);
   console.log(`👶 Активный ребёнок: ${getActiveChildName()}`);
