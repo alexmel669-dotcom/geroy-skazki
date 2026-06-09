@@ -4,6 +4,7 @@ export const CONFIG = {
   HISTORY_FOR_API: 12,
   SYNC_HISTORY_LENGTH: 20,
   BAD_WORDS: ['мат', 'дурак', 'идиот', 'тупой', 'блин'],
+  ALERT_KEYWORDS: ['страшно', 'боюсь', 'плохо', 'плачу', 'помоги', 'один', 'ушёл', 'ушла', 'больно', 'убьют'],
   PIN_SALT: '_lucik_salt_2024',
   DEFAULT_FEAR_STATS: {
     "темноты": 0, 
@@ -16,15 +17,15 @@ export const CONFIG = {
   MAX_LOCAL_STORAGE_SIZE: 4500000,
   AUDIO_TIMEOUT: 15000,
   API_TIMEOUT: 15000,
-  APP_VERSION: '4.0.0'
+  APP_VERSION: '4.0.1'
 };
 
 export const CHARACTERS = {
-  lucik: { name: 'Люцик', icon: 'assets/images/avatar.png', premium: false, voice: 'alena' },
-  mom: { name: 'Мама', icon: 'assets/images/mom.png', premium: true, voice: 'alena' },
-  dad: { name: 'Папа', icon: 'assets/images/dad.png', premium: true, voice: 'filipp' },
-  kid1: { name: 'Ребёнок 1', icon: 'assets/images/kid1.png', premium: false, voice: 'alena' },
-  kid2: { name: 'Ребёнок 2', icon: 'assets/images/kid2.png', premium: false, voice: 'ermil' }
+  lucik: { name: 'Люцик', icon: 'assets/images/avatar.png', premium: false, voice: 'zahar', role: 'сказочный кот-помощник' },
+  mom: { name: 'Мама', icon: 'assets/images/mom.png', premium: true, voice: 'jane', role: 'заботливая мама' },
+  dad: { name: 'Папа', icon: 'assets/images/dad.png', premium: true, voice: 'ermil', role: 'уверенный папа' },
+  kid1: { name: 'Ребёнок 1', icon: 'assets/images/kid1.png', premium: false, voice: 'oksana', role: 'друг-сверстник' },
+  kid2: { name: 'Ребёнок 2', icon: 'assets/images/kid2.png', premium: false, voice: 'oksana', role: 'друг-сверстник' }
 };
 
 export const FALLBACK_REPLIES = {
@@ -36,16 +37,16 @@ export const FALLBACK_REPLIES = {
 };
 
 export const FEAR_KEYWORDS = {
-  'темноты': ['темно', 'темнота', 'темный', 'тьма', 'ночь', 'выключили'],
-  'врачей': ['врач', 'укол', 'больница', 'доктор', 'лечить', 'прививка'],
-  'одиночества': ['один', 'одна', 'скучно', 'никого', 'ушел', 'ушла'],
-  'обиды': ['обид', 'обидел', 'плачу', 'забрали', 'отобрали'],
-  'животных': ['собака', 'собаку', 'животн', 'зверь', 'кошка', 'укусит']
+  'темноты': ['темно', 'темнота', 'темный', 'тьма', 'ночь', 'выключили', 'не вижу'],
+  'врачей': ['врач', 'укол', 'больница', 'доктор', 'лечить', 'прививка', 'лекарств'],
+  'одиночества': ['один', 'одна', 'скучно', 'никого', 'ушел', 'ушла', 'скучаю', 'бросил'],
+  'обиды': ['обид', 'обидел', 'плачу', 'забрали', 'отобрали', 'не дал', 'жалко'],
+  'животных': ['собака', 'собаку', 'животн', 'зверь', 'кошка', 'укусит', 'укусил'],
+  'нового': ['новое', 'не знаю', 'первый раз', 'страшно новое', 'непривычно']
 };
 
 export function validateConfig() {
   if (typeof window !== 'undefined') {
     console.log(`🟢 Приложение v${CONFIG.APP_VERSION} загружено`);
-    console.log(`📦 Размер хранилища: ${(JSON.stringify(localStorage).length / 1024).toFixed(2)} KB`);
   }
 }
