@@ -15,7 +15,6 @@
   <header>
     <div class="header-title">🐱 Люцик</div>
     <div class="header-buttons">
-      <button class="btn-icon" onclick="window.location.href='/'">🏠</button>
       <button class="btn-icon" id="logoutBtn" style="display:none;">🚪</button>
       <button class="btn-icon" id="parentBtn">⚙️</button>
     </div>
@@ -43,6 +42,17 @@
     <button class="mic-btn" id="micBtn">🎤</button>
   </div>
 </div>
+
+<!-- Выбор ребёнка при запуске -->
+<div class="modal-overlay" id="childSelectModal" style="display:none;">
+  <div class="modal-box">
+    <h3 style="margin:0 0 8px;">👶 С кем сегодня говорим?</h3>
+    <p style="opacity:0.7;font-size:0.85rem;margin:0 0 16px;">Выбери, с кем из детей будет общаться Люцик</p>
+    <div id="childSelectList" style="display:flex;flex-direction:column;gap:10px;"></div>
+    <button class="modal-btn secondary" style="margin-top:14px;width:100%;" onclick="document.getElementById('childSelectModal').style.display='none'; selectGuestMode();">🐾 Продолжить как гость</button>
+  </div>
+</div>
+
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
