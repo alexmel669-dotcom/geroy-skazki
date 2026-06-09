@@ -29,6 +29,17 @@ let isProcessing = false;
 let characterCycleIndex = 0;
 const characterIds = Object.keys(CHARACTERS);
 
+// Экспортируемый объект состояния для совместимости с другими модулями
+export const appState = {
+  get activeChildIndex() { return activeChildIndex; },
+  set activeChildIndex(val) { activeChildIndex = val; },
+  get isProcessing() { return isProcessing; },
+  set isProcessing(val) { isProcessing = val; },
+  get characterCycleIndex() { return characterCycleIndex; },
+  set characterCycleIndex(val) { characterCycleIndex = val; },
+  characterIds
+};
+
 // ========================================
 // ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ
 // ========================================
@@ -114,13 +125,11 @@ export function setActiveChild(index) {
 export function showChildSelectModal() {
   const children = getChildren();
   
-  // Если один ребёнок — просто выбираем его
   if (children.length === 1) {
     setActiveChild(0);
     return;
   }
   
-  // Если нет детей — режим гостя
   if (children.length === 0) {
     setActiveChild(-1);
     return;
@@ -146,7 +155,6 @@ export function showChildSelectModal() {
   
   modal.style.display = 'flex';
   
-  // Навешиваем обработчики
   document.querySelectorAll('.child-select-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const index = parseInt(btn.dataset.index);
@@ -169,12 +177,10 @@ function checkChildSelection() {
   const children = getChildren();
   
   if (children.length > 1 && savedIndex === -1) {
-    // Несколько детей, но ни один не выбран — показываем выбор
     showChildSelectModal();
   } else if (children.length === 1 && savedIndex === -1) {
     setActiveChild(0);
   } else if (savedIndex >= children.length) {
-    // Индекс вне диапазона
     setActiveChild(-1);
   } else if (savedIndex >= 0) {
     setActiveChild(savedIndex);
@@ -199,7 +205,6 @@ export function getChildStats() {
     console.error('❌ Ошибка чтения статистики:', e);
   }
   
-  // Значения по умолчанию
   return {
     totalStories: 0,
     totalGames: 0,
@@ -214,7 +219,6 @@ export function saveChildStats(stats) {
   try {
     const json = JSON.stringify(stats);
     if (json.length > CONFIG.MAX_LOCAL_STORAGE_SIZE) {
-      // Обрезаем историю если слишком большая
       stats.history = stats.history.slice(-30);
       return saveChildStats(stats);
     }
@@ -230,7 +234,6 @@ export function saveToChildHistory(entry) {
   
   const stats = getChildStats();
   
-  // Добавляем запись
   stats.history.push({
     role: entry.role || 'unknown',
     text: entry.text,
@@ -241,7 +244,6 @@ export function saveToChildHistory(entry) {
     alertWords: entry.alertWords || []
   });
   
-  // Ограничиваем размер истории
   if (stats.history.length > CONFIG.MAX_HISTORY) {
     stats.history = stats.history.slice(-CONFIG.MAX_HISTORY);
   }
@@ -249,8 +251,6 @@ export function saveToChildHistory(entry) {
   stats.lastActive = new Date().toISOString();
   
   saveChildStats(stats);
-  
-  // Дублируем в глобальный history для обратной совместимости
   syncGlobalHistory(entry);
 }
 
@@ -285,7 +285,6 @@ export function updateFearStats(fears) {
   
   saveChildStats(stats);
   
-  // Синхронизируем глобальные
   try {
     const globalFears = JSON.parse(localStorage.getItem('fearStats') || '{}');
     fears.forEach(fear => {
@@ -302,7 +301,6 @@ export function incrementStories() {
   stats.totalStories = (stats.totalStories || 0) + 1;
   saveChildStats(stats);
   
-  // Глобальный счётчик
   const globalTotal = parseInt(localStorage.getItem('totalStories') || '0') + 1;
   localStorage.setItem('totalStories', String(globalTotal));
   
@@ -325,13 +323,11 @@ export function incrementGames() {
 // ========================================
 
 function initUI() {
-  // Аватар
   const avatar = document.getElementById('avatar');
   if (avatar) {
     avatar.addEventListener('click', () => cycleCharacter(1));
   }
   
-  // Кнопка родительского кабинета
   const parentBtn = document.getElementById('parentBtn');
   if (parentBtn) {
     parentBtn.addEventListener('click', () => {
@@ -339,7 +335,6 @@ function initUI() {
     });
   }
   
-  // Кнопка выхода
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
     const token = localStorage.getItem('userToken');
@@ -351,11 +346,9 @@ function initUI() {
 }
 
 function initEventListeners() {
-  // Микрофон
   const micBtn = document.getElementById('micBtn');
   if (micBtn) {
     micBtn.addEventListener('click', handleMicClick);
-    // Долгое нажатие для сказки на ночь
     let longPressTimer;
     micBtn.addEventListener('mousedown', () => {
       longPressTimer = setTimeout(() => handleLongPress(), 1500);
@@ -368,7 +361,6 @@ function initEventListeners() {
     micBtn.addEventListener('touchend', () => clearTimeout(longPressTimer));
   }
   
-  // Кормление
   const feedBtn = document.getElementById('feedBtn');
   if (feedBtn) {
     feedBtn.addEventListener('click', () => {
@@ -378,7 +370,6 @@ function initEventListeners() {
     });
   }
   
-  // Игры
   const gamesBtn = document.getElementById('gamesBtn');
   if (gamesBtn) {
     gamesBtn.addEventListener('click', () => {
@@ -387,7 +378,6 @@ function initEventListeners() {
     });
   }
   
-  // Комната (уборка)
   const roomBtn = document.getElementById('roomBtn');
   if (roomBtn) {
     roomBtn.addEventListener('click', () => {
@@ -397,7 +387,6 @@ function initEventListeners() {
     });
   }
   
-  // Свайп по аватару для смены персонажа
   const avatarSection = document.querySelector('.avatar-section');
   if (avatarSection) {
     let touchStartX = 0;
@@ -412,14 +401,12 @@ function initEventListeners() {
       const diffX = e.changedTouches[0].clientX - touchStartX;
       const diffY = e.changedTouches[0].clientY - touchStartY;
       
-      // Только если горизонтальный свайп
       if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
         cycleCharacter(diffX > 0 ? -1 : 1);
       }
     });
   }
   
-  // Обработчик клавиатуры
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       const gameOverlay = document.querySelector('.game-overlay');
@@ -434,13 +421,11 @@ function initEventListeners() {
 }
 
 function loadState() {
-  // Загружаем персонажа
   const savedChar = localStorage.getItem('currentCharacter') || 'lucik';
   setCharacter(savedChar);
   characterCycleIndex = characterIds.indexOf(savedChar);
   if (characterCycleIndex < 0) characterCycleIndex = 0;
   
-  // Устанавливаем аватар
   const avatar = document.getElementById('avatar');
   if (avatar) {
     const char = CHARACTERS[savedChar] || CHARACTERS['lucik'];
@@ -478,7 +463,7 @@ function animateStat(elementId, target) {
   function step(timestamp) {
     const elapsed = timestamp - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3); // ease-out
+    const eased = 1 - Math.pow(1 - progress, 3);
     
     el.style.width = Math.min(100, current + diff * eased) + '%';
     
@@ -498,7 +483,6 @@ function showFeedingAnimation() {
   const avatar = document.getElementById('avatar');
   if (!avatar) return;
   
-  // Создаём летящие эмодзи
   for (let i = 0; i < 5; i++) {
     setTimeout(() => {
       const emoji = document.createElement('span');
@@ -543,10 +527,8 @@ export function cycleCharacter(direction = 1) {
   characterCycleIndex = (characterCycleIndex + direction + characterIds.length) % characterIds.length;
   const charId = characterIds[characterCycleIndex];
   
-  // Проверка на премиум
   const char = CHARACTERS[charId];
   if (char.premium && !isPremiumUser()) {
-    // Пропускаем премиум-персонажей для обычных пользователей
     cycleCharacter(direction);
     return;
   }
@@ -559,7 +541,6 @@ export function cycleCharacter(direction = 1) {
   if (avatar) {
     avatar.style.backgroundImage = `url('${char.icon}')`;
     
-    // Анимация смены
     avatar.style.transform = 'scale(0.85)';
     avatar.style.transition = 'transform 0.2s ease';
     setTimeout(() => {
@@ -573,7 +554,6 @@ export function cycleCharacter(direction = 1) {
 
 function isPremiumUser() {
   const email = localStorage.getItem('userEmail') || '';
-  // Режим разработчика
   if (email === 'alexmel669@gmail.com' && localStorage.getItem('devUnlocked') === '13') {
     return true;
   }
@@ -591,7 +571,6 @@ async function handleMicClick() {
   const avatar = document.getElementById('avatar');
   
   if (isRecording()) {
-    // Останавливаем запись
     micBtn.classList.remove('recording');
     micBtn.textContent = '🎤';
     isProcessing = true;
@@ -614,7 +593,6 @@ async function handleMicClick() {
       }
     }
   } else {
-    // Начинаем запись
     try {
       await startRecording();
       micBtn.classList.add('recording');
@@ -634,7 +612,6 @@ async function handleLongPress() {
   const now = new Date();
   const hour = now.getHours();
   
-  // Сказка на ночь после 20:00
   if (hour >= 20 || hour < 6) {
     const micBtn = document.getElementById('micBtn');
     micBtn.textContent = '🌙';
@@ -661,20 +638,17 @@ async function processAudio(audioBlob) {
   try {
     if (avatar) avatar.classList.add('listening');
     
-    // Распознавание речи
     const recognizedText = await recognizeSpeech(audioBlob);
     
     if (avatar) avatar.classList.remove('listening');
     
     if (!recognizedText || recognizedText.trim().length === 0) {
       console.log('🗣️ Текст не распознан');
-      // Тихий fallback
       const fallback = 'Я не расслышал(а). Давай ещё раз?';
       await synthesizeSpeech(fallback, getCharacter());
       return;
     }
     
-    // Проверка на плохие слова
     if (checkBadWords(recognizedText)) {
       console.warn('⚠️ Обнаружены плохие слова');
       await synthesizeSpeech('Давай говорить добрые слова!', getCharacter());
@@ -683,7 +657,6 @@ async function processAudio(audioBlob) {
     
     console.log('👶 Ребёнок:', recognizedText);
     
-    // Сохраняем в историю
     const childEntry = {
       role: 'child',
       text: recognizedText,
@@ -693,36 +666,29 @@ async function processAudio(audioBlob) {
     saveToChildHistory(childEntry);
     addToContext('child', recognizedText);
     
-    // Проверка на страхи
     const fears = detectFear(recognizedText);
     if (fears.length > 0) {
       updateFearStats(fears);
       trackEvent('fear_detected', fears.join(','));
     }
     
-    // Проверка на тревожные слова
     const alertWords = detectAlertWords(recognizedText);
     if (alertWords.length > 0) {
       console.warn('⚠️ Тревожные слова от ребёнка:', alertWords);
       trackEvent('alert_words_child', alertWords.join(','));
-      // Сохраняем флаг для родителя
       saveAlertForParent(recognizedText, alertWords, 'child');
     }
     
-    // Аватар "говорит"
     if (avatar) avatar.classList.add('talking');
     
-    // Генерируем ответ
     const reply = await generateResponse(recognizedText);
     
     console.log('🐱 Ответ:', reply);
     
-    // Проверяем ответ ИИ
     const botAlertWords = detectAlertWords(reply);
     const botPersonalData = detectPersonalData(reply);
     const isSuspicious = botAlertWords.length > 0 || botPersonalData.length > 0;
     
-    // Сохраняем ответ
     const botEntry = {
       role: 'bot',
       text: reply,
@@ -740,10 +706,8 @@ async function processAudio(audioBlob) {
       saveAlertForParent(reply, [...botAlertWords, ...botPersonalData], 'ai');
     }
     
-    // Озвучиваем ответ
     await synthesizeSpeech(reply, getCharacter());
     
-    // Увеличиваем счётчик сказок для длинных ответов
     if (reply.length > 200) {
       incrementStories();
     }
@@ -755,8 +719,6 @@ async function processAudio(audioBlob) {
     console.error('❌ Ошибка обработки аудио:', err);
     logError('process_audio', err.message);
     
-    // Fallback
-    const char = CHARACTERS[getCharacter()] || CHARACTERS['lucik'];
     const fallbacks = {
       lucik: 'Мурр... Что-то пошло не так. Давай ещё разок?',
       mom: 'Ой, связь прервалась. Повтори, солнышко?',
@@ -801,7 +763,6 @@ function saveAlertForParent(text, words, source) {
 // ========================================
 
 async function recognizeSpeech(audioBlob) {
-  // Пробуем серверное распознавание
   try {
     const base64 = await blobToBase64(audioBlob);
     
@@ -825,7 +786,6 @@ async function recognizeSpeech(audioBlob) {
     console.warn('⚠️ Серверное распознавание недоступно, пробуем браузерное:', err.message);
   }
   
-  // Fallback: браузерное распознавание
   return await browserSpeechRecognition();
 }
 
@@ -907,7 +867,6 @@ function blobToBase64(blob) {
 // ========================================
 
 export function launchFishGame() {
-  // Удаляем предыдущую игру если есть
   const existing = document.querySelector('.game-overlay');
   if (existing) existing.remove();
   
@@ -933,13 +892,10 @@ export function launchFishGame() {
   const timerDisplay = document.getElementById('fishTimer');
   let fishTimers = [];
   
-  // Таймер игры
   const timerInterval = setInterval(() => {
     timeLeft--;
     if (timerDisplay) timerDisplay.textContent = timeLeft;
-    if (timeLeft <= 0) {
-      endGame();
-    }
+    if (timeLeft <= 0) endGame();
   }, 1000);
   
   function endGame() {
@@ -949,7 +905,6 @@ export function launchFishGame() {
     fishTimers.forEach(t => clearInterval(t));
     fishTimers = [];
     
-    // Показываем результат
     const result = document.createElement('div');
     result.style.cssText = `
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
@@ -1012,7 +967,6 @@ export function launchFishGame() {
       
       scoreDisplay.textContent = score;
       
-      // Эффект попадания
       fish.style.transform = 'scale(0)';
       fish.style.opacity = '0';
       setTimeout(() => {
@@ -1024,7 +978,6 @@ export function launchFishGame() {
     
     gameArea.appendChild(fish);
     
-    // Движение рыбки
     const moveInterval = setInterval(() => {
       if (!gameActive || !fish.parentNode) {
         clearInterval(moveInterval);
@@ -1036,7 +989,6 @@ export function launchFishGame() {
     
     fishTimers.push(moveInterval);
     
-    // Автоудаление
     setTimeout(() => {
       if (fish.parentNode) {
         fish.style.opacity = '0';
@@ -1047,14 +999,12 @@ export function launchFishGame() {
     }, 8000);
   }
   
-  // Стартовые рыбки
   for (let i = 0; i < 3; i++) {
     createFish();
   }
   
   const fishSpawnInterval = setInterval(createFish, 2000);
   
-  // Кнопка закрытия
   document.getElementById('fishCloseBtn').addEventListener('click', () => {
     gameActive = false;
     clearInterval(timerInterval);
@@ -1083,7 +1033,6 @@ function logout() {
 // ЭКСПОРТ ГЛОБАЛЬНЫХ ФУНКЦИЙ
 // ========================================
 
-// Делаем функции доступными глобально для вызовов из HTML
 if (typeof window !== 'undefined') {
   window.selectGuestMode = selectGuestMode;
   window.selectChildAndClose = (index) => {
