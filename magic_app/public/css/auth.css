@@ -1,6 +1,6 @@
 :root {
-  --bg: #151521;
-  --card: #23233a;
+  --bg: rgba(21, 21, 33, 0.55);
+  --card: rgba(35, 35, 58, 0.55);
   --accent: #ff4081;
   --text: #fff;
 }
@@ -13,7 +13,7 @@
 body {
   margin: 0;
   background: 
-    linear-gradient(180deg, rgba(20,20,40,0.88), rgba(29,29,48,0.92)),
+    linear-gradient(180deg, rgba(20,20,40,0.55), rgba(29,29,48,0.55)),
     url('../assets/images/parent-bg.png');
   background-size: cover;
   background-position: center;
@@ -29,15 +29,16 @@ body {
 
 .auth-container {
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
 }
 
 .auth-card {
-  background: var(--card);
+  background: rgba(35, 35, 58, 0.55);
   border-radius: 28px;
   padding: 32px 24px;
   text-align: center;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+  backdrop-filter: blur(10px);
 }
 
 .auth-avatar {
@@ -62,7 +63,7 @@ form {
   gap: 12px;
 }
 
-input {
+input, select {
   width: 100%;
   padding: 14px 16px;
   border-radius: 16px;
@@ -74,6 +75,47 @@ input {
 
 input::placeholder {
   color: rgba(255,255,255,0.4);
+}
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  cursor: pointer;
+}
+
+select option {
+  background: #1a1a2e;
+  color: #fff;
+}
+
+.child-block {
+  background: rgba(255,255,255,0.05);
+  border-radius: 16px;
+  padding: 14px;
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.child-block label {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin-bottom: 6px;
+}
+
+.child-block .child-row {
+  display: flex;
+  gap: 8px;
+}
+
+.child-block .child-row input {
+  flex: 2;
+}
+
+.child-block .child-row input.age-input {
+  flex: 1;
 }
 
 .auth-btn {
@@ -95,7 +137,7 @@ input::placeholder {
 }
 
 .auth-error {
-  background: rgba(255,64,129,0.2);
+  background: rgba(255,64,129,0.25);
   padding: 10px;
   border-radius: 12px;
   margin-top: 12px;
