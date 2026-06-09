@@ -5,45 +5,347 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Родительский кабинет — Люцик</title>
   <link rel="stylesheet" href="css/main.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
   <style>
-    body { background: linear-gradient(180deg, #141420, #1d1d30); }
-    .parent-container { padding: 20px; max-width: 600px; margin: 0 auto; }
-    h1 { font-size: 1.5rem; }
-    .back-link { color: var(--accent); text-decoration: none; display: inline-block; margin-bottom: 20px; }
+    .parent-container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    h1 { font-size: 1.5rem; margin-bottom: 5px; }
+    .subtitle { opacity: 0.6; margin-bottom: 20px; font-size: 0.9rem; }
+    .back-link { display: inline-block; color: var(--accent); text-decoration: none; margin-bottom: 15px; font-size: 0.9rem; }
+    
     .card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 15px; }
-    .card h2 { margin: 0 0 12px; font-size: 1.1rem; }
-    .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .card h2 { margin: 0 0 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+    .card h3 { margin: 16px 0 8px; font-size: 0.95rem; opacity: 0.8; }
+    
+    .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
     .row:last-child { border-bottom: none; }
-    .label { opacity: 0.7; } .value { font-weight: 600; }
-    .fear-item { margin-bottom: 12px; }
-    .fear-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .label { opacity: 0.7; }
+    .value { font-weight: 600; }
+    
+    .fear-item { margin-bottom: 14px; }
+    .fear-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .fear-header .name { font-size: 0.9rem; }
+    .fear-header .pct { font-size: 0.8rem; opacity: 0.7; }
     .bar-bg { background: rgba(255,255,255,0.1); height: 8px; border-radius: 10px; overflow: hidden; }
-    .bar-fill { height: 100%; border-radius: 10px; background: var(--accent); }
-    .badge { background: var(--accent); padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; }
-    .empty { opacity: 0.5; text-align: center; padding: 20px; }
+    .bar-fill { height: 100%; border-radius: 10px; background: linear-gradient(90deg, var(--accent), var(--blue)); transition: width 0.5s; }
+    
+    .insight-box { background: rgba(255,255,255,0.05); border-radius: 14px; padding: 14px; margin-top: 12px; font-size: 0.85rem; line-height: 1.5; border-left: 3px solid var(--accent); }
+    .insight-box.good { border-left-color: var(--green); }
+    .insight-box.warn { border-left-color: var(--yellow); }
+    
+    .progress-card { background: rgba(255,255,255,0.03); border-radius: 16px; padding: 16px; margin-top: 12px; }
+    .progress-card h3 { margin: 0 0 10px; }
+    .progress-card .stat-line { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.85rem; }
+    .progress-card .stat-label { opacity: 0.6; }
+    .progress-card .stat-val { font-weight: 600; }
+    
+    .history-item { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .history-item:last-child { border-bottom: none; }
+    .history-item .msg { font-size: 0.85rem; line-height: 1.4; }
+    .history-item .meta { opacity: 0.4; font-size: 0.7rem; margin-top: 4px; display: flex; gap: 12px; }
+    .history-item.child .msg { color: var(--blue); }
+    .history-item.lucik .msg { color: var(--accent); }
+    
+    .children-input { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #fff; font-size: 0.9rem; margin-bottom: 8px; }
+    .btn-save { padding: 8px 20px; border-radius: 20px; border: none; background: var(--green); color: #fff; font-size: 0.85rem; cursor: pointer; font-weight: 600; }
+    .btn-save:hover { opacity: 0.9; }
+    
+    .empty-state { opacity: 0.5; text-align: center; padding: 20px; font-size: 0.85rem; }
+    
+    .child-selector { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .child-chip { padding: 6px 14px; border-radius: 20px; border: none; background: rgba(255,255,255,0.08); color: #fff; font-size: 0.8rem; cursor: pointer; }
+    .child-chip.active { background: var(--accent); }
+    
+    .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 10px; }
+    .week-day { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
+    .week-day.active { background: var(--accent); }
+    .week-day.partial { background: rgba(255,255,255,0.1); }
+    .week-day.none { background: rgba(255,255,255,0.03); }
   </style>
 </head>
 <body>
 <div class="parent-container">
   <a href="app.html" class="back-link">← Назад к Люцику</a>
   <h1>👨‍👩‍👧 Родительский кабинет</h1>
-  <p style="opacity:0.6; margin-bottom:20px;" id="childInfo">Статистика и прогресс</p>
-
+  <p class="subtitle" id="childInfo">Статистика и прогресс</p>
+  
+  <div class="card">
+    <h2>👶 Дети</h2>
+    <div class="child-selector" id="childSelector"></div>
+    <input type="text" id="childrenNamesInput" class="children-input" placeholder="Имена через запятую: Саша, Миша, Катя">
+    <button class="btn-save" onclick="saveChildrenNames()">💾 Сохранить</button>
+  </div>
+  
   <div class="card">
     <h2>📊 Общая статистика</h2>
-    <div id="statsContainer"><div class="empty">Загрузка...</div></div>
+    <div id="statsContainer"><div class="empty-state">Загрузка...</div></div>
   </div>
-
+  
+  <div class="card">
+    <h2>🌱 Прогресс ребёнка</h2>
+    <div id="progressContainer"><div class="empty-state">Нет данных</div></div>
+  </div>
+  
+  <div class="card">
+    <h2>📅 Активность за неделю</h2>
+    <div id="weekContainer"><div class="empty-state">Нет данных</div></div>
+  </div>
+  
   <div class="card">
     <h2>🎯 Работа со страхами</h2>
-    <div id="fearsContainer"><div class="empty">Загрузка...</div></div>
+    <div id="fearsContainer"><div class="empty-state">Нет данных о страхах</div></div>
+    <div id="fearInsight"></div>
   </div>
-
+  
   <div class="card">
-    <h2>📝 Последняя активность</h2>
-    <div id="historyContainer"><div class="empty">Загрузка...</div></div>
+    <h2>💬 Последние диалоги</h2>
+    <div id="dialogsContainer"><div class="empty-state">Пока нет диалогов</div></div>
+  </div>
+  
+  <div class="card">
+    <h2>💡 Выводы</h2>
+    <div id="insightsContainer"><div class="empty-state">Недостаточно данных для выводов</div></div>
   </div>
 </div>
-<script src="js/parent.js"></script>
+
+<script>
+  let currentChildIndex = 0;
+  
+  function getChildren() {
+    return JSON.parse(localStorage.getItem('children') || '[]');
+  }
+  
+  function getHistory() {
+    return JSON.parse(localStorage.getItem('history') || '[]');
+  }
+  
+  function getFearStats() {
+    return JSON.parse(localStorage.getItem('fearStats') || '{}');
+  }
+  
+  function renderChildSelector() {
+    const children = getChildren();
+    const container = document.getElementById('childSelector');
+    if (children.length === 0) {
+      container.innerHTML = '<span style="opacity:0.5;font-size:0.85rem;">Добавьте детей</span>';
+      return;
+    }
+    container.innerHTML = children.map((c, i) => 
+      `<button class="child-chip ${i === currentChildIndex ? 'active' : ''}" onclick="selectChild(${i})">${c.name}, ${c.age} лет</button>`
+    ).join('');
+  }
+  
+  function selectChild(index) {
+    currentChildIndex = index;
+    renderChildSelector();
+    loadAllData();
+  }
+  
+  function loadAllData() {
+    const children = getChildren();
+    const history = getHistory();
+    const fearStats = getFearStats();
+    const totalStories = parseInt(localStorage.getItem('totalStories') || '0');
+    const totalGames = parseInt(localStorage.getItem('totalGames') || '0');
+    const childrenNames = localStorage.getItem('childrenNames') || '';
+    
+    document.getElementById('childrenNamesInput').value = childrenNames;
+    
+    const child = children[currentChildIndex] || { name: 'Гость', age: 5 };
+    document.getElementById('childInfo').textContent = `${child.name}, ${child.age} лет`;
+    
+    // Общая статистика
+    document.getElementById('statsContainer').innerHTML = `
+      <div class="row"><span class="label">📚 Создано сказок</span><span class="value">${totalStories}</span></div>
+      <div class="row"><span class="label">🎮 Сыграно игр</span><span class="value">${totalGames}</span></div>
+      <div class="row"><span class="label">💬 Всего диалогов</span><span class="value">${history.length}</span></div>
+      <div class="row"><span class="label">🎯 Страхов в работе</span><span class="value">${Object.values(fearStats).filter(v => v > 0).length} из 6</span></div>
+      <div class="row"><span class="label">📱 Дней использования</span><span class="value">${calculateActiveDays(history)}</span></div>
+    `;
+    
+    // Прогресс
+    renderProgress(fearStats, totalStories, totalGames);
+    
+    // Неделя
+    renderWeekActivity(history);
+    
+    // Страхи
+    renderFears(fearStats);
+    
+    // Диалоги
+    renderDialogs(history);
+    
+    // Выводы
+    renderInsights(fearStats, totalStories, totalGames, history);
+    
+    renderChildSelector();
+  }
+  
+  function calculateActiveDays(history) {
+    const days = new Set();
+    history.forEach(h => {
+      if (h.timestamp) days.add(new Date(h.timestamp).toDateString());
+    });
+    return days.size || 0;
+  }
+  
+  function renderProgress(fearStats, totalStories, totalGames) {
+    const mainFearEntry = Object.entries(fearStats).sort((a, b) => b[1] - a[1])[0];
+    const mainFear = mainFearEntry ? mainFearEntry[0] : '—';
+    const mainFearCount = mainFearEntry ? mainFearEntry[1] : 0;
+    
+    let growth = 'Начинаем путь 🌱';
+    if (totalStories >= 10 && totalGames >= 5) growth = 'Уверенный прогресс 🌿';
+    else if (totalStories >= 5 || totalGames >= 3) growth = 'Первые шаги 🌱';
+    else if (totalStories > 0) growth = 'Знакомство с Люциком 🐾';
+    
+    document.getElementById('progressContainer').innerHTML = `
+      <div class="progress-card">
+        <div class="stat-line"><span class="stat-label">Всего сказок</span><span class="stat-val">${totalStories}</span></div>
+        <div class="stat-line"><span class="stat-label">Всего игр</span><span class="stat-val">${totalGames}</span></div>
+        <div class="stat-line"><span class="stat-label">Самый частый страх</span><span class="stat-val">${mainFear} (${mainFearCount} раз)</span></div>
+        <div class="stat-line"><span class="stat-label">Статус</span><span class="stat-val">${growth}</span></div>
+      </div>
+    `;
+  }
+  
+  function renderWeekActivity(history) {
+    const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const today = new Date();
+    const weekData = {};
+    
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      weekData[d.toDateString()] = 0;
+    }
+    
+    history.forEach(h => {
+      if (h.timestamp) {
+        const key = new Date(h.timestamp).toDateString();
+        if (key in weekData) weekData[key]++;
+      }
+    });
+    
+    let html = '<div class="week-grid">';
+    Object.entries(weekData).forEach(([key, count], idx) => {
+      let cls = 'none';
+      if (count > 3) cls = 'active';
+      else if (count > 0) cls = 'partial';
+      html += `<div class="week-day ${cls}" title="${dayNames[idx]}: ${count}">${dayNames[idx]}</div>`;
+    });
+    html += '</div>';
+    document.getElementById('weekContainer').innerHTML = html;
+  }
+  
+  function renderFears(fearStats) {
+    const fears = [
+      { key: 'темноты', name: 'Темнота', icon: '🌑' },
+      { key: 'врачей', name: 'Врачи', icon: '🩺' },
+      { key: 'одиночества', name: 'Одиночество', icon: '🧍' },
+      { key: 'животных', name: 'Животные', icon: '🐕' },
+      { key: 'обиды', name: 'Обиды', icon: '😢' },
+      { key: 'нового', name: 'Новое', icon: '🆕' }
+    ];
+    
+    let maxFear = { key: '', val: 0 };
+    let totalSessions = 0;
+    
+    let fearsHTML = '';
+    fears.forEach(f => {
+      const val = fearStats[f.key] || 0;
+      totalSessions += val;
+      if (val > maxFear.val) maxFear = { key: f.key, val };
+      const displayVal = val > 0 ? Math.min(100, val * 20 + 10) : 5;
+      fearsHTML += `
+        <div class="fear-item">
+          <div class="fear-header">
+            <span class="name">${f.icon} ${f.name}</span>
+            <span class="pct">${val} сказок</span>
+          </div>
+          <div class="bar-bg"><div class="bar-fill" style="width:${displayVal}%"></div></div>
+        </div>
+      `;
+    });
+    document.getElementById('fearsContainer').innerHTML = fearsHTML;
+    
+    let insightHTML = '';
+    if (maxFear.val > 0) {
+      const fearName = fears.find(f => f.key === maxFear.key)?.name || '';
+      insightHTML = `<div class="insight-box warn">🔍 Основной страх: <strong>${fearName}</strong> (${maxFear.val} обращений). Рекомендуем продолжать сказки в этом направлении.</div>`;
+    }
+    if (totalSessions > 10) {
+      insightHTML += `<div class="insight-box good">✅ Ребёнок активно обсуждает свои страхи — это хороший знак. Всего ${totalSessions} тематических сессий.</div>`;
+    }
+    document.getElementById('fearInsight').innerHTML = insightHTML;
+  }
+  
+  function renderDialogs(history) {
+    const recentHistory = history.slice(-10).reverse();
+    if (recentHistory.length === 0) {
+      document.getElementById('dialogsContainer').innerHTML = '<div class="empty-state">Пока нет диалогов</div>';
+      return;
+    }
+    
+    let html = '';
+    recentHistory.forEach(h => {
+      const date = new Date(h.timestamp || Date.now());
+      const time = date.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const isChild = h.role === 'child';
+      const cls = isChild ? 'child' : 'lucik';
+      const prefix = isChild ? '👶 Ребёнок' : '🐱 Люцик';
+      html += `
+        <div class="history-item ${cls}">
+          <div class="msg">${(h.text || '').substring(0, 120)}${(h.text && h.text.length > 120) ? '...' : ''}</div>
+          <div class="meta"><span>${prefix}</span><span>${time}</span></div>
+        </div>
+      `;
+    });
+    document.getElementById('dialogsContainer').innerHTML = html;
+  }
+  
+  function renderInsights(fearStats, totalStories, totalGames, history) {
+    const totalSessions = Object.values(fearStats).reduce((a, b) => a + b, 0);
+    let html = '';
+    
+    if (totalStories === 0 && totalGames === 0) {
+      html = '<div class="empty-state">Недостаточно данных для выводов. Начните использовать приложение.</div>';
+    } else {
+      if (totalStories > 0) {
+        html += `<div class="insight-box good">📚 Создано <strong>${totalStories}</strong> персональных сказок. Чем больше сказок — тем лучше ребёнок прорабатывает страхи.</div>`;
+      }
+      if (totalGames > 0) {
+        html += `<div class="insight-box good">🎮 Пройдено <strong>${totalGames}</strong> мини-игр. Игры закрепляют уверенность.</div>`;
+      }
+      if (totalSessions > 0) {
+        const topFear = Object.entries(fearStats).sort((a, b) => b[1] - a[1])[0];
+        html += `<div class="insight-box">💬 Всего <strong>${totalSessions}</strong> обращений к теме страхов. ${topFear ? `Чаще всего: <strong>${topFear[0]}</strong>.` : ''}</div>`;
+      }
+      if (history.length > 20) {
+        html += `<div class="insight-box good">🌟 Ребёнок активно общается с Люциком — более 20 диалогов. Это признак доверия к персонажу.</div>`;
+      }
+      if (totalStories >= 5 && totalSessions >= 3) {
+        html += `<div class="insight-box good">🎯 Отличный прогресс! Продолжайте регулярные сессии 2-3 раза в неделю для закрепления результата.</div>`;
+      }
+    }
+    
+    document.getElementById('insightsContainer').innerHTML = html || '<div class="empty-state">Недостаточно данных</div>';
+  }
+  
+  function saveChildrenNames() {
+    const names = document.getElementById('childrenNamesInput').value.trim();
+    if (!names) {
+      alert('Введите имена детей');
+      return;
+    }
+    localStorage.setItem('childrenNames', names);
+    const namesArr = names.split(',').map(n => n.trim()).filter(n => n).slice(0, 3);
+    localStorage.setItem('children', JSON.stringify(namesArr.map((name, i) => ({ name, age: 5, index: i }))));
+    alert('✅ Имена сохранены!');
+    currentChildIndex = 0;
+    loadAllData();
+  }
+  
+  loadAllData();
+</script>
 </body>
 </html>
