@@ -8,7 +8,8 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
   <style>
     .landing { text-align: center; padding: 20px 16px 40px; max-width: 700px; }
-    .landing .hero { font-size: 80px; margin: 10px 0; }
+    .landing .hero { margin: 10px 0; }
+    .landing .hero img { width: 110px; height: 110px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.25); box-shadow: 0 10px 35px rgba(0,0,0,0.5); }
     .landing h1 { font-size: 1.8rem; margin: 10px 0 6px; }
     .landing .subtitle { opacity: 0.8; margin-bottom: 20px; font-size: 0.95rem; line-height: 1.5; }
     
@@ -25,31 +26,31 @@
     .section-desc { opacity: 0.7; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5; }
     
     .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 20px 0; }
-    .feature-card { background: var(--card); border-radius: 20px; padding: 20px 15px; text-align: center; }
+    .feature-card { background: rgba(35, 35, 58, 0.5); border-radius: 20px; padding: 20px 15px; text-align: center; backdrop-filter: blur(8px); }
     .feature-card .icon { font-size: 36px; margin-bottom: 8px; }
     .feature-card h3 { margin: 0 0 4px; font-size: 0.9rem; }
     .feature-card p { margin: 0; opacity: 0.6; font-size: 0.78rem; line-height: 1.4; }
     
     .how-it-works { text-align: left; }
-    .step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; background: var(--card); border-radius: 20px; padding: 16px; }
+    .step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; background: rgba(35, 35, 58, 0.5); border-radius: 20px; padding: 16px; backdrop-filter: blur(8px); }
     .step-num { background: var(--accent); color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
     .step-text h4 { margin: 0 0 4px; font-size: 0.9rem; }
     .step-text p { margin: 0; opacity: 0.6; font-size: 0.8rem; }
     
     .for-whom { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 20px 0; }
-    .whom-card { background: var(--card); border-radius: 20px; padding: 18px; text-align: center; }
+    .whom-card { background: rgba(35, 35, 58, 0.5); border-radius: 20px; padding: 18px; text-align: center; backdrop-filter: blur(8px); }
     .whom-card .icon { font-size: 40px; margin-bottom: 8px; }
     .whom-card h3 { margin: 0 0 4px; font-size: 0.9rem; }
     .whom-card p { margin: 0; opacity: 0.6; font-size: 0.8rem; line-height: 1.4; }
     
     .cases { margin: 25px 0; }
     .case-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
-    .case-card { background: var(--card); border-radius: 18px; padding: 18px; text-align: left; }
+    .case-card { background: rgba(35, 35, 58, 0.5); border-radius: 18px; padding: 18px; text-align: left; backdrop-filter: blur(8px); }
     .case-card .emoji { font-size: 1.5rem; margin-bottom: 6px; }
     .case-card .text { opacity: 0.85; font-size: 0.85rem; margin-bottom: 6px; line-height: 1.4; }
     .case-card .meta { font-weight: 600; font-size: 0.75rem; opacity: 0.5; }
     
-    .safety { background: var(--card); border-radius: 22px; padding: 22px; margin: 25px 0; text-align: center; }
+    .safety { background: rgba(35, 35, 58, 0.5); border-radius: 22px; padding: 22px; margin: 25px 0; text-align: center; backdrop-filter: blur(8px); }
     .safety h3 { margin: 0 0 8px; }
     .safety p { margin: 0; opacity: 0.7; font-size: 0.85rem; line-height: 1.5; }
     
@@ -62,7 +63,7 @@
 </head>
 <body>
 <div class="container landing">
-  <div class="hero">🐱</div>
+  <div class="hero"><img src="assets/images/avatar.png" alt="Люцик"></div>
   <h1>Люцик — Герой Сказок</h1>
   <p class="subtitle">Виртуальный кот-помощник с искусственным интеллектом.<br>Помогает детям 3–7 лет говорить о чувствах, справляться со страхами<br>и засыпать спокойно — через сказки, игры и заботу.</p>
   
