@@ -1,6 +1,7 @@
 :root {
-  --bg: #151521;
-  --card: #23233a;
+  --bg: rgba(21, 21, 33, 0.55);
+  --card: rgba(35, 35, 58, 0.55);
+  --card-hover: rgba(35, 35, 58, 0.72);
   --accent: #ff4081;
   --text: #fff;
   --green: #4caf50;
@@ -17,7 +18,7 @@
 body {
   margin: 0;
   background: 
-    linear-gradient(180deg, rgba(20,20,40,0.88), rgba(29,29,48,0.92)),
+    linear-gradient(180deg, rgba(20,20,40,0.55), rgba(29,29,48,0.55)),
     url('../assets/images/parent-bg.png');
   background-size: cover;
   background-position: center;
@@ -86,7 +87,7 @@ header {
   border-radius: 50%;
   background-size: cover;
   background-position: center;
-  border: 5px solid rgba(255,255,255,0.2);
+  border: 5px solid rgba(255,255,255,0.25);
   box-shadow: 0 12px 40px rgba(0,0,0,0.4);
   transition: background-image 0.3s, box-shadow 0.3s;
   cursor: pointer;
@@ -104,9 +105,10 @@ header {
   margin-top: 10px;
   font-size: 1.2rem;
   font-weight: 600;
-  background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.12);
   padding: 6px 24px;
   border-radius: 30px;
+  backdrop-filter: blur(6px);
 }
 
 .stats-row {
@@ -122,6 +124,7 @@ header {
   padding: 10px;
   text-align: center;
   font-size: 0.8rem;
+  backdrop-filter: blur(8px);
 }
 
 .bar {
@@ -146,7 +149,7 @@ header {
 }
 
 .action-btn {
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.1);
   border: none;
   border-radius: 50%;
   width: 64px;
@@ -158,10 +161,11 @@ header {
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
+  backdrop-filter: blur(6px);
 }
 
 .action-btn:active {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.22);
 }
 
 .mic-wrapper {
@@ -206,12 +210,13 @@ header {
 }
 
 .modal-box {
-  background: var(--card);
+  background: rgba(35, 35, 58, 0.85);
   border-radius: 28px;
   padding: 24px;
   max-width: 320px;
   width: 90%;
   text-align: center;
+  backdrop-filter: blur(12px);
 }
 
 .modal-buttons {
@@ -232,13 +237,13 @@ header {
 }
 
 .modal-btn.secondary {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.18);
 }
 
 .game-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.95);
+  background: rgba(0,0,0,0.92);
   z-index: 2000;
   display: flex;
   flex-direction: column;
@@ -264,4 +269,22 @@ header {
 @keyframes slideDown {
   from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
   to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* Прозрачные карточки для лендинга и кабинета */
+.card-transparent {
+  background: rgba(35, 35, 58, 0.5);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 15px;
+  backdrop-filter: blur(8px);
+}
+
+.alert-highlight {
+  background: rgba(255, 64, 129, 0.25);
+  border-left: 4px solid var(--accent);
+  padding: 10px 14px;
+  border-radius: 0 12px 12px 0;
+  margin: 4px 0;
+  font-size: 0.85rem;
 }
