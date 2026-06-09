@@ -3,68 +3,199 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Люцик — Герой Сказок</title>
+  <title>Люцик — Герой Сказок | Виртуальный друг для детей 3-7 лет</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
+  <style>
+    .landing { text-align: center; padding: 20px 16px 40px; max-width: 700px; }
+    .landing .hero { font-size: 80px; margin: 10px 0; }
+    .landing h1 { font-size: 1.8rem; margin: 10px 0 6px; }
+    .landing .subtitle { opacity: 0.8; margin-bottom: 20px; font-size: 0.95rem; line-height: 1.5; }
+    
+    .btn-group { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+    .btn {
+      display: inline-block; padding: 14px 28px; border-radius: 35px;
+      text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: transform 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: rgba(255,255,255,0.12); color: #fff; }
+    .btn:hover { transform: scale(1.04); }
+    
+    .section-title { font-size: 1.3rem; margin: 30px 0 15px; }
+    .section-desc { opacity: 0.7; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5; }
+    
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 20px 0; }
+    .feature-card { background: var(--card); border-radius: 20px; padding: 20px 15px; text-align: center; }
+    .feature-card .icon { font-size: 36px; margin-bottom: 8px; }
+    .feature-card h3 { margin: 0 0 4px; font-size: 0.9rem; }
+    .feature-card p { margin: 0; opacity: 0.6; font-size: 0.78rem; line-height: 1.4; }
+    
+    .how-it-works { text-align: left; }
+    .step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; background: var(--card); border-radius: 20px; padding: 16px; }
+    .step-num { background: var(--accent); color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
+    .step-text h4 { margin: 0 0 4px; font-size: 0.9rem; }
+    .step-text p { margin: 0; opacity: 0.6; font-size: 0.8rem; }
+    
+    .for-whom { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 20px 0; }
+    .whom-card { background: var(--card); border-radius: 20px; padding: 18px; text-align: center; }
+    .whom-card .icon { font-size: 40px; margin-bottom: 8px; }
+    .whom-card h3 { margin: 0 0 4px; font-size: 0.9rem; }
+    .whom-card p { margin: 0; opacity: 0.6; font-size: 0.8rem; line-height: 1.4; }
+    
+    .cases { margin: 25px 0; }
+    .case-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .case-card { background: var(--card); border-radius: 18px; padding: 18px; text-align: left; }
+    .case-card .emoji { font-size: 1.5rem; margin-bottom: 6px; }
+    .case-card .text { opacity: 0.85; font-size: 0.85rem; margin-bottom: 6px; line-height: 1.4; }
+    .case-card .meta { font-weight: 600; font-size: 0.75rem; opacity: 0.5; }
+    
+    .safety { background: var(--card); border-radius: 22px; padding: 22px; margin: 25px 0; text-align: center; }
+    .safety h3 { margin: 0 0 8px; }
+    .safety p { margin: 0; opacity: 0.7; font-size: 0.85rem; line-height: 1.5; }
+    
+    .cta-bottom { margin: 30px 0 10px; }
+    
+    footer { margin-top: 20px; opacity: 0.45; font-size: 0.78rem; }
+    footer a { color: var(--accent); text-decoration: none; margin: 0 8px; }
+    .tech-note { margin-top: 12px; opacity: 0.4; font-size: 0.7rem; }
+  </style>
 </head>
 <body>
 <div class="container landing">
   <div class="hero">🐱</div>
   <h1>Люцик — Герой Сказок</h1>
-  <p class="subtitle">ИИ-помощник для преодоления детских страхов через сказки и игру</p>
+  <p class="subtitle">Виртуальный кот-помощник с искусственным интеллектом.<br>Помогает детям 3–7 лет говорить о чувствах, справляться со страхами<br>и засыпать спокойно — через сказки, игры и заботу.</p>
   
-  <div class="buttons">
-    <a href="app.html" class="btn btn-primary">🎮 Играть</a>
+  <div class="btn-group">
+    <a href="app.html" class="btn btn-primary">🎮 Играть с Люциком</a>
+    <a href="register.html" class="btn btn-secondary">✨ Зарегистрироваться</a>
     <a href="login.html" class="btn btn-secondary">🔐 Войти</a>
-    <a href="register.html" class="btn btn-secondary">✨ Регистрация</a>
   </div>
   
+  <h2 class="section-title">🔄 Как это работает</h2>
+  <div class="how-it-works">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        <h4>Ребёнок нажимает микрофон</h4>
+        <p>Простой интерфейс — одна большая кнопка. Никакого текста, только голос.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <h4>Люцик слушает и понимает</h4>
+        <p>Искусственный интеллект распознаёт речь, определяет эмоции и страхи ребёнка.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        <h4>Создаётся персональная сказка</h4>
+        <p>Люцик придумывает уникальную историю, где герой справляется с тем же страхом, что и ребёнок.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">
+        <h4>Люцик рассказывает голосом</h4>
+        <p>Сказка озвучивается тёплым, спокойным голосом. Ребёнок слушает и успокаивается.</p>
+      </div>
+    </div>
+  </div>
+  
+  <h2 class="section-title">🎯 Что умеет Люцик</h2>
   <div class="features">
     <div class="feature-card">
       <div class="icon">🎤</div>
       <h3>Голосовое общение</h3>
-      <p>Ребёнок говорит — Люцик отвечает</p>
+      <p>Ребёнок говорит — Люцик отвечает. Как разговор с другом.</p>
     </div>
     <div class="feature-card">
       <div class="icon">📚</div>
-      <h3>Сказки</h3>
-      <p>Персонализированные истории про страхи</p>
+      <h3>Терапевтические сказки</h3>
+      <p>Уникальные истории про страхи: темнота, врачи, одиночество и другие.</p>
     </div>
     <div class="feature-card">
       <div class="icon">🎮</div>
-      <h3>Игры</h3>
-      <p>Развивающие мини-игры</p>
+      <h3>Мини-игры</h3>
+      <p>Развивающие игры для закрепления уверенности и смелости.</p>
     </div>
     <div class="feature-card">
-      <div class="icon">📊</div>
-      <h3>Прогресс</h3>
-      <p>Отслеживание успехов ребёнка</p>
+      <div class="icon">🌙</div>
+      <h3>Сказки на ночь</h3>
+      <p>Вечерний ритуал: длинная успокаивающая сказка перед сном.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">👨‍👩‍👧</div>
+      <h3>Родительский кабинет</h3>
+      <p>Статистика, прогресс, история общения — всё под контролем.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📱</div>
+      <h3>Работает как приложение</h3>
+      <p>Установите на телефон — иконка как у обычного приложения.</p>
     </div>
   </div>
-
-  <div class="reviews">
-    <h2>💬 Что говорят родители</h2>
-    <div class="review-card">
-      <div class="stars">⭐⭐⭐⭐⭐</div>
-      <p class="review-text">"Сын перестал бояться темноты после сказки про храброго котёнка! Спасибо Люцику!"</p>
-      <p class="review-author">Анна, мама Миши (4 года)</p>
+  
+  <h2 class="section-title">👶 Для кого Люцик</h2>
+  <div class="for-whom">
+    <div class="whom-card">
+      <div class="icon">😰</div>
+      <h3>Боится темноты</h3>
+      <p>Сказки про ночные страхи и смелых героев, которые их побеждают.</p>
     </div>
-    <div class="review-card">
-      <div class="stars">⭐⭐⭐⭐⭐</div>
-      <p class="review-text">"Дочка с удовольствием играет в игры и говорит с Люциком. Очень полезное приложение!"</p>
-      <p class="review-author">Елена, мама Сони (5 лет)</p>
+    <div class="whom-card">
+      <div class="icon">🩺</div>
+      <h3>Боится врачей</h3>
+      <p>Истории про докторов, которые помогают, а не пугают.</p>
     </div>
-    <div class="review-card">
-      <div class="stars">⭐⭐⭐⭐⭐</div>
-      <p class="review-text">"Ребёнок сам просит включить Люцика перед сном. Страх врачей стал заметно меньше."</p>
-      <p class="review-author">Дмитрий, папа Артёма (6 лет)</p>
+    <div class="whom-card">
+      <div class="icon">😢</div>
+      <h3>Стесняется чувств</h3>
+      <p>Люцик помогает назвать эмоции и понять, что бояться — нормально.</p>
     </div>
+    <div class="whom-card">
+      <div class="icon">👶</div>
+      <h3>Трудно засыпает</h3>
+      <p>Вечерний ритуал со сказкой успокаивает и настраивает на сон.</p>
+    </div>
+  </div>
+  
+  <h2 class="section-title">✨ Результаты тестовой группы</h2>
+  <p class="section-desc">Первые 12 семей тестировали Люцика в течение 2 недель. Вот что мы увидели:</p>
+  <div class="case-grid">
+    <div class="case-card">
+      <div class="emoji">🌙</div>
+      <p class="text">Ребёнок 4 лет, который боялся засыпать один. После трёх вечеров сказок с Люциком ритуал отхода ко сну стал спокойнее. Мальчик начал сам просить «сказку от котика».</p>
+      <p class="meta">Страх: темнота · Прогресс: значительный</p>
+    </div>
+    <div class="case-card">
+      <div class="emoji">🩺</div>
+      <p class="text">Девочка 5 лет, предстоял поход к стоматологу. Люцик рассказал сказку про зайчонка, который тоже боялся, но всё прошло хорошо. Страх уменьшился.</p>
+      <p class="meta">Страх: врачи · Прогресс: умеренный</p>
+    </div>
+    <div class="case-card">
+      <div class="emoji">💬</div>
+      <p class="text">Мальчик 6 лет стеснялся говорить о чувствах. Диалоги с Люциком помогли начать обсуждать, что его тревожит. Родители отметили прогресс в общении.</p>
+      <p class="meta">Страх: выражение эмоций · Прогресс: значительный</p>
+    </div>
+  </div>
+  
+  <div class="safety">
+    <h3>🔒 Безопасность для ребёнка</h3>
+    <p>Голосовые данные не сохраняются после обработки. Никакой рекламы и внешних ссылок. Весь контент адаптирован для детей 3–7 лет. Прогресс ребёнка доступен только родителю через защищённый кабинет.</p>
+  </div>
+  
+  <div class="cta-bottom">
+    <a href="register.html" class="btn btn-primary">✨ Попробовать бесплатно</a>
   </div>
   
   <footer>
     <a href="privacy.html">Конфиденциальность</a>
     <a href="terms.html">Пользовательское соглашение</a>
-    <p>© 2024 Люцик — Герой Сказок</p>
+    <p style="margin-top:8px;">© 2026 Люцик — Герой Сказок</p>
+    <p class="tech-note">Приложение использует технологии искусственного интеллекта и синтеза речи. <a href="privacy.html">Подробнее</a></p>
   </footer>
 </div>
 </body>
