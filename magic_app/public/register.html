@@ -5,23 +5,96 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Регистрация — Герой Сказок</title>
   <link rel="stylesheet" href="css/auth.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
 </head>
 <body>
 <div class="auth-container">
   <div class="auth-card">
     <div class="auth-avatar">🐱</div>
     <h1>Регистрация</h1>
-    <p class="auth-subtitle">Создай аккаунт для своего малыша</p>
+    <p class="auth-subtitle">Создайте аккаунт и добавьте детей</p>
+    
     <form id="registerForm">
-      <input type="email" id="regEmail" placeholder="Email" required autocomplete="email">
+      <input type="email" id="regEmail" placeholder="Ваш Email" required autocomplete="email">
       <input type="password" id="regPassword" placeholder="Пароль (мин. 6 символов)" required autocomplete="new-password" minlength="6">
-      <input type="password" id="regPasswordConfirm" placeholder="Повтори пароль" required autocomplete="new-password" minlength="6">
+      
+      <div style="background:rgba(255,255,255,0.05); border-radius:16px; padding:14px; text-align:left;">
+        <label style="display:block; margin-bottom:8px; font-size:0.85rem; opacity:0.8;">👶 Имена детей (до 3, через запятую) *</label>
+        <input type="text" id="childrenNames" placeholder="Например: Саша, Миша, Катя" required style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.08); color:#fff; font-size:0.95rem;">
+        <p style="font-size:0.7rem; opacity:0.5; margin-top:6px;">При запуске приложение спросит, с кем сейчас говорит. Можно добавить позже в кабинете.</p>
+      </div>
+      
       <button type="submit" class="auth-btn">Зарегистрироваться</button>
     </form>
+    
     <p class="auth-error" id="regError"></p>
     <p class="auth-link">Уже есть аккаунт? <a href="login.html">Войти</a></p>
   </div>
 </div>
-<script type="module" src="js/auth.js"></script>
+<script>
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const childrenNames = document.getElementById('childrenNames').value.trim();
+    const errorDiv = document.getElementById('regError');
+    
+    if (!email) {
+      errorDiv.textContent = 'Введите email';
+      errorDiv.style.display = 'block';
+      return;
+    }
+    if (password.length < 6) {
+      errorDiv.textContent = 'Пароль должен быть не менее 6 символов';
+      errorDiv.style.display = 'block';
+      return;
+    }
+    if (!childrenNames) {
+      errorDiv.textContent = 'Укажите хотя бы одно имя ребёнка';
+      errorDiv.style.display = 'block';
+      return;
+    }
+    
+    const namesArr = childrenNames.split(',').map(n => n.trim()).filter(n => n).slice(0, 3);
+    if (namesArr.length === 0) {
+      errorDiv.textContent = 'Укажите хотя бы одно имя ребёнка';
+      errorDiv.style.display = 'block';
+      return;
+    }
+    
+    errorDiv.style.display = 'none';
+    const btn = e.target.querySelector('button');
+    btn.textContent = 'Регистрация...';
+    btn.disabled = true;
+    
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        localStorage.setItem('userToken', data.token);
+        localStorage.setItem('userEmail', data.email);
+        localStorage.setItem('childrenNames', namesArr.join(', '));
+        localStorage.setItem('children', JSON.stringify(namesArr.map((name, i) => ({
+          name, age: 5, index: i
+        }))));
+        window.location.href = '/app.html';
+      } else {
+        errorDiv.textContent = data.error || 'Ошибка регистрации. Возможно, email уже используется.';
+        errorDiv.style.display = 'block';
+      }
+    } catch (err) {
+      errorDiv.textContent = 'Ошибка соединения. Проверьте интернет.';
+      errorDiv.style.display = 'block';
+    } finally {
+      btn.textContent = 'Зарегистрироваться';
+      btn.disabled = false;
+    }
+  });
+</script>
 </body>
 </html>
