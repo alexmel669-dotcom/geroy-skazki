@@ -18,10 +18,31 @@
       <input type="email" id="regEmail" placeholder="Ваш Email" required autocomplete="email">
       <input type="password" id="regPassword" placeholder="Пароль (мин. 6 символов)" required autocomplete="new-password" minlength="6">
       
-      <div style="background:rgba(255,255,255,0.05); border-radius:16px; padding:14px; text-align:left;">
-        <label style="display:block; margin-bottom:8px; font-size:0.85rem; opacity:0.8;">👶 Имена детей (до 3, через запятую) *</label>
-        <input type="text" id="childrenNames" placeholder="Например: Саша, Миша, Катя" required style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.08); color:#fff; font-size:0.95rem;">
-        <p style="font-size:0.7rem; opacity:0.5; margin-top:6px;">При запуске приложение спросит, с кем сейчас говорит. Можно добавить позже в кабинете.</p>
+      <!-- Ребёнок 1 (обязательно) -->
+      <div class="child-block">
+        <label>👶 Ребёнок 1 *</label>
+        <div class="child-row">
+          <input type="text" id="child1Name" placeholder="Имя" required>
+          <input type="number" id="child1Age" class="age-input" placeholder="Возраст" min="3" max="7" required>
+        </div>
+      </div>
+      
+      <!-- Ребёнок 2 (опционально) -->
+      <div class="child-block">
+        <label>👶 Ребёнок 2 (необязательно)</label>
+        <div class="child-row">
+          <input type="text" id="child2Name" placeholder="Имя">
+          <input type="number" id="child2Age" class="age-input" placeholder="Возраст" min="3" max="7">
+        </div>
+      </div>
+      
+      <!-- Ребёнок 3 (опционально) -->
+      <div class="child-block">
+        <label>👶 Ребёнок 3 (необязательно)</label>
+        <div class="child-row">
+          <input type="text" id="child3Name" placeholder="Имя">
+          <input type="number" id="child3Age" class="age-input" placeholder="Возраст" min="3" max="7">
+        </div>
       </div>
       
       <button type="submit" class="auth-btn">Зарегистрироваться</button>
@@ -32,11 +53,25 @@
   </div>
 </div>
 <script>
+  // Определение пола по имени (простая эвристика)
+  function guessGender(name) {
+    const n = name.trim().toLowerCase();
+    // Женские окончания
+    if (n.endsWith('а') || n.endsWith('я') || n.endsWith('ия') || n === 'любовь') return 'female';
+    // Мужские окончания
+    if (n.endsWith('й') || n.endsWith('р') || n.endsWith('н') || n.endsWith('м') || n.endsWith('л')) return 'male';
+    // Известные имена
+    const femaleNames = ['анна', 'мария', 'софия', 'алиса', 'вика', 'виктория', 'лена', 'катя', 'наташа', 'света', 'оля', 'ира', 'таня', 'юля', 'вера', 'надежда', 'люба', 'мила', 'даша', 'саша'];
+    const maleNames = ['петя', 'миша', 'саша', 'коля', 'ваня', 'дима', 'слава', 'рома', 'тима', 'федя', 'лёва', 'никита', 'артём', 'даня', 'кирилл', 'матвей', 'егор', 'илья', 'антон', 'марк', 'лев', 'тимофей'];
+    if (femaleNames.includes(n)) return 'female';
+    if (maleNames.includes(n)) return 'male';
+    return 'unknown';
+  }
+
   document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('regEmail').value.trim();
     const password = document.getElementById('regPassword').value;
-    const childrenNames = document.getElementById('childrenNames').value.trim();
     const errorDiv = document.getElementById('regError');
     
     if (!email) {
@@ -49,15 +84,37 @@
       errorDiv.style.display = 'block';
       return;
     }
-    if (!childrenNames) {
-      errorDiv.textContent = 'Укажите хотя бы одно имя ребёнка';
-      errorDiv.style.display = 'block';
-      return;
+    
+    // Собираем детей
+    const children = [];
+    for (let i = 1; i <= 3; i++) {
+      const nameInput = document.getElementById(`child${i}Name`);
+      const ageInput = document.getElementById(`child${i}Age`);
+      const name = nameInput ? nameInput.value.trim() : '';
+      const age = ageInput ? parseInt(ageInput.value) || 0 : 0;
+      
+      if (i === 1 && !name) {
+        errorDiv.textContent = 'Укажите имя первого ребёнка';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      
+      if (name) {
+        const gender = guessGender(name);
+        // kid1 = девочка, kid2 = мальчик, lucik = по умолчанию (гость)
+        const avatarRole = gender === 'female' ? 'kid1' : (gender === 'male' ? 'kid2' : 'lucik');
+        children.push({
+          name,
+          age: age || 5,
+          gender,
+          avatarRole,
+          index: i - 1
+        });
+      }
     }
     
-    const namesArr = childrenNames.split(',').map(n => n.trim()).filter(n => n).slice(0, 3);
-    if (namesArr.length === 0) {
-      errorDiv.textContent = 'Укажите хотя бы одно имя ребёнка';
+    if (children.length === 0) {
+      errorDiv.textContent = 'Добавьте хотя бы одного ребёнка';
       errorDiv.style.display = 'block';
       return;
     }
@@ -78,10 +135,24 @@
       if (res.ok) {
         localStorage.setItem('userToken', data.token);
         localStorage.setItem('userEmail', data.email);
-        localStorage.setItem('childrenNames', namesArr.join(', '));
-        localStorage.setItem('children', JSON.stringify(namesArr.map((name, i) => ({
-          name, age: 5, index: i
-        }))));
+        localStorage.setItem('children', JSON.stringify(children));
+        localStorage.setItem('childrenNames', children.map(c => c.name).join(', '));
+        // Инициализируем статистику для каждого ребёнка
+        children.forEach(child => {
+          const key = `stats_${child.name}`;
+          if (!localStorage.getItem(key)) {
+            localStorage.setItem(key, JSON.stringify({
+              totalStories: 0,
+              totalGames: 0,
+              history: [],
+              fearStats: {
+                "темноты": 0, "врачей": 0, "одиночества": 0,
+                "нового": 0, "обиды": 0, "животных": 0
+              },
+              lastActive: new Date().toISOString()
+            }));
+          }
+        });
         window.location.href = '/app.html';
       } else {
         errorDiv.textContent = data.error || 'Ошибка регистрации. Возможно, email уже используется.';
