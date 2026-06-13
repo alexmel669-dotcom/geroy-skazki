@@ -1,7 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// Версия: 4.0.7 FINAL
-// Исправлено: добавлен экспорт updateStatsUI для fish.js
+// Версия: 4.0.8 FINAL
 // ========================================
 
 import {
@@ -58,38 +57,38 @@ let characterCycleIndex = 0;
 const characterIds = Object.keys(CHARACTERS);
 
 export const appState = {
-  get activeChildIndex() {
-    return activeChildIndex;
-  },
-  set activeChildIndex(v) {
-    activeChildIndex = v;
-  },
-  get isProcessing() {
-    return isProcessing;
-  },
-  set isProcessing(v) {
-    isProcessing = v;
-  },
-  get characterCycleIndex() {
-    return characterCycleIndex;
-  },
-  set characterCycleIndex(v) {
-    characterCycleIndex = v;
-  },
+  get activeChildIndex() { return activeChildIndex; },
+  set activeChildIndex(v) { activeChildIndex = v; },
+  get isProcessing() { return isProcessing; },
+  set isProcessing(v) { isProcessing = v; },
+  get characterCycleIndex() { return characterCycleIndex; },
+  set characterCycleIndex(v) { characterCycleIndex = v; },
   characterIds
 };
 
 // ========================================
-// COMPATIBILITY EXPORTS
+// COMPATIBILITY EXPORTS (ВСЕ ВОЗМОЖНЫЕ ЭКСПОРТЫ)
 // ========================================
 
+// Основные экспорты
+export { trackEvent, logError };
+export { setCharacter, getCharacter, addToContext, clearContext };
+export { synthesizeSpeech };
+export { checkAchievements, showAchievement };
+
+// Экспорты для совместимости
 export const getCurrentChild = getActiveChild;
 export const getCurrentChildName = getActiveChildName;
 export const getCurrentChildIndex = getActiveChildIndex;
 export const saveHistory = saveToChildHistory;
 export const updateStats = updateStatsDisplay;
-export const updateStatsUI = updateStatsDisplay; // FIX: для fish.js
+export const updateStatsUI = updateStatsDisplay; // КРИТИЧЕСКИ ВАЖНО для fish.js
 export const processVoice = processAudio;
+
+// Дополнительные экспорты для fish.js
+export const getActiveChildNameForExport = getActiveChildName;
+export const trackEventForExport = trackEvent;
+export const logErrorForExport = logError;
 
 // FIX for fish.js
 export function saveChildData(data) {
@@ -124,14 +123,18 @@ export function getChildStatsKey() {
 // ========================================
 
 export function initCore() {
-  validateConfig();
-  initSecurity();
+  console.log('🔵 initCore started');
+  
+  if (typeof validateConfig === 'function') validateConfig();
+  if (typeof initSecurity === 'function') initSecurity();
+  
   initUI();
   initEventListeners();
   loadState();
   checkChildSelection();
   updateStatsDisplay();
-  console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION}`);
+  
+  console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION} готов к работе`);
 }
 
 // ========================================
@@ -152,9 +155,7 @@ export function getActiveChildIndex() {
   const saved = localStorage.getItem('activeChildIndex');
   if (saved !== null) {
     activeChildIndex = parseInt(saved);
-    if (Number.isNaN(activeChildIndex)) {
-      activeChildIndex = -1;
-    }
+    if (Number.isNaN(activeChildIndex)) activeChildIndex = -1;
     return activeChildIndex;
   }
   return -1;
@@ -182,7 +183,6 @@ export function setActiveChild(index) {
     label.textContent = child ? `${child.name}, ${child.age} лет` : 'Гость';
   }
   
-  // FIX: обновляем аватар при выборе ребёнка
   const avatar = document.getElementById('avatar');
   if (avatar && child) {
     const avatarMap = {
@@ -195,7 +195,7 @@ export function setActiveChild(index) {
     avatar.style.backgroundImage = "url('assets/images/avatar.png')";
   }
   
-  trackEvent('child_select', child?.name || 'guest');
+  if (typeof trackEvent === 'function') trackEvent('child_select', child?.name || 'guest');
 }
 
 function checkChildSelection() {
@@ -274,8 +274,6 @@ export function saveChildStats(stats) {
   
   try {
     let json = JSON.stringify(stats);
-    
-    // FIX storage overflow с fallback значением
     const MAX_SIZE = CONFIG.MAX_LOCAL_STORAGE_SIZE || 5 * 1024 * 1024;
     
     while (json.length > MAX_SIZE) {
@@ -287,7 +285,7 @@ export function saveChildStats(stats) {
     localStorage.setItem(key, json);
   } catch (e) {
     console.error('save stats error', e);
-    logError('save_stats', e.message);
+    if (typeof logError === 'function') logError('save_stats', e.message);
   }
 }
 
@@ -344,7 +342,7 @@ export function incrementGames() {
 }
 
 // ========================================
-// ANIMATIONS (определены ДО использования)
+// ANIMATIONS
 // ========================================
 
 function animateStat(elementId, target) {
@@ -413,18 +411,9 @@ function showCleaningAnimation() {
   if (!avatar) return;
   
   avatar.style.transform = 'rotate(-5deg)';
-  
-  setTimeout(() => {
-    avatar.style.transform = 'rotate(5deg)';
-  }, 150);
-  
-  setTimeout(() => {
-    avatar.style.transform = 'rotate(-3deg)';
-  }, 300);
-  
-  setTimeout(() => {
-    avatar.style.transform = 'rotate(0deg)';
-  }, 450);
+  setTimeout(() => { avatar.style.transform = 'rotate(5deg)'; }, 150);
+  setTimeout(() => { avatar.style.transform = 'rotate(-3deg)'; }, 300);
+  setTimeout(() => { avatar.style.transform = 'rotate(0deg)'; }, 450);
 }
 
 // ========================================
@@ -432,6 +421,8 @@ function showCleaningAnimation() {
 // ========================================
 
 function initUI() {
+  console.log('🔵 initUI started');
+  
   const avatar = document.getElementById('avatar');
   if (avatar) {
     avatar.onclick = () => cycleCharacter(1);
@@ -444,7 +435,6 @@ function initUI() {
     };
   }
   
-  // FIX: кнопка выхода
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
     if (localStorage.getItem('userToken')) {
@@ -455,23 +445,18 @@ function initUI() {
 }
 
 function initEventListeners() {
+  console.log('🔵 initEventListeners started');
+  
   const mic = document.getElementById('micBtn');
   
   if (mic) {
     mic.onclick = handleMicClick;
     
-    // FIX: долгое нажатие для сказки на ночь
     let pressTimer;
-    
-    mic.onmousedown = () => {
-      pressTimer = setTimeout(handleLongPress, 1500);
-    };
-    
+    mic.onmousedown = () => { pressTimer = setTimeout(handleLongPress, 1500); };
     mic.onmouseup = () => clearTimeout(pressTimer);
     mic.onmouseleave = () => clearTimeout(pressTimer);
-    mic.ontouchstart = () => {
-      pressTimer = setTimeout(handleLongPress, 1500);
-    };
+    mic.ontouchstart = () => { pressTimer = setTimeout(handleLongPress, 1500); };
     mic.ontouchend = () => clearTimeout(pressTimer);
   }
   
@@ -483,22 +468,20 @@ function initEventListeners() {
     };
   }
   
-  // FIX: кнопка кормления
   const feed = document.getElementById('feedBtn');
   if (feed) {
     feed.onclick = () => {
       animateStat('hungerFill', 100);
-      trackEvent('feed', getActiveChildName());
+      if (typeof trackEvent === 'function') trackEvent('feed', getActiveChildName());
       showFeedingAnimation();
     };
   }
   
-  // FIX: кнопка комнаты
   const room = document.getElementById('roomBtn');
   if (room) {
     room.onclick = () => {
       animateStat('energyFill', 100);
-      trackEvent('clean', getActiveChildName());
+      if (typeof trackEvent === 'function') trackEvent('clean', getActiveChildName());
       showCleaningAnimation();
     };
   }
@@ -506,11 +489,10 @@ function initEventListeners() {
 
 function loadState() {
   const saved = localStorage.getItem('currentCharacter') || 'lucik';
-  setCharacter(saved);
+  if (typeof setCharacter === 'function') setCharacter(saved);
   characterCycleIndex = characterIds.indexOf(saved);
   if (characterCycleIndex < 0) characterCycleIndex = 0;
   
-  // FIX: загружаем аватар
   const avatar = document.getElementById('avatar');
   if (avatar) {
     const char = CHARACTERS[saved] || CHARACTERS.lucik;
@@ -563,32 +545,25 @@ export function cycleCharacter(direction = 1) {
       continue;
     }
     
-    setCharacter(id);
+    if (typeof setCharacter === 'function') setCharacter(id);
     localStorage.setItem('currentCharacter', id);
-    clearContext();
+    if (typeof clearContext === 'function') clearContext();
     
-    // FIX: обновляем аватар при смене персонажа
     const avatar = document.getElementById('avatar');
     if (avatar) {
       avatar.style.backgroundImage = `url('${char.icon}')`;
       avatar.style.transform = 'scale(.85)';
-      setTimeout(() => {
-        avatar.style.transform = 'scale(1)';
-      }, 150);
+      setTimeout(() => { avatar.style.transform = 'scale(1)'; }, 150);
     }
     
-    trackEvent('character_change', id);
+    if (typeof trackEvent === 'function') trackEvent('character_change', id);
     return;
   }
 }
 
 function isPremiumUser() {
   const email = localStorage.getItem('userEmail') || '';
-  
-  if (email === 'alexmel669@gmail.com' && localStorage.getItem('devUnlocked') === '13') {
-    return true;
-  }
-  
+  if (email === 'alexmel669@gmail.com' && localStorage.getItem('devUnlocked') === '13') return true;
   return localStorage.getItem('premium') === 'true';
 }
 
@@ -599,7 +574,6 @@ function isPremiumUser() {
 function saveAlertForParent(text, words, source) {
   try {
     const alerts = JSON.parse(localStorage.getItem('parentAlerts') || '[]');
-    
     alerts.push({
       text: text.substring(0, 200),
       words,
@@ -607,9 +581,7 @@ function saveAlertForParent(text, words, source) {
       timestamp: Date.now(),
       childName: getActiveChildName()
     });
-    
     if (alerts.length > 20) alerts.shift();
-    
     localStorage.setItem('parentAlerts', JSON.stringify(alerts));
   } catch (e) {
     console.warn(e);
@@ -720,12 +692,10 @@ async function handleMicClick() {
       }
     } catch (e) {
       console.error(e);
-      logError('record', e.message);
+      if (typeof logError === 'function') logError('record', e.message);
     } finally {
       isProcessing = false;
-      if (avatar) {
-        avatar.classList.remove('listening', 'talking');
-      }
+      if (avatar) avatar.classList.remove('listening', 'talking');
       if (mic) {
         mic.classList.remove('recording');
         mic.textContent = '🎤';
@@ -741,7 +711,7 @@ async function handleMicClick() {
       if (avatar) avatar.classList.add('listening');
     } catch (e) {
       alert('Нет доступа к микрофону');
-      logError('mic', e.message);
+      if (typeof logError === 'function') logError('mic', e.message);
     }
   }
 }
@@ -770,7 +740,7 @@ async function handleLongPress() {
       incrementStories();
     } catch (e) {
       console.error(e);
-      logError('bedtime_story', e.message);
+      if (typeof logError === 'function') logError('bedtime_story', e.message);
     } finally {
       isProcessing = false;
       if (micBtn) micBtn.textContent = '🎤';
@@ -795,7 +765,7 @@ async function processAudio(audioBlob) {
       return;
     }
     
-    if (checkBadWords(text)) {
+    if (typeof checkBadWords === 'function' && checkBadWords(text)) {
       await synthesizeSpeech('Давай говорить добрые слова', getCharacter());
       return;
     }
@@ -806,16 +776,14 @@ async function processAudio(audioBlob) {
       timestamp: Date.now()
     });
     
-    addToContext('child', text);
+    if (typeof addToContext === 'function') addToContext('child', text);
     
-    const fears = detectFear(text);
-    if (fears.length) {
-      updateFearStats(fears);
-    }
+    const fears = typeof detectFear === 'function' ? detectFear(text) : [];
+    if (fears.length) updateFearStats(fears);
     
-    const alerts = detectAlertWords(text);
+    const alerts = typeof detectAlertWords === 'function' ? detectAlertWords(text) : [];
     if (alerts.length) {
-      trackEvent('alert', alerts.join(','));
+      if (typeof trackEvent === 'function') trackEvent('alert', alerts.join(','));
       saveAlertForParent(text, alerts, 'child');
     }
     
@@ -823,9 +791,8 @@ async function processAudio(audioBlob) {
     
     const reply = await generateResponse(text);
     
-    // FIX: проверяем ответ ИИ на сомнительное
-    const botAlerts = detectAlertWords(reply);
-    const botPersonal = detectPersonalData(reply);
+    const botAlerts = typeof detectAlertWords === 'function' ? detectAlertWords(reply) : [];
+    const botPersonal = typeof detectPersonalData === 'function' ? detectPersonalData(reply) : [];
     const isSuspicious = botAlerts.length > 0 || botPersonal.length > 0;
     
     saveToChildHistory({
@@ -837,30 +804,22 @@ async function processAudio(audioBlob) {
       alertWords: [...botAlerts, ...botPersonal]
     });
     
-    addToContext('bot', reply);
+    if (typeof addToContext === 'function') addToContext('bot', reply);
     
-    if (isSuspicious) {
-      saveAlertForParent(reply, [...botAlerts, ...botPersonal], 'ai');
-    }
+    if (isSuspicious) saveAlertForParent(reply, [...botAlerts, ...botPersonal], 'ai');
     
     await synthesizeSpeech(reply, getCharacter());
     
-    if (reply.length > 200) {
-      incrementStories();
-    }
+    if (reply.length > 200) incrementStories();
     
-    if (typeof checkAchievements === 'function') {
-      checkAchievements();
-    }
+    if (typeof checkAchievements === 'function') checkAchievements();
     
   } catch (e) {
     console.error('AI error', e);
-    logError('process_audio', e.message);
+    if (typeof logError === 'function') logError('process_audio', e.message);
     await synthesizeSpeech('Что-то пошло не так. Попробуем ещё раз?', getCharacter());
   } finally {
-    if (avatar) {
-      avatar.classList.remove('talking', 'listening');
-    }
+    if (avatar) avatar.classList.remove('talking', 'listening');
   }
 }
 
@@ -912,7 +871,7 @@ export function launchFishGame() {
       showAchievement('fish_master', '🎣 Мастер рыбалки!');
     }
     
-    trackEvent('fish_finish', String(score));
+    if (typeof trackEvent === 'function') trackEvent('fish_finish', String(score));
   }
   
   function createFish() {
@@ -941,9 +900,7 @@ export function launchFishGame() {
     }, 5000);
   }
   
-  for (let i = 0; i < 3; i++) {
-    createFish();
-  }
+  for (let i = 0; i < 3; i++) createFish();
   
   fishSpawnInterval = setInterval(createFish, 1500);
   
@@ -957,7 +914,7 @@ export function launchFishGame() {
     };
   }
   
-  trackEvent('fish_start', getActiveChildName());
+  if (typeof trackEvent === 'function') trackEvent('fish_start', getActiveChildName());
 }
 
 // ========================================
@@ -968,15 +925,28 @@ function logout() {
   localStorage.removeItem('userToken');
   localStorage.removeItem('userEmail');
   localStorage.removeItem('activeChildIndex');
-  clearContext();
+  if (typeof clearContext === 'function') clearContext();
   location.href = './login.html';
 }
 
 // ========================================
-// WINDOW EXPORTS (только для отладки)
+// АВТОМАТИЧЕСКИЙ ЗАПУСК
 // ========================================
 
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+// Запускаем инициализацию сразу после загрузки
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCore);
+  } else {
+    initCore();
+  }
+}
+
+// ========================================
+// WINDOW EXPORTS (для отладки)
+// ========================================
+
+if (typeof window !== 'undefined') {
   window.selectGuestMode = selectGuestMode;
   window.setActiveChild = setActiveChild;
   window.cycleCharacter = cycleCharacter;
@@ -985,4 +955,10 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   window.saveChildData = saveChildData;
   window.initCore = initCore;
   window.updateStatsUI = updateStatsDisplay;
+  window.coreAPI = {
+    updateStatsUI,
+    getActiveChildName,
+    trackEvent,
+    logError
+  };
 }
