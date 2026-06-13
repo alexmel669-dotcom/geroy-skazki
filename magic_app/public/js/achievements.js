@@ -1,220 +1,254 @@
-import { appState } from './core.js';
-import { CONFIG } from './config.js';
-import { showAchievementToast } from './ui.js';
+// ========================================
+// achievements.js — СИСТЕМА ДОСТИЖЕНИЙ
+// ========================================
 
-// Определение всех достижений
-export const ACHIEVEMENTS = {
-  'first_talk': {
-    name: '🎤 Первый разговор',
-    description: 'Первый раз поговорил с Люциком',
-    icon: '🎤',
-    earned: false
+// Список достижений
+const ACHIEVEMENTS = {
+  first_story: {
+    id: 'first_story',
+    title: '📖 Первая сказка',
+    description: 'Послушать первую сказку',
+    condition: (stats) => stats.totalStories >= 1,
+    icon: '🌟'
   },
-  'brave_kid': {
-    name: '🦁 Храбрый малыш',
-    description: 'Победил свой страх',
-    icon: '🦁',
-    earned: false
+  story_master: {
+    id: 'story_master',
+    title: '🎭 Мастер сказок',
+    description: 'Послушать 10 сказок',
+    condition: (stats) => stats.totalStories >= 10,
+    icon: '👑'
   },
-  'story_lover': {
-    name: '🌙 Сказочник',
-    description: 'Послушал 10 сказок',
-    icon: '🌙',
-    earned: false,
-    progress: 0,
-    target: 10
+  fish_master: {
+    id: 'fish_master',
+    title: '🎣 Мастер рыбалки',
+    description: 'Поймать 10 рыб в игре',
+    condition: (stats) => false, // Проверяется отдельно в игре
+    icon: '🐟'
   },
-  'game_master': {
-    name: '🎮 Игроман',
-    description: 'Поиграл во все игры',
-    icon: '🎮',
-    earned: false,
-    progress: 0,
-    target: 5
+  brave_child: {
+    id: 'brave_child',
+    title: '🦁 Храбрый ребенок',
+    description: 'Победить 5 страхов',
+    condition: (stats) => {
+      const fears = stats.fearStats || {};
+      let totalFears = 0;
+      for (let key in fears) {
+        totalFears += fears[key];
+      }
+      return totalFears >= 5;
+    },
+    icon: '🦁'
   },
-  'fish_catcher': {
-    name: '🐟 Рыболов',
-    description: 'Поймал 30 рыбок',
-    icon: '🐟',
-    earned: false,
-    progress: 0,
-    target: 30
+  game_master: {
+    id: 'game_master',
+    title: '🎮 Любитель игр',
+    description: 'Сыграть в 5 игр',
+    condition: (stats) => stats.totalGames >= 5,
+    icon: '🎮'
   },
-  'memory_champion': {
-    name: '🧠 Чемпион памяти',
-    description: 'Собрал все пары в Мемори',
-    icon: '🧠',
-    earned: false
-  },
-  'puzzle_solver': {
-    name: '🧩 Мастер пазлов',
-    description: 'Собрал пазл',
-    icon: '🧩',
-    earned: false
-  },
-  'artist': {
-    name: '🎨 Художник',
-    description: 'Раскрасил картинку',
-    icon: '🎨',
-    earned: false
-  },
-  'emotion_master': {
-    name: '😊 Знаток эмоций',
-    description: 'Угадал все эмоции',
-    icon: '😊',
-    earned: false
-  },
-  'bravery_100': {
-    name: '💪 Супергерой',
-    description: 'Достиг 100% храбрости',
-    icon: '💪',
-    earned: false
-  },
-  'fish_king': {
-    name: '👑 Король рыбалки',
-    description: 'Поймал 100 рыбок',
-    icon: '👑',
-    earned: false,
-    progress: 0,
-    target: 100
+  active_child: {
+    id: 'active_child',
+    title: '⚡ Активный ребенок',
+    description: 'Провести 7 дней с приложением',
+    condition: (stats) => {
+      const activeDays = Math.ceil((Date.now() - (stats.lastActive || Date.now())) / (1000 * 60 * 60 * 24));
+      return activeDays >= 7;
+    },
+    icon: '⚡'
   }
 };
 
-// Получение ключа для localStorage
-function getAchievementKey() {
-  return `achievements_${appState.currentChildIndex === CONFIG.GUEST_INDEX ? 'guest' : appState.currentChildIndex}`;
-}
+// Полученные достижения
+let unlockedAchievements = new Set();
 
-// Инициализация достижений
-export function initAchievements() {
-  const key = getAchievementKey();
-  
-  if (!localStorage.getItem(key)) {
-    const initial = {};
-    Object.entries(ACHIEVEMENTS).forEach(([id, achievement]) => {
-      initial[id] = { ...achievement };
-    });
-    localStorage.setItem(key, JSON.stringify(initial));
-    console.log('✅ Достижения инициализированы');
-  } else {
-    // Проверяем и добавляем новые достижения
-    const existing = JSON.parse(localStorage.getItem(key));
-    let updated = false;
-    
-    Object.entries(ACHIEVEMENTS).forEach(([id, achievement]) => {
-      if (!existing[id]) {
-        existing[id] = { ...achievement };
-        updated = true;
-      }
-    });
-    
-    if (updated) {
-      localStorage.setItem(key, JSON.stringify(existing));
-      console.log('✅ Добавлены новые достижения');
-    }
-  }
-}
-
-// Обновление прогресса достижения
-export function updateAchievement(id, progress = null) {
-  if (appState.currentChildIndex === CONFIG.GUEST_INDEX) return;
-  
-  const key = getAchievementKey();
-  const achievements = JSON.parse(localStorage.getItem(key));
-  
-  if (!achievements || !achievements[id]) {
-    console.warn(`Achievement ${id} not found`);
-    return;
-  }
-  
-  const achievement = achievements[id];
-  
-  // Если уже получено, не обновляем
-  if (achievement.earned) return;
-  
-  if (progress !== null) {
-    // Прогрессивное достижение
-    achievement.progress = (achievement.progress || 0) + progress;
-    
-    if (achievement.progress >= achievement.target) {
-      achievement.earned = true;
-      achievement.earnedDate = new Date().toISOString();
-      showAchievementToast(achievement.name);
-      
-      // Звуковое оповещение
-      playAchievementSound();
-      
-      console.log(`🏆 Достижение получено: ${achievement.name}`);
-    }
-  } else {
-    // Одноразовое достижение
-    achievement.earned = true;
-    achievement.earnedDate = new Date().toISOString();
-    showAchievementToast(achievement.name);
-    playAchievementSound();
-    
-    console.log(`🏆 Достижение получено: ${achievement.name}`);
-  }
-  
-  localStorage.setItem(key, JSON.stringify(achievements));
-}
-
-// Звук получения достижения
-function playAchievementSound() {
+// Инициализация загруженных достижений
+function loadAchievements() {
   try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
-    oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
-    oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
-    
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.5);
+    const saved = localStorage.getItem('unlockedAchievements');
+    if (saved) {
+      const arr = JSON.parse(saved);
+      unlockedAchievements = new Set(arr);
+    }
   } catch (e) {
-    // Игнорируем ошибки аудио
+    console.warn('Failed to load achievements', e);
   }
 }
 
-// Получение всех достижений
-export function getAllAchievements() {
-  const key = getAchievementKey();
-  return JSON.parse(localStorage.getItem(key) || '{}');
+// Сохранение достижений
+function saveAchievements() {
+  try {
+    const arr = Array.from(unlockedAchievements);
+    localStorage.setItem('unlockedAchievements', JSON.stringify(arr));
+  } catch (e) {
+    console.warn('Failed to save achievements', e);
+  }
 }
 
-// Получение статистики достижений
-export function getAchievementStats() {
-  const achievements = getAllAchievements();
-  const total = Object.keys(achievements).length;
-  const earned = Object.values(achievements).filter(a => a.earned).length;
+// Показать уведомление о достижении
+export function showAchievement(achievementId, customMessage = null) {
+  // Проверяем, не получено ли уже
+  if (unlockedAchievements.has(achievementId)) return;
   
+  // Получаем данные о достижении
+  const achievement = ACHIEVEMENTS[achievementId];
+  if (!achievement && !customMessage) return;
+  
+  // Добавляем в полученные
+  unlockedAchievements.add(achievementId);
+  saveAchievements();
+  
+  // Создаем уведомление
+  const notification = document.createElement('div');
+  notification.className = 'achievement-notification';
+  notification.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    z-index: 10000;
+    animation: slideIn 0.5s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: inherit;
+    max-width: 300px;
+  `;
+  
+  const icon = achievement?.icon || '🏆';
+  const title = customMessage || achievement?.title || 'Достижение получено!';
+  const desc = achievement?.description || '';
+  
+  notification.innerHTML = `
+    <span style="font-size: 32px;">${icon}</span>
+    <div>
+      <div style="font-weight: bold; margin-bottom: 4px;">${title}</div>
+      ${desc ? `<div style="font-size: 12px; opacity: 0.9;">${desc}</div>` : ''}
+    </div>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Анимация появления
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  // Удаляем через 3 секунды
+  setTimeout(() => {
+    notification.style.animation = 'slideIn 0.5s ease reverse';
+    setTimeout(() => notification.remove(), 500);
+  }, 3000);
+  
+  // Сохраняем в историю
+  try {
+    const history = JSON.parse(localStorage.getItem('achievementsHistory') || '[]');
+    history.push({
+      id: achievementId,
+      title: title,
+      timestamp: Date.now()
+    });
+    localStorage.setItem('achievementsHistory', JSON.stringify(history.slice(-50)));
+  } catch (e) {}
+}
+
+// Проверить все достижения
+export function checkAchievements() {
+  try {
+    const stats = JSON.parse(localStorage.getItem('stats_guest') || '{}');
+    
+    // Проверяем каждое достижение
+    for (let id in ACHIEVEMENTS) {
+      const achievement = ACHIEVEMENTS[id];
+      
+      // Пропускаем уже полученные
+      if (unlockedAchievements.has(id)) continue;
+      
+      // Проверяем условие
+      if (achievement.condition && achievement.condition(stats)) {
+        showAchievement(id);
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to check achievements', e);
+  }
+}
+
+// Получить все достижения
+export function getAllAchievements() {
+  const all = [];
+  for (let id in ACHIEVEMENTS) {
+    all.push({
+      ...ACHIEVEMENTS[id],
+      unlocked: unlockedAchievements.has(id)
+    });
+  }
+  return all;
+}
+
+// Получить статистику достижений
+export function getAchievementStats() {
+  const total = Object.keys(ACHIEVEMENTS).length;
+  const unlocked = unlockedAchievements.size;
   return {
     total,
-    earned,
-    percentage: total > 0 ? Math.round((earned / total) * 100) : 0
+    unlocked,
+    percentage: total > 0 ? Math.round((unlocked / total) * 100) : 0
   };
 }
 
-// Проверка специальных условий
-export function checkSpecialAchievements() {
-  // Проверка храбрости
-  if (appState.bravery >= 100) {
-    updateAchievement('bravery_100');
-  }
-  
-  // Проверка всех игр
-  const achievements = getAllAchievements();
-  const gameAchievements = ['memory_champion', 'puzzle_solver', 'artist', 'emotion_master', 'fish_catcher'];
-  const allGamesPlayed = gameAchievements.every(id => achievements[id]?.earned);
-  
-  if (allGamesPlayed) {
-    updateAchievement('game_master');
+// Инициализация
+loadAchievements();
+
+// Добавляем стили глобально
+if (typeof document !== 'undefined') {
+  if (!document.querySelector('#achievements-styles')) {
+    const style = document.createElement('style');
+    style.id = 'achievements-styles';
+    style.textContent = `
+      .achievement-notification {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        z-index: 10000;
+        animation: slideIn 0.5s ease;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: inherit;
+        max-width: 300px;
+      }
+      
+      @keyframes slideIn {
+        from {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(style);
   }
 }
