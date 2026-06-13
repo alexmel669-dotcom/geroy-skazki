@@ -1,7 +1,7 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// Версия: 4.0.6 FINAL
-// Исправлено: все ошибки ссылок, порядок функций, fallback значения
+// Версия: 4.0.7 FINAL
+// Исправлено: добавлен экспорт updateStatsUI для fish.js
 // ========================================
 
 import {
@@ -88,6 +88,7 @@ export const getCurrentChildName = getActiveChildName;
 export const getCurrentChildIndex = getActiveChildIndex;
 export const saveHistory = saveToChildHistory;
 export const updateStats = updateStatsDisplay;
+export const updateStatsUI = updateStatsDisplay; // FIX: для fish.js
 export const processVoice = processAudio;
 
 // FIX for fish.js
@@ -929,11 +930,11 @@ export function launchFishGame() {
     fish.onclick = () => {
       if (!active) return;
       score++;
-      scoreEl.textContent = score;
+      if (scoreEl) scoreEl.textContent = score;
       fish.remove();
     };
     
-    area.appendChild(fish);
+    if (area) area.appendChild(fish);
     
     setTimeout(() => {
       if (fish.parentNode) fish.remove();
@@ -946,12 +947,15 @@ export function launchFishGame() {
   
   fishSpawnInterval = setInterval(createFish, 1500);
   
-  document.getElementById('fishCloseBtn').onclick = () => {
-    active = false;
-    clearInterval(timer);
-    clearInterval(fishSpawnInterval);
-    overlay.remove();
-  };
+  const closeBtn = document.getElementById('fishCloseBtn');
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      active = false;
+      clearInterval(timer);
+      clearInterval(fishSpawnInterval);
+      overlay.remove();
+    };
+  }
   
   trackEvent('fish_start', getActiveChildName());
 }
@@ -980,4 +984,5 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   window.saveToChildHistory = saveToChildHistory;
   window.saveChildData = saveChildData;
   window.initCore = initCore;
+  window.updateStatsUI = updateStatsDisplay;
 }
