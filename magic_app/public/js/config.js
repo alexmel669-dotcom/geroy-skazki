@@ -1,4 +1,7 @@
-// config.js
+// ========================================
+// config.js — КОНФИГУРАЦИЯ ПРИЛОЖЕНИЯ
+// ========================================
+
 export const CONFIG = {
     APP_VERSION: '4.0.8',
     MAX_HISTORY: 50,
@@ -17,27 +20,27 @@ export const CHARACTERS = {
     lucik: {
         id: 'lucik',
         name: 'Люцик',
-        icon: 'assets/images/avatar.png',
+        icon: '/assets/images/avatar.png',
         premium: false,
         description: 'Добрый волшебник'
     },
     kid1: {
         id: 'kid1',
         name: 'Мальчик',
-        icon: 'assets/images/kid1.png',
+        icon: '/assets/images/kid1.png',
         premium: false,
         description: 'Веселый мальчик'
     },
     kid2: {
         id: 'kid2',
         name: 'Девочка',
-        icon: 'assets/images/kid2.png',
+        icon: '/assets/images/kid2.png',
         premium: false,
         description: 'Добрая девочка'
     }
 };
 
 export function validateConfig() {
-    console.log('Config validated');
+    console.log('✅ Config validated, version:', CONFIG.APP_VERSION);
     return true;
 }
