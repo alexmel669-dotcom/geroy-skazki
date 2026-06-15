@@ -1,164 +1,170 @@
-import { CONFIG } from './config.js';
+// ========================================
+// security.js — БЕЗОПАСНОСТЬ И ФИЛЬТРАЦИЯ
+// ========================================
 
-// Санитизация пользовательского ввода
-export function sanitizeInput(text) {
-  if (!text || typeof text !== 'string') return '';
-  
-  // Удаляем HTML теги и опасные символы
-  let cleaned = text
-    .replace(/<[^>]*>/g, '') // HTML теги
-    .replace(/[<>]/g, '')     // Оставшиеся скобки
-    .replace(/javascript:/gi, '') // JavaScript протокол
-    .replace(/on\w+=/gi, '')  // Обработчики событий
-    .trim();
-  
-  // Ограничиваем длину
-  if (cleaned.length > 500) {
-    cleaned = cleaned.substring(0, 500);
-  }
-  
-  return cleaned;
+// Список запрещенных слов
+const BAD_WORDS = [
+    'дурак', 'идиот', 'глупый', 'тупой', 'урод',
+    'дебил', 'кретин', 'болван', 'придурок',
+    'заткнись', 'пошел вон', 'убирайся',
+    'fuck', 'shit', 'damn', 'stupid', 'idiot'
+];
+
+// Список подозрительных слов для родителей
+const ALERT_WORDS = [
+    'обижают', 'бьют', 'ругают', 'кричат',
+    'страшно', 'боюсь', 'помогите',
+    'удар', 'синяк', 'больно'
+];
+
+// Личные данные (регулярки)
+const PERSONAL_DATA_PATTERNS = [
+    /(\+\d{1,3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{2}[-.\s]?\d{2})/, // телефон
+    /(\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4})/, // номер карты
+    /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/, // email
+    /(https?:\/\/[^\s]+)/ // ссылки
+];
+
+/**
+ * Инициализация системы безопасности
+ */
+export function initSecurity() {
+    console.log('🔒 Security system initialized');
+    // Можно добавить дополнительные проверки
 }
 
-// Проверка на запрещенные слова
-export function containsBadWords(text) {
-  if (!text) return false;
-  
-  const lowerText = text.toLowerCase();
-  return CONFIG.BAD_WORDS.some(word => {
-    // Проверяем целые слова, а не подстроки
-    const regex = new RegExp(`\\b${word}\\b`, 'i');
-    return regex.test(lowerText);
-  });
-}
-
-// Хеширование PIN-кода
-export async function hashPin(pin) {
-  if (!pin || typeof pin !== 'string') {
-    throw new Error('PIN must be a string');
-  }
-  
-  try {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(pin + CONFIG.PIN_SALT);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  } catch (error) {
-    console.error('Hash error:', error);
-    // Fallback для окружений без crypto.subtle
-    return simpleHash(pin + CONFIG.PIN_SALT);
-  }
-}
-
-// Простой fallback хеш
-function simpleHash(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Конвертируем в 32-битное целое
-  }
-  return Math.abs(hash).toString(16).padStart(8, '0');
-}
-
-// Проверка PIN-кода
-export async function verifyPin(inputPin) {
-  if (!inputPin || typeof inputPin !== 'string') {
+/**
+ * Проверка наличия плохих слов в тексте
+ * @param {string} text - Текст для проверки
+ * @returns {boolean} - true если есть плохие слова
+ */
+export function checkBadWords(text) {
+    if (!text || typeof text !== 'string') return false;
+    
+    const lowerText = text.toLowerCase();
+    
+    for (const word of BAD_WORDS) {
+        if (lowerText.includes(word.toLowerCase())) {
+            console.warn('⚠️ Bad word detected:', word);
+            return true;
+        }
+    }
+    
     return false;
-  }
-  
-  const storedHash = localStorage.getItem('parentPinHash');
-  if (!storedHash) {
-    console.log('PIN not set');
-    return false;
-  }
-  
-  try {
-    const inputHash = await hashPin(inputPin);
-    return storedHash === inputHash;
-  } catch (error) {
-    console.error('PIN verification error:', error);
-    return false;
-  }
 }
 
-// Создание PIN-кода
-export async function createPin(pin) {
-  if (!pin || pin.length < 4 || pin.length > 6) {
-    throw new Error('PIN must be 4-6 characters');
-  }
-  
-  if (!/^\d+$/.test(pin)) {
-    throw new Error('PIN must contain only digits');
-  }
-  
-  try {
-    const hash = await hashPin(pin);
-    localStorage.setItem('parentPinHash', hash);
-    console.log('✅ PIN created successfully');
-    return true;
-  } catch (error) {
-    console.error('Failed to create PIN:', error);
-    throw error;
-  }
+/**
+ * Проверка наличия нецензурных слов (синоним checkBadWords)
+ * @param {string} text - Текст для проверки
+ * @returns {boolean} - true если есть нецензурные слова
+ */
+export function checkProfanity(text) {
+    return checkBadWords(text);
 }
 
-// Изменение PIN-кода
-export async function changePin(oldPin, newPin) {
-  const isOldPinValid = await verifyPin(oldPin);
-  if (!isOldPinValid) {
-    throw new Error('Неверный старый PIN-код');
-  }
-  
-  return await createPin(newPin);
+/**
+ * Очистка текста от плохих слов
+ * @param {string} text - Исходный текст
+ * @param {string} replacement - Замена для плохих слов
+ * @returns {string} - Очищенный текст
+ */
+export function sanitizeText(text, replacement = '***') {
+    if (!text || typeof text !== 'string') return '';
+    
+    let result = text;
+    
+    for (const word of BAD_WORDS) {
+        const regex = new RegExp(word, 'gi');
+        result = result.replace(regex, replacement);
+    }
+    
+    return result;
 }
 
-// Проверка сложности пароля (для будущего использования)
-export function checkPasswordStrength(password) {
-  if (!password) return { score: 0, message: 'Пароль пустой' };
-  
-  let score = 0;
-  const checks = {
-    length: password.length >= 8,
-    uppercase: /[A-ZА-Я]/.test(password),
-    lowercase: /[a-zа-я]/.test(password),
-    numbers: /\d/.test(password),
-    special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
-  };
-  
-  score = Object.values(checks).filter(Boolean).length;
-  
-  const messages = {
-    0: 'Очень слабый',
-    1: 'Слабый',
-    2: 'Средний',
-    3: 'Хороший',
-    4: 'Сильный',
-    5: 'Очень сильный'
-  };
-  
-  return {
-    score,
-    message: messages[score] || 'Неизвестно',
-    checks
-  };
+/**
+ * Безопасная очистка HTML входных данных
+ * @param {string} input - Входная строка
+ * @returns {string} - Очищенная строка
+ */
+export function sanitizeInput(input) {
+    if (!input || typeof input !== 'string') return '';
+    
+    return input
+        .replace(/[<>]/g, '') // Удаляем HTML теги
+        .replace(/[&]/g, '&amp;')
+        .replace(/["]/g, '&quot;')
+        .replace(/[']/g, '&#39;')
+        .trim();
 }
 
-// Очистка чувствительных данных
-export function clearSensitiveData() {
-  localStorage.removeItem('parentPinHash');
-  localStorage.removeItem('userEmail');
-  console.log('🔒 Чувствительные данные очищены');
+/**
+ * Детектирование тревожных слов (для родителей)
+ * @param {string} text - Текст для проверки
+ * @returns {Array} - Массив найденных тревожных слов
+ */
+export function detectAlertWords(text) {
+    if (!text || typeof text !== 'string') return [];
+    
+    const found = [];
+    const lowerText = text.toLowerCase();
+    
+    for (const word of ALERT_WORDS) {
+        if (lowerText.includes(word.toLowerCase())) {
+            found.push(word);
+        }
+    }
+    
+    return found;
 }
 
-// Экспорт для тестирования
-if (typeof window !== 'undefined') {
-  window.__security = {
+/**
+ * Детектирование личных данных
+ * @param {string} text - Текст для проверки
+ * @returns {Array} - Массив найденных личных данных
+ */
+export function detectPersonalData(text) {
+    if (!text || typeof text !== 'string') return [];
+    
+    const found = [];
+    
+    for (const pattern of PERSONAL_DATA_PATTERNS) {
+        if (pattern.test(text)) {
+            found.push('personal_data');
+            break;
+        }
+    }
+    
+    return found;
+}
+
+/**
+ * Валидация возраста ребенка
+ * @param {number} age - Возраст
+ * @returns {boolean} - Корректный ли возраст
+ */
+export function validateChildAge(age) {
+    const numAge = parseInt(age);
+    return !isNaN(numAge) && numAge >= 3 && numAge <= 12;
+}
+
+/**
+ * Валидация имени ребенка
+ * @param {string} name - Имя
+ * @returns {boolean} - Корректное ли имя
+ */
+export function validateChildName(name) {
+    return name && typeof name === 'string' && name.length >= 2 && name.length <= 20;
+}
+
+// Экспорт всех основных функций
+export default {
+    initSecurity,
+    checkBadWords,
+    checkProfanity,
+    sanitizeText,
     sanitizeInput,
-    containsBadWords,
-    hashPin,
-    verifyPin,
-    createPin
-  };
-}
+    detectAlertWords,
+    detectPersonalData,
+    validateChildAge,
+    validateChildName
+};
