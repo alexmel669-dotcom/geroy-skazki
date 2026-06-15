@@ -1,266 +1,175 @@
-import { appState } from './core.js';
-import { CONFIG } from './config.js';
+// ========================================
+// audio.js — СИНТЕЗ РЕЧИ (TTS)
+// ========================================
 
-let currentAudio = null;
-let audioUnlocked = false;
-let audioContext = null;
-let pendingSpeakPromise = null;
+let currentUtterance = null;
+let speechQueue = [];
+let isSpeaking = false;
 
-// Разблокировка аудио
-export function unlockAudio() {
-  if (audioUnlocked) return;
-  
-  try {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const buffer = audioContext.createBuffer(1, 1, 22050);
-    const source = audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioContext.destination);
-    source.start(0);
-    
-    audioContext.resume().then(() => {
-      audioUnlocked = true;
-      console.log('🔊 Аудио разблокировано');
-    }).catch(() => {
-      audioUnlocked = true;
-    });
-  } catch (error) {
-    console.warn('Audio context creation failed:', error);
-    audioUnlocked = true;
-  }
-}
-
-// Fallback через Web Speech API
-function fallbackSpeak(text) {
-  return new Promise((resolve) => {
-    if (!window.speechSynthesis) {
-      console.warn('Speech synthesis not available');
-      resolve();
-      return;
+/**
+ * Синтез речи (озвучивание текста)
+ * @param {string} text - Текст для озвучивания
+ * @param {string} character - Персонаж (не используется, но оставлен для совместимости)
+ * @returns {Promise<void>}
+ */
+export async function synthesizeSpeech(text, character = 'lucik') {
+    if (!text || typeof text !== 'string') {
+        console.warn('synthesizeSpeech: empty text');
+        return;
     }
     
-    // Не отменяем предыдущую речь, даём доиграть
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ru-RU';
-    utterance.rate = 0.9;
-    utterance.volume = 0.8;
-    utterance.pitch = 1.0;
+    // Останавливаем текущую речь
+    stopSpeech();
     
-    const avatar = document.getElementById('avatar');
-    let timeoutId;
-    let resolved = false;
-    
-    function finish() {
-      if (resolved) return;
-      resolved = true;
-      clearTimeout(timeoutId);
-      if (avatar) avatar.classList.remove('talking');
-      resolve();
-    }
-    
-    timeoutId = setTimeout(() => {
-      console.warn('Speech synthesis timeout');
-      finish();
-    }, CONFIG.AUDIO_TIMEOUT);
-    
-    utterance.onstart = () => {
-      console.log('🔊 Speaking (fallback):', text.substring(0, 50));
-      if (avatar) avatar.classList.add('talking');
-    };
-    
-    utterance.onend = () => {
-      console.log('✅ Speech completed');
-      finish();
-    };
-    
-    utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event.error);
-      finish();
-    };
-    
-    window.speechSynthesis.speak(utterance);
-  });
-}
-
-// Конвертация base64 в Blob
-function base64ToBlob(base64, mimeType = 'audio/mp3') {
-  const byteCharacters = atob(base64);
-  const byteNumbers = new Array(byteCharacters.length);
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
-  }
-  const byteArray = new Uint8Array(byteNumbers);
-  return new Blob([byteArray], { type: mimeType });
-}
-
-// Основная функция TTS через Яндекс
-export async function speakWithYandex(text, voice = 'alena') {
-  if (pendingSpeakPromise) {
-    await pendingSpeakPromise;
-  }
-  
-  pendingSpeakPromise = new Promise(async (resolve) => {
-    try {
-      if (!audioUnlocked || !navigator.onLine) {
-        await fallbackSpeak(text);
-        resolve();
-        return;
-      }
-      
-      // Останавливаем предыдущее аудио
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-        URL.revokeObjectURL(currentAudio.src);
-        currentAudio = null;
-      }
-      
-      console.log('🎤 Requesting TTS:', text.substring(0, 50));
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), CONFIG.API_TIMEOUT);
-      
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          text, 
-          voice, 
-          emotion: 'good', 
-          speed: 1.0 
-        }),
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        console.warn('TTS API error:', response.status);
-        await fallbackSpeak(text);
-        resolve();
-        return;
-      }
-      
-      // Парсим JSON ответ
-      const data = await response.json();
-      
-      if (!data.audioUrl) {
-        console.warn('TTS returned empty audio');
-        await fallbackSpeak(text);
-        resolve();
-        return;
-      }
-      
-      // Извлекаем base64 из data URL и создаём Blob URL
-      const base64 = data.audioUrl.split(',')[1];
-      const blob = base64ToBlob(base64);
-      const blobUrl = URL.createObjectURL(blob);
-      
-      const audio = new Audio(blobUrl);
-      currentAudio = audio;
-      
-      const avatar = document.getElementById('avatar');
-      
-      await new Promise((audioResolve, audioReject) => {
-        let audioResolved = false;
-        
-        function cleanup() {
-          if (audioResolved) return;
-          audioResolved = true;
-          clearTimeout(audioTimeout);
-          URL.revokeObjectURL(blobUrl);
-          currentAudio = null;
-          if (avatar) avatar.classList.remove('talking');
+    return new Promise((resolve) => {
+        // Проверка поддержки Speech Synthesis
+        if (!window.speechSynthesis) {
+            console.warn('Speech synthesis not supported');
+            resolve();
+            return;
         }
         
-        const audioTimeout = setTimeout(() => {
-          console.warn('Audio playback timeout');
-          cleanup();
-          audioReject(new Error('Playback timeout'));
-        }, CONFIG.AUDIO_TIMEOUT);
+        // Создаем utterance
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ru-RU';
+        utterance.rate = 0.95;  // Немного медленнее для детей
+        utterance.pitch = 1.1;   // Чуть выше для дружелюбности
+        utterance.volume = 1;
         
-        audio.oncanplaythrough = () => {
-          console.log('▶️ Audio ready, playing...');
-          if (avatar) avatar.classList.add('talking');
-          audio.play().catch(err => {
-            console.error('Audio play failed:', err);
-            cleanup();
-            audioReject(err);
-          });
+        // Обработчики событий
+        utterance.onstart = () => {
+            console.log('🔊 Speaking:', text.substring(0, 50) + '...');
+            isSpeaking = true;
         };
         
-        audio.onended = () => {
-          console.log('✅ Audio completed');
-          cleanup();
-          audioResolve();
+        utterance.onend = () => {
+            console.log('🔊 Speaking finished');
+            isSpeaking = false;
+            currentUtterance = null;
+            resolve();
+            
+            // Воспроизводим следующее из очереди
+            processQueue();
         };
         
-        audio.onerror = (e) => {
-          console.error('Audio error:', e.target?.error?.message || 'Unknown error');
-          cleanup();
-          audioReject(e);
+        utterance.onerror = (event) => {
+            console.error('Speech synthesis error:', event);
+            isSpeaking = false;
+            currentUtterance = null;
+            resolve();
+            
+            // Пробуем следующее из очереди
+            processQueue();
         };
         
-        // Начинаем загрузку
-        audio.load();
-      });
-      
-      resolve();
-      
-    } catch (error) {
-      console.error('Yandex TTS error:', error.message);
-      
-      if (currentAudio) {
-        currentAudio.pause();
-        URL.revokeObjectURL(currentAudio.src);
-        currentAudio = null;
-      }
-      
-      const avatar = document.getElementById('avatar');
-      if (avatar) avatar.classList.remove('talking');
-      
-      await fallbackSpeak(text);
-      resolve();
+        currentUtterance = utterance;
+        
+        // Небольшая задержка перед воспроизведением для стабильности
+        setTimeout(() => {
+            try {
+                window.speechSynthesis.speak(utterance);
+            } catch (error) {
+                console.error('Failed to speak:', error);
+                resolve();
+            }
+        }, 100);
+    });
+}
+
+/**
+ * Остановка текущей речи
+ */
+export function stopSpeech() {
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
     }
-  });
-  
-  await pendingSpeakPromise;
-  pendingSpeakPromise = null;
+    
+    if (currentUtterance) {
+        currentUtterance = null;
+    }
+    
+    isSpeaking = false;
+    speechQueue = [];
+    console.log('Speech stopped');
 }
 
-export function speak(text) {
-  if (!text) return Promise.resolve();
-  return speakWithYandex(text, appState?.currentChar || 'alena');
+/**
+ * Добавление в очередь воспроизведения
+ * @param {string} text 
+ * @param {string} character 
+ */
+export function queueSpeech(text, character = 'lucik') {
+    speechQueue.push({ text, character });
+    
+    if (!isSpeaking) {
+        processQueue();
+    }
 }
 
-export function stopSpeaking() {
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
-    URL.revokeObjectURL(currentAudio.src);
-    currentAudio = null;
-  }
-  
-  if (window.speechSynthesis) {
-    window.speechSynthesis.cancel();
-  }
-  
-  const avatar = document.getElementById('avatar');
-  if (avatar) avatar.classList.remove('talking');
-  
-  pendingSpeakPromise = null;
+/**
+ * Обработка очереди воспроизведения
+ */
+async function processQueue() {
+    if (speechQueue.length === 0) return;
+    if (isSpeaking) return;
+    
+    const next = speechQueue.shift();
+    await synthesizeSpeech(next.text, next.character);
 }
 
-export function isAudioUnlocked() {
-  return audioUnlocked;
+/**
+ * Проверка поддержки синтеза речи
+ * @returns {boolean}
+ */
+export function isSpeechSupported() {
+    return typeof window !== 'undefined' && 
+           window.speechSynthesis && 
+           window.SpeechSynthesisUtterance;
 }
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    stopSpeaking();
-  });
-  
-  document.addEventListener('click', unlockAudio, { once: true });
-  document.addEventListener('touchstart', unlockAudio, { once: true });
+/**
+ * Получение доступных голосов
+ * @returns {Promise<Array>}
+ */
+export async function getAvailableVoices() {
+    return new Promise((resolve) => {
+        if (!window.speechSynthesis) {
+            resolve([]);
+            return;
+        }
+        
+        const voices = window.speechSynthesis.getVoices();
+        
+        if (voices.length > 0) {
+            resolve(voices);
+        } else {
+            window.speechSynthesis.onvoiceschanged = () => {
+                resolve(window.speechSynthesis.getVoices());
+            };
+            setTimeout(() => resolve([]), 1000);
+        }
+    });
 }
+
+/**
+ * Установка голоса по умолчанию (русский)
+ */
+export async function setRussianVoice() {
+    const voices = await getAvailableVoices();
+    const russianVoice = voices.find(voice => 
+        voice.lang.includes('ru') || 
+        voice.lang.includes('RU')
+    );
+    
+    return russianVoice || null;
+}
+
+// Экспорт по умолчанию для совместимости
+export default {
+    synthesizeSpeech,
+    stopSpeech,
+    queueSpeech,
+    isSpeechSupported,
+    getAvailableVoices,
+    setRussianVoice
+};
