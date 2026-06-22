@@ -1,4 +1,4 @@
-import { CONFIG, CHARACTERS, FALLBACK_REPLIES, validateConfig } from './config.js';
+import { CONFIG, CHARACTERS, FALLBACK_REPLIES, validateConfig, getAppMode } from './config.js';
 import {
   initCore,
   getActiveChildName,
@@ -15,11 +15,12 @@ import {
   safeParseJSON
 } from './core.js';
 import { generateResponse, detectFear, detectAlertWords, detectPersonalData, setCharacter, getCharacter, addToContext } from './ai.js';
-import { startRecording, stopRecording, isRecording, getRecordingMimeType } from './mic.js';
+import { startRecording, stopRecording, isRecording, getRecordingMimeType, isMicrophoneSupported } from './mic.js';
 import { synthesizeSpeech } from './audio.js';
 import { checkAchievements } from './achievements.js';
 import { trackEvent, logError } from './analytics.js';
 import { initSecurity, sanitizeText } from './security.js';
+import { initDevPanel, setLastAiTiming } from './ui.js';
 import { startFishGame } from './games/fish.js';
 import { startMemoryGame } from './games/memory.js';
 import { startPuzzleGame } from './games/puzzle.js';
@@ -27,6 +28,7 @@ import { startEmotionGame } from './games/emotion.js';
 import { startColoringGame } from './games/coloring.js';
 
 let isProcessing = false;
+let micEnding = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   validateConfig();
@@ -34,6 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initCore();
   initUI();
   initEventListeners();
+  setMicVisualState('idle');
+  if (getAppMode() === 'dev') initDevPanel();
 
   console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION} запущен`);
   console.log(`👶 Активный ребёнок: ${getActiveChildName()}`);
@@ -60,7 +64,13 @@ function initUI() {
 
 function initEventListeners() {
   const micBtn = document.getElementById('micBtn');
-  if (micBtn) micBtn.addEventListener('click', handleMicClick);
+  if (micBtn) {
+    micBtn.addEventListener('mousedown', (e) => { e.preventDefault(); beginRecording(); });
+    micBtn.addEventListener('mouseup', () => finishRecording());
+    micBtn.addEventListener('mouseleave', () => { if (isRecording()) finishRecording(); });
+    micBtn.addEventListener('touchstart', (e) => { e.preventDefault(); beginRecording(); }, { passive: false });
+    micBtn.addEventListener('touchend', (e) => { e.preventDefault(); finishRecording(); });
+  }
 
   const feedBtn = document.getElementById('feedBtn');
   if (feedBtn) {
@@ -116,32 +126,55 @@ function animateStat(elementId, target) {
   }, 50);
 }
 
-async function handleMicClick() {
-  if (isProcessing) return;
+function setMicVisualState(state) {
   const micBtn = document.getElementById('micBtn');
-
-  if (isRecording()) {
-    micBtn.classList.remove('recording');
-    isProcessing = true;
-    try {
-      const audioBlob = await stopRecording();
-      if (audioBlob) await processAudio(audioBlob);
-    } catch (err) {
-      console.error('❌ Recording error:', err);
-      logError('mic', err.message || String(err));
-    } finally {
-      isProcessing = false;
-      micBtn.textContent = '🎤';
-    }
+  if (!micBtn) return;
+  micBtn.classList.remove('mic-recording', 'mic-processing', 'mic-idle');
+  if (state === 'recording') {
+    micBtn.classList.add('mic-recording');
+    micBtn.textContent = '⏺️';
+  } else if (state === 'processing') {
+    micBtn.classList.add('mic-processing');
+    micBtn.textContent = '⏳';
   } else {
-    try {
-      await startRecording();
-      micBtn.classList.add('recording');
-      micBtn.textContent = '⏺️';
-    } catch (err) {
-      console.error('❌ Mic access error:', err);
-      alert('Не удалось получить доступ к микрофону. Проверьте разрешения.');
-    }
+    micBtn.classList.add('mic-idle');
+    micBtn.textContent = '🎤';
+  }
+}
+
+async function beginRecording() {
+  if (isProcessing || isRecording()) return;
+  if (!isMicrophoneSupported()) {
+    alert('Микрофон недоступен. Попроси взрослого помочь настроить.');
+    return;
+  }
+  try {
+    await startRecording({
+      onAutoStop: () => finishRecording(),
+      onStateChange: setMicVisualState
+    });
+  } catch (err) {
+    console.error('❌ Mic access error:', err);
+    alert('Микрофон недоступен. Попроси взрослого помочь настроить.');
+    setMicVisualState('idle');
+  }
+}
+
+async function finishRecording() {
+  if (micEnding || !isRecording() || isProcessing) return;
+  micEnding = true;
+  isProcessing = true;
+  setMicVisualState('processing');
+  try {
+    const audioBlob = await stopRecording();
+    if (audioBlob && audioBlob.size > 0) await processAudio(audioBlob);
+  } catch (err) {
+    console.error('❌ Recording error:', err);
+    logError('mic', err.message || String(err));
+  } finally {
+    isProcessing = false;
+    micEnding = false;
+    setMicVisualState('idle');
   }
 }
 
@@ -182,6 +215,7 @@ async function processAudio(audioBlob) {
 
     const child = getActiveChild();
     let reply = await generateResponse(recognizedText, child ? { name: child.name, age: child.age } : {});
+    if (globalThis.__lastAiMs) setLastAiTiming(globalThis.__lastAiMs);
     reply = sanitizeText(reply);
 
     const botEntry = {
@@ -240,49 +274,13 @@ async function recognizeSpeech(audioBlob) {
     if (response.ok) {
       const data = await response.json();
       if (data.text?.trim()) return data.text;
-      if (data.fallback) return promptSpeechText();
     }
   } catch (err) {
     console.warn('⚠️ STT API failed:', err);
   }
 
   const liveText = await browserSpeechRecognition();
-  if (liveText?.trim()) return liveText;
-
-  return promptSpeechText();
-}
-
-function promptSpeechText() {
-  return new Promise((resolve) => {
-    const overlay = document.createElement('div');
-    overlay.className = 'game-overlay';
-    overlay.setAttribute('role', 'dialog');
-    overlay.innerHTML = `
-      <div style="text-align:center;max-width:340px;padding:10px;">
-        <h2 style="margin:0 0 8px;">🎤 Тестовый ввод</h2>
-        <p style="opacity:0.75;font-size:0.85rem;margin:0 0 14px;">Распознавание речи недоступно. Введите фразу ребёнка:</p>
-        <input type="text" id="testSpeechInput" class="children-input" style="width:100%;margin-bottom:12px;box-sizing:border-box;" placeholder="Например: мне страшно в темноте" autofocus>
-        <div style="display:flex;gap:10px;">
-          <button type="button" class="modal-btn" id="testSpeechOk" style="flex:1;">Отправить</button>
-          <button type="button" class="modal-btn secondary" id="testSpeechCancel" style="flex:1;">Отмена</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-
-    const input = overlay.querySelector('#testSpeechInput');
-    const finish = (text) => {
-      overlay.remove();
-      resolve(text || '');
-    };
-
-    overlay.querySelector('#testSpeechOk').onclick = () => finish(input.value.trim());
-    overlay.querySelector('#testSpeechCancel').onclick = () => finish('');
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') finish(input.value.trim());
-      if (e.key === 'Escape') finish('');
-    });
-  });
+  return liveText?.trim() || '';
 }
 
 function browserSpeechRecognition() {
@@ -342,7 +340,9 @@ async function logout() {
   localStorage.removeItem('userToken');
   localStorage.removeItem('userEmail');
   localStorage.removeItem('isAuth');
+  localStorage.removeItem('guestMode');
   localStorage.removeItem('activeChildIndex');
+  document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
   window.location.href = '/login.html';
 }
 

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Регистрация — Герой Сказок</title>
+  <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/auth.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
 </head>
@@ -23,7 +24,11 @@
         <label>👶 Ребёнок 1 *</label>
         <div class="child-row">
           <input type="text" id="child1Name" placeholder="Имя" required>
-          <input type="number" id="child1Age" class="age-input" placeholder="Возраст" min="3" max="7" required>
+          <input type="number" id="child1Age" class="age-input" placeholder="Возраст" min="3" max="14" required>
+        </div>
+        <div class="gender-row">
+          <label><input type="radio" name="child1Gender" value="male" checked> 👦 Мальчик</label>
+          <label><input type="radio" name="child1Gender" value="female"> 👧 Девочка</label>
         </div>
       </div>
       
@@ -32,7 +37,11 @@
         <label>👶 Ребёнок 2 (необязательно)</label>
         <div class="child-row">
           <input type="text" id="child2Name" placeholder="Имя">
-          <input type="number" id="child2Age" class="age-input" placeholder="Возраст" min="3" max="7">
+          <input type="number" id="child2Age" class="age-input" placeholder="Возраст" min="3" max="14">
+        </div>
+        <div class="gender-row">
+          <label><input type="radio" name="child2Gender" value="male" checked> 👦 Мальчик</label>
+          <label><input type="radio" name="child2Gender" value="female"> 👧 Девочка</label>
         </div>
       </div>
       
@@ -41,7 +50,11 @@
         <label>👶 Ребёнок 3 (необязательно)</label>
         <div class="child-row">
           <input type="text" id="child3Name" placeholder="Имя">
-          <input type="number" id="child3Age" class="age-input" placeholder="Возраст" min="3" max="7">
+          <input type="number" id="child3Age" class="age-input" placeholder="Возраст" min="3" max="14">
+        </div>
+        <div class="gender-row">
+          <label><input type="radio" name="child3Gender" value="male" checked> 👦 Мальчик</label>
+          <label><input type="radio" name="child3Gender" value="female"> 👧 Девочка</label>
         </div>
       </div>
       
@@ -53,19 +66,29 @@
   </div>
 </div>
 <script>
-  // Определение пола по имени (простая эвристика)
-  function guessGender(name) {
-    const n = name.trim().toLowerCase();
-    // Женские окончания
-    if (n.endsWith('а') || n.endsWith('я') || n.endsWith('ия') || n === 'любовь') return 'female';
-    // Мужские окончания
-    if (n.endsWith('й') || n.endsWith('р') || n.endsWith('н') || n.endsWith('м') || n.endsWith('л')) return 'male';
-    // Известные имена
-    const femaleNames = ['анна', 'мария', 'софия', 'алиса', 'вика', 'виктория', 'лена', 'катя', 'наташа', 'света', 'оля', 'ира', 'таня', 'юля', 'вера', 'надежда', 'люба', 'мила', 'даша', 'саша'];
-    const maleNames = ['петя', 'миша', 'саша', 'коля', 'ваня', 'дима', 'слава', 'рома', 'тима', 'федя', 'лёва', 'никита', 'артём', 'даня', 'кирилл', 'матвей', 'егор', 'илья', 'антон', 'марк', 'лев', 'тимофей'];
-    if (femaleNames.includes(n)) return 'female';
-    if (maleNames.includes(n)) return 'male';
-    return 'unknown';
+  function getChildGender(index) {
+    return document.querySelector(`input[name="child${index}Gender"]:checked`)?.value || 'male';
+  }
+
+  function saveChildrenToLocal(children) {
+    localStorage.setItem('children', JSON.stringify(children));
+    localStorage.setItem('childrenNames', children.map(c => c.name).join(', '));
+    children.forEach(child => {
+      const key = `stats_${child.name}`;
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, JSON.stringify({
+          totalStories: 0,
+          totalGames: 0,
+          history: [],
+          fearStats: {
+            darkness: 0, monsters: 0, loud_noises: 0,
+            strangers: 0, separation: 0, school: 0, peers: 0
+          },
+          lastActive: new Date().toISOString()
+        }));
+      }
+    });
+    localStorage.setItem('activeChildIndex', children.length > 1 ? '-1' : '0');
   }
 
   document.getElementById('registerForm').addEventListener('submit', async (e) => {
@@ -93,6 +116,7 @@
     
     // Собираем детей
     const children = [];
+    let invalidAge = false;
     for (let i = 1; i <= 3; i++) {
       const nameInput = document.getElementById(`child${i}Name`);
       const ageInput = document.getElementById(`child${i}Age`);
@@ -106,17 +130,20 @@
       }
       
       if (name) {
-        const gender = guessGender(name);
-        // kid1 = мальчик, kid2 = девочка (см. config.js)
-        const avatarRole = gender === 'female' ? 'kid2' : (gender === 'male' ? 'kid1' : 'lucik');
-        children.push({
-          name,
-          age: age || 5,
-          gender,
-          avatarRole,
-          index: i - 1
-        });
+        const gender = getChildGender(i);
+        const avatarRole = gender === 'female' ? 'kid2' : 'kid1';
+        const avatar = avatarRole;
+        if (age && (age < 3 || age > 14)) {
+          invalidAge = true;
+        }
+        children.push({ name, age: age || 5, gender, avatar, avatarRole, index: i - 1 });
       }
+    }
+
+    if (invalidAge) {
+      errorDiv.textContent = 'Возраст ребёнка: от 3 до 14 лет';
+      errorDiv.style.display = 'block';
+      return;
     }
     
     if (children.length === 0) {
@@ -135,7 +162,7 @@
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, children })
       });
       const data = await res.json();
       
@@ -144,24 +171,9 @@
         localStorage.setItem('userEmail', data.user?.email || email);
         localStorage.setItem('isAuth', 'true');
         localStorage.setItem('guestMode', 'false');
-        localStorage.setItem('children', JSON.stringify(children));
-        localStorage.setItem('childrenNames', children.map(c => c.name).join(', '));
-        children.forEach(child => {
-          const key = `stats_${child.name}`;
-          if (!localStorage.getItem(key)) {
-            localStorage.setItem(key, JSON.stringify({
-              totalStories: 0,
-              totalGames: 0,
-              history: [],
-              fearStats: {
-                darkness: 0, monsters: 0, loud_noises: 0,
-                strangers: 0, separation: 0
-              },
-              lastActive: new Date().toISOString()
-            }));
-          }
-        });
-        localStorage.setItem('activeChildIndex', children.length > 1 ? '-1' : '0');
+        if (data.user?.role) localStorage.setItem('userRole', data.user.role);
+        const savedChildren = data.user?.children?.length ? data.user.children : children;
+        saveChildrenToLocal(savedChildren);
         window.location.href = '/app.html';
       } else {
         const errMap = {

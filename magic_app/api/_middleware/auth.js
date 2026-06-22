@@ -9,8 +9,9 @@ export function getJwtSecret() {
 }
 
 export function getTokenFromRequest(req) {
-  const cookieToken = req.cookies?.token;
-  if (cookieToken) return cookieToken;
+  const cookieHeader = req.headers.cookie || '';
+  const match = cookieHeader.match(/(?:^|;\s*)token=([^;]+)/);
+  if (match?.[1]) return match[1];
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith('Bearer ')) return authHeader.replace('Bearer ', '');
   return null;
@@ -24,4 +25,10 @@ export function verifyAuth(req) {
   } catch {
     return null;
   }
+}
+
+export function verifyAdmin(req) {
+  const user = verifyAuth(req);
+  if (!user || user.role !== 'admin') return null;
+  return user;
 }

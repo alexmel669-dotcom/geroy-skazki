@@ -17,15 +17,15 @@
 
 body {
   margin: 0;
-  background: 
-    linear-gradient(180deg, rgba(20,20,40,0.55), rgba(29,29,48,0.55)),
-    url('../assets/images/parent-bg.svg');
-  background-size: cover;
-  background-position: center;
+  min-height: 100vh;
+  background-color: #151521;
+  background-image: url('/assets/images/parent-bg.svg');
+  background-repeat: no-repeat;
+  background-position: center center;
   background-attachment: fixed;
+  background-size: cover;
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  min-height: 100vh;
   padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
   display: flex;
   flex-direction: column;
@@ -81,16 +81,26 @@ header {
   margin: 10px 0 20px;
 }
 
-.avatar {
-  width: 160px;
-  height: 160px;
+.avatar,
+.avatar-img {
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   background-size: cover;
   background-position: center;
   border: 5px solid rgba(255,255,255,0.25);
   box-shadow: 0 12px 40px rgba(0,0,0,0.4);
-  transition: background-image 0.3s, box-shadow 0.3s;
+  transition: opacity 300ms ease, transform 300ms ease, box-shadow 0.3s;
   cursor: pointer;
+  object-fit: cover;
+}
+
+@media (max-width: 768px) {
+  .avatar,
+  .avatar-img {
+    width: 90px;
+    height: 90px;
+  }
 }
 
 .avatar.talking {
@@ -187,6 +197,24 @@ header {
   align-items: center;
   justify-content: center;
   transition: background 0.2s, transform 0.2s;
+}
+
+.mic-btn.mic-idle {
+  background: #6b7280;
+}
+
+.mic-btn.mic-recording {
+  background: #e53935;
+  animation: mic-pulse 1s infinite;
+}
+
+.mic-btn.mic-processing {
+  background: var(--green);
+}
+
+@keyframes mic-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.5); }
+  50% { transform: scale(1.06); box-shadow: 0 0 0 12px rgba(229, 57, 53, 0); }
 }
 
 .mic-btn.recording {
@@ -307,5 +335,70 @@ header {
   padding: 10px 14px;
   border-radius: 0 12px 12px 0;
   margin: 4px 0;
+  font-size: 0.85rem;
+}
+
+.dev-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(10, 10, 20, 0.92);
+  border-top: 1px solid rgba(255,255,255,0.12);
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  z-index: 9999;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dev-panel button {
+  background: rgba(255,255,255,0.12);
+  border: none;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.72rem;
+}
+
+.dev-panel .dev-stat {
+  opacity: 0.75;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.admin-stat-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+
+.admin-stat-card .val {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.admin-stat-card .lbl {
+  font-size: 0.75rem;
+  opacity: 0.65;
+  margin-top: 4px;
+}
+
+.empty-state {
+  opacity: 0.55;
+  text-align: center;
+  padding: 20px;
   font-size: 0.85rem;
 }
