@@ -224,7 +224,7 @@ function loadAllData() {
     <div class="row"><span class="label">📚 Создано сказок</span><span class="value">${totalStories}</span></div>
     <div class="row"><span class="label">🎮 Сыграно игр</span><span class="value">${totalGames}</span></div>
     <div class="row"><span class="label">💬 Всего диалогов</span><span class="value">${history.length}</span></div>
-    <div class="row"><span class="label">🎯 Страхов в работе</span><span class="value">${Object.values(fearStats).filter(v => v > 0).length} из 5</span></div>
+    <div class="row"><span class="label">🎯 Страхов в работе</span><span class="value">${Object.values(fearStats).filter(v => v > 0).length} из ${Object.keys(FEAR_LABELS).length}</span></div>
     <div class="row"><span class="label">📱 Дней активности</span><span class="value">${calculateActiveDays(history)}</span></div>
   `;
 

@@ -54,9 +54,19 @@ function updateCharacterAvatar() {
     if (!avatar) return;
     const savedChar = localStorage.getItem('currentCharacter') || 'lucik';
     const char = CHARACTERS[savedChar] || CHARACTERS.lucik;
-    avatar.style.backgroundImage = `url('${char.icon}')`;
-    avatar.style.backgroundSize = 'cover';
-    avatar.style.backgroundPosition = 'center';
+
+    if (avatar.tagName === 'IMG') {
+        avatar.style.opacity = '0.4';
+        setTimeout(() => {
+            avatar.src = char.icon;
+            avatar.alt = char.name;
+            avatar.style.opacity = '1';
+        }, 150);
+    } else {
+        avatar.style.backgroundImage = `url('${char.icon}')`;
+        avatar.style.backgroundSize = 'cover';
+        avatar.style.backgroundPosition = 'center';
+    }
 }
 
 export function setActiveChild(index) {

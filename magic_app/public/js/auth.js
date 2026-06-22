@@ -100,6 +100,11 @@ async function handleLogin(e) {
       localStorage.setItem('userToken', data.token);
       localStorage.setItem('userEmail', data.user?.email || email);
       localStorage.setItem('guestMode', 'false');
+      if (data.user?.role) localStorage.setItem('userRole', data.user.role);
+      if (data.user?.children?.length) {
+        localStorage.setItem('children', JSON.stringify(data.user.children));
+        localStorage.setItem('childrenNames', data.user.children.map(c => c.name).join(', '));
+      }
       window.location.href = '/app.html';
     } else {
       showError(errorEl, translateError(data.error) || 'Ошибка входа');
@@ -223,7 +228,9 @@ function clearAuthData() {
   localStorage.removeItem('isAuth');
   localStorage.removeItem('userToken');
   localStorage.removeItem('userEmail');
+  localStorage.removeItem('userRole');
   localStorage.removeItem('isPremium');
+  localStorage.removeItem('guestMode');
   document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 }
 

@@ -47,6 +47,7 @@ export async function generateResponse(prompt, childInfo = {}) {
 
         if (response.ok) {
             const data = await response.json();
+            if (typeof data.ms === 'number') globalThis.__lastAiMs = data.ms;
             if (data.reply) return data.reply;
         }
     } catch (err) {
@@ -63,7 +64,9 @@ export function detectFear(text) {
         monsters: ['монстр', 'чудовище', 'бабайка'],
         loud_noises: ['громко', 'шумно', 'взрыв'],
         strangers: ['чужой', 'незнакомец', 'посторонний'],
-        separation: ['один', 'без мамы', 'без папы', 'одиноч']
+        separation: ['один', 'без мамы', 'без папы', 'одиноч'],
+        school: ['школ', 'урок', 'учител', 'контрольн', 'экзамен', 'домашк'],
+        peers: ['друг', 'однокласс', 'сверстник', 'обижа', 'травл', 'компани']
     };
 
     const lowerText = text.toLowerCase();

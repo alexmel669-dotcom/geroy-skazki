@@ -143,8 +143,8 @@ export function detectPersonalData(text) {
  * @returns {boolean} - Корректный ли возраст
  */
 export function validateChildAge(age) {
-    const numAge = parseInt(age);
-    return !isNaN(numAge) && numAge >= 3 && numAge <= 12;
+    const numAge = parseInt(age, 10);
+    return !isNaN(numAge) && numAge >= 3 && numAge <= 14;
 }
 
 /**

@@ -28,17 +28,24 @@ export function updateUI() {
 function updateAvatar() {
     const avatar = document.getElementById('avatar');
     if (!avatar) return;
-    
+
     const savedChar = localStorage.getItem('currentCharacter') || 'lucik';
-    const avatarMap = {
+    const charIcon = {
         'lucik': '/assets/images/avatar.svg',
+        'mom': '/assets/images/mom.svg',
+        'dad': '/assets/images/dad.svg',
         'kid1': '/assets/images/kid1.svg',
         'kid2': '/assets/images/kid2.svg'
     };
-    
-    avatar.style.backgroundImage = `url('${avatarMap[savedChar] || '/assets/images/avatar.svg'}')`;
-    avatar.style.backgroundSize = 'cover';
-    avatar.style.backgroundPosition = 'center';
+
+    const src = charIcon[savedChar] || '/assets/images/avatar.svg';
+    if (avatar.tagName === 'IMG') {
+        avatar.src = src;
+    } else {
+        avatar.style.backgroundImage = `url('${src}')`;
+        avatar.style.backgroundSize = 'cover';
+        avatar.style.backgroundPosition = 'center';
+    }
 }
 
 // ========================================
@@ -194,6 +201,42 @@ export function hideModal(modalId) {
     }
 }
 
+let lastAiMs = 0;
+
+export function setLastAiTiming(ms) {
+    lastAiMs = ms;
+    const el = document.getElementById('devAiMs');
+    if (el) el.textContent = ms ? `${ms} ms` : '—';
+}
+
+export function initDevPanel() {
+    if (document.getElementById('devPanel')) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'devPanel';
+    panel.className = 'dev-panel';
+    panel.innerHTML = `
+      <span class="dev-stat">🛠 DEV · v${document.querySelector('title')?.textContent || ''}</span>
+      <span class="dev-stat">ИИ: <span id="devAiMs">—</span></span>
+      <button type="button" id="devResetBtn">Сбросить данные</button>
+    `;
+    document.body.appendChild(panel);
+
+    document.getElementById('devResetBtn')?.addEventListener('click', () => {
+        if (confirm('Сбросить все локальные данные приложения?')) {
+            localStorage.clear();
+            window.location.reload();
+        }
+    });
+
+    const origFetch = window.fetch.bind(window);
+    window.fetch = async (...args) => {
+        console.log('[DEV fetch]', args[0], args[1]?.method || 'GET');
+        const res = await origFetch(...args);
+        return res;
+    };
+}
+
 // ========================================
 // ЭКСПОРТЫ
 // ========================================
@@ -204,5 +247,7 @@ export default {
     showLoader,
     hideLoader,
     showModal,
-    hideModal
+    hideModal,
+    initDevPanel,
+    setLastAiTiming
 };
