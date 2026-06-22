@@ -1,8 +1,11 @@
+import { appState } from '../core.js';
 import { showModal } from '../ui.js';
 import { updateAchievement } from '../achievements.js';
-import { sendAnalytics } from '../analytics.js';
+import { trackEvent } from '../analytics.js';
 
 export function startColoringGame() {
+  if (appState.gameActive) return;
+  appState.gameActive = true;
   const container = document.createElement('div');
   container.className = 'game-overlay';
   container.setAttribute('aria-label', 'Игра Раскраска');
@@ -185,9 +188,8 @@ export function startColoringGame() {
     }
     
     updateAchievement('artist');
-    sendAnalytics('coloring_completed');
-    
-    // Сохраняем рисунок
+    trackEvent('coloring_completed');
+
     const dataUrl = canvas.toDataURL();
     const drawings = JSON.parse(localStorage.getItem('drawings') || '[]');
     drawings.push({
@@ -200,6 +202,7 @@ export function startColoringGame() {
     
     showModal('Отлично!', '🎨 Какая красота! Люцику очень нравится!');
     container.remove();
+    appState.gameActive = false;
   };
   
   const closeBtn = document.createElement('button');
@@ -212,7 +215,10 @@ export function startColoringGame() {
     border: none;
     cursor: pointer;
   `;
-  closeBtn.onclick = () => container.remove();
+  closeBtn.onclick = () => {
+    container.remove();
+    appState.gameActive = false;
+  };
   
   actionsBar.appendChild(clearBtn);
   actionsBar.appendChild(doneBtn);
@@ -225,7 +231,7 @@ export function startColoringGame() {
   container.appendChild(actionsBar);
   document.body.appendChild(container);
   
-  sendAnalytics('coloring_game_started');
+  trackEvent('coloring_game_started');
 }
 
 function drawLucikOutline(ctx, width, height) {

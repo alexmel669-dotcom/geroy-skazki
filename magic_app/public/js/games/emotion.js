@@ -1,7 +1,10 @@
+import { appState } from '../core.js';
 import { showModal } from '../ui.js';
 import { updateAchievement } from '../achievements.js';
 
 export function startEmotionGame() {
+  if (appState.gameActive) return;
+  appState.gameActive = true;
   const emotions = [
     { emoji: '😊', name: 'радость' },
     { emoji: '😢', name: 'грусть' },
@@ -34,6 +37,7 @@ export function startEmotionGame() {
       updateAchievement('emotion_master');
       showModal('Победа!', 'Ты угадал все эмоции!');
       container.remove();
+      appState.gameActive = false;
       return;
     }
     currentEmotion = emotions[Math.floor(Math.random() * emotions.length)];
@@ -62,7 +66,10 @@ export function startEmotionGame() {
   const closeBtn = document.createElement('button');
   closeBtn.textContent = 'Закрыть';
   closeBtn.style.cssText = 'padding:10px 20px;border-radius:30px;background:#ff4081;color:#fff;border:none;cursor:pointer;margin-top:15px;';
-  closeBtn.onclick = () => container.remove();
+  closeBtn.onclick = () => {
+    container.remove();
+    appState.gameActive = false;
+  };
 
   container.appendChild(emojiDisplay);
   container.appendChild(question);

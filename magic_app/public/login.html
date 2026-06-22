@@ -20,44 +20,16 @@
     </form>
     <p class="auth-error" id="loginError"></p>
     <p class="auth-link">Нет аккаунта? <a href="register.html">Зарегистрироваться</a></p>
-    <p class="auth-link"><a href="app.html">Продолжить как гость 🐾</a></p>
+    <p class="auth-link"><a href="app.html" id="guestLink">Продолжить как гость 🐾</a></p>
   </div>
 </div>
+<script type="module" src="js/auth.js"></script>
 <script>
-  document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-    const errorDiv = document.getElementById('loginError');
-    
-    errorDiv.style.display = 'none';
-    const btn = e.target.querySelector('button');
-    btn.textContent = 'Вход...';
-    btn.disabled = true;
-    
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      
-      if (res.ok) {
-        localStorage.setItem('userToken', data.token);
-        localStorage.setItem('userEmail', data.email);
-        window.location.href = '/app.html';
-      } else {
-        errorDiv.textContent = data.error || 'Неверный email или пароль';
-        errorDiv.style.display = 'block';
-      }
-    } catch (err) {
-      errorDiv.textContent = 'Ошибка соединения';
-      errorDiv.style.display = 'block';
-    } finally {
-      btn.textContent = 'Войти';
-      btn.disabled = false;
-    }
+  document.getElementById('guestLink')?.addEventListener('click', () => {
+    localStorage.setItem('guestMode', 'true');
+    localStorage.setItem('activeChildIndex', '-1');
+    localStorage.removeItem('isAuth');
+    localStorage.removeItem('userToken');
   });
 </script>
 </body>

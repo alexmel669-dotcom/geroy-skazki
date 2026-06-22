@@ -14,7 +14,7 @@ body {
   margin: 0;
   background: 
     linear-gradient(180deg, rgba(20,20,40,0.55), rgba(29,29,48,0.55)),
-    url('../assets/images/parent-bg.png');
+    url('../assets/images/parent-bg.svg');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;

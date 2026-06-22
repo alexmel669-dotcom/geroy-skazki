@@ -19,7 +19,7 @@ body {
   margin: 0;
   background: 
     linear-gradient(180deg, rgba(20,20,40,0.55), rgba(29,29,48,0.55)),
-    url('../assets/images/parent-bg.png');
+    url('../assets/images/parent-bg.svg');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -240,6 +240,20 @@ header {
   background: rgba(255,255,255,0.18);
 }
 
+.children-input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.children-input::placeholder {
+  color: rgba(255,255,255,0.45);
+}
+
 .game-overlay {
   position: fixed;
   inset: 0;
@@ -250,6 +264,13 @@ header {
   align-items: center;
   justify-content: center;
   color: #fff;
+}
+
+.memory-board,
+.puzzle-board {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
 }
 
 .achievement-toast {
