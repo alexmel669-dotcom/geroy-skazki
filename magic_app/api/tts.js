@@ -31,8 +31,7 @@ export default async function handler(req, res) {
     const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID;
 
     if (!YANDEX_API_KEY || !YANDEX_FOLDER_ID) {
-      console.error('❌ Missing Yandex credentials');
-      return res.status(500).json({ error: 'TTS not configured' });
+      return res.status(503).json({ error: 'TTS not configured', fallback: true });
     }
 
     const ttsUrl = 'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize';
@@ -61,21 +60,13 @@ export default async function handler(req, res) {
     }
 
     const audioArrayBuffer = await response.arrayBuffer();
-    const uint8Array = new Uint8Array(audioArrayBuffer);
-    
-    let binary = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      binary += String.fromCharCode(uint8Array[i]);
-    }
-    const audioBase64 = btoa(binary);
+    const audioBase64 = Buffer.from(audioArrayBuffer).toString('base64');
     const audioDataUrl = `data:audio/mp3;base64,${audioBase64}`;
 
-    console.log(`✅ TTS успешно: ${uint8Array.length} bytes`);
-
-    return res.status(200).json({ 
+    return res.status(200).json({
       audioUrl: audioDataUrl,
       format: 'mp3',
-      size: uint8Array.length
+      size: audioArrayBuffer.byteLength
     });
 
   } catch (error) {

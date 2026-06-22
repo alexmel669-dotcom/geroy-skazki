@@ -5,7 +5,7 @@
 let currentCharacter = 'lucik';
 let contextHistory = [];
 
-const RESPONSES = [
+const LOCAL_RESPONSES = [
     'Привет! Расскажи мне сказку?',
     'Как у тебя дела?',
     'Что интересного случилось сегодня?',
@@ -16,10 +16,7 @@ const RESPONSES = [
     'Продолжай в том же духе!'
 ];
 
-export async function generateResponse(prompt) {
-    console.log('🤖 AI generating response for:', prompt);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+function localFallback(prompt) {
     if (prompt && prompt.length > 0) {
         if (prompt.includes('сказк') || prompt.includes('расскажи')) {
             return 'Жил-был маленький волшебник. Он путешествовал по сказочной стране и помогал всем, кто попадал в беду. Хочешь узнать, что было дальше?';
@@ -28,24 +25,47 @@ export async function generateResponse(prompt) {
             return 'Не бойся! Ты очень смелый(ая). Помни, что все страхи можно победить, если быть храбрым. Я всегда рядом с тобой!';
         }
         if (prompt.includes('игр') || prompt.includes('поигра')) {
-            return 'Отлично! Давай поиграем. Нажми на кнопку "Игры" - там есть много интересного!';
+            return 'Отлично! Давай поиграем. Нажми на кнопку «Игры» — там есть много интересного!';
         }
     }
-    
-    const randomResponse = RESPONSES[Math.floor(Math.random() * RESPONSES.length)];
-    return randomResponse;
+    return LOCAL_RESPONSES[Math.floor(Math.random() * LOCAL_RESPONSES.length)];
+}
+
+export async function generateResponse(prompt, childInfo = {}) {
+    console.log('🤖 AI generating response for:', prompt);
+
+    try {
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: prompt,
+                childName: childInfo.name || 'малыш',
+                childAge: childInfo.age || 5
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.reply) return data.reply;
+        }
+    } catch (err) {
+        console.warn('⚠️ API generate failed, using local fallback:', err);
+    }
+
+    return localFallback(prompt);
 }
 
 export function detectFear(text) {
     const fears = [];
     const fearKeywords = {
-        darkness: ['темно', 'страшно', 'боюсь', 'тьма'],
+        darkness: ['темно', 'страшно', 'боюсь', 'тьма', 'темнот'],
         monsters: ['монстр', 'чудовище', 'бабайка'],
         loud_noises: ['громко', 'шумно', 'взрыв'],
         strangers: ['чужой', 'незнакомец', 'посторонний'],
-        separation: ['один', 'без мамы', 'без папы']
+        separation: ['один', 'без мамы', 'без папы', 'одиноч']
     };
-    
+
     const lowerText = text.toLowerCase();
     for (const [fear, keywords] of Object.entries(fearKeywords)) {
         if (keywords.some(keyword => lowerText.includes(keyword))) {
@@ -60,9 +80,7 @@ export function detectAlertWords(text) {
     const alertKeywords = ['обижают', 'бьют', 'ругают', 'кричат', 'страшно', 'помогите'];
     const lowerText = text.toLowerCase();
     for (const word of alertKeywords) {
-        if (lowerText.includes(word)) {
-            alerts.push(word);
-        }
+        if (lowerText.includes(word)) alerts.push(word);
     }
     return alerts;
 }
@@ -71,16 +89,15 @@ export function detectPersonalData(text) {
     const found = [];
     const phonePattern = /(\+\d{1,3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{2}[-.\s]?\d{2})/;
     const emailPattern = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
-    
+
     if (phonePattern.test(text)) found.push('phone');
     if (emailPattern.test(text)) found.push('email');
-    
+
     return found;
 }
 
 export function setCharacter(characterId) {
     currentCharacter = characterId;
-    console.log('🎭 Character set to:', characterId);
 }
 
 export function getCharacter() {
@@ -96,11 +113,13 @@ export function addToContext(role, message) {
 
 export function clearContext() {
     contextHistory = [];
-    console.log('Context cleared');
 }
 
 export function getContext() {
     return [...contextHistory];
 }
 
-export default { generateResponse, detectFear, detectAlertWords, detectPersonalData, setCharacter, getCharacter, addToContext, clearContext, getContext };
+export default {
+    generateResponse, detectFear, detectAlertWords, detectPersonalData,
+    setCharacter, getCharacter, addToContext, clearContext, getContext
+};

@@ -1,5 +1,17 @@
 const API_BASE = '/api';
 
+const ERROR_MESSAGES = {
+  'Invalid credentials': 'Неверный email или пароль',
+  'Email and password required': 'Введите email и пароль',
+  'User already exists': 'Этот email уже зарегистрирован',
+  'Password must be at least 6 characters': 'Пароль должен быть не менее 6 символов',
+  'Internal server error': 'Ошибка сервера. Попробуйте позже'
+};
+
+function translateError(msg) {
+  return ERROR_MESSAGES[msg] || msg;
+}
+
 // Проверка авторизации
 export async function checkAuth() {
   const guestMode = localStorage.getItem('guestMode');
@@ -8,8 +20,8 @@ export async function checkAuth() {
     return true;
   }
 
-  const token = getCookie('token');
-  if (!token) {
+  const token = localStorage.getItem('userToken');
+  if (!token && localStorage.getItem('isAuth') !== 'true') {
     console.log('🔒 Токен не найден');
     return false;
   }
@@ -20,7 +32,7 @@ export async function checkAuth() {
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
     });
 
@@ -85,11 +97,12 @@ async function handleLogin(e) {
     if (response.ok) {
       console.log('✅ Вход выполнен');
       localStorage.setItem('isAuth', 'true');
-      localStorage.setItem('userEmail', email);
+      localStorage.setItem('userToken', data.token);
+      localStorage.setItem('userEmail', data.user?.email || email);
       localStorage.setItem('guestMode', 'false');
       window.location.href = '/app.html';
     } else {
-      showError(errorEl, data.error || 'Ошибка входа');
+      showError(errorEl, translateError(data.error) || 'Ошибка входа');
     }
   } catch (error) {
     console.error('Login error:', error);
@@ -146,11 +159,12 @@ async function handleRegister(e) {
     if (response.ok) {
       console.log('✅ Регистрация успешна');
       localStorage.setItem('isAuth', 'true');
-      localStorage.setItem('userEmail', email);
+      localStorage.setItem('userToken', data.token);
+      localStorage.setItem('userEmail', data.user?.email || email);
       localStorage.setItem('guestMode', 'false');
       window.location.href = '/app.html';
     } else {
-      showError(errorEl, data.error || 'Ошибка регистрации');
+      showError(errorEl, translateError(data.error) || 'Ошибка регистрации');
     }
   } catch (error) {
     console.error('Register error:', error);
@@ -207,10 +221,10 @@ function isValidEmail(email) {
 
 function clearAuthData() {
   localStorage.removeItem('isAuth');
+  localStorage.removeItem('userToken');
   localStorage.removeItem('userEmail');
   localStorage.removeItem('isPremium');
   document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-  document.cookie = 'isAuth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 }
 
 function getCookie(name) {
@@ -228,15 +242,20 @@ if (typeof window !== 'undefined') {
     
     if (loginForm) {
       loginForm.addEventListener('submit', handleLogin);
-      // Сохраняем оригинальный текст кнопки
       const btn = loginForm.querySelector('button[type="submit"]');
       if (btn) btn.setAttribute('data-original-text', btn.textContent);
     }
-    
+
     if (registerForm) {
       registerForm.addEventListener('submit', handleRegister);
       const btn = registerForm.querySelector('button[type="submit"]');
       if (btn) btn.setAttribute('data-original-text', btn.textContent);
+    }
+
+    // Синхронизация cookie-токена в localStorage для кнопки выхода
+    const cookieToken = getCookie('token');
+    if (cookieToken && !localStorage.getItem('userToken')) {
+      localStorage.setItem('userToken', cookieToken);
     }
   });
 }

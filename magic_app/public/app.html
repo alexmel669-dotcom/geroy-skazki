@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.deepseek.com https://tts.api.cloud.yandex.net https://tts.speechkit.yandexcloud.net https://geroy-skazki.vercel.app;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* http://127.0.0.1:* https://api.deepseek.com https://tts.api.cloud.yandex.net https://tts.speechkit.yandexcloud.net https://stt.api.cloud.yandex.net https://geroy-skazki.vercel.app https://*.vercel.app;">
   <title>Люцик — Герой Сказок</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="manifest" href="manifest.json">
@@ -21,7 +21,7 @@
   </header>
 
   <div class="avatar-section">
-    <div class="avatar" id="avatar" style="background-image:url('assets/images/avatar.png')"></div>
+    <div class="avatar" id="avatar" style="background-image:url('/assets/images/avatar.svg')"></div>
     <div class="child-name" id="childNameLabel">Загрузка...</div>
   </div>
 
@@ -49,10 +49,15 @@
     <h3 style="margin:0 0 8px;">👶 С кем сегодня говорим?</h3>
     <p style="opacity:0.7;font-size:0.85rem;margin:0 0 16px;">Выбери, с кем из детей будет общаться Люцик</p>
     <div id="childSelectList" style="display:flex;flex-direction:column;gap:10px;"></div>
-    <button class="modal-btn secondary" style="margin-top:14px;width:100%;" onclick="document.getElementById('childSelectModal').style.display='none'; selectGuestMode();">🐾 Продолжить как гость</button>
+    <button class="modal-btn secondary" style="margin-top:14px;width:100%;" onclick="selectGuestMode()">🐾 Продолжить как гость</button>
   </div>
 </div>
 
 <script type="module" src="js/main.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+</script>
 </body>
 </html>

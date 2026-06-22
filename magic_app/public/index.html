@@ -63,12 +63,12 @@
 </head>
 <body>
 <div class="container landing">
-  <div class="hero"><img src="assets/images/avatar.png" alt="Люцик"></div>
+  <div class="hero"><img src="assets/images/avatar.svg" alt="Люцик"></div>
   <h1>Люцик — Герой Сказок</h1>
   <p class="subtitle">Виртуальный кот-помощник с искусственным интеллектом.<br>Помогает детям 3–7 лет говорить о чувствах, справляться со страхами<br>и засыпать спокойно — через сказки, игры и заботу.</p>
   
   <div class="btn-group">
-    <a href="app.html" class="btn btn-primary">🎮 Играть с Люциком</a>
+    <a href="app.html" class="btn btn-primary" id="playGuestLink">🎮 Играть с Люциком</a>
     <a href="register.html" class="btn btn-secondary">✨ Зарегистрироваться</a>
     <a href="login.html" class="btn btn-secondary">🔐 Войти</a>
   </div>
@@ -199,5 +199,13 @@
     <p class="tech-note">Приложение использует технологии искусственного интеллекта и синтеза речи. <a href="privacy.html">Подробнее</a></p>
   </footer>
 </div>
+<script>
+  document.getElementById('playGuestLink')?.addEventListener('click', () => {
+    localStorage.setItem('guestMode', 'true');
+    localStorage.setItem('activeChildIndex', '-1');
+    localStorage.removeItem('isAuth');
+    localStorage.removeItem('userToken');
+  });
+</script>
 </body>
 </html>

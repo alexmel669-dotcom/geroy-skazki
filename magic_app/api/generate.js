@@ -20,6 +20,18 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
+    if (!process.env.DEEPSEEK_API_KEY) {
+      const devReplies = [
+        'Привет! Я Люцик 🐱 Расскажи, о чём хочешь услышать сказку?',
+        'Мур-мур! Ты очень смелый. Давай придумаем историю про храброго героя!',
+        'Здорово! Я придумал сказку: маленький котик нашёл волшебную звезду и перестал бояться темноты ✨'
+      ];
+      return res.status(200).json({
+        reply: devReplies[Math.floor(Math.random() * devReplies.length)],
+        devMode: true
+      });
+    }
+
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -47,7 +59,11 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    const reply = data.choices[0].message.content;
+    const reply = data.choices?.[0]?.message?.content;
+
+    if (!reply) {
+      throw new Error('Empty AI response');
+    }
 
     return res.status(200).json({ reply });
 

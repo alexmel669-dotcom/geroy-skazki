@@ -1,7 +1,7 @@
 import { appState, saveChildData } from '../core.js';
 import { showModal } from '../ui.js';
 import { updateAchievement } from '../achievements.js';
-import { sendAnalytics } from '../analytics.js';
+import { trackEvent } from '../analytics.js';
 
 export function startMemoryGame() {
   if (appState.gameActive) return;
@@ -29,7 +29,7 @@ export function startMemoryGame() {
   
   const board = document.createElement('div');
   board.className = 'memory-board';
-  board.style.gridTemplateColumns = 'repeat(4, 1fr)';
+  board.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:360px;margin:16px auto;';
   
   const info = document.createElement('div');
   info.style.cssText = 'margin:15px 0;font-size:1.2rem;color:white;';
@@ -94,7 +94,7 @@ export function startMemoryGame() {
               // Проверка победы
               if (appState.memoryMatches === 8) {
                 updateAchievement('memory_champion');
-                sendAnalytics('memory_game_won', { attempts });
+                trackEvent('memory_game_won', { attempts });
                 
                 setTimeout(() => {
                   showModal(
@@ -166,7 +166,8 @@ export function startMemoryGame() {
     container.remove();
     appState.gameActive = false;
     appState.memoryLocked = false;
-    sendAnalytics('memory_game_exited', { matches: appState.memoryMatches, attempts });
+    saveChildData(appState.currentChildIndex);
+    trackEvent('memory_game_exited', { matches: appState.memoryMatches, attempts });
   };
   
   container.appendChild(title);
@@ -175,5 +176,5 @@ export function startMemoryGame() {
   container.appendChild(closeBtn);
   document.body.appendChild(container);
   
-  sendAnalytics('memory_game_started');
+  trackEvent('memory_game_started');
 }

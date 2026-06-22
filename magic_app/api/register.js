@@ -1,12 +1,13 @@
 import { setCors } from './_middleware/cors.js';
 import { checkRateLimit, getRateLimitKey } from './_middleware/rate-limit.js';
+import { createUser } from './_lib/users.js';
+import { setAuthCookie } from './_lib/cookies.js';
 import jwt from 'jsonwebtoken';
-
-const users = new Map();
+import { getJwtSecret } from './_middleware/auth.js';
 
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
-  
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -18,7 +19,7 @@ export default async function handler(req, res) {
 
   try {
     const { email, password } = req.body;
-    
+
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
     }
@@ -27,26 +28,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    if (users.has(email)) {
+    const user = await createUser(email.trim().toLowerCase(), password);
+    if (!user) {
       return res.status(409).json({ error: 'User already exists' });
     }
 
-    users.set(email, { email, password, createdAt: new Date().toISOString() });
-
     const token = jwt.sign(
-      { email, userId: email },
-      process.env.JWT_SECRET || 'dev-secret-key',
+      { email: user.email, userId: user.email },
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 
-    res.setHeader('Set-Cookie', `token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=604800`);
-    
-    return res.status(201).json({ 
+    setAuthCookie(res, token);
+
+    return res.status(201).json({
       success: true,
       token,
-      user: { email }
+      user: { email: user.email }
     });
-
   } catch (error) {
     console.error('Register error:', error);
     return res.status(500).json({ error: 'Internal server error' });

@@ -2,7 +2,7 @@
 // ui.js — UI КОМПОНЕНТЫ
 // ========================================
 
-import { getActiveChildName, updateStatsUI } from './core.js';
+import { getActiveChildName, getActiveChild, updateStatsUI } from './core.js';
 
 // ========================================
 // ОБНОВЛЕНИЕ UI
@@ -12,7 +12,10 @@ export function updateUI() {
     // Обновляем имя ребенка
     const childNameLabel = document.getElementById('childNameLabel');
     if (childNameLabel) {
-        childNameLabel.textContent = getActiveChildName();
+        const child = getActiveChild();
+        childNameLabel.textContent = child
+            ? `${child.name}, ${child.age} лет`
+            : getActiveChildName();
     }
     
     // Обновляем статистику
@@ -28,12 +31,12 @@ function updateAvatar() {
     
     const savedChar = localStorage.getItem('currentCharacter') || 'lucik';
     const avatarMap = {
-        'lucik': '/assets/images/avatar.png',
-        'kid1': '/assets/images/kid1.png',
-        'kid2': '/assets/images/kid2.png'
+        'lucik': '/assets/images/avatar.svg',
+        'kid1': '/assets/images/kid1.svg',
+        'kid2': '/assets/images/kid2.svg'
     };
     
-    avatar.style.backgroundImage = `url('${avatarMap[savedChar] || '/assets/images/avatar.png'}')`;
+    avatar.style.backgroundImage = `url('${avatarMap[savedChar] || '/assets/images/avatar.svg'}')`;
     avatar.style.backgroundSize = 'cover';
     avatar.style.backgroundPosition = 'center';
 }
@@ -157,11 +160,31 @@ export function hideLoader() {
 // МОДАЛЬНЫЕ ОКНА
 // ========================================
 
-export function showModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
+export function showModal(titleOrId, message) {
+    // Режим 1: показать существующий DOM-элемент по id
+    if (!message && document.getElementById(titleOrId)) {
+        const modal = document.getElementById(titleOrId);
         modal.style.display = 'flex';
+        return;
     }
+
+    // Режим 2: всплывающее окно с заголовком и текстом (игры)
+    const overlay = document.createElement('div');
+    overlay.className = 'game-alert-overlay';
+    overlay.style.cssText = `
+        position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+        z-index: 3000; display: flex; align-items: center; justify-content: center;
+    `;
+    overlay.innerHTML = `
+        <div style="background:rgba(35,35,58,0.95);border-radius:20px;padding:24px;max-width:320px;text-align:center;color:#fff;">
+            <h3 style="margin:0 0 12px;">${titleOrId}</h3>
+            <p style="margin:0 0 20px;opacity:0.85;line-height:1.5;">${message || ''}</p>
+            <button type="button" class="modal-btn" style="width:100%;">OK</button>
+        </div>
+    `;
+    overlay.querySelector('button').onclick = () => overlay.remove();
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
 }
 
 export function hideModal(modalId) {
