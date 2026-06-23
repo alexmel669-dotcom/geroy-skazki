@@ -416,29 +416,36 @@ function initUI() {
 function initEventListeners() {
   const mic = document.getElementById('micBtn');
   if (mic) {
-    let pressTimer;
+    let pressTimer = null;
+    let activePointer = null;
+
     const onDown = (e) => {
+      if (activePointer !== null) return;
+      if (e.type === 'mousedown' && e.button !== 0) return;
+
+      activePointer = e.type === 'touchstart' ? 'touch' : 'mouse';
       e.preventDefault();
       pressTimer = setTimeout(handleLongPress, 1500);
       beginRecording();
     };
+
     const onUp = (e) => {
+      if (activePointer === 'touch' && e.type === 'mouseup') return;
+      if (activePointer === 'mouse' && (e.type === 'touchend' || e.type === 'touchcancel')) return;
+      if (activePointer === null) return;
+
       if (e) e.preventDefault();
       clearTimeout(pressTimer);
+      pressTimer = null;
+      activePointer = null;
       finishRecording();
     };
+
     mic.addEventListener('mousedown', onDown);
     mic.addEventListener('mouseup', onUp);
-    mic.addEventListener('mouseleave', () => {
-      clearTimeout(pressTimer);
-      if (isRecording()) finishRecording();
-    });
     mic.addEventListener('touchstart', onDown, { passive: false });
     mic.addEventListener('touchend', onUp, { passive: false });
-    mic.addEventListener('touchcancel', () => {
-      clearTimeout(pressTimer);
-      if (isRecording()) finishRecording();
-    });
+    mic.addEventListener('touchcancel', onUp, { passive: false });
   }
 
   const games = document.getElementById('gamesBtn');
@@ -671,7 +678,12 @@ async function finishRecordingInternal() {
   setMicVisualState('processing');
   try {
     const audio = await stopRecording();
-    if (audio?.size > 0) await processAudio(audio);
+    if (audio?.size > 0) {
+      await processAudio(audio);
+    } else {
+      console.warn('Empty audio blob — try holding the mic button longer');
+      showTextInputFallback((text) => processTextMessage(text));
+    }
   } catch (e) {
     logError('record', e.message);
   } finally {

@@ -16,6 +16,9 @@ let silenceTimer = null;
 let maxTimeTimer = null;
 let onAutoStopCallback = null;
 let onStateChangeCallback = null;
+let recordingStartTime = 0;
+
+const MIN_RECORD_MS = 350;
 
 function cleanupStream() {
   if (stream) {
@@ -53,6 +56,12 @@ function rmsToDb(rms) {
 
 function monitorVolume() {
   if (!analyser || !isCurrentlyRecording) return;
+
+  // Не останавливать по тишине в первые 2 сек — микрофон «прогревается»
+  if (Date.now() - recordingStartTime < 2000) {
+    volumeFrame = requestAnimationFrame(monitorVolume);
+    return;
+  }
 
   const data = new Uint8Array(analyser.fftSize);
   analyser.getByteTimeDomainData(data);
@@ -96,16 +105,19 @@ export async function startRecording(options = {}) {
     audioChunks = [];
 
     mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) audioChunks.push(event.data);
+      if (event.data && event.data.size > 0) audioChunks.push(event.data);
     };
 
     audioContext = new AudioContext();
+    await audioContext.resume().catch(() => {});
     const source = audioContext.createMediaStreamSource(stream);
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 2048;
     source.connect(analyser);
 
-    mediaRecorder.start(100);
+    // Без timeslice — при stop() браузер отдаёт весь blob одним куском
+    mediaRecorder.start();
+    recordingStartTime = Date.now();
     isCurrentlyRecording = true;
     onStateChangeCallback?.('recording');
     monitorVolume();
@@ -127,6 +139,11 @@ export function getRecordingMimeType() {
 }
 
 export async function stopRecording() {
+  const elapsed = Date.now() - recordingStartTime;
+  if (elapsed < MIN_RECORD_MS) {
+    await new Promise((resolve) => setTimeout(resolve, MIN_RECORD_MS - elapsed));
+  }
+
   return new Promise((resolve, reject) => {
     if (!mediaRecorder || mediaRecorder.state === 'inactive') {
       reject(new Error('No active recording'));
@@ -139,6 +156,7 @@ export async function stopRecording() {
       const audioBlob = new Blob(audioChunks, { type: getRecordingMimeType() });
       audioChunks = [];
       isCurrentlyRecording = false;
+      recordingStartTime = 0;
       cleanupAudioContext();
       cleanupStream();
       onAutoStopCallback = null;
@@ -146,6 +164,13 @@ export async function stopRecording() {
       resolve(audioBlob);
     }, { once: true });
 
+    try {
+      if (mediaRecorder.state === 'recording' && typeof mediaRecorder.requestData === 'function') {
+        mediaRecorder.requestData();
+      }
+    } catch {
+      /* ignore */
+    }
     mediaRecorder.stop();
   });
 }
