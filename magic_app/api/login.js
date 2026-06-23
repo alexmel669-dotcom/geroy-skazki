@@ -7,23 +7,6 @@ import { getJwtSecret } from './_middleware/auth.js';
 
 async function logLoginError(email, reason) {
   console.error(`[LOGIN FAIL] ${email}: ${reason}`);
-  try {
-    const base = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000';
-    await fetch(`${base}/api/log-error`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        context: 'login',
-        message: `${email}: ${reason}`,
-        timestamp: new Date().toISOString(),
-        appVersion: '4.1.0'
-      })
-    });
-  } catch {
-    /* ignore logging failures */
-  }
 }
 
 export default async function handler(req, res) {

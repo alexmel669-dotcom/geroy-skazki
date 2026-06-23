@@ -5,7 +5,7 @@ export function getJwtSecret() {
   if (!secret && process.env.NODE_ENV === 'production') {
     console.error('JWT_SECRET is not set in production');
   }
-  return secret || 'dev-secret-key';
+  return secret?.trim() || 'dev-secret-key';
 }
 
 export function getTokenFromRequest(req) {
