@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID;
 
     if (!YANDEX_API_KEY || !YANDEX_FOLDER_ID) {
-      return res.status(200).json({ text: '', fallback: true, devMode: true });
+      return res.status(503).json({ text: '', fallback: true, error: 'STT not configured' });
     }
 
     const audioBuffer = Buffer.from(audio, 'base64');

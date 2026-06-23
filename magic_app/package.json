@@ -1,13 +1,15 @@
 {
   "name": "geroy-skazki",
-  "version": "3.4.0",
-  "description": "Люцик — Герой Сказок: ИИ-помощник для преодоления детских страхов",
+  "version": "4.1.0",
+  "description": "Люцик — Герой Сказок: ИИ-помощник для детей 3–14 лет",
   "type": "module",
   "scripts": {
     "dev": "vercel dev --listen 3000",
     "start": "vercel dev --listen 3000",
     "static": "npx --yes serve public -l 3000",
     "deploy": "vercel --prod",
+    "deploy:env": "powershell -ExecutionPolicy Bypass -File scripts/set-vercel-env.ps1",
+    "deploy:full": "npm run deploy:env && npm run deploy",
     "lint": "echo 'No linter configured'",
     "test": "node scripts/check-syntax.mjs"
   },

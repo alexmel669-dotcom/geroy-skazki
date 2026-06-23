@@ -188,7 +188,7 @@ async function processAudio(audioBlob) {
     if (avatar) avatar.classList.remove('listening');
 
     if (!recognizedText || !recognizedText.trim()) {
-      console.log('🗣️ Текст не распознан');
+      alert('Не удалось распознать речь. Попробуй ещё раз или попроси взрослого проверить микрофон.');
       return;
     }
 
@@ -260,6 +260,8 @@ async function processAudio(audioBlob) {
 }
 
 async function recognizeSpeech(audioBlob) {
+  if (!audioBlob?.size) return '';
+
   try {
     const base64 = await blobToBase64(audioBlob);
     const response = await fetch('/api/speech-to-text', {
@@ -271,55 +273,22 @@ async function recognizeSpeech(audioBlob) {
       })
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.text?.trim()) return data.text;
+    const data = await response.json().catch(() => ({}));
+
+    if (response.ok && data.text?.trim()) {
+      return data.text.trim();
+    }
+
+    if (data.fallback || response.status === 503) {
+      console.warn('STT not configured on server');
+    } else {
+      console.warn('STT failed:', response.status, data.error);
     }
   } catch (err) {
     console.warn('⚠️ STT API failed:', err);
   }
 
-  const liveText = await browserSpeechRecognition();
-  return liveText?.trim() || '';
-}
-
-function browserSpeechRecognition() {
-  return new Promise((resolve) => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      resolve('');
-      return;
-    }
-
-    let settled = false;
-    const finish = (text) => {
-      if (settled) return;
-      settled = true;
-      resolve(text || '');
-    };
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ru-RU';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = (event) => {
-      finish(event.results[0]?.[0]?.transcript || '');
-    };
-    recognition.onerror = () => finish('');
-    recognition.onend = () => finish('');
-
-    try {
-      recognition.start();
-    } catch {
-      finish('');
-      return;
-    }
-
-    setTimeout(() => {
-      try { recognition.stop(); } catch { /* ignore */ }
-    }, CONFIG.AUDIO_TIMEOUT);
-  });
+  return '';
 }
 
 function blobToBase64(blob) {
@@ -340,6 +309,7 @@ async function logout() {
   localStorage.removeItem('userToken');
   localStorage.removeItem('userEmail');
   localStorage.removeItem('isAuth');
+  localStorage.removeItem('userRole');
   localStorage.removeItem('guestMode');
   localStorage.removeItem('activeChildIndex');
   document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';

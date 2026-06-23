@@ -79,7 +79,8 @@ export function setActiveChild(index) {
     const nameLabel = document.getElementById('childNameLabel');
 
     if (child) {
-        if (nameLabel) nameLabel.textContent = `${child.name}, ${child.age} лет`;
+        const emoji = child.avatarRole === 'kid1' ? '👦' : (child.avatarRole === 'kid2' ? '👧' : '🐱');
+        if (nameLabel) nameLabel.textContent = `${emoji} ${child.name}, ${child.age} лет`;
     } else {
         if (nameLabel) nameLabel.textContent = 'Гость';
     }
