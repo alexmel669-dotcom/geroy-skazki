@@ -20,6 +20,14 @@ export function trackEvent(eventName, eventData) {
   } catch (e) {
     console.warn('Failed to save analytics event:', e);
   }
+
+  if (typeof fetch !== 'undefined') {
+    fetch('/api/analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: [event] })
+    }).catch(() => {});
+  }
 }
 
 export function logError(errorPlace, errorMessage) {
