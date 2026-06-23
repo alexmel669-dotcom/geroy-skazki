@@ -18,8 +18,7 @@ let onAutoStopCallback = null;
 let onStateChangeCallback = null;
 let recordingStartTime = 0;
 
-const MIN_RECORD_MS = 400;
-const CHUNK_MS = 250;
+const MIN_RECORD_MS = 350;
 
 function cleanupStream() {
   if (stream) {
@@ -43,48 +42,11 @@ function cleanupAudioContext() {
 }
 
 function getPreferredMimeType() {
-  const types = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/mp4'];
+  const types = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm'];
   for (const type of types) {
-    if (MediaRecorder.isTypeSupported(type)) {
-      console.log('🎙️ Supported mime:', type);
-      return type;
-    }
+    if (MediaRecorder.isTypeSupported(type)) return type;
   }
-  console.warn('🎙️ No preferred mime, using browser default');
   return '';
-}
-
-function waitForRecorderStart(recorder, timeoutMs = 4000) {
-  return new Promise((resolve, reject) => {
-    if (recorder.state === 'recording') {
-      resolve();
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error('MediaRecorder start timeout'));
-    }, timeoutMs);
-
-    const onStart = () => {
-      cleanup();
-      resolve();
-    };
-
-    const onError = (event) => {
-      cleanup();
-      reject(event.error || new Error('MediaRecorder error'));
-    };
-
-    const cleanup = () => {
-      clearTimeout(timeout);
-      recorder.removeEventListener('start', onStart);
-      recorder.removeEventListener('error', onError);
-    };
-
-    recorder.addEventListener('start', onStart, { once: true });
-    recorder.addEventListener('error', onError, { once: true });
-  });
 }
 
 function rmsToDb(rms) {
@@ -135,24 +97,14 @@ export async function startRecording(options = {}) {
   onStateChangeCallback = options.onStateChange || null;
 
   try {
-    console.log('🎙️ Requesting microphone...');
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
-    });
-
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     recordingMimeType = getPreferredMimeType();
     const recorderOptions = recordingMimeType ? { mimeType: recordingMimeType } : {};
     mediaRecorder = new MediaRecorder(stream, recorderOptions);
     audioChunks = [];
 
     mediaRecorder.ondataavailable = (event) => {
-      const size = event.data?.size || 0;
-      console.log('🎙️ Chunk received:', size, 'bytes');
-      if (event.data && size > 0) audioChunks.push(event.data);
+      if (event.data && event.data.size > 0) audioChunks.push(event.data);
     };
 
     audioContext = new AudioContext();
@@ -162,16 +114,12 @@ export async function startRecording(options = {}) {
     analyser.fftSize = 2048;
     source.connect(analyser);
 
-    console.log('🎙️ Starting MediaRecorder, chunk interval:', CHUNK_MS, 'ms');
-    mediaRecorder.start(CHUNK_MS);
-    await waitForRecorderStart(mediaRecorder);
-
+    mediaRecorder.start();
     recordingStartTime = Date.now();
     isCurrentlyRecording = true;
     onStateChangeCallback?.('recording');
     monitorVolume();
-
-    console.log('🎙️ Recording started ✓ mime:', mediaRecorder.mimeType || recordingMimeType, 'state:', mediaRecorder.state);
+    console.log('🎙️ Recording started');
 
     maxTimeTimer = setTimeout(() => {
       if (isCurrentlyRecording && onAutoStopCallback) onAutoStopCallback('max_time');
@@ -179,9 +127,7 @@ export async function startRecording(options = {}) {
   } catch (error) {
     cleanupAudioContext();
     cleanupStream();
-    mediaRecorder = null;
-    isCurrentlyRecording = false;
-    console.error('🎙️ Failed to start recording:', error);
+    console.error('Failed to start recording:', error);
     throw new Error('Не удалось получить доступ к микрофону');
   }
 }
@@ -193,7 +139,6 @@ export function getRecordingMimeType() {
 export async function stopRecording() {
   const elapsed = Date.now() - recordingStartTime;
   if (elapsed < MIN_RECORD_MS) {
-    console.log('🎙️ Waiting min record time:', MIN_RECORD_MS - elapsed, 'ms');
     await new Promise((resolve) => setTimeout(resolve, MIN_RECORD_MS - elapsed));
   }
 
@@ -206,10 +151,6 @@ export async function stopRecording() {
     onStateChangeCallback?.('processing');
 
     mediaRecorder.addEventListener('stop', () => {
-      const totalChunks = audioChunks.length;
-      const totalSize = audioChunks.reduce((sum, c) => sum + c.size, 0);
-      console.log('🎙️ Stop event: chunks=', totalChunks, 'rawSize=', totalSize);
-
       const audioBlob = new Blob(audioChunks, { type: getRecordingMimeType() });
       audioChunks = [];
       isCurrentlyRecording = false;
@@ -217,20 +158,17 @@ export async function stopRecording() {
       cleanupAudioContext();
       cleanupStream();
       onAutoStopCallback = null;
-      console.log('🎙️ Recording stopped, blob size:', audioBlob.size, 'type:', audioBlob.type);
+      console.log('🎙️ Recording stopped, size:', audioBlob.size);
       resolve(audioBlob);
     }, { once: true });
 
     try {
       if (mediaRecorder.state === 'recording' && typeof mediaRecorder.requestData === 'function') {
-        console.log('🎙️ requestData() before stop');
         mediaRecorder.requestData();
       }
-    } catch (err) {
-      console.warn('🎙️ requestData failed:', err);
+    } catch {
+      /* ignore */
     }
-
-    console.log('🎙️ Calling stop(), state:', mediaRecorder.state);
     mediaRecorder.stop();
   });
 }
@@ -240,7 +178,6 @@ export function cancelRecording() {
     mediaRecorder.addEventListener('stop', () => {
       audioChunks = [];
       isCurrentlyRecording = false;
-      recordingStartTime = 0;
       cleanupAudioContext();
       cleanupStream();
       onAutoStopCallback = null;
@@ -268,63 +205,6 @@ export function isMicrophoneSupported() {
   return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 }
 
-export function browserSpeechRecognition(timeoutMs = 12000) {
-  return new Promise((resolve, reject) => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      reject(new Error('Browser STT not supported'));
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ru-RU';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.continuous = false;
-
-    let finished = false;
-    const timer = setTimeout(() => {
-      if (finished) return;
-      finished = true;
-      try { recognition.stop(); } catch { /* ignore */ }
-      reject(new Error('Browser STT timeout'));
-    }, timeoutMs);
-
-    recognition.onresult = (event) => {
-      if (finished) return;
-      finished = true;
-      clearTimeout(timer);
-      const text = event.results?.[0]?.[0]?.transcript || '';
-      console.log('🎙️ Browser STT result:', text);
-      resolve(text.trim());
-    };
-
-    recognition.onerror = (event) => {
-      if (finished) return;
-      finished = true;
-      clearTimeout(timer);
-      console.warn('🎙️ Browser STT error:', event.error);
-      reject(new Error(event.error || 'Browser STT failed'));
-    };
-
-    recognition.onend = () => {
-      if (!finished) {
-        finished = true;
-        clearTimeout(timer);
-        reject(new Error('Browser STT empty'));
-      }
-    };
-
-    console.log('🎙️ Starting browser SpeechRecognition...');
-    try {
-      recognition.start();
-    } catch (err) {
-      clearTimeout(timer);
-      reject(err);
-    }
-  });
-}
-
 export async function requestMicrophonePermission() {
   try {
     const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -343,6 +223,5 @@ export function setMicStateCallback(cb) {
 export default {
   isRecording, startRecording, stopRecording, cancelRecording,
   getAudioBlob, playAudioFromUrl, getRecordingMimeType,
-  isMicrophoneSupported, requestMicrophonePermission, setMicStateCallback,
-  browserSpeechRecognition
+  isMicrophoneSupported, requestMicrophonePermission, setMicStateCallback
 };

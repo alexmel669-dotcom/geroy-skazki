@@ -2,7 +2,7 @@
 // main.js — ГЛАВНЫЙ ФАЙЛ ПРИЛОЖЕНИЯ
 // ========================================
 
-import { CONFIG, validateConfig, getAppMode, CHARACTERS } from './config.js';
+import { CONFIG, validateConfig, getAppMode } from './config.js';
 import {
   initCore,
   getActiveChildName,
@@ -15,9 +15,7 @@ import {
 } from './core.js';
 import { getCharacter } from './ai.js';
 import { synthesizeSpeech } from './audio.js';
-import {
-  startRecording, stopRecording, isRecording, browserSpeechRecognition
-} from './mic.js';
+import { startRecording, stopRecording, isRecording } from './mic.js';
 import { updateUI, showNotification, initDevPanel } from './ui.js';
 
 async function playWelcomeGreeting() {
@@ -25,14 +23,11 @@ async function playWelcomeGreeting() {
   if (modal?.style.display === 'flex') return;
 
   const name = getActiveChildName();
-  const charId = getCharacter();
-  const charName = CHARACTERS[charId]?.name || 'Люцик';
-
   const text = name !== 'Гость'
-    ? `Привет, ${name}! Я ${charName}. Давай поговорим или поиграем!`
-    : 'Привет! Я Люцик, твой сказочный друг. Нажми на микрофон и давай знакомиться!';
+    ? `Привет, ${name}! Я Люцик, твой сказочный друг. Давай поговорим!`
+    : 'Привет! Я Люцик, твой сказочный друг. Давай поговорим!';
 
-  await synthesizeSpeech(text, charId);
+  await synthesizeSpeech(text, getCharacter());
 }
 
 function initializeApp() {
@@ -46,7 +41,7 @@ function initializeApp() {
 
   setTimeout(() => {
     playWelcomeGreeting().catch((err) => console.warn('Welcome greeting failed:', err));
-  }, 1000);
+  }, 700);
 
   console.log('✅ App initialized');
   console.log('👶 Активный ребёнок:', getActiveChildName());
@@ -85,14 +80,7 @@ if (typeof window !== 'undefined') {
   window.updateStatsUI = updateStatsUI;
   window.saveChildData = saveChildData;
   window.appState = appState;
-  window.browserSpeechRecognition = browserSpeechRecognition;
 }
 
-export {
-  initializeApp, startRecording, stopRecording, isRecording,
-  synthesizeSpeech, browserSpeechRecognition
-};
-export default {
-  initializeApp, startRecording, stopRecording, isRecording,
-  synthesizeSpeech, browserSpeechRecognition
-};
+export { initializeApp, startRecording, stopRecording, isRecording, synthesizeSpeech };
+export default { initializeApp, startRecording, stopRecording, isRecording, synthesizeSpeech };

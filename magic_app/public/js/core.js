@@ -6,13 +6,10 @@
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, migrateFearStatsObject } from './config.js';
 import {
   generateResponse, detectFear, detectAlertWords, detectPersonalData,
-  setCharacter, getCharacter, addToContext, clearContext,
-  loadChatHistory, setChatChild, extractFearsFromText,
-  shouldSuggestFearGame, getFearGameSuggestion
+  setCharacter, getCharacter, addToContext, clearContext
 } from './ai.js';
 import {
-  startRecording, stopRecording, isRecording, getRecordingMimeType,
-  isMicrophoneSupported, browserSpeechRecognition
+  startRecording, stopRecording, isRecording, getRecordingMimeType, isMicrophoneSupported
 } from './mic.js';
 import { synthesizeSpeech } from './audio.js';
 import { checkAchievements, showAchievement } from './achievements.js';
@@ -134,8 +131,6 @@ export function initCore() {
   initEventListeners();
   loadState();
   checkChildSelection();
-  setChatChild(getActiveChildName());
-  loadChatHistory(getActiveChildName());
   updateStatsDisplay();
   console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION} готов к работе`);
 }
@@ -192,9 +187,6 @@ export function setActiveChild(index, options = {}) {
   }
 
   trackEvent('child_select', child?.name || 'guest');
-
-  setChatChild(child?.name || 'guest');
-  loadChatHistory(child?.name || 'guest');
 
   if (options.greet && child?.name) {
     synthesizeSpeech(`Привет, ${child.name}! Я рад тебя видеть!`, getCharacter()).catch(() => {});
@@ -534,7 +526,7 @@ function applyAiTiming() {
 
 async function handleLogout() {
   try {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    await fetch('/api/logout', { method: 'POST', credentials: 'include' });
   } catch (e) {
     console.warn('Logout API error:', e);
   }
@@ -572,7 +564,7 @@ function saveAlertForParent(text, words, source) {
 // ========================================
 
 async function recognizeSpeech(blob) {
-  if (!blob?.size) return { text: '', fallback: true };
+  if (!blob?.size) return { text: '', fallback: false };
   try {
     const base64 = await blobToBase64(blob);
     const controller = new AbortController();
@@ -592,23 +584,13 @@ async function recognizeSpeech(blob) {
       return { text: data.text.trim(), fallback: false };
     }
     if (data.fallback || response.status >= 500 || response.status === 502) {
-      return await tryBrowserStt();
+      return { text: '', fallback: true };
     }
   } catch (e) {
-    console.warn('STT API fail:', e.message);
-    return await tryBrowserStt();
+    console.warn('STT fail:', e.message);
+    return { text: '', fallback: true };
   }
-  return await tryBrowserStt();
-}
-
-async function tryBrowserStt() {
-  try {
-    const text = await browserSpeechRecognition();
-    if (text?.trim()) return { text: text.trim(), fallback: false };
-  } catch (e) {
-    console.warn('Browser STT fail:', e.message);
-  }
-  return { text: '', fallback: true };
+  return { text: '', fallback: false };
 }
 
 function showTextInputFallback(onSubmit) {
@@ -769,9 +751,7 @@ async function handleUserMessage(text) {
   addToContext('child', text);
 
   const fears = detectFear(text);
-  const combinedFears = [...new Set(fears)];
-
-  if (combinedFears.length) updateFearStats(combinedFears);
+  if (fears.length) updateFearStats(fears);
 
   const alerts = detectAlertWords(text);
   if (alerts.length) {
@@ -800,16 +780,7 @@ async function handleUserMessage(text) {
   addToContext('bot', reply);
   if (isSuspicious) saveAlertForParent(reply, [...botAlerts, ...botPersonal], 'ai');
 
-  const replyFears = extractFearsFromText(reply);
-  const allFears = [...new Set([...combinedFears, ...replyFears])];
-  if (replyFears.length) updateFearStats(replyFears);
-
   await synthesizeSpeech(reply, getCharacter());
-
-  if (shouldSuggestFearGame(allFears)) {
-    const mainFear = allFears[0];
-    await synthesizeSpeech(getFearGameSuggestion(mainFear), getCharacter());
-  }
   if (reply.length > 200) incrementStories();
   checkAchievements();
   updateStatsDisplay();
