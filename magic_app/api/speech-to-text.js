@@ -23,10 +23,17 @@ export default async function handler(req, res) {
     const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID?.trim();
 
     if (!YANDEX_API_KEY || !YANDEX_FOLDER_ID) {
+      console.warn('STT: Yandex keys not configured');
       return res.status(503).json({ text: '', fallback: true, error: 'STT not configured' });
     }
 
-    const audioBuffer = Buffer.from(audio, 'base64');
+    // Исправление: используем Uint8Array вместо Buffer
+    const binaryString = atob(audio);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
     const contentType = req.body.contentType || 'audio/ogg;codecs=opus';
     const format = contentType.includes('ogg') ? 'oggopus' : 'lpcm';
     const params = new URLSearchParams({
@@ -37,26 +44,29 @@ export default async function handler(req, res) {
 
     const sttUrl = `https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?${params}`;
 
-    // POST: аудио в теле (binary), lang/folderId/format — в URL (латиница, без кириллицы)
+    console.log(`STT: sending ${bytes.length} bytes, format=${format}`);
+
     const response = await fetch(sttUrl, {
       method: 'POST',
       headers: {
         Authorization: `Api-Key ${YANDEX_API_KEY}`,
         'Content-Type': contentType
       },
-      body: audioBuffer
+      body: bytes
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Yandex STT error:', response.status, errorText);
-      return res.status(502).json({ error: 'Speech recognition failed' });
+      return res.status(502).json({ error: 'Speech recognition failed', details: errorText.substring(0, 200) });
     }
 
     const data = await response.json();
+    console.log('STT result:', data.result?.substring(0, 50) || '(empty)');
+    
     return res.status(200).json({ text: data.result || '' });
   } catch (error) {
-    console.error('STT error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('STT error:', error.message);
+    return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }
