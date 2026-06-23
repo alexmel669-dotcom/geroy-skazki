@@ -163,7 +163,7 @@ export function getActiveChild() {
   return getChildren()[getActiveChildIndex()] || null;
 }
 
-export function setActiveChild(index) {
+export function setActiveChild(index, options = {}) {
   activeChildIndex = index;
   appState.currentChildIndex = index;
   localStorage.setItem('activeChildIndex', String(index));
@@ -187,6 +187,10 @@ export function setActiveChild(index) {
   }
 
   trackEvent('child_select', child?.name || 'guest');
+
+  if (options.greet && child?.name) {
+    synthesizeSpeech(`Привет, ${child.name}! Я рад тебя видеть!`, getCharacter()).catch(() => {});
+  }
 }
 
 function checkChildSelection() {
@@ -217,7 +221,7 @@ export function showChildSelectModal() {
   modal.style.display = 'flex';
   list.querySelectorAll('[data-index]').forEach((btn) => {
     btn.onclick = () => {
-      setActiveChild(Number(btn.dataset.index));
+      setActiveChild(Number(btn.dataset.index), { greet: true });
       modal.style.display = 'none';
       updateStatsDisplay();
     };
@@ -425,9 +429,16 @@ function initEventListeners() {
     };
     mic.addEventListener('mousedown', onDown);
     mic.addEventListener('mouseup', onUp);
-    mic.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+    mic.addEventListener('mouseleave', () => {
+      clearTimeout(pressTimer);
+      if (isRecording()) finishRecording();
+    });
     mic.addEventListener('touchstart', onDown, { passive: false });
     mic.addEventListener('touchend', onUp, { passive: false });
+    mic.addEventListener('touchcancel', () => {
+      clearTimeout(pressTimer);
+      if (isRecording()) finishRecording();
+    });
   }
 
   const games = document.getElementById('gamesBtn');
@@ -546,7 +557,7 @@ function saveAlertForParent(text, words, source) {
 // ========================================
 
 async function recognizeSpeech(blob) {
-  if (!blob?.size) return '';
+  if (!blob?.size) return { text: '', fallback: false };
   try {
     const base64 = await blobToBase64(blob);
     const controller = new AbortController();
@@ -561,14 +572,52 @@ async function recognizeSpeech(blob) {
       signal: controller.signal
     });
     clearTimeout(timeout);
-    if (response.ok) {
-      const data = await response.json();
-      if (data.text?.trim()) return data.text.trim();
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && data.text?.trim()) {
+      return { text: data.text.trim(), fallback: false };
+    }
+    if (data.fallback || response.status >= 500 || response.status === 502) {
+      return { text: '', fallback: true };
     }
   } catch (e) {
     console.warn('STT fail:', e.message);
+    return { text: '', fallback: true };
   }
-  return '';
+  return { text: '', fallback: false };
+}
+
+function showTextInputFallback(onSubmit) {
+  let bar = document.getElementById('textFallbackBar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'textFallbackBar';
+    bar.className = 'text-fallback-bar';
+    bar.innerHTML = `
+      <input type="text" id="textFallbackInput" placeholder="Микрофон недоступен — напиши здесь..." maxlength="500" autocomplete="off">
+      <button type="button" id="textFallbackSend" aria-label="Отправить">➤</button>`;
+    document.body.appendChild(bar);
+  }
+
+  const input = bar.querySelector('#textFallbackInput');
+  const sendBtn = bar.querySelector('#textFallbackSend');
+  bar.style.display = 'flex';
+  input.value = '';
+  input.focus();
+
+  const submit = async () => {
+    const text = input.value.trim();
+    if (!text || isProcessing) return;
+    bar.style.display = 'none';
+    await onSubmit(text);
+  };
+
+  sendBtn.onclick = submit;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submit();
+    }
+  };
 }
 
 // ========================================
@@ -576,27 +625,46 @@ async function recognizeSpeech(blob) {
 // ========================================
 
 let micEnding = false;
+let micStarting = false;
+let finishQueued = false;
 
 async function beginRecording() {
-  if (isProcessing || isRecording()) return;
+  if (isProcessing || isRecording() || micStarting) return;
   if (!isMicrophoneSupported()) {
-    alert('Микрофон недоступен. Попроси взрослого помочь настроить.');
+    showTextInputFallback((text) => processTextMessage(text));
     return;
   }
+  micStarting = true;
   try {
     await startRecording({
       onAutoStop: () => finishRecording(),
       onStateChange: setMicVisualState
     });
     document.getElementById('avatar')?.classList.add('listening');
+    if (finishQueued) {
+      finishQueued = false;
+      await finishRecordingInternal();
+    }
   } catch (e) {
     alert('Микрофон недоступен. Попроси взрослого помочь настроить.');
     logError('mic', e.message);
     setMicVisualState('idle');
+    showTextInputFallback((text) => processTextMessage(text));
+  } finally {
+    micStarting = false;
   }
 }
 
 async function finishRecording() {
+  if (micEnding || isProcessing) return;
+  if (micStarting || !isRecording()) {
+    finishQueued = true;
+    return;
+  }
+  await finishRecordingInternal();
+}
+
+async function finishRecordingInternal() {
   if (micEnding || !isRecording() || isProcessing) return;
   micEnding = true;
   isProcessing = true;
@@ -609,6 +677,7 @@ async function finishRecording() {
   } finally {
     isProcessing = false;
     micEnding = false;
+    finishQueued = false;
     setMicVisualState('idle');
     document.getElementById('avatar')?.classList.remove('listening', 'talking');
   }
@@ -640,56 +709,84 @@ async function handleLongPress() {
 // AUDIO PROCESS
 // ========================================
 
+async function processTextMessage(text) {
+  if (!text?.trim() || isProcessing) return;
+  isProcessing = true;
+  setMicVisualState('processing');
+  const avatar = document.getElementById('avatar');
+  try {
+    await handleUserMessage(text.trim());
+  } catch (e) {
+    logError('process_text', e.message);
+    const fallback = FALLBACK_REPLIES[getCharacter()] || FALLBACK_REPLIES.lucik;
+    await synthesizeSpeech(fallback, getCharacter());
+  } finally {
+    isProcessing = false;
+    setMicVisualState('idle');
+    if (avatar) avatar.classList.remove('talking', 'listening');
+  }
+}
+
+async function handleUserMessage(text) {
+  const avatar = document.getElementById('avatar');
+
+  if (checkBadWords(text)) {
+    await synthesizeSpeech('Давай говорить добрые слова', getCharacter());
+    return;
+  }
+
+  saveToChildHistory({ role: 'child', text, timestamp: Date.now(), childName: getActiveChildName() });
+  addToContext('child', text);
+
+  const fears = detectFear(text);
+  if (fears.length) updateFearStats(fears);
+
+  const alerts = detectAlertWords(text);
+  if (alerts.length) {
+    trackEvent('alert', alerts.join(','));
+    saveAlertForParent(text, alerts, 'child');
+  }
+
+  if (avatar) avatar.classList.add('talking');
+  const child = getActiveChild();
+  let reply = await generateResponse(text, child ? { name: child.name, age: child.age } : {});
+  if (globalThis.__lastAiMs) applyAiTiming();
+  reply = sanitizeText(reply);
+
+  const botAlerts = detectAlertWords(reply);
+  const botPersonal = detectPersonalData(reply);
+  const isSuspicious = botAlerts.length > 0 || botPersonal.length > 0;
+
+  saveToChildHistory({
+    role: 'bot',
+    text: reply,
+    timestamp: Date.now(),
+    characterName: CHARACTERS[getCharacter()]?.name || 'Люцик',
+    alerted: isSuspicious,
+    alertWords: [...botAlerts, ...botPersonal]
+  });
+  addToContext('bot', reply);
+  if (isSuspicious) saveAlertForParent(reply, [...botAlerts, ...botPersonal], 'ai');
+
+  await synthesizeSpeech(reply, getCharacter());
+  if (reply.length > 200) incrementStories();
+  checkAchievements();
+  updateStatsDisplay();
+}
+
 async function processAudio(audioBlob) {
   const avatar = document.getElementById('avatar');
   try {
-    const text = await recognizeSpeech(audioBlob);
-    if (!text?.trim()) {
-      alert('Не удалось распознать речь. Попробуй ещё раз или попроси взрослого проверить микрофон.');
+    const stt = await recognizeSpeech(audioBlob);
+    if (!stt.text?.trim()) {
+      if (stt.fallback) {
+        showTextInputFallback((text) => processTextMessage(text));
+        return;
+      }
+      showTextInputFallback((text) => processTextMessage(text));
       return;
     }
-    if (checkBadWords(text)) {
-      await synthesizeSpeech('Давай говорить добрые слова', getCharacter());
-      return;
-    }
-
-    saveToChildHistory({ role: 'child', text, timestamp: Date.now(), childName: getActiveChildName() });
-    addToContext('child', text);
-
-    const fears = detectFear(text);
-    if (fears.length) updateFearStats(fears);
-
-    const alerts = detectAlertWords(text);
-    if (alerts.length) {
-      trackEvent('alert', alerts.join(','));
-      saveAlertForParent(text, alerts, 'child');
-    }
-
-    if (avatar) avatar.classList.add('talking');
-    const child = getActiveChild();
-    let reply = await generateResponse(text, child ? { name: child.name, age: child.age } : {});
-    if (globalThis.__lastAiMs) applyAiTiming();
-    reply = sanitizeText(reply);
-
-    const botAlerts = detectAlertWords(reply);
-    const botPersonal = detectPersonalData(reply);
-    const isSuspicious = botAlerts.length > 0 || botPersonal.length > 0;
-
-    saveToChildHistory({
-      role: 'bot',
-      text: reply,
-      timestamp: Date.now(),
-      characterName: CHARACTERS[getCharacter()]?.name || 'Люцик',
-      alerted: isSuspicious,
-      alertWords: [...botAlerts, ...botPersonal]
-    });
-    addToContext('bot', reply);
-    if (isSuspicious) saveAlertForParent(reply, [...botAlerts, ...botPersonal], 'ai');
-
-    await synthesizeSpeech(reply, getCharacter());
-    if (reply.length > 200) incrementStories();
-    checkAchievements();
-    updateStatsDisplay();
+    await handleUserMessage(stt.text);
   } catch (e) {
     logError('process_audio', e.message);
     const fallback = FALLBACK_REPLIES[getCharacter()] || FALLBACK_REPLIES.lucik;

@@ -1,4 +1,5 @@
 import { setCors } from '../_middleware/cors.js';
+import { arrayBufferToBase64 } from '../_lib/base64.js';
 
 const ALLOWED_VOICES = ['zahar', 'alena', 'filipp', 'ermil', 'jane', 'oksana'];
 
@@ -57,13 +58,14 @@ export default async function handler(req, res) {
       console.error('❌ Yandex TTS error:', response.status, errorText);
       return res.status(500).json({
         error: 'TTS synthesis failed',
+        fallback: true,
         yandexStatus: response.status,
         hint: response.status === 401 ? 'Check YANDEX_API_KEY on Vercel' : undefined
       });
     }
 
     const audioArrayBuffer = await response.arrayBuffer();
-    const audioBase64 = Buffer.from(audioArrayBuffer).toString('base64');
+    const audioBase64 = arrayBufferToBase64(audioArrayBuffer);
 
     return res.status(200).json({
       audioUrl: `data:audio/mp3;base64,${audioBase64}`,
@@ -72,6 +74,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('❌ TTS error:', error.message);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message, fallback: true });
   }
 }
