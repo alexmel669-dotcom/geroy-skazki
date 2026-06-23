@@ -17,15 +17,18 @@ Get-Content $envFile | ForEach-Object {
 }
 
 $keys = @('YANDEX_API_KEY', 'YANDEX_FOLDER_ID', 'JWT_SECRET', 'DEEPSEEK_API_KEY')
+$envTargets = @('production', 'preview', 'development')
 
 foreach ($name in $keys) {
   if (-not $vars[$name]) {
     Write-Warning "Пропуск $name — пусто в .env.local"
     continue
   }
-  Write-Host "Updating $name ..."
-  vercel env rm $name production -y 2>$null
-  $vars[$name] | vercel env add $name production
+  foreach ($target in $envTargets) {
+    Write-Host "Updating $name ($target) ..."
+    vercel env rm $name $target -y 2>$null
+    $vars[$name] | vercel env add $name $target
+  }
 }
 
-Write-Host 'Done. Run: vercel --prod'
+Write-Host 'Done. Run: npm run deploy'

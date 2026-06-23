@@ -4,23 +4,29 @@
 
 export function trackEvent(eventName, eventData) {
     console.log(`📊 Event: ${eventName}`, eventData);
-    
+
+    const event = {
+        name: eventName,
+        data: eventData,
+        timestamp: Date.now(),
+        url: typeof window !== 'undefined' ? window.location.href : ''
+    };
+
     try {
         const events = JSON.parse(localStorage.getItem('analytics_events') || '[]');
-        events.push({
-            name: eventName,
-            data: eventData,
-            timestamp: Date.now(),
-            url: window.location.href
-        });
-        
-        while (events.length > 200) {
-            events.shift();
-        }
-        
+        events.push(event);
+        while (events.length > 200) events.shift();
         localStorage.setItem('analytics_events', JSON.stringify(events));
-    } catch(e) {
+    } catch (e) {
         console.warn('Failed to save analytics event:', e);
+    }
+
+    if (typeof fetch !== 'undefined') {
+        fetch('/api/analytics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ events: [event] })
+        }).catch(() => {});
     }
 }
 

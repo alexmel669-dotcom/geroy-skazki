@@ -104,6 +104,7 @@ async function handleLogin(e) {
       if (data.user?.children?.length) {
         localStorage.setItem('children', JSON.stringify(data.user.children));
         localStorage.setItem('childrenNames', data.user.children.map(c => c.name).join(', '));
+        localStorage.setItem('activeChildIndex', data.user.children.length > 1 ? '-1' : '0');
       }
       window.location.href = '/app.html';
     } else {
@@ -253,7 +254,7 @@ if (typeof window !== 'undefined') {
       if (btn) btn.setAttribute('data-original-text', btn.textContent);
     }
 
-    if (registerForm) {
+    if (registerForm && !document.getElementById('child1Name')) {
       registerForm.addEventListener('submit', handleRegister);
       const btn = registerForm.querySelector('button[type="submit"]');
       if (btn) btn.setAttribute('data-original-text', btn.textContent);

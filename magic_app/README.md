@@ -15,7 +15,7 @@
 | Стек | Vanilla JS (ES Modules), PWA, Vercel Serverless |
 | AI | DeepSeek Chat API (`/api/generate`) |
 | TTS | Yandex SpeechKit (`/api/tts`) — POST body |
-| STT | Yandex SpeechKit (`/api/speech-to-text`) + Web Speech API fallback |
+| STT | Yandex SpeechKit (`/api/speech-to-text`) — только голос, без текстового ввода |
 | Auth | JWT + HttpOnly cookie |
 | JWT_SECRET (prod) | 🟢 Настроен на Vercel |
 | Yandex SpeechKit | 🟢 Api-Key + folderId |
@@ -76,17 +76,15 @@ npm run dev
 ```powershell
 cd magic_app
 
-# Обновить секреты (значения из .env.local, не коммитить!)
-vercel env rm YANDEX_API_KEY production -y
-vercel env add YANDEX_API_KEY production
+# Автоматически из .env.local (production + preview + development)
+npm run deploy:env
 
-vercel env rm YANDEX_FOLDER_ID production -y
-vercel env add YANDEX_FOLDER_ID production
+# Или вручную:
+# vercel env add YANDEX_API_KEY production
+# ...
 
-vercel env rm JWT_SECRET production -y
-vercel env add JWT_SECRET production
-
-vercel --prod
+npm run deploy
+# или: npm run deploy:full   # env + prod за один раз
 ```
 
 Проверка: https://geroy-skazki.vercel.app — микрофон, TTS, вход/выход.
