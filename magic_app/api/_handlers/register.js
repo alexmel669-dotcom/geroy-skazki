@@ -1,9 +1,9 @@
-import { setCors } from './_middleware/cors.js';
-import { checkRateLimit, getRateLimitKey } from './_middleware/rate-limit.js';
-import { createUser } from './_lib/users.js';
-import { setAuthCookie } from './_lib/cookies.js';
+import { setCors } from '../_middleware/cors.js';
+import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
+import { createUser } from '../_lib/users.js';
+import { setAuthCookie } from '../_lib/cookies.js';
 import jwt from 'jsonwebtoken';
-import { getJwtSecret } from './_middleware/auth.js';
+import { getJwtSecret } from '../_middleware/auth.js';
 
 const MIN_AGE = 3;
 const MAX_AGE = 14;
@@ -22,7 +22,7 @@ function normalizeChildren(children) {
       avatarRole: avatar,
       index
     };
-  }).filter(c => c.name);
+  }).filter((c) => c.name);
 }
 
 export default async function handler(req, res) {

@@ -1,9 +1,9 @@
-import { setCors } from './_middleware/cors.js';
-import { checkRateLimit, getRateLimitKey } from './_middleware/rate-limit.js';
-import { validateCredentials, updateUser } from './_lib/users.js';
-import { setAuthCookie } from './_lib/cookies.js';
+import { setCors } from '../_middleware/cors.js';
+import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
+import { validateCredentials, updateUser } from '../_lib/users.js';
+import { setAuthCookie } from '../_lib/cookies.js';
 import jwt from 'jsonwebtoken';
-import { getJwtSecret } from './_middleware/auth.js';
+import { getJwtSecret } from '../_middleware/auth.js';
 
 async function logLoginError(email, reason) {
   console.error(`[LOGIN FAIL] ${email}: ${reason}`);

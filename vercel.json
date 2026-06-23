@@ -2,11 +2,11 @@
   "version": 2,
   "installCommand": "cd magic_app && npm install",
   "builds": [
-    { "src": "magic_app/api/**/*.js", "use": "@vercel/node" },
+    { "src": "magic_app/api/router.js", "use": "@vercel/node" },
     { "src": "magic_app/public/**", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/magic_app/api/$1" },
+    { "src": "/api/(.*)", "dest": "/magic_app/api/router.js" },
     { "src": "/assets/(.*)", "dest": "/magic_app/public/assets/$1" },
     { "src": "/css/(.*)", "dest": "/magic_app/public/css/$1" },
     { "src": "/js/(.*)", "dest": "/magic_app/public/js/$1" },
