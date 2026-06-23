@@ -3,8 +3,10 @@
 // ========================================
 
 export const CONFIG = {
-  APP_VERSION: '4.1.0',
+  APP_VERSION: '4.2.0',
   MAX_HISTORY: 50,
+  CHAT_HISTORY_MAX: 200,
+  CHAT_HISTORY_DAYS: 14,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
   SILENCE_THRESHOLD: -45,

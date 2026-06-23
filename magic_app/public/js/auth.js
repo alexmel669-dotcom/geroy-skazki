@@ -183,7 +183,7 @@ async function handleRegister(e) {
 // Выход
 export async function logout() {
   try {
-    const response = await fetch(`${API_BASE}/logout`, {
+    const response = await fetch(`${API_BASE}/auth/logout`, {
       method: 'POST',
       credentials: 'include'
     });

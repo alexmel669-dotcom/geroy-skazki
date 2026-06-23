@@ -1,13 +1,12 @@
 {
   "version": 2,
   "functions": {
-    "api/router.js": {
+    "api/**/*.js": {
       "maxDuration": 60,
       "memory": 1024
     }
   },
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/router.js" },
     { "src": "/assets/(.*)", "dest": "/public/assets/$1" },
     { "src": "/css/(.*)", "dest": "/public/css/$1" },
     { "src": "/js/(.*)", "dest": "/public/js/$1" },
