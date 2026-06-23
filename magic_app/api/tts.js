@@ -48,9 +48,13 @@ export default async function handler(req, res) {
 
     console.log(`📡 TTS: голос=${safeVoice}, текст="${text.substring(0, 40)}..."`);
 
-    const response = await fetch(`${ttsUrl}?${params}`, {
+    const response = await fetch(ttsUrl, {
       method: 'POST',
-      headers: { 'Authorization': `Api-Key ${YANDEX_API_KEY}` }
+      headers: {
+        Authorization: `Api-Key ${YANDEX_API_KEY}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
     });
 
     if (!response.ok) {

@@ -35,17 +35,17 @@ export default async function handler(req, res) {
       format
     });
 
-    const response = await fetch(
-      `https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?${params}`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Api-Key ${YANDEX_API_KEY}`,
-          'Content-Type': contentType
-        },
-        body: audioBuffer
-      }
-    );
+    const sttUrl = `https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?${params}`;
+
+    // POST: аудио в теле (binary), lang/folderId/format — в URL (латиница, без кириллицы)
+    const response = await fetch(sttUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Api-Key ${YANDEX_API_KEY}`,
+        'Content-Type': contentType
+      },
+      body: audioBuffer
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
