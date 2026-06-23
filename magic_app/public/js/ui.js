@@ -31,11 +31,11 @@ function updateAvatar() {
 
     const savedChar = localStorage.getItem('currentCharacter') || 'lucik';
     const charIcon = {
-        'lucik': '/assets/images/avatar.svg',
-        'mom': '/assets/images/mom.svg',
-        'dad': '/assets/images/dad.svg',
-        'kid1': '/assets/images/kid1.svg',
-        'kid2': '/assets/images/kid2.svg'
+        lucik: '/assets/images/avatar.png',
+        mom: '/assets/images/mom.png',
+        dad: '/assets/images/dad.png',
+        kid1: '/assets/images/kid1.png',
+        kid2: '/assets/images/kid2.png'
     };
 
     const src = charIcon[savedChar] || '/assets/images/avatar.svg';
