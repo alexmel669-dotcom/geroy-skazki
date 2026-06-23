@@ -1,6 +1,7 @@
-const CACHE_NAME = 'geroy-skazki-v4.1.0';
+const CACHE_NAME = 'geroy-skazki-v4.1.1';
 const ASSETS = [
   '/',
+  '/index.html',
   '/app.html',
   '/login.html',
   '/register.html',
@@ -34,48 +35,51 @@ const ASSETS = [
   '/assets/images/parent-bg.svg',
   '/manifest.json'
 ];
-// parent-bg.png (~3.8 MB) — не кэшируем в install, грузится по CSS с сети
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(ASSETS).catch(err => {
-        console.error('Failed to cache some assets:', err);
-      }))
+      .then((cache) => cache.addAll(ASSETS))
+      .catch((err) => console.error('SW install cache failed:', err))
   );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) =>
-      Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      )
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then((names) => Promise.all(
+        names.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
+function offlineResponse() {
+  return new Response('Нет сети', {
+    status: 503,
+    statusText: 'Offline',
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+  });
+}
+
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('/api/')) return;
+  const url = new URL(event.request.url);
+  if (url.pathname.startsWith('/api/')) return;
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
+    caches.match(event.request).then((cached) =>
+      fetch(event.request)
         .then((response) => {
           if (response.ok && response.type === 'basic') {
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
           return response;
         })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
+        .catch(() => cached || offlineResponse())
+    )
   );
 });
 

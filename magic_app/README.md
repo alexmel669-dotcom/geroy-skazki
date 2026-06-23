@@ -96,6 +96,14 @@ npm run deploy:env
 npm run deploy
 ```
 
+### Если 404 NOT_FOUND после деплоя
+
+Причина: Vercel не видит папку `magic_app`.
+
+**Исправление:** Settings → General → **Root Directory** = `magic_app` → **Redeploy**.
+
+Либо оставьте Root Directory пустым — в корне репозитория есть `vercel.json` с путями к `magic_app/`.
+
 ### Проверка после деплоя
 
 Откройте в браузере:
