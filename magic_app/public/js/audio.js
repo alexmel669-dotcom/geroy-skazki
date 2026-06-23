@@ -75,10 +75,7 @@ export async function synthesizeSpeech(text, character = 'lucik') {
       }
     } else {
       const data = await response.json().catch(() => ({}));
-      if (data.fallback) {
-        await browserSpeech(text);
-        return;
-      }
+      console.warn('⚠️ TTS API error:', response.status, data.error || '');
     }
   } catch (err) {
     console.warn('⚠️ TTS API failed, using browser speech:', err);

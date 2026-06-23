@@ -1,5 +1,6 @@
 import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
+import { base64ToBytes } from '../_lib/base64.js';
 
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
       return res.status(503).json({ text: '', fallback: true, error: 'STT not configured' });
     }
 
-    const audioBuffer = Buffer.from(audio, 'base64');
+    const audioBytes = base64ToBytes(audio);
     const contentType = req.body.contentType || 'audio/ogg;codecs=opus';
     const format = contentType.includes('ogg') ? 'oggopus' : 'lpcm';
     const params = new URLSearchParams({
@@ -43,19 +44,19 @@ export default async function handler(req, res) {
         Authorization: `Api-Key ${YANDEX_API_KEY}`,
         'Content-Type': contentType
       },
-      body: audioBuffer
+      body: audioBytes
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Yandex STT error:', response.status, errorText);
-      return res.status(502).json({ error: 'Speech recognition failed' });
+      return res.status(502).json({ text: '', error: 'Speech recognition failed', fallback: true });
     }
 
     const data = await response.json();
     return res.status(200).json({ text: data.result || '' });
   } catch (error) {
     console.error('STT error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ text: '', error: 'Internal server error', fallback: true });
   }
 }
