@@ -19,8 +19,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Audio is required' });
     }
 
-    const YANDEX_API_KEY = process.env.YANDEX_API_KEY;
-    const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID;
+    const YANDEX_API_KEY = process.env.YANDEX_API_KEY?.trim();
+    const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID?.trim();
 
     if (!YANDEX_API_KEY || !YANDEX_FOLDER_ID) {
       return res.status(503).json({ text: '', fallback: true, error: 'STT not configured' });

@@ -34,6 +34,7 @@ const ASSETS = [
   '/assets/images/parent-bg.svg',
   '/manifest.json'
 ];
+// parent-bg.png (~3.8 MB) — не кэшируем в install, грузится по CSS с сети
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

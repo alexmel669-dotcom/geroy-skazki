@@ -73,21 +73,55 @@ npm run dev
 
 ## ☁️ Деплой на Vercel
 
+### Важно: Root Directory
+
+В [Vercel Dashboard](https://vercel.com) → Project → **Settings** → **General** → **Root Directory** должно быть:
+
+```
+magic_app
+```
+
+Если указана корневая папка репозитория — деплой падает с ошибкой (нет `package.json` и `api/`).
+
+### Деплой
+
 ```powershell
 cd magic_app
 
-# Автоматически из .env.local (production + preview + development)
+# 1. Заполните .env.local (ключи без пробелов и переносов строк!)
+# 2. Загрузите переменные на Vercel:
 npm run deploy:env
 
-# Или вручную:
-# vercel env add YANDEX_API_KEY production
-# ...
-
+# 3. Деплой:
 npm run deploy
-# или: npm run deploy:full   # env + prod за один раз
 ```
 
-Проверка: https://geroy-skazki.vercel.app — микрофон, TTS, вход/выход.
+### Проверка после деплоя
+
+Откройте в браузере:
+
+```
+https://geroy-skazki.vercel.app/api/health
+```
+
+Должно быть:
+```json
+{ "ok": true, "env": { "jwt": true, "yandexKey": true, "yandexFolder": true } }
+```
+
+Если `yandexKey: false` — ключ не загружен на Vercel. Запустите `npm run deploy:env` ещё раз.
+
+### Если журнал деплоя не открывается
+
+Через терминал (после `npm i -g vercel` и `vercel login`):
+
+```powershell
+cd magic_app
+vercel logs geroy-skazki --prod
+vercel inspect <url-последнего-деплоя>
+```
+
+Или: Dashboard → Deployments → три точки → **Redeploy** → смотрите статус **Building** / **Ready** / **Error**.
 
 ---
 
