@@ -1,3 +1,7 @@
+// ========================================
+// mic.js — РАБОТА С МИКРОФОНОМ (+ VAD)
+// ========================================
+
 import { CONFIG } from './config.js';
 
 let mediaRecorder = null;
@@ -12,28 +16,21 @@ let silenceTimer = null;
 let maxTimeTimer = null;
 let onAutoStopCallback = null;
 let onStateChangeCallback = null;
-let recordingStartedAt = 0;
 
 function cleanupStream() {
   if (stream) {
-    stream.getTracks().forEach(track => track.stop());
+    stream.getTracks().forEach((track) => track.stop());
     stream = null;
   }
 }
 
 function cleanupAudioContext() {
-  if (volumeFrame) {
-    cancelAnimationFrame(volumeFrame);
-    volumeFrame = null;
-  }
-  if (silenceTimer) {
-    clearTimeout(silenceTimer);
-    silenceTimer = null;
-  }
-  if (maxTimeTimer) {
-    clearTimeout(maxTimeTimer);
-    maxTimeTimer = null;
-  }
+  if (volumeFrame) cancelAnimationFrame(volumeFrame);
+  volumeFrame = null;
+  if (silenceTimer) clearTimeout(silenceTimer);
+  silenceTimer = null;
+  if (maxTimeTimer) clearTimeout(maxTimeTimer);
+  maxTimeTimer = null;
   if (audioContext) {
     audioContext.close().catch(() => {});
     audioContext = null;
@@ -42,11 +39,7 @@ function cleanupAudioContext() {
 }
 
 function getPreferredMimeType() {
-  const types = [
-    'audio/ogg;codecs=opus',
-    'audio/webm;codecs=opus',
-    'audio/webm'
-  ];
+  const types = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm'];
   for (const type of types) {
     if (MediaRecorder.isTypeSupported(type)) return type;
   }
@@ -68,8 +61,7 @@ function monitorVolume() {
     const v = (data[i] - 128) / 128;
     sum += v * v;
   }
-  const rms = Math.sqrt(sum / data.length);
-  const db = rmsToDb(rms);
+  const db = rmsToDb(Math.sqrt(sum / data.length));
   const threshold = CONFIG.SILENCE_THRESHOLD ?? -45;
   const silenceTimeout = CONFIG.SILENCE_TIMEOUT ?? 5000;
 
@@ -115,9 +107,9 @@ export async function startRecording(options = {}) {
 
     mediaRecorder.start(100);
     isCurrentlyRecording = true;
-    recordingStartedAt = Date.now();
     onStateChangeCallback?.('recording');
     monitorVolume();
+    console.log('🎙️ Recording started');
 
     maxTimeTimer = setTimeout(() => {
       if (isCurrentlyRecording && onAutoStopCallback) onAutoStopCallback('max_time');
@@ -125,6 +117,7 @@ export async function startRecording(options = {}) {
   } catch (error) {
     cleanupAudioContext();
     cleanupStream();
+    console.error('Failed to start recording:', error);
     throw new Error('Не удалось получить доступ к микрофону');
   }
 }
@@ -143,13 +136,13 @@ export async function stopRecording() {
     onStateChangeCallback?.('processing');
 
     mediaRecorder.addEventListener('stop', () => {
-      const mime = getRecordingMimeType();
-      const audioBlob = new Blob(audioChunks, { type: mime });
+      const audioBlob = new Blob(audioChunks, { type: getRecordingMimeType() });
       audioChunks = [];
       isCurrentlyRecording = false;
       cleanupAudioContext();
       cleanupStream();
       onAutoStopCallback = null;
+      console.log('🎙️ Recording stopped, size:', audioBlob.size);
       resolve(audioBlob);
     }, { once: true });
 
@@ -189,11 +182,23 @@ export function isMicrophoneSupported() {
   return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 }
 
+export async function requestMicrophonePermission() {
+  try {
+    const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    testStream.getTracks().forEach((track) => track.stop());
+    return true;
+  } catch (error) {
+    console.error('Microphone permission denied:', error);
+    return false;
+  }
+}
+
 export function setMicStateCallback(cb) {
   onStateChangeCallback = cb;
 }
 
 export default {
   isRecording, startRecording, stopRecording, cancelRecording,
-  getAudioBlob, playAudioFromUrl, getRecordingMimeType, isMicrophoneSupported, setMicStateCallback
+  getAudioBlob, playAudioFromUrl, getRecordingMimeType,
+  isMicrophoneSupported, requestMicrophonePermission, setMicStateCallback
 };

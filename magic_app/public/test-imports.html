@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Тест импортов — Герой Сказок</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #151521; color: #fff; }
+    pre { background: #222; padding: 16px; border-radius: 8px; white-space: pre-wrap; }
+    .ok { color: #4caf50; }
+    .err { color: #ff4081; }
+  </style>
+</head>
+<body>
+  <h1>Тест импортов модулей (v4.1.0)</h1>
+  <pre id="output">Загрузка...</pre>
+  <script type="module">
+    const output = document.getElementById('output');
+    const lines = [];
+
+    async function testImport(path, names) {
+      try {
+        const mod = await import(path);
+        for (const name of names) {
+          if (mod[name] !== undefined) {
+            lines.push(`✅ ${path} → ${name}`);
+          } else {
+            lines.push(`❌ ${path} → нет экспорта "${name}"`);
+            lines.push(`   Доступно: ${Object.keys(mod).join(', ')}`);
+          }
+        }
+      } catch (e) {
+        lines.push(`❌ ${path} → ${e.message}`);
+      }
+    }
+
+    await testImport('./js/config.js', ['CONFIG', 'CHARACTERS', 'validateConfig', 'getAppMode']);
+    await testImport('./js/core.js', ['initCore', 'updateStatsUI', 'showChildSelectModal']);
+    await testImport('./js/main.js', ['default']);
+    await testImport('./js/ai.js', ['generateResponse', 'getCharacter']);
+    await testImport('./js/mic.js', ['startRecording', 'isRecording']);
+    await testImport('./js/audio.js', ['synthesizeSpeech']);
+    await testImport('./js/security.js', ['initSecurity', 'sanitizeText']);
+    await testImport('./js/ui.js', ['updateUI', 'initDevPanel']);
+
+    output.textContent = lines.join('\n');
+  </script>
+</body>
+</html>

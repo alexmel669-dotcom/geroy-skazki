@@ -29,35 +29,35 @@ export const CHARACTERS = {
   lucik: {
     id: 'lucik',
     name: 'Люцик',
-    icon: '/assets/images/avatar.svg',
+    icon: '/assets/images/avatar.png',
     premium: false,
     description: 'Добрый волшебник'
   },
   mom: {
     id: 'mom',
     name: 'Мама',
-    icon: '/assets/images/mom.svg',
+    icon: '/assets/images/mom.png',
     premium: false,
     description: 'Заботливая мама'
   },
   dad: {
     id: 'dad',
     name: 'Папа',
-    icon: '/assets/images/dad.svg',
+    icon: '/assets/images/dad.png',
     premium: false,
     description: 'Надёжный папа'
   },
   kid1: {
     id: 'kid1',
     name: 'Мальчик',
-    icon: '/assets/images/kid1.svg',
+    icon: '/assets/images/kid1.png',
     premium: false,
     description: 'Весёлый мальчик'
   },
   kid2: {
     id: 'kid2',
     name: 'Девочка',
-    icon: '/assets/images/kid2.svg',
+    icon: '/assets/images/kid2.png',
     premium: false,
     description: 'Добрая девочка'
   }
@@ -82,22 +82,21 @@ export const FEAR_LABELS = {
 };
 
 const OLD_FEAR_MAP = {
-  'темноты': 'darkness',
-  'врачей': 'monsters',
-  'одиночества': 'separation',
-  'нового': 'strangers',
-  'обиды': 'loud_noises',
-  'животных': 'monsters',
-  'школы': 'school',
-  'сверстников': 'peers'
+  темноты: 'darkness',
+  врачей: 'monsters',
+  одиночества: 'separation',
+  нового: 'strangers',
+  обиды: 'loud_noises',
+  животных: 'monsters',
+  школы: 'school',
+  сверстников: 'peers'
 };
 
 export function getAppMode() {
   if (typeof window === 'undefined') return 'user';
   const host = window.location.hostname;
   const params = new URLSearchParams(window.location.search);
-  const devFlag = params.get('mode') === 'dev';
-  if (devFlag && (host === 'localhost' || host === '127.0.0.1')) return 'dev';
+  if (params.get('mode') === 'dev' && (host === 'localhost' || host === '127.0.0.1')) return 'dev';
   if (host === 'localhost' || host === '127.0.0.1') return 'dev';
   return 'user';
 }
@@ -118,9 +117,8 @@ export function getFearDisplayName(key) {
 }
 
 export function validateConfig() {
-  if (getAppMode() === 'dev') {
-    console.log('🛠 Dev mode active, version:', CONFIG.APP_VERSION);
-  }
+  console.log('✅ Config validated, version:', CONFIG.APP_VERSION);
+  if (getAppMode() === 'dev') console.log('🛠 Dev mode active');
   return true;
 }
 
