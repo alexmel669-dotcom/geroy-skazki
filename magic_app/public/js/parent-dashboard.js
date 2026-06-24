@@ -1,5 +1,5 @@
-import { CONFIG, FEAR_LABELS, migrateFearStatsObject, getFearDisplayName } from './config.js';
-import { safeParseJSON, getChildren } from './core.js';
+import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName } from './config.js';
+import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, resetDailyCounters } from './core.js';
 import { getGameProgressSummary } from './game-progress.js';
 
 let currentChildIndex = parseInt(localStorage.getItem('activeChildIndex') ?? '-1', 10);
@@ -35,8 +35,8 @@ function getChildStats() {
 }
 
 function childEmoji(role) {
-  if (role === 'kid1') return '👦';
-  if (role === 'kid2') return '👧';
+  if (role === 'kid1') return '👧';
+  if (role === 'kid2') return '👦';
   return '🐱';
 }
 
@@ -223,7 +223,25 @@ function renderGameProgress(childName) {
   }).join('');
 }
 
+function renderPlanInfo() {
+  const container = document.getElementById('planInfoContainer');
+  if (!container) return;
+  resetDailyCounters();
+  const planId = getUserPlan();
+  const plan = PLANS[planId] || PLANS.free;
+  const remaining = getStoriesRemaining();
+  const used = plan.storiesPerDay - remaining;
+  container.innerHTML = `
+    <div class="plan-row"><span class="label">Тариф</span><span class="value">${plan.name}</span></div>
+    <div class="plan-row"><span class="label">Сказок сегодня</span><span class="value">${used} / ${plan.storiesPerDay}</span></div>
+    <div class="plan-row"><span class="label">Осталось</span><span class="value">${remaining}</span></div>
+    <div class="plan-row"><span class="label">Память диалогов</span><span class="value">${plan.memoryDays} дн.</span></div>
+    <a href="pricing.html" class="plan-change-btn">Сменить тариф</a>
+  `;
+}
+
 function loadAllData() {
+  renderPlanInfo();
   const children = getChildren();
   const stats = getChildStats();
   const history = stats.history || [];

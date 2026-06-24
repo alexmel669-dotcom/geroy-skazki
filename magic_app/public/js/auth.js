@@ -44,6 +44,7 @@ export async function checkAuth() {
     
     if (data.valid) {
       console.log('✅ Токен валиден');
+      if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan);
       return true;
     } else {
       console.log('❌ Токен невалиден');
@@ -100,6 +101,7 @@ async function handleLogin(e) {
       localStorage.setItem('userToken', data.token);
       localStorage.setItem('userEmail', data.user?.email || email);
       localStorage.setItem('guestMode', 'false');
+      if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan);
       if (data.user?.role) localStorage.setItem('userRole', data.user.role);
       if (data.user?.children?.length) {
         localStorage.setItem('children', JSON.stringify(data.user.children));
@@ -168,6 +170,7 @@ async function handleRegister(e) {
       localStorage.setItem('userToken', data.token);
       localStorage.setItem('userEmail', data.user?.email || email);
       localStorage.setItem('guestMode', 'false');
+      if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan || 'free');
       window.location.href = '/app.html';
     } else {
       showError(errorEl, translateError(data.error) || 'Ошибка регистрации');
@@ -230,6 +233,7 @@ function clearAuthData() {
   localStorage.removeItem('userToken');
   localStorage.removeItem('userEmail');
   localStorage.removeItem('userRole');
+  localStorage.removeItem('userPlan');
   localStorage.removeItem('isPremium');
   localStorage.removeItem('guestMode');
   document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';

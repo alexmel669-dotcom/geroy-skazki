@@ -2,24 +2,29 @@
 // ai.js — ИИ, РОЛИ, ПАМЯТЬ ДИАЛОГА
 // ========================================
 
-import { CHARACTERS } from './config.js';
+import { CHARACTERS, PLANS } from './config.js';
 
 let currentCharacter = 'lucik';
 let currentTopic = '';
 let topicDialogCount = 0;
 let activeChatKey = 'chatHistory_guest';
 
-const CHAT_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 const CHAT_IDLE_MS = 30 * 60 * 1000;
 const MAX_STORED_MESSAGES = 200;
 const MAX_API_MESSAGES = 20;
+
+function getChatRetentionMs() {
+  const planId = localStorage.getItem('userPlan') || 'free';
+  const days = PLANS[planId]?.memoryDays || PLANS.free.memoryDays;
+  return days * 24 * 60 * 60 * 1000;
+}
 
 const CHARACTER_PROMPTS = {
   lucik: 'Ты — Люцик, сказочный кот-волшебник, друг и помощник ребёнка. Говори тепло, с мурчанием (мурр, мяу). Помогаешь через сказки и игры. Не читай нотации, не будь как родитель. В игровой форме помогаешь рассказать о страхах.',
   mom: 'Ты — мама ребёнка. Говори ласково: солнышко, родной, мой хороший. Успокаивай, обнимай словами. Мягко спрашивай о чувствах без давления.',
   dad: 'Ты — папа ребёнка. Говори уверенно и по-доброму: давай разберёмся, я рядом, ты справишься. Хвали за смелость, придумывайте истории про героев.',
-  kid1: 'Ты — друг-сверстник мальчик. Говори просто, коротко, эмоционально. Делитесь секретами. «Я тоже иногда боюсь, но знаешь что мне помогает?»',
-  kid2: 'Ты — подруга-сверстница. Говори просто, коротко, эмоционально. Делитесь секретами. «Я тоже иногда боюсь, но знаешь что мне помогает?»'
+  kid1: 'Ты — подруга-сверстница. Говори просто, коротко, эмоционально. Делитесь секретами. «Я тоже иногда боюсь, но знаешь что мне помогает?»',
+  kid2: 'Ты — друг-сверстник мальчик. Говори просто, коротко, эмоционально. Делитесь секретами. «Я тоже иногда боюсь, но знаешь что мне помогает?»'
 };
 
 const FEAR_GAME_HINTS = {
@@ -72,7 +77,7 @@ function readStore() {
 function writeStore(data) {
   const now = Date.now();
   const messages = (data.messages || [])
-    .filter((m) => now - (m.timestamp || 0) < CHAT_RETENTION_MS)
+    .filter((m) => now - (m.timestamp || 0) < getChatRetentionMs())
     .slice(-MAX_STORED_MESSAGES);
   localStorage.setItem(activeChatKey, JSON.stringify({
     messages,

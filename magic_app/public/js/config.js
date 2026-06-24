@@ -3,7 +3,7 @@
 // ========================================
 
 export const CONFIG = {
-  APP_VERSION: '4.2.0',
+  APP_VERSION: '4.3.0',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -23,43 +23,83 @@ export const CONFIG = {
   }
 };
 
+export const PLANS = {
+  free: {
+    name: 'Бесплатный',
+    storiesPerDay: 3,
+    characters: ['lucik'],
+    games: ['fish', 'memory'],
+    memoryDays: 3
+  },
+  basic: {
+    name: 'Базовый',
+    storiesPerDay: 15,
+    characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
+    games: ['fish', 'puzzle', 'memory', 'emotion', 'coloring'],
+    memoryDays: 14
+  },
+  family: {
+    name: 'Семейный',
+    storiesPerDay: 15,
+    characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
+    games: ['fish', 'puzzle', 'memory', 'emotion', 'coloring'],
+    memoryDays: 14,
+    maxChildren: 3
+  }
+};
+
 export const ADMIN_EMAILS = ['admin@geroy-skazki.local'];
 
 export const CHARACTERS = {
   lucik: {
     id: 'lucik',
     name: 'Люцик',
+    voice: 'zahar',
+    gender: 'male',
     icon: '/assets/images/avatar.png',
+    avatar: 'avatar.png',
     premium: false,
     description: 'Добрый волшебник'
   },
   mom: {
     id: 'mom',
     name: 'Мама',
+    voice: 'jane',
+    gender: 'female',
     icon: '/assets/images/mom.png',
+    avatar: 'mom.png',
     premium: false,
     description: 'Заботливая мама'
   },
   dad: {
     id: 'dad',
     name: 'Папа',
+    voice: 'ermil',
+    gender: 'male',
     icon: '/assets/images/dad.png',
+    avatar: 'dad.png',
     premium: false,
     description: 'Надёжный папа'
   },
   kid1: {
     id: 'kid1',
-    name: 'Мальчик',
+    name: 'Девочка',
+    voice: 'oksana',
+    gender: 'female',
     icon: '/assets/images/kid1.png',
+    avatar: 'kid1.png',
     premium: false,
-    description: 'Весёлый мальчик'
+    description: 'Добрая девочка'
   },
   kid2: {
     id: 'kid2',
-    name: 'Девочка',
+    name: 'Мальчик',
+    voice: 'oksana',
+    gender: 'male',
     icon: '/assets/images/kid2.png',
+    avatar: 'kid2.png',
     premium: false,
-    description: 'Добрая девочка'
+    description: 'Весёлый мальчик'
   }
 };
 
@@ -67,8 +107,8 @@ export const FALLBACK_REPLIES = {
   lucik: 'Мурр... Я немного задумался. Давай попробуем ещё раз? 🐱',
   mom: 'Дорогой, я тебя слушаю. Расскажи ещё раз?',
   dad: 'Хм, не расслышал. Повтори, пожалуйста?',
-  kid1: 'Хм, что-то пошло не так. Расскажи ещё раз?',
-  kid2: 'Ой, я не расслышала. Повтори, пожалуйста?'
+  kid1: 'Ой, я не расслышала. Повтори, пожалуйста?',
+  kid2: 'Хм, что-то пошло не так. Расскажи ещё раз?'
 };
 
 export const FEAR_LABELS = {
@@ -122,4 +162,4 @@ export function validateConfig() {
   return true;
 }
 
-export default { CONFIG, CHARACTERS, FALLBACK_REPLIES, FEAR_LABELS, ADMIN_EMAILS, validateConfig, getAppMode };
+export default { CONFIG, PLANS, CHARACTERS, FALLBACK_REPLIES, FEAR_LABELS, ADMIN_EMAILS, validateConfig, getAppMode };

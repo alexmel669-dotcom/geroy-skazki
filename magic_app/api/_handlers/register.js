@@ -19,14 +19,15 @@ function normalizeChildren(children) {
   if (!Array.isArray(children)) return [];
   return children.slice(0, 3).map((child, index) => {
     const gender = child.gender === 'female' ? 'female' : 'male';
-    const avatar = gender === 'female' ? 'kid2' : 'kid1';
+    const avatarRole = gender === 'male' ? 'kid2' : 'kid1';
+    const avatar = gender === 'male' ? 'kid2.png' : 'kid1.png';
     const age = Math.min(MAX_AGE, Math.max(MIN_AGE, parseInt(child.age, 10) || 5));
     return {
       name: String(child.name || '').trim(),
       age,
       gender,
       avatar,
-      avatarRole: avatar,
+      avatarRole,
       index
     };
   }).filter((c) => c.name);
