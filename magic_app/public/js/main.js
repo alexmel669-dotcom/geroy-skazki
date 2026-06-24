@@ -25,7 +25,7 @@ async function playWelcomeGreeting() {
 }
 
 /** Fallback STT — если серверное распознавание не сработало */
-export async function tryBrowserSpeechRecognition() {
+async function tryBrowserSpeechRecognition() {
   return browserSpeechRecognition();
 }
 
