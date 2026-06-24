@@ -81,10 +81,18 @@ header {
   margin: 10px 0 20px;
 }
 
+.avatar-container img,
+.avatar-container .avatar,
+.avatar-container .avatar-img {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+}
+
 .avatar,
 .avatar-img {
-  width: 120px;
-  height: 120px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
   background-size: cover;
   background-position: center;
@@ -96,11 +104,63 @@ header {
 }
 
 @media (max-width: 768px) {
+  .avatar-container img,
+  .avatar-container .avatar,
+  .avatar-container .avatar-img,
   .avatar,
   .avatar-img {
-    width: 90px;
-    height: 90px;
+    width: 120px;
+    height: 120px;
   }
+}
+
+.avatar-listening {
+  animation: gentleSway 2s ease-in-out infinite;
+  box-shadow: 0 0 24px rgba(76, 175, 80, 0.45);
+}
+
+@keyframes gentleSway {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  25% { transform: translateX(3px) rotate(1deg); }
+  75% { transform: translateX(-3px) rotate(-1deg); }
+}
+
+.avatar-speaking {
+  animation: speakPulse 0.3s ease-in-out infinite;
+}
+
+@keyframes speakPulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.05); filter: brightness(1.15); }
+}
+
+.avatar-sleepy {
+  animation: sleepySway 4s ease-in-out infinite;
+  filter: brightness(0.8) saturate(0.7);
+}
+
+@keyframes sleepySway {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(2px); }
+}
+
+.avatar-happy {
+  animation: happyJump 0.5s ease-in-out 3;
+}
+
+@keyframes happyJump {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+.avatar-eating {
+  animation: eatSprite 0.8s steps(2) infinite;
+  filter: brightness(1.08);
+}
+
+@keyframes eatSprite {
+  0%, 49% { transform: scale(1); }
+  50%, 100% { transform: scale(1.03); }
 }
 
 .avatar.talking {
@@ -719,5 +779,51 @@ header {
   text-decoration: none;
   font-weight: 600;
   font-size: 0.88rem;
+}
+
+.psychologist-help {
+  background: rgba(186, 200, 255, 0.12);
+  border: 1px solid rgba(186, 200, 255, 0.35);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 15px;
+}
+
+.psychologist-help h3 {
+  margin: 0 0 10px;
+  color: #c5cae9;
+}
+
+.psychologist-help p {
+  opacity: 0.85;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+
+.btn-soft {
+  background: rgba(186, 200, 255, 0.25);
+  color: #e8eaf6;
+  border: none;
+  padding: 12px 22px;
+  border-radius: 24px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-soft:hover {
+  background: rgba(186, 200, 255, 0.35);
+}
+
+.advice-box {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  border-left: 3px solid #9fa8da;
 }
 

@@ -240,8 +240,67 @@ function renderPlanInfo() {
   `;
 }
 
+async function loadConcernsFromServer() {
+  const local = safeParseJSON(localStorage.getItem('parentConcerns'), []) || [];
+  if (localStorage.getItem('guestMode') === 'true') return local;
+  try {
+    const res = await fetch('/api/profile-update', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.user?.concerns?.length) return data.user.concerns;
+    }
+  } catch {
+    /* use local */
+  }
+  return local;
+}
+
+async function renderPsychologistBlock() {
+  const concerns = await loadConcernsFromServer();
+  const block = document.getElementById('psychologistBlock');
+  if (!block) return;
+  if (!concerns.length) {
+    block.style.display = 'none';
+    return;
+  }
+  block.style.display = 'block';
+
+  const btn = document.getElementById('getPsychologistHelp');
+  const adviceEl = document.getElementById('psychologistAdvice');
+  if (!btn || btn.dataset.bound) return;
+  btn.dataset.bound = '1';
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'Готовим рекомендации...';
+    try {
+      const childAge = parseInt(localStorage.getItem('profileChildAge') || '7', 10);
+      const res = await fetch('/api/psychologist-help', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ concerns, childAge })
+      });
+      const data = await res.json();
+      if (adviceEl && data.advice) {
+        adviceEl.textContent = data.advice;
+        adviceEl.style.display = 'block';
+      }
+    } catch {
+      if (adviceEl) {
+        adviceEl.textContent = 'Не удалось загрузить рекомендации. Попробуйте позже.';
+        adviceEl.style.display = 'block';
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Получить рекомендации';
+    }
+  });
+}
+
 function loadAllData() {
   renderPlanInfo();
+  renderPsychologistBlock();
   const children = getChildren();
   const stats = getChildStats();
   const history = stats.history || [];

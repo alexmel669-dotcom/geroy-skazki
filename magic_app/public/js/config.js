@@ -3,7 +3,7 @@
 // ========================================
 
 export const CONFIG = {
-  APP_VERSION: '4.3.0',
+  APP_VERSION: '4.4.0',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -35,20 +35,28 @@ export const PLANS = {
     name: 'Базовый',
     storiesPerDay: 15,
     characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
-    games: ['fish', 'puzzle', 'memory', 'emotion', 'coloring'],
+    games: ['fish', 'puzzle', 'memory', 'riddles', 'quest'],
     memoryDays: 14
   },
   family: {
     name: 'Семейный',
     storiesPerDay: 15,
     characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
-    games: ['fish', 'puzzle', 'memory', 'emotion', 'coloring'],
+    games: ['fish', 'puzzle', 'memory', 'riddles', 'quest'],
     memoryDays: 14,
     maxChildren: 3
   }
 };
 
 export const ADMIN_EMAILS = ['admin@geroy-skazki.local'];
+
+export const GAMES = {
+  fish: { name: 'Рыбалка', ages: [3, 14], icon: '🎣' },
+  puzzle: { name: 'Пазл', ages: [3, 14], icon: '🧩', levels: [3, 4, 6] },
+  memory: { name: 'Мемори', ages: [3, 14], icon: '🧠' },
+  riddles: { name: 'Загадки', ages: [8, 14], icon: '❓' },
+  quest: { name: 'Квест', ages: [10, 14], icon: '🗺️' }
+};
 
 export const CHARACTERS = {
   lucik: {
@@ -162,4 +170,4 @@ export function validateConfig() {
   return true;
 }
 
-export default { CONFIG, PLANS, CHARACTERS, FALLBACK_REPLIES, FEAR_LABELS, ADMIN_EMAILS, validateConfig, getAppMode };
+export default { CONFIG, PLANS, GAMES, CHARACTERS, FALLBACK_REPLIES, FEAR_LABELS, ADMIN_EMAILS, validateConfig, getAppMode };

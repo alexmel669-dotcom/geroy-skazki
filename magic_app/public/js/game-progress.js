@@ -83,8 +83,8 @@ export function getGameProgressSummary(childName) {
     { id: 'fish', label: '🎣 Рыбалка', value: p.fish.bestScore, max: 30, detail: `лучший счёт: ${p.fish.bestScore}` },
     { id: 'memory', label: '🧠 Мемори', value: p.memory.pairsCollected, max: 8, detail: `побед: ${p.memory.wins}` },
     { id: 'puzzle', label: '🧩 Пазл', value: p.puzzle.levelsCompleted, max: 5, detail: `уровней: ${p.puzzle.levelsCompleted}` },
-    { id: 'emotion', label: '😊 Эмоции', value: p.emotion.completed ? 5 : p.emotion.bestScore, max: 5, detail: p.emotion.completed ? 'пройдено' : `очков: ${p.emotion.bestScore}` },
-    { id: 'coloring', label: '🎨 Раскраска', value: p.coloring.completed ? 1 : 0, max: 1, detail: p.coloring.completed ? 'готово' : 'не завершено' }
+    { id: 'riddles', label: '❓ Загадки', value: p.emotion.completed ? 5 : p.emotion.bestScore, max: 5, detail: p.emotion.completed ? 'пройдено' : `очков: ${p.emotion.bestScore}` },
+    { id: 'quest', label: '🗺️ Квест', value: p.coloring.completed ? 1 : 0, max: 1, detail: p.coloring.completed ? 'готово' : 'не завершено' }
   ];
 }
 

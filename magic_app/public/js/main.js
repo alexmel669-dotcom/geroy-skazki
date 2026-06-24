@@ -18,9 +18,9 @@ async function playWelcomeGreeting() {
   const name = getActiveChildName();
   const charId = getCharacter();
   const charName = CHARACTERS[charId]?.name || 'Люцик';
-  const text = name !== 'Гость'
+  const text = name !== 'Гость' && localStorage.getItem('profileComplete') === 'true'
     ? `Привет, ${name}! Я ${charName}. Давай поговорим или поиграем!`
-    : 'Привет! Я Люцик, твой сказочный друг. Нажми на микрофон и давай знакомиться!';
+    : 'Привет! Я кот Люцик. Как тебя зовут?';
   await synthesizeSpeech(text, charId);
 }
 
