@@ -19,6 +19,13 @@
       <input type="email" id="regEmail" placeholder="Ваш Email" required autocomplete="email">
       <input type="password" id="regPassword" placeholder="Пароль (мин. 6 символов)" required autocomplete="new-password" minlength="6">
       <input type="password" id="regPasswordConfirm" placeholder="Повторите пароль" required autocomplete="new-password" minlength="6">
+
+      <div class="form-group promocode-group">
+        <label for="promocode">🎁 Промокод (если есть)</label>
+        <input type="text" id="promocode" placeholder="Например: TESTER2026" autocomplete="off">
+        <span class="promocode-hint" id="promocodeHint"></span>
+      </div>
+
       <!-- Ребёнок 1 (обязательно) -->
       <div class="child-block">
         <label>👶 Ребёнок 1 *</label>
@@ -63,9 +70,43 @@
     
     <p class="auth-error" id="regError"></p>
     <p class="auth-link">Уже есть аккаунт? <a href="login.html">Войти</a></p>
+    <p class="auth-link" style="margin-top:12px;font-size:0.8rem;opacity:0.6;">
+      <a href="privacy.html">Конфиденциальность</a> · <a href="terms.html">Соглашение</a>
+    </p>
   </div>
 </div>
 <script>
+  const promocodeInput = document.getElementById('promocode');
+  const promocodeHint = document.getElementById('promocodeHint');
+  let promocodeValid = false;
+
+  promocodeInput?.addEventListener('blur', async () => {
+    const code = promocodeInput.value.trim();
+    if (!code) {
+      promocodeHint.textContent = '';
+      promocodeValid = false;
+      return;
+    }
+    try {
+      const res = await fetch('/api/promocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      const data = await res.json();
+      if (data.valid) {
+        promocodeHint.textContent = '✅ ' + data.message;
+        promocodeHint.style.color = '#81c784';
+        promocodeValid = true;
+      } else {
+        promocodeHint.textContent = '❌ ' + (data.message || 'Промокод не найден');
+        promocodeHint.style.color = '#ef9a9a';
+        promocodeValid = false;
+      }
+    } catch {
+      promocodeHint.textContent = '';
+    }
+  });
   function getChildGender(index) {
     return document.querySelector(`input[name="child${index}Gender"]:checked`)?.value || 'male';
   }
@@ -152,6 +193,7 @@
       return;
     }
     
+    const promocode = document.getElementById('promocode')?.value.trim() || '';
     errorDiv.style.display = 'none';
     const btn = e.target.querySelector('button');
     btn.textContent = 'Регистрация...';
@@ -162,7 +204,7 @@
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, children })
+        body: JSON.stringify({ email, password, children, promocode })
       });
       const data = await res.json();
       
@@ -172,6 +214,9 @@
         localStorage.setItem('isAuth', 'true');
         localStorage.setItem('guestMode', 'false');
         localStorage.setItem('userPlan', data.user?.plan || 'free');
+        if (data.user?.planExpiry) localStorage.setItem('planExpiry', data.user.planExpiry);
+        if (data.user?.promocodeUsed) localStorage.setItem('promocodeUsed', data.user.promocodeUsed);
+        if (data.promoMessage) localStorage.setItem('promoMessage', data.promoMessage);
         if (data.user?.role) localStorage.setItem('userRole', data.user.role);
         const savedChildren = data.user?.children?.length ? data.user.children : children;
         saveChildrenToLocal(savedChildren);

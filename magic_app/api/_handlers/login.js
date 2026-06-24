@@ -5,6 +5,7 @@ import { findUser, saveUser } from '../_lib/users.js';
 import { setAuthCookie } from '../_lib/cookies.js';
 import { logError } from '../_lib/auth-log.js';
 import jwt from 'jsonwebtoken';
+import { getEffectivePlan } from '../_lib/promocodes.js';
 import { getJwtSecret } from '../_middleware/auth.js';
 
 function signToken(user) {
@@ -58,7 +59,8 @@ export default async function handler(req, res) {
     user.lastLoginAt = new Date().toISOString();
     const saved = await saveUser(normalizedEmail, user);
 
-    const token = signToken(saved);
+    const effectivePlan = getEffectivePlan(saved);
+    const token = signToken({ ...saved, plan: effectivePlan });
     setAuthCookie(res, token);
 
     return res.status(200).json({
@@ -67,7 +69,9 @@ export default async function handler(req, res) {
       user: {
         username: saved.username,
         email: normalizedEmail,
-        plan: saved.plan || 'free',
+        plan: effectivePlan,
+        planExpiry: saved.planExpiry || null,
+        promocodeUsed: saved.promocodeUsed || null,
         role: saved.role || 'user',
         gender: saved.gender,
         age: saved.age,
