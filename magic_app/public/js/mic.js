@@ -18,7 +18,7 @@ let onAutoStopCallback = null;
 let onStateChangeCallback = null;
 let recordingStartTime = 0;
 
-const MIN_RECORD_MS = 400;
+const MIN_RECORD_MS = 600;
 const CHUNK_MS = 250;
 
 function cleanupStream() {
@@ -159,6 +159,80 @@ export function getRecordingMimeType() {
   return recordingMimeType || mediaRecorder?.mimeType || 'audio/webm';
 }
 
+function mixToMono(audioBuffer) {
+  const len = audioBuffer.length;
+  const out = new Float32Array(len);
+  const n = audioBuffer.numberOfChannels;
+  for (let ch = 0; ch < n; ch++) {
+    const data = audioBuffer.getChannelData(ch);
+    for (let i = 0; i < len; i++) out[i] += data[i] / n;
+  }
+  return out;
+}
+
+function resampleFloat32(input, fromRate, toRate) {
+  if (fromRate === toRate) return input;
+  const ratio = fromRate / toRate;
+  const outLen = Math.max(1, Math.round(input.length / ratio));
+  const out = new Float32Array(outLen);
+  for (let i = 0; i < outLen; i++) {
+    const pos = i * ratio;
+    const idx = Math.floor(pos);
+    const frac = pos - idx;
+    const a = input[idx] ?? 0;
+    const b = input[idx + 1] ?? a;
+    out[i] = a + (b - a) * frac;
+  }
+  return out;
+}
+
+function floatTo16BitPCM(float32) {
+  const out = new Int16Array(float32.length);
+  for (let i = 0; i < float32.length; i++) {
+    const s = Math.max(-1, Math.min(1, float32[i]));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return out;
+}
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+/** Подготовка аудио для Yandex STT: OGG как есть, WebM/MP4 → LPCM 16 kHz mono */
+export async function prepareAudioForStt(blob) {
+  const mime = (blob.type || getRecordingMimeType() || '').toLowerCase();
+  if (mime.includes('ogg')) {
+    const buf = await blob.arrayBuffer();
+    return {
+      base64: bytesToBase64(new Uint8Array(buf)),
+      contentType: mime.includes('codecs') ? mime : 'audio/ogg;codecs=opus',
+      format: 'oggopus'
+    };
+  }
+
+  const ctx = new AudioContext();
+  try {
+    const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
+    const mono = decoded.numberOfChannels > 1 ? mixToMono(decoded) : decoded.getChannelData(0);
+    const resampled = resampleFloat32(mono, decoded.sampleRate, 16000);
+    const pcm = floatTo16BitPCM(resampled);
+    return {
+      base64: bytesToBase64(new Uint8Array(pcm.buffer)),
+      contentType: 'audio/x-pcm;bit=16;rate=16000',
+      format: 'lpcm',
+      sampleRateHz: 16000
+    };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
+
 export async function stopRecording() {
   const elapsed = Date.now() - recordingStartTime;
   if (elapsed < MIN_RECORD_MS) {
@@ -289,7 +363,7 @@ export function setMicStateCallback(cb) {
 
 export default {
   isRecording, startRecording, stopRecording, cancelRecording,
-  getAudioBlob, playAudioFromUrl, getRecordingMimeType,
+  getAudioBlob, playAudioFromUrl, getRecordingMimeType, prepareAudioForStt,
   isMicrophoneSupported, requestMicrophonePermission, setMicStateCallback,
   browserSpeechRecognition
 };
