@@ -109,3 +109,17 @@ export async function getAdminStats() {
     updatedAt: new Date().toISOString()
   };
 }
+
+export async function updateChildProfile(email, data) {
+  const user = await findUser(email);
+  if (!user) return null;
+
+  user.childName = data.childName || user.childName;
+  user.childAge = data.childAge != null ? data.childAge : user.childAge;
+
+  if (Array.isArray(data.concerns) && data.concerns.length) {
+    user.concerns = [...new Set([...(user.concerns || []), ...data.concerns])];
+  }
+
+  return saveUser(email, user);
+}

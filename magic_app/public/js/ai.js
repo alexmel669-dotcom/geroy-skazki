@@ -29,12 +29,12 @@ const CHARACTER_PROMPTS = {
 
 const FEAR_GAME_HINTS = {
   darkness: 'Давай поиграем в игру про смелых героев! Нажми «Игры» 🌟',
-  monsters: 'Нарисуем монстра смешным? Нажми «Игры» — там раскраска! 🎨',
+  monsters: 'Нарисуем монстра смешным? Нажми «Игры» — там квест! 🗺️',
   loud_noises: 'Поиграем в спокойную игру? Нажми «Игры»! 🎮',
   strangers: 'Давай поиграем в игру про дружбу! Нажми «Игры»! 🧠',
   separation: 'Я рядом! Нажми «Игры» — поиграем вместе! 🐱',
   school: 'Школа — как квест! Нажми «Игры»! 🎯',
-  peers: 'Друзья важны! Нажми «Игры» — угадай эмоции! 😊'
+  peers: 'Друзья важны! Нажми «Игры» — загадки и квест! 🗺️'
 };
 
 const CONTINUE_RE = /^(давай|расскажи\s*ещё|расскажи\s*еще|продолжай|ещё|еще|дальше|продолжи)/i;
@@ -108,19 +108,32 @@ export function buildSystemPrompt(childInfo = {}) {
   const role = CHARACTER_PROMPTS[currentCharacter] || CHARACTER_PROMPTS.lucik;
   const name = childInfo.name || 'малыш';
   const age = childInfo.age || 5;
-  const fearHint = 'В игровой форме, через сказки и вопросы, помоги ребёнку рассказать о том, что его беспокоит. Не спрашивай прямо «чего ты боишься?». Например: «А давай придумаем сказку про мальчика, который…»';
+  const fearHint = 'Будь мягким собеседником. Не спрашивай прямо про страхи. Рассказывай сказки и спрашивай «А как бы ты поступил?»';
   const continueHint = 'Если ребёнок говорит «давай», «расскажи ещё», «продолжай» — продолжай предыдущую тему. Не начинай новый разговор.';
   const topicLine = currentTopic ? `\nТекущая тема: ${currentTopic}` : '';
   return `${role}\n\nРебёнка зовут ${name}, ${age} лет.${topicLine}\n\n${fearHint}\n${continueHint}\n\nОтвечай на русском, 2-5 предложений.`;
 }
 
+export function getProfileForAI(childInfo = {}) {
+  const storedName = localStorage.getItem('profileChildName') || '';
+  const storedAge = localStorage.getItem('profileChildAge') || '';
+  const name = childInfo.name && childInfo.name !== 'Гость' ? childInfo.name : storedName;
+  const age = childInfo.age || (storedAge ? parseInt(storedAge, 10) : null);
+  const store = readStore();
+  const isFirstMessage = store.messages.length === 0;
+  return { name: name || null, age: age || null, isFirstMessage };
+}
+
 export async function generateResponse(prompt, childInfo = {}) {
   console.log('🤖 generate:', prompt, 'char:', currentCharacter, 'topic:', currentTopic);
+  const profile = getProfileForAI(childInfo);
   const store = readStore();
   const history = store.messages.slice(-MAX_API_MESSAGES).map((m) => ({
     role: m.role === 'bot' ? 'assistant' : 'user',
     content: m.message
   }));
+
+  const fallback = { text: localFallback(prompt), childName: null, childAge: null, concerns: null, mood: 'neutral' };
 
   try {
     const response = await fetch('/api/generate', {
@@ -128,24 +141,33 @@ export async function generateResponse(prompt, childInfo = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: prompt,
-        childName: childInfo.name || 'малыш',
-        childAge: childInfo.age || 5,
+        childName: profile.name,
+        childAge: profile.age,
         character: currentCharacter,
         characterName: CHARACTERS[currentCharacter]?.name || 'Люцик',
-        systemPrompt: buildSystemPrompt(childInfo),
+        systemPrompt: buildSystemPrompt({ name: profile.name || 'малыш', age: profile.age || 5 }),
         history,
-        topic: currentTopic
+        topic: currentTopic,
+        isFirstMessage: profile.isFirstMessage
       })
     });
     if (response.ok) {
       const data = await response.json();
       if (typeof data.ms === 'number') globalThis.__lastAiMs = data.ms;
-      if (data.reply) return data.reply;
+      if (data.reply) {
+        return {
+          text: data.reply,
+          childName: data.childName || null,
+          childAge: data.childAge != null ? data.childAge : null,
+          concerns: data.concerns || null,
+          mood: data.mood || 'neutral'
+        };
+      }
     }
   } catch (err) {
     console.warn('⚠️ generate API failed:', err);
   }
-  return localFallback(prompt);
+  return fallback;
 }
 
 export function detectFear(text) {

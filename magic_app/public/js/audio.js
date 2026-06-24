@@ -3,6 +3,7 @@
 // ========================================
 
 import { playAudioFromUrl } from './mic.js';
+import { setAvatarState } from './ui.js';
 
 let currentUtterance = null;
 let speechQueue = [];
@@ -68,8 +69,10 @@ export async function synthesizeSpeech(text, character = 'lucik') {
       const data = await response.json();
       if (data.audioUrl) {
         isSpeaking = true;
+        setAvatarState('speaking');
         await playAudioFromUrl(data.audioUrl);
         isSpeaking = false;
+        setAvatarState(null);
         processQueue();
         return;
       }

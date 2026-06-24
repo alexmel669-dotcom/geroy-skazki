@@ -16,6 +16,10 @@ import analytics from './_handlers/analytics.js';
 
 import sync from './_handlers/sync.js';
 
+import profileUpdate from './_handlers/profile-update.js';
+
+import psychologistHelp from './_handlers/psychologist-help.js';
+
 
 
 const ROUTES = {
@@ -46,7 +50,11 @@ const ROUTES = {
 
   'sync-child-data': sync,
 
-  'user/sync': sync
+  'user/sync': sync,
+
+  'profile-update': profileUpdate,
+
+  'psychologist-help': psychologistHelp
 
 };
 

@@ -25,6 +25,24 @@ export function updateUI() {
     updateAvatar();
 }
 
+export function setAvatarState(state) {
+  const avatar = document.getElementById('avatar');
+  if (!avatar) return;
+  avatar.classList.remove(
+    'avatar-listening', 'avatar-speaking', 'avatar-sleepy',
+    'avatar-happy', 'avatar-eating', 'talking', 'listening'
+  );
+  if (!state) return;
+  const map = {
+    listening: 'avatar-listening',
+    speaking: 'avatar-speaking',
+    sleepy: 'avatar-sleepy',
+    happy: 'avatar-happy',
+    eating: 'avatar-eating'
+  };
+  if (map[state]) avatar.classList.add(map[state]);
+}
+
 function updateAvatar() {
     const avatar = document.getElementById('avatar');
     if (!avatar) return;
@@ -249,5 +267,6 @@ export default {
     showModal,
     hideModal,
     initDevPanel,
-    setLastAiTiming
+    setLastAiTiming,
+    setAvatarState
 };

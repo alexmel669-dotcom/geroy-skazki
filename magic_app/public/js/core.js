@@ -3,7 +3,7 @@
 // v4.1.0 (на базе 4.0.8 + доработки)
 // ========================================
 
-import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, migrateFearStatsObject } from './config.js';
+import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject } from './config.js';
 import {
   generateResponse, detectFear, detectAlertWords, detectPersonalData,
   setCharacter, getCharacter, addToContext, clearContext,
@@ -21,8 +21,9 @@ import { initSecurity, checkBadWords, sanitizeInput, sanitizeText } from './secu
 import { startFishGame } from './games/fish.js';
 import { startMemoryGame } from './games/memory.js';
 import { startPuzzleGame } from './games/puzzle.js';
-import { startEmotionGame } from './games/emotion.js';
-import { startColoringGame } from './games/coloring.js';
+import { startRiddlesGame } from './games/riddles.js';
+import { startQuestGame } from './games/quest.js';
+import { setAvatarState } from './ui.js';
 
 // ========================================
 // STATE
@@ -127,6 +128,97 @@ export function canAccessCharacter(id) {
 
 export function canAccessGame(id) {
   return PLANS[getUserPlan()].games.includes(id);
+}
+
+function updateAvatarMoodState() {
+  const hour = new Date().getHours();
+  if (hour >= 20 || hour < 6) {
+    setAvatarState('sleepy');
+  } else {
+    setAvatarState(null);
+  }
+}
+
+function getChildAgeForGames() {
+  const child = getActiveChild();
+  if (child?.age) return child.age;
+  const stored = parseInt(localStorage.getItem('profileChildAge') || '0', 10);
+  return stored || 5;
+}
+
+function isGameAgeAppropriate(gameId) {
+  const game = GAMES[gameId];
+  if (!game?.ages) return true;
+  const age = getChildAgeForGames();
+  return age >= game.ages[0] && age <= game.ages[1];
+}
+
+async function syncProfileToServer(data) {
+  if (localStorage.getItem('guestMode') === 'true') return;
+  if (!localStorage.getItem('userToken') && localStorage.getItem('isAuth') !== 'true') return;
+  try {
+    await fetch('/api/profile-update', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+  } catch (e) {
+    console.warn('Profile sync failed:', e);
+  }
+}
+
+function saveDetectedProfile({ childName, childAge }) {
+  if (childName) {
+    localStorage.setItem('profileChildName', childName);
+    localStorage.setItem('profileComplete', localStorage.getItem('profileChildAge') ? 'true' : 'partial');
+  }
+  if (childAge != null && childAge !== '') {
+    localStorage.setItem('profileChildAge', String(childAge));
+    localStorage.setItem('profileComplete', 'true');
+  }
+
+  const children = getChildren();
+  if (childName && (children.length === 0 || getActiveChildName() === 'Гость')) {
+    const ageNum = parseInt(childAge, 10) || 5;
+    const gender = 'female';
+    const avatarRole = 'kid1';
+    const newChild = { name: childName, age: ageNum, gender, avatar: 'kid1.png', avatarRole, index: 0 };
+    localStorage.setItem('children', JSON.stringify([newChild]));
+    localStorage.setItem('childrenNames', childName);
+    setActiveChild(0);
+  } else if (childName && children.length) {
+    const idx = getActiveChildIndex() >= 0 ? getActiveChildIndex() : 0;
+    if (children[idx]) {
+      children[idx].name = childName;
+      if (childAge != null) children[idx].age = parseInt(childAge, 10) || children[idx].age;
+      localStorage.setItem('children', JSON.stringify(children));
+      setActiveChild(idx);
+    }
+  }
+
+  syncProfileToServer({ childName, childAge });
+}
+
+function saveParentConcerns(concerns) {
+  if (!concerns?.length) return;
+  const existing = safeParseJSON(localStorage.getItem('parentConcerns'), []) || [];
+  const merged = [...new Set([...existing, ...concerns])];
+  localStorage.setItem('parentConcerns', JSON.stringify(merged));
+  syncProfileToServer({ concerns: merged });
+}
+
+function getChildContextForAI() {
+  const child = getActiveChild();
+  const profileName = localStorage.getItem('profileChildName');
+  const profileAge = localStorage.getItem('profileChildAge');
+  if (child?.name && child.name !== 'Гость') {
+    return { name: child.name, age: child.age || parseInt(profileAge, 10) || 5 };
+  }
+  return {
+    name: profileName || 'малыш',
+    age: profileAge ? parseInt(profileAge, 10) : 5
+  };
 }
 
 function childGenderEmoji(role) {
@@ -260,6 +352,7 @@ export function initCore() {
   updateStatsDisplay();
   resetDailyCounters();
   if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
+  updateAvatarMoodState();
   setMicVisualState('idle');
   console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION} готов к работе`);
 }
@@ -742,6 +835,7 @@ async function beginRecording() {
       onAutoStop: () => finishRecording(),
       onStateChange: setMicVisualState
     });
+    setAvatarState('listening');
     document.getElementById('avatar')?.classList.add('listening');
     if (finishQueued) {
       finishQueued = false;
@@ -784,6 +878,8 @@ async function finishRecordingInternal() {
     micEnding = false;
     finishQueued = false;
     setMicVisualState('idle');
+    setAvatarState(null);
+    updateAvatarMoodState();
     document.getElementById('avatar')?.classList.remove('listening', 'talking');
   }
 }
@@ -799,8 +895,10 @@ async function handleLongPress() {
     isProcessing = true;
     const micBtn = document.getElementById('micBtn');
     if (micBtn) micBtn.textContent = '🌙';
+    setAvatarState('eating');
     try {
-      const reply = await generateResponse('Расскажи сказку на ночь', getActiveChild() || {});
+      const aiResult = await generateResponse('Расскажи сказку на ночь', getChildContextForAI());
+      const reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
       if (globalThis.__lastAiMs) applyAiTiming();
       await synthesizeSpeech(reply, getCharacter());
       incrementStories();
@@ -811,6 +909,7 @@ async function handleLongPress() {
     } finally {
       isProcessing = false;
       if (micBtn) micBtn.textContent = '🎤';
+      updateAvatarMoodState();
     }
   }
 }
@@ -844,9 +943,18 @@ async function handleUserMessage(text) {
     saveAlertForParent(text, alerts, 'child');
   }
 
-  if (avatar) avatar.classList.add('talking');
-  const child = getActiveChild();
-  let reply = await generateResponse(text, child ? { name: child.name, age: child.age } : {});
+  if (avatar) {
+    avatar.classList.add('talking');
+    setAvatarState('speaking');
+  }
+  const aiResult = await generateResponse(text, getChildContextForAI());
+  let reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
+  if (typeof aiResult === 'object' && aiResult) {
+    if (aiResult.childName || aiResult.childAge != null) {
+      saveDetectedProfile({ childName: aiResult.childName, childAge: aiResult.childAge });
+    }
+    if (aiResult.concerns?.length) saveParentConcerns(aiResult.concerns);
+  }
   if (globalThis.__lastAiMs) applyAiTiming();
   reply = sanitizeText(reply);
 
@@ -870,6 +978,8 @@ async function handleUserMessage(text) {
   if (isSuspicious) saveAlertForParent(reply, [...botAlerts, ...botPersonal], 'ai');
 
   await synthesizeSpeech(reply, getCharacter());
+  setAvatarState(null);
+  updateAvatarMoodState();
   if (shouldSuggestFearGame(allFears)) {
     await synthesizeSpeech(getFearGameSuggestion(allFears[0]), getCharacter());
   }
@@ -908,17 +1018,14 @@ export function showGamesMenu() {
   const overlay = document.createElement('div');
   overlay.id = 'gamesMenuOverlay';
   overlay.className = 'game-overlay';
-  const gameList = [
-    { id: 'fish', label: '🎣 Рыбалка' },
-    { id: 'memory', label: '🧠 Мемори' },
-    { id: 'puzzle', label: '🧩 Пазл' },
-    { id: 'emotion', label: '😊 Эмоции' },
-    { id: 'coloring', label: '🎨 Раскраска' }
-  ];
+  const gameList = Object.entries(GAMES).map(([id, g]) => ({ id, label: `${g.icon} ${g.name}` }));
 
   const buttonsHtml = gameList.map(({ id, label }) => {
-    const locked = !canAccessGame(id);
-    return `<button class="modal-btn${locked ? ' disabled' : ''}" data-game="${id}" ${locked ? 'data-locked="1"' : ''}>${label}${locked ? ' 🔒' : ''}</button>`;
+    const lockedPlan = !canAccessGame(id);
+    const lockedAge = !isGameAgeAppropriate(id);
+    const locked = lockedPlan || lockedAge;
+    const reason = lockedAge && !lockedPlan ? ' (другой возраст)' : '';
+    return `<button class="modal-btn${locked ? ' disabled' : ''}" data-game="${id}" ${locked ? 'data-locked="1"' : ''}>${label}${locked ? ' 🔒' : ''}${reason}</button>`;
   }).join('');
 
   overlay.innerHTML = `
@@ -934,8 +1041,10 @@ export function showGamesMenu() {
     fish: startFishGame,
     memory: startMemoryGame,
     puzzle: startPuzzleGame,
-    emotion: startEmotionGame,
-    coloring: startColoringGame
+    riddles: startRiddlesGame,
+    quest: startQuestGame,
+    emotion: startRiddlesGame,
+    coloring: startQuestGame
   };
 
   overlay.querySelectorAll('[data-game]').forEach((btn) => {
