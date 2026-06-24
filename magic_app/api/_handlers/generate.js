@@ -1,196 +1,82 @@
 import { setCors } from '../_middleware/cors.js';
-
 import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
 
+const CHARACTER_PROMPTS = {
+  lucik: 'Ты — Люцик, сказочный кот-волшебник, друг и помощник ребёнка. Тёплый, с мурчанием (мурр, мяу). Помогаешь через сказки и игры.',
+  mom: 'Ты — мама ребёнка. Ласковая: солнышко, родной. Успокаиваешь, обнимаешь словами.',
+  dad: 'Ты — папа ребёнка. Уверенный, спокойный: давай разберёмся, я рядом, ты справишься.',
+  kid1: 'Ты — друг-сверстник мальчик. Простые, короткие фразы. Делитесь секретами на равных.',
+  kid2: 'Ты — подруга-сверстница. Простые, короткие фразы. Делитесь секретами на равных.'
+};
 
-
-function buildSystemPrompt(childName, childAge) {
-
+function buildSystemPrompt({ childName, childAge, character, systemPrompt, topic }) {
+  if (systemPrompt) return systemPrompt;
   const age = Math.min(14, Math.max(3, parseInt(childAge, 10) || 5));
-
-  const isYoung = age <= 7;
-
-  const isTeen = age >= 10;
-
-
-
-  let style = 'Говори просто, тепло и сказочно. Короткие фразы (2-4 предложения), эмодзи.';
-
-  if (isTeen) {
-
-    style = 'Говори уважительно и по-дружески, без сюсюканья. Поддерживай самостоятельность. 3-5 предложений.';
-
-  } else if (!isYoung) {
-
-    style = 'Говори понятно и поддерживающе. Можно чуть длиннее (3-4 предложения), эмодзи умеренно.';
-
-  }
-
-
-
-  const themes = isTeen
-
-    ? 'Можешь обсуждать школу, друзей, самооценку, конфликты со сверстниками, экзамены.'
-
-    : isYoung
-
-      ? 'Фокус на сказках, играх, базовых страхах (темнота, монстры).'
-
-      : 'Можешь затрагивать школу, дружбу, новые ситуации.';
-
-
-
-  return `Ты — Люцик, волшебный кот-помощник для детей 3-14 лет.
-
-Ребёнка зовут ${childName || 'малыш'}, ему/ей ${age} лет.
-
-${style}
-
-${themes}
-
-Помогай справляться со страхами через истории и разговор. Не используй сложные или пугающие слова.`;
-
+  const role = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
+  const fearHint = 'В игровой форме, через сказки, помоги ребёнку рассказать о беспокойствах. Не спрашивай прямо «чего ты боишься?».';
+  const continueHint = 'Если ребёнок говорит «давай», «расскажи ещё», «продолжай» — продолжай предыдущую тему.';
+  const topicLine = topic ? `\nТекущая тема: ${topic}` : '';
+  return `${role}\n\nРебёнок: ${childName || 'малыш'}, ${age} лет.${topicLine}\n${fearHint}\n${continueHint}\nОтвечай на русском, 2-5 предложений.`;
 }
-
-
 
 export default async function handler(req, res) {
-
   if (setCors(req, res)) return;
-
-
-
-  if (req.method !== 'POST') {
-
-    return res.status(405).json({ error: 'Method not allowed' });
-
-  }
-
-
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const key = getRateLimitKey(req);
-
-  if (!checkRateLimit(key, 10)) {
-
-    return res.status(429).json({ error: 'Too many requests' });
-
-  }
-
-
+  if (!checkRateLimit(key, 10)) return res.status(429).json({ error: 'Too many requests' });
 
   const started = Date.now();
-
-
-
   try {
+    const { message, childName, childAge, character, systemPrompt, history, topic } = req.body;
+    if (!message) return res.status(400).json({ error: 'Message is required' });
 
-    const { message, childName, childAge } = req.body;
-
-
-
-    if (!message) {
-
-      return res.status(400).json({ error: 'Message is required' });
-
-    }
-
-
+    const sys = buildSystemPrompt({ childName, childAge, character, systemPrompt, topic });
 
     if (!process.env.DEEPSEEK_API_KEY) {
-
-      const age = parseInt(childAge, 10) || 5;
-
-      const devReplies = age >= 10
-
-        ? ['Понимаю тебя. Школа и друзья — непросто, но ты справишься 💪', 'Расскажи подробнее — я рядом и готов выслушать.']
-
-        : ['Привет! Я Люцик 🐱 Расскажи, о чём хочешь услышать сказку?', 'Мур-мур! Давай придумаем историю про храброго героя!'];
-
       return res.status(200).json({
-
-        reply: devReplies[Math.floor(Math.random() * devReplies.length)],
-
+        reply: `Мурр! Я ${character || 'Люцик'}, слушаю тебя, ${childName || 'малыш'}! 🐱`,
         devMode: true,
-
         ms: Date.now() - started
-
       });
-
     }
 
-
+    const messages = [{ role: 'system', content: sys }];
+    if (Array.isArray(history)) {
+      history.slice(-20).forEach((item) => {
+        if (!item?.content) return;
+        messages.push({
+          role: item.role === 'assistant' || item.role === 'bot' ? 'assistant' : 'user',
+          content: String(item.content).slice(0, 500)
+        });
+      });
+    }
+    messages.push({ role: 'user', content: message });
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-
       method: 'POST',
-
       headers: {
-
         'Content-Type': 'application/json',
-
         Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`
-
       },
-
       body: JSON.stringify({
-
         model: 'deepseek-chat',
-
-        messages: [
-
-          { role: 'system', content: buildSystemPrompt(childName, childAge) },
-
-          { role: 'user', content: message }
-
-        ],
-
-        max_tokens: 250,
-
-        temperature: 0.8
-
+        messages,
+        max_tokens: 300,
+        temperature: 0.85
       })
-
     });
 
-
-
-    if (!response.ok) {
-
-      throw new Error(`DeepSeek API error: ${response.status}`);
-
-    }
-
-
-
+    if (!response.ok) throw new Error(`DeepSeek: ${response.status}`);
     const data = await response.json();
-
     const reply = data.choices?.[0]?.message?.content;
-
-
-
-    if (!reply) {
-
-      throw new Error('Empty AI response');
-
-    }
-
-
-
+    if (!reply) throw new Error('Empty AI response');
     return res.status(200).json({ reply, ms: Date.now() - started });
-
   } catch (error) {
-
     console.error('Generate error:', error);
-
     return res.status(200).json({
-
       reply: 'Мурр... Я немного задумался. Давай попробуем ещё раз? 🐱',
-
       ms: Date.now() - started
-
     });
-
   }
-
 }
-

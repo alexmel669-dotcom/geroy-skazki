@@ -1,5 +1,6 @@
 import { CONFIG, FEAR_LABELS, migrateFearStatsObject, getFearDisplayName } from './config.js';
 import { safeParseJSON, getChildren } from './core.js';
+import { getGameProgressSummary } from './game-progress.js';
 
 let currentChildIndex = parseInt(localStorage.getItem('activeChildIndex') ?? '-1', 10);
 if (Number.isNaN(currentChildIndex)) currentChildIndex = -1;
@@ -205,6 +206,23 @@ function renderInsights(fearStats, totalStories, totalGames, history) {
   document.getElementById('insightsContainer').innerHTML = html || '<div class="empty-state">Недостаточно данных</div>';
 }
 
+function renderGameProgress(childName) {
+  const container = document.getElementById('gameProgressContainer');
+  if (!container) return;
+  const games = getGameProgressSummary(childName === 'Гость' ? 'guest' : childName);
+  container.innerHTML = games.map((g) => {
+    const pct = Math.min(100, Math.round((g.value / g.max) * 100));
+    return `
+      <div class="fear-item" style="margin-bottom:12px;">
+        <div class="fear-header">
+          <span class="name">${g.label}</span>
+          <span class="pct">${g.detail}</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+      </div>`;
+  }).join('');
+}
+
 function loadAllData() {
   const children = getChildren();
   const stats = getChildStats();
@@ -229,6 +247,7 @@ function loadAllData() {
   `;
 
   renderProgress(fearStats, totalStories, totalGames);
+  renderGameProgress(child ? child.name : 'guest');
   renderWeekActivity(history);
   renderFears(fearStats);
   renderDialogs(history);

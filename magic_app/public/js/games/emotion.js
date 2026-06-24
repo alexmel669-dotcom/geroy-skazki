@@ -1,6 +1,7 @@
-import { appState } from '../core.js';
+import { appState, getActiveChildName } from '../core.js';
 import { showModal } from '../ui.js';
 import { updateAchievement } from '../achievements.js';
+import { recordEmotionComplete } from '../game-progress.js';
 
 export function startEmotionGame() {
   if (appState.gameActive) return;
@@ -35,6 +36,7 @@ export function startEmotionGame() {
   function updateQuestion() {
     if (score >= 5) {
       updateAchievement('emotion_master');
+      recordEmotionComplete(score, getActiveChildName());
       showModal('Победа!', 'Ты угадал все эмоции!');
       container.remove();
       appState.gameActive = false;

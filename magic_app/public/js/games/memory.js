@@ -1,7 +1,8 @@
-import { appState, saveChildData } from '../core.js';
+import { appState, saveChildData, getActiveChildName } from '../core.js';
 import { showModal } from '../ui.js';
 import { updateAchievement } from '../achievements.js';
 import { trackEvent } from '../analytics.js';
+import { recordMemoryWin } from '../game-progress.js';
 
 export function startMemoryGame() {
   if (appState.gameActive) return;
@@ -94,6 +95,7 @@ export function startMemoryGame() {
               // Проверка победы
               if (appState.memoryMatches === 8) {
                 updateAchievement('memory_champion');
+                recordMemoryWin(8, getActiveChildName());
                 trackEvent('memory_game_won', { attempts });
                 
                 setTimeout(() => {

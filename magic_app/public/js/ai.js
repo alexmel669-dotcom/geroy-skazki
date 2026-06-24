@@ -1,248 +1,235 @@
 // ========================================
-
-// ai.js — ИИ И ГЕНЕРАЦИЯ ОТВЕТОВ
-
+// ai.js — ИИ, РОЛИ, ПАМЯТЬ ДИАЛОГА
 // ========================================
 
-
+import { CHARACTERS } from './config.js';
 
 let currentCharacter = 'lucik';
-
-let contextHistory = [];
-
-
-
-const LOCAL_RESPONSES = [
-
-  'Привет! Расскажи мне сказку?',
-
-  'Как у тебя дела?',
-
-  'Что интересного случилось сегодня?',
-
-  'Давай поиграем!',
-
-  'Я люблю слушать твои истории!',
-
-  'Расскажи что-нибудь интересное!',
-
-  'Ты сегодня молодец!',
-
-  'Продолжай в том же духе!'
-
-];
-
-
-
-function localFallback(prompt) {
-
-  if (prompt && prompt.length > 0) {
-
-    const p = prompt.toLowerCase();
-
-    if (p.includes('сказк') || p.includes('расскажи')) {
-
-      return 'Жил-был маленький волшебник. Он путешествовал по сказочной стране и помогал всем, кто попадал в беду. Хочешь узнать, что было дальше?';
-
-    }
-
-    if (p.includes('страш') || p.includes('боюсь')) {
-
-      return 'Не бойся! Ты очень смелый(ая). Помни, что все страхи можно победить, если быть храбрым. Я всегда рядом с тобой!';
-
-    }
-
-    if (p.includes('игр') || p.includes('поигра')) {
-
-      return 'Отлично! Давай поиграем. Нажми на кнопку «Игры» — там много интересного!';
-
-    }
-
-  }
-
-  return LOCAL_RESPONSES[Math.floor(Math.random() * LOCAL_RESPONSES.length)];
-
-}
-
-
-
-export async function generateResponse(prompt, childInfo = {}) {
-
-  console.log('🤖 AI generating response for:', prompt);
-
-
-
-  try {
-
-    const response = await fetch('/api/generate', {
-
-      method: 'POST',
-
-      headers: { 'Content-Type': 'application/json' },
-
-      body: JSON.stringify({
-
-        message: prompt,
-
-        childName: childInfo.name || 'малыш',
-
-        childAge: childInfo.age || 5
-
-      })
-
-    });
-
-
-
-    if (response.ok) {
-
-      const data = await response.json();
-
-      if (typeof data.ms === 'number') globalThis.__lastAiMs = data.ms;
-
-      if (data.reply) return data.reply;
-
-    }
-
-  } catch (err) {
-
-    console.warn('⚠️ API generate failed, using local fallback:', err);
-
-  }
-
-
-
-  return localFallback(prompt);
-
-}
-
-
-
-export function detectFear(text) {
-
-  const fears = [];
-
-  const fearKeywords = {
-
-    darkness: ['темно', 'страшно', 'боюсь', 'тьма', 'темнот'],
-
-    monsters: ['монстр', 'чудовище', 'бабайка'],
-
-    loud_noises: ['громко', 'шумно', 'взрыв'],
-
-    strangers: ['чужой', 'незнакомец', 'посторонний'],
-
-    separation: ['один', 'без мамы', 'без папы', 'одиноч'],
-
-    school: ['школ', 'урок', 'учител', 'контрольн', 'экзамен', 'домашк'],
-
-    peers: ['друг', 'однокласс', 'сверстник', 'обижа', 'травл', 'компани']
-
-  };
-
-
-
-  const lowerText = text.toLowerCase();
-
-  for (const [fear, keywords] of Object.entries(fearKeywords)) {
-
-    if (keywords.some((keyword) => lowerText.includes(keyword))) fears.push(fear);
-
-  }
-
-  return fears;
-
-}
-
-
-
-export function detectAlertWords(text) {
-
-  const alerts = [];
-
-  const alertKeywords = ['обижают', 'бьют', 'ругают', 'кричат', 'страшно', 'помогите'];
-
-  const lowerText = text.toLowerCase();
-
-  for (const word of alertKeywords) {
-
-    if (lowerText.includes(word)) alerts.push(word);
-
-  }
-
-  return alerts;
-
-}
-
-
-
-export function detectPersonalData(text) {
-
-  const found = [];
-
-  const phonePattern = /(\+\d{1,3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{2}[-.\s]?\d{2})/;
-
-  const emailPattern = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
-
-  if (phonePattern.test(text)) found.push('phone');
-
-  if (emailPattern.test(text)) found.push('email');
-
-  return found;
-
-}
-
-
-
-export function setCharacter(characterId) {
-
-  currentCharacter = characterId;
-
-  console.log('🎭 Character set to:', characterId);
-
-}
-
-
-
-export function getCharacter() {
-
-  return currentCharacter;
-
-}
-
-
-
-export function addToContext(role, message) {
-
-  contextHistory.push({ role, message, timestamp: Date.now() });
-
-  if (contextHistory.length > 20) contextHistory = contextHistory.slice(-20);
-
-}
-
-
-
-export function clearContext() {
-
-  contextHistory = [];
-
-}
-
-
-
-export function getContext() {
-
-  return [...contextHistory];
-
-}
-
-
-
-export default {
-
-  generateResponse, detectFear, detectAlertWords, detectPersonalData,
-
-  setCharacter, getCharacter, addToContext, clearContext, getContext
-
+let currentTopic = '';
+let topicDialogCount = 0;
+let activeChatKey = 'chatHistory_guest';
+
+const CHAT_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
+const CHAT_IDLE_MS = 30 * 60 * 1000;
+const MAX_STORED_MESSAGES = 200;
+const MAX_API_MESSAGES = 20;
+
+const CHARACTER_PROMPTS = {
+  lucik: 'Ты — Люцик, сказочный кот-волшебник, друг и помощник ребёнка. Говори тепло, с мурчанием (мурр, мяу). Помогаешь через сказки и игры. Не читай нотации, не будь как родитель. В игровой форме помогаешь рассказать о страхах.',
+  mom: 'Ты — мама ребёнка. Говори ласково: солнышко, родной, мой хороший. Успокаивай, обнимай словами. Мягко спрашивай о чувствах без давления.',
+  dad: 'Ты — папа ребёнка. Говори уверенно и по-доброму: давай разберёмся, я рядом, ты справишься. Хвали за смелость, придумывайте истории про героев.',
+  kid1: 'Ты — друг-сверстник мальчик. Говори просто, коротко, эмоционально. Делитесь секретами. «Я тоже иногда боюсь, но знаешь что мне помогает?»',
+  kid2: 'Ты — подруга-сверстница. Говори просто, коротко, эмоционально. Делитесь секретами. «Я тоже иногда боюсь, но знаешь что мне помогает?»'
 };
 
+const FEAR_GAME_HINTS = {
+  darkness: 'Давай поиграем в игру про смелых героев! Нажми «Игры» 🌟',
+  monsters: 'Нарисуем монстра смешным? Нажми «Игры» — там раскраска! 🎨',
+  loud_noises: 'Поиграем в спокойную игру? Нажми «Игры»! 🎮',
+  strangers: 'Давай поиграем в игру про дружбу! Нажми «Игры»! 🧠',
+  separation: 'Я рядом! Нажми «Игры» — поиграем вместе! 🐱',
+  school: 'Школа — как квест! Нажми «Игры»! 🎯',
+  peers: 'Друзья важны! Нажми «Игры» — угадай эмоции! 😊'
+};
+
+const CONTINUE_RE = /^(давай|расскажи\s*ещё|расскажи\s*еще|продолжай|ещё|еще|дальше|продолжи)/i;
+
+const LOCAL_RESPONSES = [
+  'Привет! Расскажи мне сказку?', 'Как у тебя дела?', 'Давай поиграем!',
+  'Я люблю слушать твои истории!'
+];
+
+function localFallback(prompt) {
+  const p = (prompt || '').toLowerCase();
+  if (CONTINUE_RE.test(p.trim()) && currentTopic) {
+    return `Помню! Мы говорили про «${currentTopic}». Что было дальше?`;
+  }
+  if (p.includes('сказк')) return 'Жил-был герой. Он отправился в путь и встретил друзей. Хочешь узнать, что дальше?';
+  if (p.includes('боюсь') || p.includes('страш')) return 'Не бойся! Я рядом с тобой!';
+  if (p.includes('игр')) return 'Нажми «Игры» — там много интересного!';
+  return LOCAL_RESPONSES[Math.floor(Math.random() * LOCAL_RESPONSES.length)];
+}
+
+export function getChatStorageKey(childName) {
+  const safe = (childName || 'guest').replace(/[^\w\u0400-\u04FF-]/gi, '_').slice(0, 40);
+  return `chatHistory_${safe}`;
+}
+
+function readStore() {
+  try {
+    const data = JSON.parse(localStorage.getItem(activeChatKey) || '{}');
+    return {
+      messages: data.messages || [],
+      topic: data.topic || '',
+      topicDialogCount: data.topicDialogCount || 0,
+      lastActivityAt: data.lastActivityAt || Date.now()
+    };
+  } catch {
+    return { messages: [], topic: '', topicDialogCount: 0, lastActivityAt: Date.now() };
+  }
+}
+
+function writeStore(data) {
+  const now = Date.now();
+  const messages = (data.messages || [])
+    .filter((m) => now - (m.timestamp || 0) < CHAT_RETENTION_MS)
+    .slice(-MAX_STORED_MESSAGES);
+  localStorage.setItem(activeChatKey, JSON.stringify({
+    messages,
+    topic: data.topic || '',
+    topicDialogCount: data.topicDialogCount || 0,
+    lastActivityAt: now
+  }));
+}
+
+export function setChatChild(childName) {
+  activeChatKey = getChatStorageKey(childName === 'Гость' ? 'guest' : childName);
+}
+
+export function loadChatHistory(childName) {
+  setChatChild(childName);
+  const data = readStore();
+  if (Date.now() - data.lastActivityAt > CHAT_IDLE_MS) {
+    currentTopic = '';
+    topicDialogCount = 0;
+  } else {
+    currentTopic = data.topic;
+    topicDialogCount = data.topicDialogCount;
+  }
+  return data.messages;
+}
+
+export function buildSystemPrompt(childInfo = {}) {
+  const role = CHARACTER_PROMPTS[currentCharacter] || CHARACTER_PROMPTS.lucik;
+  const name = childInfo.name || 'малыш';
+  const age = childInfo.age || 5;
+  const fearHint = 'В игровой форме, через сказки и вопросы, помоги ребёнку рассказать о том, что его беспокоит. Не спрашивай прямо «чего ты боишься?». Например: «А давай придумаем сказку про мальчика, который…»';
+  const continueHint = 'Если ребёнок говорит «давай», «расскажи ещё», «продолжай» — продолжай предыдущую тему. Не начинай новый разговор.';
+  const topicLine = currentTopic ? `\nТекущая тема: ${currentTopic}` : '';
+  return `${role}\n\nРебёнка зовут ${name}, ${age} лет.${topicLine}\n\n${fearHint}\n${continueHint}\n\nОтвечай на русском, 2-5 предложений.`;
+}
+
+export async function generateResponse(prompt, childInfo = {}) {
+  console.log('🤖 generate:', prompt, 'char:', currentCharacter, 'topic:', currentTopic);
+  const store = readStore();
+  const history = store.messages.slice(-MAX_API_MESSAGES).map((m) => ({
+    role: m.role === 'bot' ? 'assistant' : 'user',
+    content: m.message
+  }));
+
+  try {
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: prompt,
+        childName: childInfo.name || 'малыш',
+        childAge: childInfo.age || 5,
+        character: currentCharacter,
+        characterName: CHARACTERS[currentCharacter]?.name || 'Люцик',
+        systemPrompt: buildSystemPrompt(childInfo),
+        history,
+        topic: currentTopic
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (typeof data.ms === 'number') globalThis.__lastAiMs = data.ms;
+      if (data.reply) return data.reply;
+    }
+  } catch (err) {
+    console.warn('⚠️ generate API failed:', err);
+  }
+  return localFallback(prompt);
+}
+
+export function detectFear(text) {
+  const fears = [];
+  const kw = {
+    darkness: ['темно', 'тьма', 'темнот', 'ночью', 'ночь'],
+    monsters: ['монстр', 'чудовище', 'бабайка'],
+    loud_noises: ['громко', 'шумно', 'гром', 'взрыв'],
+    strangers: ['чужой', 'незнакомец', 'посторонний'],
+    separation: ['один', 'без мамы', 'без папы', 'бросят'],
+    school: ['школ', 'урок', 'учител', 'экзамен', 'домашк'],
+    peers: ['однокласс', 'обижа', 'травл', 'насмеха', 'дразн']
+  };
+  const lower = text.toLowerCase();
+  for (const [f, words] of Object.entries(kw)) {
+    if (words.some((w) => lower.includes(w))) fears.push(f);
+  }
+  if ((lower.includes('боюсь') || lower.includes('страшно')) && !fears.length) fears.push('darkness');
+  return [...new Set(fears)];
+}
+
+export function extractFearsFromText(text) {
+  return detectFear(text);
+}
+
+export function shouldSuggestFearGame(fears) {
+  return topicDialogCount >= 5 && fears.length > 0;
+}
+
+export function getFearGameSuggestion(fearKey) {
+  return FEAR_GAME_HINTS[fearKey] || 'Давай поиграем — нажми «Игры»! 🎮';
+}
+
+export function detectAlertWords(text) {
+  const alerts = [];
+  for (const w of ['обижают', 'бьют', 'ругают', 'кричат', 'страшно', 'помогите']) {
+    if (text.toLowerCase().includes(w)) alerts.push(w);
+  }
+  return alerts;
+}
+
+export function detectPersonalData(text) {
+  const found = [];
+  if (/(\+\d{1,3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{2}[-.\s]?\d{2})/.test(text)) found.push('phone');
+  if (/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/.test(text)) found.push('email');
+  return found;
+}
+
+export function setCharacter(characterId) {
+  currentCharacter = characterId;
+}
+
+export function getCharacter() {
+  return currentCharacter;
+}
+
+export function getCurrentTopic() {
+  return currentTopic;
+}
+
+export function addToContext(role, message) {
+  const store = readStore();
+  const now = Date.now();
+  if (now - store.lastActivityAt > CHAT_IDLE_MS) {
+    currentTopic = '';
+    topicDialogCount = 0;
+  }
+  if (role === 'child') {
+    const t = message.trim();
+    if (CONTINUE_RE.test(t) && currentTopic) topicDialogCount++;
+    else { currentTopic = t.slice(0, 120); topicDialogCount = 1; }
+  }
+  store.messages.push({ role, message, timestamp: now });
+  writeStore({ ...store, messages: store.messages, topic: currentTopic, topicDialogCount });
+}
+
+export function clearContext() {
+  currentTopic = '';
+  topicDialogCount = 0;
+  writeStore({ messages: [], topic: '', topicDialogCount: 0, lastActivityAt: Date.now() });
+}
+
+export function getContext() {
+  return readStore().messages;
+}
+
+export default {
+  generateResponse, detectFear, extractFearsFromText, detectAlertWords, detectPersonalData,
+  setCharacter, getCharacter, addToContext, clearContext, getContext,
+  loadChatHistory, setChatChild, buildSystemPrompt, getCurrentTopic,
+  shouldSuggestFearGame, getFearGameSuggestion, getChatStorageKey
+};

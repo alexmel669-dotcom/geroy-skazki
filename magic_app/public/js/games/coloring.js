@@ -1,7 +1,8 @@
-import { appState } from '../core.js';
+import { appState, getActiveChildName } from '../core.js';
 import { showModal } from '../ui.js';
 import { updateAchievement } from '../achievements.js';
 import { trackEvent } from '../analytics.js';
+import { recordColoringComplete } from '../game-progress.js';
 
 export function startColoringGame() {
   if (appState.gameActive) return;
@@ -188,6 +189,7 @@ export function startColoringGame() {
     }
     
     updateAchievement('artist');
+    recordColoringComplete(getActiveChildName());
     trackEvent('coloring_completed');
 
     const dataUrl = canvas.toDataURL();
