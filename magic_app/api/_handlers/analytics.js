@@ -12,7 +12,7 @@ async function handleHealth(req, res) {
     node: process.version,
     env: {
       jwt: Boolean(process.env.JWT_SECRET?.trim()),
-      upstash: Boolean(process.env.UPSTASH_REDIS_REST_URL?.trim() && process.env.UPSTASH_REDIS_REST_TOKEN?.trim()),
+      kv: Boolean(process.env.KV_REST_API_URL?.trim() && process.env.KV_REST_API_TOKEN?.trim()),
       yandexKey: Boolean(yandexKey),
       yandexFolder: Boolean(yandexFolder),
       deepseek: Boolean(process.env.DEEPSEEK_API_KEY?.trim())
