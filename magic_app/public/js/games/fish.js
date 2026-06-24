@@ -1,7 +1,8 @@
-import { appState, saveChildData, updateStatsUI } from '../core.js';
+import { appState, saveChildData, updateStatsUI, getActiveChildName } from '../core.js';
 import { speak } from '../audio.js';
 import { updateAchievement } from '../achievements.js';
 import { trackEvent } from '../analytics.js';
+import { recordFishResult } from '../game-progress.js';
 
 export function startFishGame(level = 1) {
   if (appState.gameActive) return;
@@ -116,6 +117,9 @@ export function startFishGame(level = 1) {
     clearInterval(timerInterval);
     clearInterval(moveInterval);
     saveChildData(appState.currentChildIndex);
+    const childName = getActiveChildName();
+    const fishStats = recordFishResult(score, level, childName);
+    if (fishStats.bestScore > 10) updateAchievement('fish_master');
     container.remove();
 
     if (won) {

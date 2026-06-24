@@ -1,6 +1,7 @@
-import { appState } from '../core.js';
+import { appState, getActiveChildName } from '../core.js';
 import { showModal } from '../ui.js';
 import { updateAchievement } from '../achievements.js';
+import { recordPuzzleWin } from '../game-progress.js';
 
 export function startPuzzleGame() {
   if (appState.gameActive) return;
@@ -74,6 +75,7 @@ export function startPuzzleGame() {
 
     if (checkVictory()) {
       updateAchievement('puzzle_solver');
+      recordPuzzleWin(getActiveChildName());
       setTimeout(() => {
         showModal('Победа!', '🎉 Ты собрал пазл! Молодец!');
         container.remove();
