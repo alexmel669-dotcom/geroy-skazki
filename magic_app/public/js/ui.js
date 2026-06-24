@@ -1,6 +1,4 @@
-// ========================================
-// ui.js — UI КОМПОНЕНТЫ
-// ========================================
+import { CONFIG, ENV } from './config.js';
 
 import { getActiveChildName, getActiveChild, updateStatsUI } from './core.js';
 
@@ -228,17 +226,23 @@ export function setLastAiTiming(ms) {
 }
 
 export function initDevPanel() {
+    if (!ENV.isDev && !ENV.isStaging) return;
     if (document.getElementById('devPanel')) return;
 
     const panel = document.createElement('div');
     panel.id = 'devPanel';
     panel.className = 'dev-panel';
     panel.innerHTML = `
-      <span class="dev-stat">🛠 DEV · v${document.querySelector('title')?.textContent || ''}</span>
+      <span>🛠️ Dev Mode</span>
+      <span id="devVersion">v${CONFIG.APP_VERSION}</span>
+      <span id="devEnv">${ENV.mode}</span>
       <span class="dev-stat">ИИ: <span id="devAiMs">—</span></span>
-      <button type="button" id="devResetBtn">Сбросить данные</button>
+      <button type="button" id="devResetBtn">🧹 Сбросить данные</button>
+      <button type="button" id="devPlanBasic">⭐ Базовый</button>
+      <button type="button" id="devPlanFamily">👨‍👩‍👧 Семейный</button>
     `;
     document.body.appendChild(panel);
+    document.body.classList.add('has-dev-panel');
 
     document.getElementById('devResetBtn')?.addEventListener('click', () => {
         if (confirm('Сбросить все локальные данные приложения?')) {
@@ -247,12 +251,31 @@ export function initDevPanel() {
         }
     });
 
+    document.getElementById('devPlanBasic')?.addEventListener('click', () => switchPlan('basic'));
+    document.getElementById('devPlanFamily')?.addEventListener('click', () => switchPlan('family'));
+
     const origFetch = window.fetch.bind(window);
     window.fetch = async (...args) => {
         console.log('[DEV fetch]', args[0], args[1]?.method || 'GET');
-        const res = await origFetch(...args);
-        return res;
+        return origFetch(...args);
     };
+}
+
+function switchPlan(planId) {
+    localStorage.setItem('userPlan', planId);
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + 30);
+    localStorage.setItem('planExpiry', expiry.toISOString());
+    showNotification(`Тариф: ${planId}`, 'info');
+    updateUI();
+}
+
+if (typeof window !== 'undefined') {
+    window.resetAllData = () => {
+        localStorage.clear();
+        window.location.reload();
+    };
+    window.switchPlan = switchPlan;
 }
 
 // ========================================

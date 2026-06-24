@@ -21,6 +21,7 @@ import profileUpdate from './_handlers/profile-update.js';
 import psychologistHelp from './_handlers/psychologist-help.js';
 
 import promocode from './_handlers/promocode.js';
+import adminStats from './_handlers/admin-stats.js';
 
 
 
@@ -48,7 +49,7 @@ const ROUTES = {
 
   health: analytics,
 
-  'admin/stats': analytics,
+  'admin/stats': adminStats,
 
   'sync-child-data': sync,
 

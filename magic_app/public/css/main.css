@@ -991,3 +991,227 @@ header {
   border-left: 3px solid #9fa8da;
 }
 
+/* Admin charts */
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.chart-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 16px;
+  backdrop-filter: blur(8px);
+}
+
+.chart-card h3 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+}
+
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 150px;
+  padding: 16px 8px 28px;
+}
+
+.bar-chart .bar {
+  flex: 1;
+  background: #6C63FF;
+  border-radius: 4px 4px 0 0;
+  min-height: 4px;
+  transition: height 300ms ease;
+  position: relative;
+  height: auto;
+}
+
+.bar-chart .bar-label {
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+.bar-chart .bar-value {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pie-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.pie-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.88rem;
+}
+
+.pie-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.pie-pct {
+  opacity: 0.55;
+  font-size: 0.8rem;
+}
+
+/* Games menu */
+.games-menu-box {
+  text-align: center;
+  max-width: 360px;
+  width: 92%;
+  padding: 16px;
+}
+
+.games-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 4px;
+  margin-bottom: 12px;
+}
+
+.games-menu-grid .modal-btn {
+  min-height: 44px;
+  font-size: 0.85rem;
+  padding: 10px 8px;
+}
+
+.games-menu-close {
+  width: 100%;
+}
+
+body.has-dev-panel {
+  padding-bottom: 56px;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 1024px) {
+  .landing {
+    max-width: 100%;
+  }
+
+  .pricing-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .features-grid,
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .steps {
+    flex-direction: column;
+  }
+
+  .step {
+    min-width: 100%;
+  }
+
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+
+  .modal-box {
+    max-width: 92%;
+    margin: 16px;
+  }
+
+  .charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    font-size: 14px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .landing h1 {
+    font-size: 1.45rem;
+  }
+
+  .btn,
+  .auth-btn,
+  .modal-btn {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .btn-icon,
+  .action-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .avatar-container img,
+  .avatar-container .avatar,
+  .avatar-container .avatar-img,
+  .avatar,
+  .avatar-img {
+    width: 120px;
+    height: 120px;
+  }
+
+  .mic-btn {
+    width: 72px;
+    height: 72px;
+  }
+
+  .check-list li {
+    font-size: 14px;
+  }
+
+  .promocode-group input {
+    width: 100%;
+  }
+
+  .games-menu-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dev-panel {
+    font-size: 0.68rem;
+  }
+
+  .dev-panel button {
+    min-height: 36px;
+    padding: 8px 10px;
+  }
+}
+

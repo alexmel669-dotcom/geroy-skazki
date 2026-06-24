@@ -2,12 +2,12 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Админ-панель — Герой Сказок</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
-<div class="container" style="padding:20px 0 40px;">
+<div class="container admin-page" style="padding:20px 0 40px;">
   <h1>🔧 Админ-панель</h1>
   <p style="opacity:0.7;">Статистика приложения (только для admin)</p>
   <p><a href="app.html" style="color:var(--accent);">← Назад</a></p>
@@ -16,6 +16,22 @@
   <div id="adminContent" style="display:none;">
     <button class="modal-btn" id="refreshStatsBtn" style="margin:12px 0;">🔄 Обновить статистику</button>
     <div class="admin-grid" id="statsGrid"></div>
+
+    <section class="charts">
+      <div class="chart-card">
+        <h3>DAU (активные за день)</h3>
+        <div class="bar-chart" id="dauChart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Новые регистрации (7 дней)</h3>
+        <div class="bar-chart" id="registrationsChart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Тарифы</h3>
+        <div class="pie-chart" id="plansChart"></div>
+      </div>
+    </section>
+
     <div class="card-transparent" id="detailsBlock"></div>
   </div>
 </div>

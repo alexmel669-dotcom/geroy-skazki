@@ -2,7 +2,7 @@
 // main.js — ГЛАВНЫЙ ФАЙЛ ПРИЛОЖЕНИЯ
 // ========================================
 
-import { CONFIG, validateConfig, getAppMode, CHARACTERS } from './config.js';
+import { CONFIG, validateConfig, ENV, CHARACTERS } from './config.js';
 import {
   initCore, getActiveChildName, updateStatsUI, cycleCharacter,
   selectGuestMode, showChildSelectModal, saveChildData, appState
@@ -11,6 +11,7 @@ import { getCharacter } from './ai.js';
 import { synthesizeSpeech } from './audio.js';
 import { startRecording, stopRecording, isRecording, browserSpeechRecognition } from './mic.js';
 import { updateUI, showNotification, initDevPanel } from './ui.js';
+import { initNotificationScheduler } from './notifications.js';
 
 async function playWelcomeGreeting() {
   const modal = document.getElementById('childSelectModal');
@@ -35,7 +36,8 @@ function initializeApp() {
   initCore();
   setupAdditionalHandlers();
   updateUI();
-  if (getAppMode() === 'dev') initDevPanel();
+  if (ENV.isDev || ENV.isStaging) initDevPanel();
+  initNotificationScheduler().catch(() => {});
   setTimeout(() => {
     playWelcomeGreeting().catch((err) => console.warn('Welcome failed:', err));
   }, 1000);

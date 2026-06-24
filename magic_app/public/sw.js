@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geroy-skazki-v4.5.0';
+const CACHE_NAME = 'geroy-skazki-v4.6.0';
 const ASSETS = [
   '/',
   '/index.html',
@@ -8,6 +8,8 @@ const ASSETS = [
   '/pricing.html',
   '/parent.html',
   '/admin.html',
+  '/privacy.html',
+  '/terms.html',
   '/css/main.css',
   '/css/auth.css',
   '/js/config.js',
@@ -19,6 +21,7 @@ const ASSETS = [
   '/js/mic.js',
   '/js/ui.js',
   '/js/analytics.js',
+  '/js/notifications.js',
   '/js/achievements.js',
   '/js/main.js',
   '/js/admin-dashboard.js',
@@ -36,6 +39,8 @@ const ASSETS = [
   '/assets/images/parent-bg.svg',
   '/manifest.json'
 ];
+
+const NOTIFICATION_ICON = '/assets/images/avatar.svg';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -81,6 +86,33 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => cached || offlineResponse())
     )
+  );
+});
+
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || 'Герой Сказок';
+  const options = {
+    body: data.body || 'Люцик ждёт тебя!',
+    icon: NOTIFICATION_ICON,
+    badge: NOTIFICATION_ICON,
+    vibrate: [200, 100, 200],
+    data: { url: data.url || '/app.html' }
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || '/app.html';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if (client.url.includes(targetUrl) && 'focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
+      return undefined;
+    })
   );
 });
 
