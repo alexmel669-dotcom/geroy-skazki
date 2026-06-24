@@ -29,12 +29,15 @@ export default async function handler(req, res) {
 
     const audioBytes = base64ToBytes(audio);
     const contentType = req.body.contentType || 'audio/ogg;codecs=opus';
-    const format = contentType.includes('ogg') ? 'oggopus' : 'lpcm';
+    const format = req.body.format || (contentType.includes('ogg') ? 'oggopus' : 'lpcm');
     const params = new URLSearchParams({
       lang: 'ru-RU',
       folderId: YANDEX_FOLDER_ID,
       format
     });
+    if (format === 'lpcm') {
+      params.set('sampleRateHz', String(req.body.sampleRateHz || 16000));
+    }
 
     const sttUrl = `https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?${params}`;
 
@@ -42,7 +45,7 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         Authorization: `Api-Key ${YANDEX_API_KEY}`,
-        'Content-Type': contentType
+        'Content-Type': format === 'lpcm' ? 'application/octet-stream' : contentType
       },
       body: audioBytes
     });
