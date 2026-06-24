@@ -1,13 +1,19 @@
 import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
-import { createUser, userExists } from '../_lib/users.js';
+import { hashPassword } from '../_lib/crypto.js';
+import { saveUser, userExists } from '../_lib/users.js';
 import { setAuthCookie } from '../_lib/cookies.js';
-import { logAuthError } from '../_lib/auth-log.js';
+import { logError } from '../_lib/auth-log.js';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '../_middleware/auth.js';
 
 const MIN_AGE = 3;
 const MAX_AGE = 14;
+
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@geroy-skazki.local')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
 
 function normalizeChildren(children) {
   if (!Array.isArray(children)) return [];
@@ -29,11 +35,11 @@ function normalizeChildren(children) {
 function signToken(user) {
   return jwt.sign(
     {
-      username: user.username || user.email,
       email: user.email,
+      username: user.username,
       userId: user.email,
-      role: user.role || 'user',
-      plan: user.plan || 'free'
+      plan: user.plan || 'free',
+      role: user.role || 'user'
     },
     getJwtSecret(),
     { expiresIn: '7d' }
@@ -44,7 +50,7 @@ export default async function handler(req, res) {
   if (setCors(req, res)) return;
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Метод не разрешён' });
   }
 
   const key = getRateLimitKey(req);
@@ -53,22 +59,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    const username = (req.body.username || req.body.email || '').trim().toLowerCase();
+    const normalizedEmail = (req.body.email || req.body.username || '').trim().toLowerCase();
+    const username = String(req.body.username || normalizedEmail.split('@')[0] || normalizedEmail).trim();
     const { password, gender, age, children } = req.body;
 
-    if (!username || !password) {
-      logAuthError('register', 'Missing username or password');
-      return res.status(400).json({ error: 'Email and password required' });
+    if (!normalizedEmail || !password) {
+      return res.status(400).json({ error: 'Поля username, email, password обязательны' });
     }
 
     if (password.length < 6) {
-      logAuthError('register', 'Password too short', { details: username });
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    if (userExists(username)) {
-      logAuthError('register', 'User already exists', { details: username });
-      return res.status(409).json({ error: 'User already exists' });
+    const exists = await userExists(normalizedEmail);
+    if (exists) {
+      return res.status(409).json({ error: 'Пользователь с таким email уже существует' });
     }
 
     const normalizedChildren = normalizeChildren(children);
@@ -78,33 +83,39 @@ export default async function handler(req, res) {
       }
     }
 
-    const user = await createUser(username, password, {
+    const passwordHash = hashPassword(password);
+    const role = ADMIN_EMAILS.includes(normalizedEmail) ? 'admin' : 'user';
+
+    const user = {
+      username,
+      email: normalizedEmail,
+      passwordHash,
       gender: gender || null,
       age: age != null ? parseInt(age, 10) : null,
-      children: normalizedChildren
-    });
+      children: normalizedChildren,
+      plan: 'free',
+      role,
+      createdAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString()
+    };
 
-    if (!user) {
-      logAuthError('register', 'createUser returned null', { details: username });
-      return res.status(409).json({ error: 'User already exists' });
-    }
-
-    const token = signToken(user);
+    const saved = await saveUser(normalizedEmail, user);
+    const token = signToken(saved);
     setAuthCookie(res, token);
 
     return res.status(201).json({
       success: true,
       token,
       user: {
-        email: user.email,
-        username: user.username,
-        role: user.role || 'user',
-        plan: user.plan || 'free',
-        children: user.children || []
+        username: saved.username,
+        email: normalizedEmail,
+        plan: 'free',
+        role,
+        children: normalizedChildren
       }
     });
   } catch (error) {
-    logAuthError('register', error.message, { details: error.stack });
-    return res.status(500).json({ error: 'Internal server error' });
+    await logError('register', error.message);
+    return res.status(500).json({ error: 'Ошибка сервера при регистрации' });
   }
 }
