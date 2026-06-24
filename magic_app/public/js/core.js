@@ -12,7 +12,7 @@ import {
 } from './ai.js';
 import {
   startRecording, stopRecording, isRecording, getRecordingMimeType,
-  isMicrophoneSupported, browserSpeechRecognition
+  isMicrophoneSupported
 } from './mic.js';
 import { synthesizeSpeech } from './audio.js';
 import { checkAchievements, showAchievement } from './achievements.js';
@@ -120,6 +120,45 @@ function setMicVisualState(state) {
   }
 }
 
+const MIC_RETRY_PHRASES = [
+  'Я не расслышал, повтори пожалуйста',
+  'Скажи ещё разок, я внимательно слушаю',
+  'Давай попробуем чуть позже, я буду ждать тебя!'
+];
+
+let micFailCount = 0;
+let micDisabledUntil = 0;
+
+function isMicDisabled() {
+  return Date.now() < micDisabledUntil;
+}
+
+function setMicDisabled(disabled) {
+  const micBtn = document.getElementById('micBtn');
+  if (!micBtn) return;
+  micBtn.classList.toggle('mic-disabled', disabled);
+  micBtn.disabled = disabled;
+}
+
+function resetMicFailCount() {
+  micFailCount = 0;
+}
+
+async function handleMicFailure(reason) {
+  console.warn('🎙️ Mic failure:', reason);
+  micFailCount += 1;
+  const idx = Math.min(micFailCount - 1, MIC_RETRY_PHRASES.length - 1);
+  await synthesizeSpeech(MIC_RETRY_PHRASES[idx], getCharacter());
+  if (micFailCount >= 3) {
+    micDisabledUntil = Date.now() + 30000;
+    setMicDisabled(true);
+    setTimeout(() => {
+      micFailCount = 0;
+      setMicDisabled(false);
+    }, 30000);
+  }
+}
+
 // ========================================
 // INIT
 // ========================================
@@ -137,6 +176,7 @@ export function initCore() {
   setChatChild(getActiveChildName());
   loadChatHistory(getActiveChildName());
   updateStatsDisplay();
+  setMicVisualState('idle');
   console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION} готов к работе`);
 }
 
@@ -427,6 +467,7 @@ function initEventListeners() {
     let activePointer = null;
 
     const onDown = (e) => {
+      if (isMicDisabled() || isProcessing) return;
       if (activePointer !== null) return;
       if (e.type === 'mousedown' && e.button !== 0) return;
 
@@ -590,48 +631,7 @@ async function recognizeSpeech(blob) {
   } catch (e) {
     console.warn('STT API fail:', e.message);
   }
-  try {
-    console.log('🎙️ Trying browser STT fallback...');
-    const text = await browserSpeechRecognition();
-    if (text?.trim()) return { text: text.trim(), fallback: false };
-  } catch (e) {
-    console.warn('Browser STT fail:', e.message);
-  }
   return { text: '', fallback: true };
-}
-
-function showTextInputFallback(onSubmit) {
-  let bar = document.getElementById('textFallbackBar');
-  if (!bar) {
-    bar = document.createElement('div');
-    bar.id = 'textFallbackBar';
-    bar.className = 'text-fallback-bar';
-    bar.innerHTML = `
-      <input type="text" id="textFallbackInput" placeholder="Микрофон недоступен — напиши здесь..." maxlength="500" autocomplete="off">
-      <button type="button" id="textFallbackSend" aria-label="Отправить">➤</button>`;
-    document.body.appendChild(bar);
-  }
-
-  const input = bar.querySelector('#textFallbackInput');
-  const sendBtn = bar.querySelector('#textFallbackSend');
-  bar.style.display = 'flex';
-  input.value = '';
-  input.focus();
-
-  const submit = async () => {
-    const text = input.value.trim();
-    if (!text || isProcessing) return;
-    bar.style.display = 'none';
-    await onSubmit(text);
-  };
-
-  sendBtn.onclick = submit;
-  input.onkeydown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      submit();
-    }
-  };
 }
 
 // ========================================
@@ -643,9 +643,9 @@ let micStarting = false;
 let finishQueued = false;
 
 async function beginRecording() {
-  if (isProcessing || isRecording() || micStarting) return;
+  if (isMicDisabled() || isProcessing || isRecording() || micStarting) return;
   if (!isMicrophoneSupported()) {
-    showTextInputFallback((text) => processTextMessage(text));
+    await handleMicFailure('not_supported');
     return;
   }
   micStarting = true;
@@ -660,10 +660,9 @@ async function beginRecording() {
       await finishRecordingInternal();
     }
   } catch (e) {
-    alert('Микрофон недоступен. Попроси взрослого помочь настроить.');
     logError('mic', e.message);
     setMicVisualState('idle');
-    showTextInputFallback((text) => processTextMessage(text));
+    await handleMicFailure(e.message);
   } finally {
     micStarting = false;
   }
@@ -688,8 +687,7 @@ async function finishRecordingInternal() {
     if (audio?.size > 0) {
       await processAudio(audio);
     } else {
-      console.warn('Empty audio blob — try holding the mic button longer');
-      showTextInputFallback((text) => processTextMessage(text));
+      await handleMicFailure('empty_blob');
     }
   } catch (e) {
     logError('record', e.message);
@@ -727,24 +725,6 @@ async function handleLongPress() {
 // ========================================
 // AUDIO PROCESS
 // ========================================
-
-async function processTextMessage(text) {
-  if (!text?.trim() || isProcessing) return;
-  isProcessing = true;
-  setMicVisualState('processing');
-  const avatar = document.getElementById('avatar');
-  try {
-    await handleUserMessage(text.trim());
-  } catch (e) {
-    logError('process_text', e.message);
-    const fallback = FALLBACK_REPLIES[getCharacter()] || FALLBACK_REPLIES.lucik;
-    await synthesizeSpeech(fallback, getCharacter());
-  } finally {
-    isProcessing = false;
-    setMicVisualState('idle');
-    if (avatar) avatar.classList.remove('talking', 'listening');
-  }
-}
 
 async function handleUserMessage(text) {
   const avatar = document.getElementById('avatar');
@@ -805,18 +785,14 @@ async function processAudio(audioBlob) {
   try {
     const stt = await recognizeSpeech(audioBlob);
     if (!stt.text?.trim()) {
-      if (stt.fallback) {
-        showTextInputFallback((text) => processTextMessage(text));
-        return;
-      }
-      showTextInputFallback((text) => processTextMessage(text));
+      await handleMicFailure('stt_empty');
       return;
     }
+    resetMicFailCount();
     await handleUserMessage(stt.text);
   } catch (e) {
     logError('process_audio', e.message);
-    const fallback = FALLBACK_REPLIES[getCharacter()] || FALLBACK_REPLIES.lucik;
-    await synthesizeSpeech(fallback, getCharacter());
+    await handleMicFailure('process_error');
   } finally {
     if (avatar) avatar.classList.remove('talking', 'listening');
   }

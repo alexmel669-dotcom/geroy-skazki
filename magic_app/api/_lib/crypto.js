@@ -7,7 +7,11 @@ export function hashPassword(password) {
 }
 
 export function verifyPassword(password, stored) {
-  const [salt, hash] = stored.split(':');
+  return verify(password, stored);
+}
+
+export function verify(password, stored) {
+  const [salt, hash] = String(stored || '').split(':');
   if (!salt || !hash) return false;
   const hashVerify = scryptSync(password, salt, 64).toString('hex');
   try {
