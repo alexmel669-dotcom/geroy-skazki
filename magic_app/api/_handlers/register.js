@@ -1,7 +1,8 @@
 import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
-import { createUser } from '../_lib/users.js';
+import { createUser, userExists } from '../_lib/users.js';
 import { setAuthCookie } from '../_lib/cookies.js';
+import { logAuthError } from '../_lib/auth-log.js';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '../_middleware/auth.js';
 
@@ -25,6 +26,20 @@ function normalizeChildren(children) {
   }).filter((c) => c.name);
 }
 
+function signToken(user) {
+  return jwt.sign(
+    {
+      username: user.username || user.email,
+      email: user.email,
+      userId: user.email,
+      role: user.role || 'user',
+      plan: user.plan || 'free'
+    },
+    getJwtSecret(),
+    { expiresIn: '7d' }
+  );
+}
+
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
 
@@ -33,19 +48,27 @@ export default async function handler(req, res) {
   }
 
   const key = getRateLimitKey(req);
-  if (!checkRateLimit(key, 3)) {
+  if (!checkRateLimit(key, 5)) {
     return res.status(429).json({ error: 'Too many requests' });
   }
 
   try {
-    const { email, password, children } = req.body;
+    const username = (req.body.username || req.body.email || '').trim().toLowerCase();
+    const { password, gender, age, children } = req.body;
 
-    if (!email || !password) {
+    if (!username || !password) {
+      logAuthError('register', 'Missing username or password');
       return res.status(400).json({ error: 'Email and password required' });
     }
 
     if (password.length < 6) {
+      logAuthError('register', 'Password too short', { details: username });
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    if (userExists(username)) {
+      logAuthError('register', 'User already exists', { details: username });
+      return res.status(409).json({ error: 'User already exists' });
     }
 
     const normalizedChildren = normalizeChildren(children);
@@ -55,19 +78,18 @@ export default async function handler(req, res) {
       }
     }
 
-    const user = await createUser(email.trim().toLowerCase(), password, {
+    const user = await createUser(username, password, {
+      gender: gender || null,
+      age: age != null ? parseInt(age, 10) : null,
       children: normalizedChildren
     });
+
     if (!user) {
+      logAuthError('register', 'createUser returned null', { details: username });
       return res.status(409).json({ error: 'User already exists' });
     }
 
-    const token = jwt.sign(
-      { email: user.email, userId: user.email, role: user.role || 'user' },
-      getJwtSecret(),
-      { expiresIn: '7d' }
-    );
-
+    const token = signToken(user);
     setAuthCookie(res, token);
 
     return res.status(201).json({
@@ -75,12 +97,14 @@ export default async function handler(req, res) {
       token,
       user: {
         email: user.email,
+        username: user.username,
         role: user.role || 'user',
+        plan: user.plan || 'free',
         children: user.children || []
       }
     });
   } catch (error) {
-    console.error('Register error:', error);
+    logAuthError('register', error.message, { details: error.stack });
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

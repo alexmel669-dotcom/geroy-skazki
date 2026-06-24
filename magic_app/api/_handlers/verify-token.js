@@ -12,6 +12,11 @@ export default async function handler(req, res) {
 
   return res.status(200).json({
     valid: true,
-    user: { email: user.email, role: user.role }
+    user: {
+      email: user.email,
+      username: user.username || user.email,
+      role: user.role,
+      plan: user.plan || 'free'
+    }
   });
 }
