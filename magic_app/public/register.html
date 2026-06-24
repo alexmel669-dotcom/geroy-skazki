@@ -27,8 +27,8 @@
           <input type="number" id="child1Age" class="age-input" placeholder="Возраст" min="3" max="14" required>
         </div>
         <div class="gender-row">
-          <label><input type="radio" name="child1Gender" value="male" checked> 👦 Мальчик</label>
-          <label><input type="radio" name="child1Gender" value="female"> 👧 Девочка</label>
+          <label><input type="radio" name="child1Gender" value="female" checked> 👧 Девочка</label>
+          <label><input type="radio" name="child1Gender" value="male"> 👦 Мальчик</label>
         </div>
       </div>
       
@@ -40,8 +40,8 @@
           <input type="number" id="child2Age" class="age-input" placeholder="Возраст" min="3" max="14">
         </div>
         <div class="gender-row">
-          <label><input type="radio" name="child2Gender" value="male" checked> 👦 Мальчик</label>
-          <label><input type="radio" name="child2Gender" value="female"> 👧 Девочка</label>
+          <label><input type="radio" name="child2Gender" value="female" checked> 👧 Девочка</label>
+          <label><input type="radio" name="child2Gender" value="male"> 👦 Мальчик</label>
         </div>
       </div>
       
@@ -53,8 +53,8 @@
           <input type="number" id="child3Age" class="age-input" placeholder="Возраст" min="3" max="14">
         </div>
         <div class="gender-row">
-          <label><input type="radio" name="child3Gender" value="male" checked> 👦 Мальчик</label>
-          <label><input type="radio" name="child3Gender" value="female"> 👧 Девочка</label>
+          <label><input type="radio" name="child3Gender" value="female" checked> 👧 Девочка</label>
+          <label><input type="radio" name="child3Gender" value="male"> 👦 Мальчик</label>
         </div>
       </div>
       
@@ -131,8 +131,8 @@
       
       if (name) {
         const gender = getChildGender(i);
-        const avatarRole = gender === 'female' ? 'kid2' : 'kid1';
-        const avatar = avatarRole;
+        const avatarRole = gender === 'male' ? 'kid2' : 'kid1';
+        const avatar = gender === 'male' ? 'kid2.png' : 'kid1.png';
         if (age && (age < 3 || age > 14)) {
           invalidAge = true;
         }
@@ -171,6 +171,7 @@
         localStorage.setItem('userEmail', data.user?.email || email);
         localStorage.setItem('isAuth', 'true');
         localStorage.setItem('guestMode', 'false');
+        localStorage.setItem('userPlan', data.user?.plan || 'free');
         if (data.user?.role) localStorage.setItem('userRole', data.user.role);
         const savedChildren = data.user?.children?.length ? data.user.children : children;
         saveChildrenToLocal(savedChildren);

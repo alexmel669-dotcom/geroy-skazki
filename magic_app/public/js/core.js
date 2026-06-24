@@ -3,7 +3,7 @@
 // v4.1.0 (на базе 4.0.8 + доработки)
 // ========================================
 
-import { CONFIG, CHARACTERS, FALLBACK_REPLIES, migrateFearStatsObject } from './config.js';
+import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, migrateFearStatsObject } from './config.js';
 import {
   generateResponse, detectFear, detectAlertWords, detectPersonalData,
   setCharacter, getCharacter, addToContext, clearContext,
@@ -82,10 +82,91 @@ export function getChildStatsKey() {
   return child ? `stats_${child.name}` : 'stats_guest';
 }
 
+const PLAN_COUNTERS_KEY = 'planDailyCounters';
+let planLimitActive = false;
+
+export function getUserPlan() {
+  if (localStorage.getItem('guestMode') === 'true') return 'free';
+  const plan = localStorage.getItem('userPlan') || 'free';
+  return PLANS[plan] ? plan : 'free';
+}
+
+export function resetDailyCounters() {
+  const today = new Date().toDateString();
+  const data = safeParseJSON(localStorage.getItem(PLAN_COUNTERS_KEY), {});
+  if (data.date !== today) {
+    localStorage.setItem(PLAN_COUNTERS_KEY, JSON.stringify({ date: today, stories: 0 }));
+  }
+}
+
+function getDailyCounters() {
+  resetDailyCounters();
+  return safeParseJSON(localStorage.getItem(PLAN_COUNTERS_KEY), {
+    date: new Date().toDateString(),
+    stories: 0
+  });
+}
+
+export function getStoriesRemaining() {
+  const limits = PLANS[getUserPlan()];
+  const counters = getDailyCounters();
+  return Math.max(0, limits.storiesPerDay - (counters.stories || 0));
+}
+
+function incrementDailyStories() {
+  resetDailyCounters();
+  const counters = getDailyCounters();
+  counters.stories = (counters.stories || 0) + 1;
+  localStorage.setItem(PLAN_COUNTERS_KEY, JSON.stringify(counters));
+}
+
+export function canAccessCharacter(id) {
+  return PLANS[getUserPlan()].characters.includes(id);
+}
+
+export function canAccessGame(id) {
+  return PLANS[getUserPlan()].games.includes(id);
+}
+
+function childGenderEmoji(role) {
+  if (role === 'kid1') return '👧';
+  if (role === 'kid2') return '👦';
+  return '🐱';
+}
+
+function applyChildAvatar(child) {
+  if (!child) return;
+  const role = child.avatarRole || (String(child.avatar || '').includes('kid2') ? 'kid2' : 'kid1');
+  if (CHARACTERS[role]) {
+    setAvatarIcon(CHARACTERS[role].icon);
+  } else if (child.avatar) {
+    setAvatarIcon(`/assets/images/${child.avatar}`);
+  }
+}
+
+function showPlanLimitUI(show) {
+  planLimitActive = show;
+  const bar = document.getElementById('planLimitBar');
+  const micBtn = document.getElementById('micBtn');
+  if (bar) bar.style.display = show ? 'flex' : 'none';
+  if (micBtn) {
+    micBtn.classList.toggle('mic-disabled', show);
+    micBtn.disabled = show;
+  }
+}
+
+async function handlePlanLimitExceeded() {
+  if (planLimitActive) return;
+  showPlanLimitUI(true);
+  await synthesizeSpeech(
+    'Мы сегодня уже много общались! Попроси родителей открыть полный доступ.',
+    getCharacter()
+  );
+}
+
 function isPremiumUser() {
-  if (localStorage.getItem('premium') === 'true') return true;
-  const email = localStorage.getItem('userEmail') || '';
-  return email === 'alexmel669@gmail.com' && localStorage.getItem('devUnlocked') === '13';
+  const plan = getUserPlan();
+  return plan === 'basic' || plan === 'family';
 }
 
 function setAvatarIcon(src) {
@@ -176,6 +257,8 @@ export function initCore() {
   setChatChild(getActiveChildName());
   loadChatHistory(getActiveChildName());
   updateStatsDisplay();
+  resetDailyCounters();
+  if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
   setMicVisualState('idle');
   console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION} готов к работе`);
 }
@@ -217,16 +300,15 @@ export function setActiveChild(index, options = {}) {
   const label = document.getElementById('childNameLabel');
   if (label) {
     if (child) {
-      const emoji = child.avatarRole === 'kid1' ? '👦' : (child.avatarRole === 'kid2' ? '👧' : '🐱');
+      const emoji = childGenderEmoji(child.avatarRole);
       label.textContent = `${emoji} ${child.name}, ${child.age} лет`;
     } else {
       label.textContent = 'Гость';
     }
   }
 
-  if (child?.avatarRole && CHARACTERS[child.avatarRole]) {
-    setAvatarIcon(CHARACTERS[child.avatarRole].icon);
-  } else {
+  applyChildAvatar(child);
+  if (!child) {
     const saved = localStorage.getItem('currentCharacter') || 'lucik';
     setAvatarIcon(CHARACTERS[saved]?.icon || CHARACTERS.lucik.icon);
   }
@@ -260,7 +342,7 @@ export function showChildSelectModal() {
   if (!modal || !list) return;
 
   list.innerHTML = children.map((c, i) => {
-    const emoji = c.avatarRole === 'kid1' ? '👦' : (c.avatarRole === 'kid2' ? '👧' : '🐱');
+    const emoji = childGenderEmoji(c.avatarRole);
     return `<button class="modal-btn" style="width:100%;text-align:left;display:flex;align-items:center;gap:12px;" data-index="${i}">
       <span style="font-size:1.5rem;">${emoji}</span><span>${sanitizeInput(c.name)}, ${c.age} лет</span></button>`;
   }).join('');
@@ -549,6 +631,7 @@ export function cycleCharacter(direction = 1) {
     const char = CHARACTERS[id];
     if (!char) { count++; continue; }
     if (char.premium && !isPremiumUser()) { count++; continue; }
+    if (!canAccessCharacter(id)) { count++; continue; }
 
     setCharacter(id);
     localStorage.setItem('currentCharacter', id);
@@ -643,6 +726,10 @@ let micStarting = false;
 let finishQueued = false;
 
 async function beginRecording() {
+  if (planLimitActive || getStoriesRemaining() <= 0) {
+    await handlePlanLimitExceeded();
+    return;
+  }
   if (isMicDisabled() || isProcessing || isRecording() || micStarting) return;
   if (!isMicrophoneSupported()) {
     await handleMicFailure('not_supported');
@@ -702,6 +789,10 @@ async function finishRecordingInternal() {
 
 async function handleLongPress() {
   if (isProcessing || isRecording()) return;
+  if (getStoriesRemaining() <= 0) {
+    await handlePlanLimitExceeded();
+    return;
+  }
   const hour = new Date().getHours();
   if (hour >= 20 || hour < 6) {
     isProcessing = true;
@@ -712,6 +803,7 @@ async function handleLongPress() {
       if (globalThis.__lastAiMs) applyAiTiming();
       await synthesizeSpeech(reply, getCharacter());
       incrementStories();
+      incrementDailyStories();
       checkAchievements();
     } catch (e) {
       logError('bedtime_story', e.message);
@@ -728,6 +820,11 @@ async function handleLongPress() {
 
 async function handleUserMessage(text) {
   const avatar = document.getElementById('avatar');
+
+  if (getStoriesRemaining() <= 0) {
+    await handlePlanLimitExceeded();
+    return;
+  }
 
   if (checkBadWords(text)) {
     await synthesizeSpeech('Давай говорить добрые слова', getCharacter());
@@ -776,6 +873,8 @@ async function handleUserMessage(text) {
     await synthesizeSpeech(getFearGameSuggestion(allFears[0]), getCharacter());
   }
   if (reply.length > 200) incrementStories();
+  incrementDailyStories();
+  if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
   checkAchievements();
   updateStatsDisplay();
 }
@@ -808,15 +907,24 @@ export function showGamesMenu() {
   const overlay = document.createElement('div');
   overlay.id = 'gamesMenuOverlay';
   overlay.className = 'game-overlay';
+  const gameList = [
+    { id: 'fish', label: '🎣 Рыбалка' },
+    { id: 'memory', label: '🧠 Мемори' },
+    { id: 'puzzle', label: '🧩 Пазл' },
+    { id: 'emotion', label: '😊 Эмоции' },
+    { id: 'coloring', label: '🎨 Раскраска' }
+  ];
+
+  const buttonsHtml = gameList.map(({ id, label }) => {
+    const locked = !canAccessGame(id);
+    return `<button class="modal-btn${locked ? ' disabled' : ''}" data-game="${id}" ${locked ? 'data-locked="1"' : ''}>${label}${locked ? ' 🔒' : ''}</button>`;
+  }).join('');
+
   overlay.innerHTML = `
     <div style="text-align:center;max-width:320px;padding:10px;">
       <h2 style="margin:0 0 16px;">🎮 Выбери игру</h2>
       <div style="display:flex;flex-direction:column;gap:10px;">
-        <button class="modal-btn" data-game="fish">🎣 Рыбалка</button>
-        <button class="modal-btn" data-game="memory">🧠 Мемори</button>
-        <button class="modal-btn" data-game="puzzle">🧩 Пазл</button>
-        <button class="modal-btn" data-game="emotion">😊 Эмоции</button>
-        <button class="modal-btn" data-game="coloring">🎨 Раскраска</button>
+        ${buttonsHtml}
         <button class="modal-btn secondary" data-game="close">✕ Закрыть</button>
       </div>
     </div>`;
@@ -834,6 +942,10 @@ export function showGamesMenu() {
       const id = btn.dataset.game;
       overlay.remove();
       if (id === 'close') return;
+      if (btn.dataset.locked === '1') {
+        synthesizeSpeech('Эта игра доступна в полной версии. Попроси родителей открыть доступ!', getCharacter()).catch(() => {});
+        return;
+      }
       incrementGames();
       updateStatsDisplay();
       games[id]?.();
@@ -875,5 +987,6 @@ export default {
   setActiveChild, selectGuestMode, showChildSelectModal,
   getChildStats, saveChildStats, saveToChildHistory, updateFearStats,
   incrementStories, incrementGames, updateStatsDisplay, saveChildData,
-  loadState: loadState, cycleCharacter, showGamesMenu, launchFishGame
+  loadState: loadState, cycleCharacter, showGamesMenu, launchFishGame,
+  getUserPlan, getStoriesRemaining, canAccessCharacter, canAccessGame, resetDailyCounters
 };
