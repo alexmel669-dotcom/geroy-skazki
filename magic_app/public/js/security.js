@@ -3,12 +3,23 @@
 // ========================================
 
 // Список запрещенных слов
-const BAD_WORDS = [
-    'дурак', 'идиот', 'глупый', 'тупой', 'урод',
-    'дебил', 'кретин', 'болван', 'придурок',
-    'заткнись', 'пошел вон', 'убирайся',
-    'fuck', 'shit', 'damn', 'stupid', 'idiot'
+export const ALLOWED_SLANG = [
+  'круто', 'классно', 'здорово', 'супер',
+  'огонь', 'топ', 'залипательно', 'няшно',
+  'милота', 'обожаю', 'ураган', 'бомба',
+  'краш', 'вайб', 'чилить', 'рофл'
 ];
+
+export const FORBIDDEN_WORDS = [
+  'бля', 'хуй', 'пизд', 'еба', 'ёб', 'сука', 'мудак',
+  'дурак', 'идиот', 'глупый', 'тупой', 'урод',
+  'дебил', 'кретин', 'болван', 'придурок',
+  'заткнись', 'пошел вон', 'убирайся',
+  'жесть', 'страшно', 'ужас', 'кошмар',
+  'fuck', 'shit', 'damn', 'stupid', 'idiot', 'bitch'
+];
+
+const BAD_WORDS = FORBIDDEN_WORDS;
 
 // Список подозрительных слов для родителей
 const ALERT_WORDS = [
@@ -69,16 +80,28 @@ export function checkProfanity(text) {
  * @returns {string} - Очищенный текст
  */
 export function sanitizeText(text, replacement = '***') {
+    return sanitizeAIText(text, 14).replace(/\*\*\*/g, replacement);
+}
+
+export function sanitizeAIText(text, age) {
     if (!text || typeof text !== 'string') return '';
-    
-    let result = text;
-    
-    for (const word of BAD_WORDS) {
+
+    let cleaned = text;
+
+    FORBIDDEN_WORDS.forEach((word) => {
         const regex = new RegExp(word, 'gi');
-        result = result.replace(regex, replacement);
+        cleaned = cleaned.replace(regex, '***');
+    });
+
+    const childAge = parseInt(age, 10) || 5;
+    if (childAge < 11) {
+        ALLOWED_SLANG.forEach((word) => {
+            const regex = new RegExp(`\\b${word}\\b`, 'gi');
+            cleaned = cleaned.replace(regex, 'здорово');
+        });
     }
-    
-    return result;
+
+    return cleaned;
 }
 
 /**
@@ -162,7 +185,10 @@ export default {
     checkBadWords,
     checkProfanity,
     sanitizeText,
+    sanitizeAIText,
     sanitizeInput,
+    ALLOWED_SLANG,
+    FORBIDDEN_WORDS,
     detectAlertWords,
     detectPersonalData,
     validateChildAge,

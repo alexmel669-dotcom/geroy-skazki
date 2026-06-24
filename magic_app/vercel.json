@@ -1,4 +1,11 @@
 {
+  "buildCommand": "echo 'Static only'",
+  "devCommand": "npm run dev",
+  "github": {
+    "autoDeploy": true,
+    "productionBranch": "main",
+    "previewBranches": ["dev", "staging"]
+  },
   "version": 2,
   "functions": {
     "api/router.js": {

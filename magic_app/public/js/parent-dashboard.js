@@ -1,3 +1,4 @@
+import { bindNotificationSettingsUI, initNotificationScheduler } from './notifications.js';
 import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName } from './config.js';
 import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDaysRemaining, resetDailyCounters } from './core.js';
 import { getGameProgressSummary } from './game-progress.js';
@@ -337,6 +338,8 @@ async function renderPsychologistBlock() {
 function loadAllData() {
   renderPlanInfo();
   renderPsychologistBlock();
+  bindNotificationSettingsUI();
+  initNotificationScheduler().catch(() => {});
   const children = getChildren();
   const stats = getChildStats();
   const history = stats.history || [];

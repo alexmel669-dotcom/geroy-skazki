@@ -1,3 +1,4 @@
+import { getAgeBasedTone, sanitizeAIText } from '../_lib/content-filter.js';
 import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
 
@@ -31,13 +32,15 @@ function buildSystemPrompt({ childName, childAge, character, systemPrompt, topic
   if (systemPrompt) return systemPrompt;
   const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : null;
   const role = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
+  const tone = age ? getAgeBasedTone(age) : '';
   const nameLine = childName
     ? `Ребёнка зовут ${childName}${age ? `, ${age} лет` : ''}. Обращайся по имени.`
     : 'Имя ребёнка пока неизвестно.';
   const topicLine = topic ? `\nТекущая тема: ${topic}` : '';
   const firstLine = isFirstMessage ? '\nЭто первое сообщение в диалоге.' : '';
   const continueHint = 'Если ребёнок говорит «давай», «расскажи ещё», «продолжай» — продолжай предыдущую тему.';
-  return `${role}\n\n${nameLine}${topicLine}${firstLine}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
+  const toneLine = tone ? `\n\nСтиль общения:\n${tone}` : '';
+  return `${role}\n\n${nameLine}${topicLine}${firstLine}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
 }
 
 function parseAiJson(raw) {
@@ -111,8 +114,10 @@ export default async function handler(req, res) {
     if (!raw) throw new Error('Empty AI response');
 
     const parsed = parseAiJson(raw);
+    const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : 7;
+    const safeMessage = sanitizeAIText(parsed.message, age);
     return res.status(200).json({
-      reply: parsed.message,
+      reply: safeMessage,
       childName: parsed.childName || null,
       childAge: parsed.childAge != null ? parsed.childAge : null,
       concerns: parsed.concerns || null,

@@ -17,7 +17,7 @@ import {
 import { synthesizeSpeech } from './audio.js';
 import { checkAchievements, showAchievement } from './achievements.js';
 import { trackEvent, logError } from './analytics.js';
-import { initSecurity, checkBadWords, sanitizeInput, sanitizeText } from './security.js';
+import { initSecurity, checkBadWords, sanitizeInput, sanitizeAIText } from './security.js';
 import { startFishGame } from './games/fish.js';
 import { startMemoryGame } from './games/memory.js';
 import { startPuzzleGame } from './games/puzzle.js';
@@ -969,7 +969,7 @@ async function handleUserMessage(text) {
     if (aiResult.concerns?.length) saveParentConcerns(aiResult.concerns);
   }
   if (globalThis.__lastAiMs) applyAiTiming();
-  reply = sanitizeText(reply);
+  reply = sanitizeAIText(reply, getActiveChild()?.age || 7);
 
   const botAlerts = detectAlertWords(reply);
   const botPersonal = detectPersonalData(reply);
@@ -1042,12 +1042,12 @@ export function showGamesMenu() {
   }).join('');
 
   overlay.innerHTML = `
-    <div style="text-align:center;max-width:320px;padding:10px;">
+    <div class="games-menu-box">
       <h2 style="margin:0 0 16px;">🎮 Выбери игру</h2>
-      <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="games-menu-grid">
         ${buttonsHtml}
-        <button class="modal-btn secondary" data-game="close">✕ Закрыть</button>
       </div>
+      <button class="modal-btn secondary games-menu-close" data-game="close">✕ Закрыть</button>
     </div>`;
 
   const games = {

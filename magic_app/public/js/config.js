@@ -10,7 +10,7 @@ export const PROMOCODES = {
 };
 
 export const CONFIG = {
-  APP_VERSION: '4.5.0',
+  APP_VERSION: '4.6.0',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -147,13 +147,24 @@ const OLD_FEAR_MAP = {
   сверстников: 'peers'
 };
 
-export function getAppMode() {
-  if (typeof window === 'undefined') return 'user';
+const APP_MODE = (() => {
+  if (typeof window === 'undefined') return 'production';
   const host = window.location.hostname;
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('mode') === 'dev' && (host === 'localhost' || host === '127.0.0.1')) return 'dev';
-  if (host === 'localhost' || host === '127.0.0.1') return 'dev';
-  return 'user';
+  if (host === 'localhost' || host.includes('127.0.0.1')) return 'local';
+  if (host.includes('dev.') || host.includes('staging.')) return 'staging';
+  if (window.location.search.includes('mode=dev')) return 'dev';
+  return 'production';
+})();
+
+export const ENV = {
+  mode: APP_MODE,
+  isDev: APP_MODE === 'local' || APP_MODE === 'dev',
+  isStaging: APP_MODE === 'staging',
+  isProduction: APP_MODE === 'production'
+};
+
+export function getAppMode() {
+  return ENV.isDev || ENV.isStaging ? 'dev' : 'user';
 }
 
 export function migrateFearStatsObject(fearStats) {
@@ -172,9 +183,9 @@ export function getFearDisplayName(key) {
 }
 
 export function validateConfig() {
-  console.log('✅ Config validated, version:', CONFIG.APP_VERSION);
-  if (getAppMode() === 'dev') console.log('🛠 Dev mode active');
+  console.log('✅ Config validated, version:', CONFIG.APP_VERSION, 'env:', ENV.mode);
+  if (ENV.isDev || ENV.isStaging) console.log('🛠 Dev/staging mode active');
   return true;
 }
 
-export default { CONFIG, PLANS, GAMES, PROMOCODES, CHARACTERS, FALLBACK_REPLIES, FEAR_LABELS, ADMIN_EMAILS, validateConfig, getAppMode };
+export default { CONFIG, PLANS, GAMES, PROMOCODES, CHARACTERS, FALLBACK_REPLIES, FEAR_LABELS, ADMIN_EMAILS, ENV, validateConfig, getAppMode };

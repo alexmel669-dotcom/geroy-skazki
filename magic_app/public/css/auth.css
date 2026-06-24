@@ -191,3 +191,43 @@ select option {
   color: var(--accent);
   text-decoration: none;
 }
+
+@media (max-width: 768px) {
+  body {
+    padding: 16px;
+    align-items: flex-start;
+  }
+
+  .auth-card {
+    padding: 24px 18px;
+    border-radius: 22px;
+  }
+
+  h1 {
+    font-size: 1.35rem;
+  }
+
+  input, select, .auth-btn {
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  .promocode-group input {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-container {
+    max-width: 100%;
+  }
+
+  .child-block .child-row {
+    flex-direction: column;
+  }
+
+  .gender-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
