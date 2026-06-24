@@ -1,138 +1,111 @@
-import { hashPassword, verify } from './crypto.js';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { Redis } from '@upstash/redis';
 
-const USERS_DIR = process.env.VERCEL ? '/tmp' : join(process.cwd(), '.data');
-const USERS_FILE = join(USERS_DIR, 'geroy-users.json');
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@geroy-skazki.local')
-  .split(',')
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
+const USERS_KEY = 'geroy:users';
+const USER_PREFIX = 'geroy:user:';
+const DIALOGS_PREFIX = 'geroy:dialogs:';
 
-function readUsersFile() {
-  try {
-    if (existsSync(USERS_FILE)) {
-      return JSON.parse(readFileSync(USERS_FILE, 'utf8'));
-    }
-  } catch (err) {
-    console.warn('Could not load users file:', err.message);
-  }
-  return {};
+// Получить всех пользователей (индекс)
+export async function getAllUsers() {
+  const users = await redis.get(USERS_KEY);
+  return users || {};
 }
 
-function normalizeUsername(username) {
-  return String(username || '').trim().toLowerCase();
-}
-
-function loadStore() {
-  if (!globalThis.users) {
-    globalThis.users = new Map();
-    const data = readUsersFile();
-    for (const [key, user] of Object.entries(data)) {
-      const id = normalizeUsername(user.username || user.email || key);
-      globalThis.users.set(id, { ...user, username: id, email: user.email || id });
-    }
-  }
-  return globalThis.users;
-}
-
-export function reloadUsersFromDisk() {
-  globalThis.users = null;
-  return loadStore();
-}
-
-function persistStore(store) {
-  try {
-    mkdirSync(USERS_DIR, { recursive: true });
-    const obj = {};
-    for (const [key, user] of store.entries()) {
-      obj[key] = user;
-    }
-    writeFileSync(USERS_FILE, JSON.stringify(obj, null, 2));
-  } catch (err) {
-    console.warn('Could not persist users file:', err.message);
-  }
-}
-
-function resolveRole(username) {
-  return ADMIN_EMAILS.includes(username) ? 'admin' : 'user';
-}
-
-export function userExists(username) {
-  const id = normalizeUsername(username);
-  if (loadStore().has(id)) return true;
-  const data = readUsersFile();
-  return Boolean(data[id]);
-}
-
-export function saveUser(user) {
-  const store = loadStore();
-  const id = normalizeUsername(user.username || user.email);
-  const record = { ...user, username: id, email: user.email || id };
-  store.set(id, record);
-  persistStore(store);
-  return record;
-}
-
-export async function findUser(username) {
-  const id = normalizeUsername(username);
-  let user = loadStore().get(id);
-  if (!user) {
-    reloadUsersFromDisk();
-    user = loadStore().get(id);
-  }
-  if (!user) {
-    const data = readUsersFile();
-    if (data[id]) {
-      user = { ...data[id], username: id, email: data[id].email || id };
-      saveUser(user);
-    }
-  }
+// Найти пользователя по email
+export async function findUser(email) {
+  const key = USER_PREFIX + email.toLowerCase();
+  const user = await redis.get(key);
   return user || null;
 }
 
-export async function createUser(username, password, extra = {}) {
-  const id = normalizeUsername(username);
-  if (userExists(id)) return null;
+// Сохранить пользователя
+export async function saveUser(email, userData) {
+  const key = USER_PREFIX + email.toLowerCase();
+  const normalizedEmail = email.toLowerCase();
 
   const user = {
-    username: id,
-    email: id,
-    passwordHash: hashPassword(password),
-    role: extra.role || resolveRole(id),
-    plan: extra.plan || 'free',
-    gender: extra.gender || null,
-    age: extra.age ?? null,
-    children: Array.isArray(extra.children) ? extra.children : [],
-    createdAt: new Date().toISOString(),
-    lastLoginAt: null
+    ...userData,
+    email: normalizedEmail,
+    updatedAt: new Date().toISOString()
   };
-  return saveUser(user);
-}
 
-export function updateUser(username, updates) {
-  const id = normalizeUsername(username);
-  const store = loadStore();
-  const user = store.get(id);
-  if (!user) return null;
-  Object.assign(user, updates);
-  store.set(id, user);
-  persistStore(store);
+  await redis.set(key, user);
+
+  const users = await getAllUsers();
+  users[normalizedEmail] = {
+    username: userData.username,
+    plan: userData.plan || 'free',
+    createdAt: userData.createdAt || new Date().toISOString(),
+    lastLoginAt: userData.lastLoginAt || new Date().toISOString()
+  };
+  await redis.set(USERS_KEY, users);
+
   return user;
 }
 
-export async function validateCredentials(username, password) {
-  const user = await findUser(username);
-  if (!user?.passwordHash) return null;
-  if (!verify(password, user.passwordHash)) return null;
-  return user;
+// Проверить существование
+export async function userExists(email) {
+  const key = USER_PREFIX + email.toLowerCase();
+  return Boolean(await redis.exists(key));
 }
 
-export function getAllUsers() {
-  return Array.from(loadStore().values());
+// Удалить пользователя
+export async function deleteUser(email) {
+  const key = USER_PREFIX + email.toLowerCase();
+  await redis.del(key);
+
+  const users = await getAllUsers();
+  delete users[email.toLowerCase()];
+  await redis.set(USERS_KEY, users);
 }
 
-export function getUsersMap() {
-  return loadStore();
+// Сохранить диалог
+export async function saveDialog(email, dialog) {
+  const key = DIALOGS_PREFIX + email.toLowerCase();
+  const dialogs = (await redis.get(key)) || [];
+
+  dialogs.push({
+    ...dialog,
+    timestamp: new Date().toISOString()
+  });
+
+  if (dialogs.length > 100) {
+    dialogs.shift();
+  }
+
+  await redis.set(key, dialogs);
+  return dialogs;
+}
+
+// Получить диалоги
+export async function getDialogs(email) {
+  const key = DIALOGS_PREFIX + email.toLowerCase();
+  return (await redis.get(key)) || [];
+}
+
+// Статистика для админки
+export async function getAdminStats() {
+  const users = await getAllUsers();
+  const userList = Object.values(users);
+
+  const totalUsers = userList.length;
+  const activeToday = userList.filter(u => {
+    return u.lastLoginAt && new Date(u.lastLoginAt) > new Date(Date.now() - 86400000);
+  }).length;
+
+  const plans = {};
+  userList.forEach(u => {
+    plans[u.plan || 'free'] = (plans[u.plan || 'free'] || 0) + 1;
+  });
+
+  return {
+    totalUsers,
+    activeToday,
+    plans,
+    updatedAt: new Date().toISOString()
+  };
 }

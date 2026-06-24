@@ -4,9 +4,13 @@ export function logAuthError(context, message, extra = {}) {
     context,
     message,
     timestamp: new Date().toISOString(),
-    appVersion: '4.1.1',
+    appVersion: '4.2.0',
     ...extra
   };
   console.error(`📋 [AUTH ERROR] ${entry.timestamp} | ${context}`);
   console.error(`   ${message}`, extra.details || '');
+}
+
+export async function logError(context, message, extra = {}) {
+  logAuthError(context, message, extra);
 }
