@@ -20,6 +20,8 @@ import profileUpdate from './_handlers/profile-update.js';
 
 import psychologistHelp from './_handlers/psychologist-help.js';
 
+import promocode from './_handlers/promocode.js';
+
 
 
 const ROUTES = {
@@ -54,7 +56,9 @@ const ROUTES = {
 
   'profile-update': profileUpdate,
 
-  'psychologist-help': psychologistHelp
+  'psychologist-help': psychologistHelp,
+
+  promocode: promocode
 
 };
 

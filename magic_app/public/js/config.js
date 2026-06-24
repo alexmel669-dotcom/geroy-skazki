@@ -2,8 +2,15 @@
 // config.js — КОНФИГУРАЦИЯ ПРИЛОЖЕНИЯ
 // ========================================
 
+export const PROMOCODES = {
+  TESTER2026: { plan: 'basic', days: 30 },
+  FAMILYTEST: { plan: 'family', days: 14 },
+  PSYCHOLOGIST: { plan: 'basic', days: 90 },
+  FRIENDLYCAT: { plan: 'basic', days: 7 }
+};
+
 export const CONFIG = {
-  APP_VERSION: '4.4.0',
+  APP_VERSION: '4.5.0',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -170,4 +177,4 @@ export function validateConfig() {
   return true;
 }
 
-export default { CONFIG, PLANS, GAMES, CHARACTERS, FALLBACK_REPLIES, FEAR_LABELS, ADMIN_EMAILS, validateConfig, getAppMode };
+export default { CONFIG, PLANS, GAMES, PROMOCODES, CHARACTERS, FALLBACK_REPLIES, FEAR_LABELS, ADMIN_EMAILS, validateConfig, getAppMode };

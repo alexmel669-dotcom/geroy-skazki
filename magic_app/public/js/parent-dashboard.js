@@ -1,5 +1,5 @@
 import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName } from './config.js';
-import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, resetDailyCounters } from './core.js';
+import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDaysRemaining, resetDailyCounters } from './core.js';
 import { getGameProgressSummary } from './game-progress.js';
 
 let currentChildIndex = parseInt(localStorage.getItem('activeChildIndex') ?? '-1', 10);
@@ -223,20 +223,56 @@ function renderGameProgress(childName) {
   }).join('');
 }
 
-function renderPlanInfo() {
+async function renderPlanInfo() {
   const container = document.getElementById('planInfoContainer');
   if (!container) return;
   resetDailyCounters();
+
+  let planExpiry = localStorage.getItem('planExpiry');
+  let promocodeUsed = localStorage.getItem('promocodeUsed');
+
+  if (localStorage.getItem('guestMode') !== 'true') {
+    try {
+      const res = await fetch('/api/profile-update', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan);
+        if (data.user?.planExpiry) {
+          planExpiry = data.user.planExpiry;
+          localStorage.setItem('planExpiry', planExpiry);
+        }
+        if (data.user?.promocodeUsed) {
+          promocodeUsed = data.user.promocodeUsed;
+          localStorage.setItem('promocodeUsed', promocodeUsed);
+        }
+      }
+    } catch {
+      /* local fallback */
+    }
+  }
+
   const planId = getUserPlan();
   const plan = PLANS[planId] || PLANS.free;
   const remaining = getStoriesRemaining();
   const used = plan.storiesPerDay - remaining;
+  const daysLeft = getPlanDaysRemaining();
+
+  let promoRow = '';
+  if (promocodeUsed && planExpiry && daysLeft > 0 && planId !== 'free') {
+    promoRow = `
+      <div class="plan-row"><span class="label">Тестовый период</span><span class="value">Осталось ${daysLeft} дн.</span></div>
+      <div class="plan-row"><span class="label">Промокод</span><span class="value">${promocodeUsed}</span></div>
+      <a href="pricing.html" class="plan-change-btn">Продлить тариф</a>`;
+  } else {
+    promoRow = `<a href="pricing.html" class="plan-change-btn">Сменить тариф</a>`;
+  }
+
   container.innerHTML = `
     <div class="plan-row"><span class="label">Тариф</span><span class="value">${plan.name}</span></div>
     <div class="plan-row"><span class="label">Сказок сегодня</span><span class="value">${used} / ${plan.storiesPerDay}</span></div>
     <div class="plan-row"><span class="label">Осталось</span><span class="value">${remaining}</span></div>
     <div class="plan-row"><span class="label">Память диалогов</span><span class="value">${plan.memoryDays} дн.</span></div>
-    <a href="pricing.html" class="plan-change-btn">Сменить тариф</a>
+    ${promoRow}
   `;
 }
 

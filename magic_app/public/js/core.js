@@ -88,8 +88,21 @@ let planLimitActive = false;
 
 export function getUserPlan() {
   if (localStorage.getItem('guestMode') === 'true') return 'free';
+  const expiry = localStorage.getItem('planExpiry');
+  if (expiry && new Date(expiry) < new Date()) {
+    localStorage.setItem('userPlan', 'free');
+    localStorage.removeItem('planExpiry');
+    return 'free';
+  }
   const plan = localStorage.getItem('userPlan') || 'free';
   return PLANS[plan] ? plan : 'free';
+}
+
+export function getPlanDaysRemaining() {
+  const expiry = localStorage.getItem('planExpiry');
+  if (!expiry) return 0;
+  const diff = new Date(expiry) - new Date();
+  return Math.max(0, Math.ceil(diff / 86400000));
 }
 
 export function resetDailyCounters() {

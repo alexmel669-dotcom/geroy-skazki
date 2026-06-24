@@ -1,6 +1,7 @@
 import { setCors } from '../_middleware/cors.js';
 import { verifyAuth } from '../_middleware/auth.js';
 import { findUser, updateChildProfile } from '../_lib/users.js';
+import { getEffectivePlan } from '../_lib/promocodes.js';
 
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
@@ -18,7 +19,10 @@ export default async function handler(req, res) {
       user: {
         childName: profile.childName || null,
         childAge: profile.childAge ?? null,
-        concerns: profile.concerns || []
+        concerns: profile.concerns || [],
+        plan: getEffectivePlan(profile),
+        planExpiry: profile.planExpiry || null,
+        promocodeUsed: profile.promocodeUsed || null
       }
     });
   }

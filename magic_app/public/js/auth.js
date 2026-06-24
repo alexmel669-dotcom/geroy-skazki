@@ -45,6 +45,8 @@ export async function checkAuth() {
     if (data.valid) {
       console.log('✅ Токен валиден');
       if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan);
+      if (data.user?.planExpiry) localStorage.setItem('planExpiry', data.user.planExpiry);
+      if (data.user?.promocodeUsed) localStorage.setItem('promocodeUsed', data.user.promocodeUsed);
       return true;
     } else {
       console.log('❌ Токен невалиден');
@@ -102,6 +104,10 @@ async function handleLogin(e) {
       localStorage.setItem('userEmail', data.user?.email || email);
       localStorage.setItem('guestMode', 'false');
       if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan);
+      if (data.user?.planExpiry) localStorage.setItem('planExpiry', data.user.planExpiry);
+      else localStorage.removeItem('planExpiry');
+      if (data.user?.promocodeUsed) localStorage.setItem('promocodeUsed', data.user.promocodeUsed);
+      else localStorage.removeItem('promocodeUsed');
       if (data.user?.role) localStorage.setItem('userRole', data.user.role);
       if (data.user?.children?.length) {
         localStorage.setItem('children', JSON.stringify(data.user.children));
@@ -234,6 +240,8 @@ function clearAuthData() {
   localStorage.removeItem('userEmail');
   localStorage.removeItem('userRole');
   localStorage.removeItem('userPlan');
+  localStorage.removeItem('planExpiry');
+  localStorage.removeItem('promocodeUsed');
   localStorage.removeItem('isPremium');
   localStorage.removeItem('guestMode');
   document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';

@@ -6,6 +6,7 @@ import { setAuthCookie } from '../_lib/cookies.js';
 import { logError } from '../_lib/auth-log.js';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '../_middleware/auth.js';
+import { validatePromocode, buildPlanFromPromo, getEffectivePlan } from '../_lib/promocodes.js';
 
 const MIN_AGE = 3;
 const MAX_AGE = 14;
@@ -39,7 +40,7 @@ function signToken(user) {
       email: user.email,
       username: user.username,
       userId: user.email,
-      plan: user.plan || 'free',
+      plan: getEffectivePlan(user),
       role: user.role || 'user'
     },
     getJwtSecret(),
@@ -62,7 +63,7 @@ export default async function handler(req, res) {
   try {
     const normalizedEmail = (req.body.email || req.body.username || '').trim().toLowerCase();
     const username = String(req.body.username || normalizedEmail.split('@')[0] || normalizedEmail).trim();
-    const { password, gender, age, children } = req.body;
+    const { password, gender, age, children, promocode } = req.body;
 
     if (!normalizedEmail || !password) {
       return res.status(400).json({ error: 'Поля username, email, password обязательны' });
@@ -87,6 +88,20 @@ export default async function handler(req, res) {
     const passwordHash = hashPassword(password);
     const role = ADMIN_EMAILS.includes(normalizedEmail) ? 'admin' : 'user';
 
+    let plan = 'free';
+    let planExpiry = null;
+    let promocodeUsed = null;
+    let promoMessage = null;
+
+    const promo = validatePromocode(promocode);
+    if (promo) {
+      const applied = buildPlanFromPromo(promo);
+      plan = applied.plan;
+      planExpiry = applied.planExpiry;
+      promocodeUsed = applied.promocodeUsed;
+      promoMessage = `Активирован тариф «${plan}» на ${promo.days} дней!`;
+    }
+
     const user = {
       username,
       email: normalizedEmail,
@@ -94,23 +109,29 @@ export default async function handler(req, res) {
       gender: gender || null,
       age: age != null ? parseInt(age, 10) : null,
       children: normalizedChildren,
-      plan: 'free',
+      plan,
+      planExpiry,
+      promocodeUsed,
       role,
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString()
     };
 
     const saved = await saveUser(normalizedEmail, user);
-    const token = signToken(saved);
+    const effectivePlan = getEffectivePlan(saved);
+    const token = signToken({ ...saved, plan: effectivePlan });
     setAuthCookie(res, token);
 
     return res.status(201).json({
       success: true,
       token,
+      promoMessage,
       user: {
         username: saved.username,
         email: normalizedEmail,
-        plan: 'free',
+        plan: effectivePlan,
+        planExpiry: saved.planExpiry || null,
+        promocodeUsed: saved.promocodeUsed || null,
         role,
         children: normalizedChildren
       }
