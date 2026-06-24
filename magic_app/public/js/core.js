@@ -93,7 +93,7 @@ export function getUserPlan() {
 
 export function resetDailyCounters() {
   const today = new Date().toDateString();
-  const data = safeParseJSON(localStorage.getItem(PLAN_COUNTERS_KEY), {});
+  const data = safeParseJSON(localStorage.getItem(PLAN_COUNTERS_KEY), {}) || {};
   if (data.date !== today) {
     localStorage.setItem(PLAN_COUNTERS_KEY, JSON.stringify({ date: today, stories: 0 }));
   }
@@ -101,10 +101,11 @@ export function resetDailyCounters() {
 
 function getDailyCounters() {
   resetDailyCounters();
-  return safeParseJSON(localStorage.getItem(PLAN_COUNTERS_KEY), {
+  const counters = safeParseJSON(localStorage.getItem(PLAN_COUNTERS_KEY), {
     date: new Date().toDateString(),
     stories: 0
   });
+  return counters && typeof counters === 'object' ? counters : { date: new Date().toDateString(), stories: 0 };
 }
 
 export function getStoriesRemaining() {
