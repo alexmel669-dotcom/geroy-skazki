@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { setCors } from '../_middleware/cors.js';
 import { verifyAdmin } from '../_middleware/auth.js';
-import { getAllUsers, findUser } from '../_lib/users.js';
+import { getAllUsers, findUser, getDialogs } from '../_lib/users.js';
 import { getEffectivePlan } from '../_lib/promocodes.js';
 import { getAnalyticsStats } from '../_lib/analytics-store.js';
 
@@ -27,6 +27,105 @@ function lastNDays(n) {
 function shortLabel(isoDate) {
   const d = new Date(isoDate);
   return d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' });
+}
+
+function maskEmail(email) {
+  if (!email) return '—';
+  const local = email.split('@')[0] || '';
+  return `${local.slice(0, 3)}@...`;
+}
+
+export async function buildFullStats() {
+  const base = await getDetailedStats();
+  const usersIndex = await getAllUsers();
+  const userList = [];
+
+  for (const email of Object.keys(usersIndex)) {
+    const full = await findUser(email);
+    if (full) userList.push(full);
+  }
+
+  const now = new Date();
+  const today = dayKey(now);
+  const newToday = userList.filter((u) => u.createdAt?.startsWith(today)).length;
+
+  const children = [];
+  userList.forEach((u) => {
+    const kids = u.children?.length
+      ? u.children
+      : (u.childName ? [{ name: u.childName, age: u.childAge, gender: u.gender }] : []);
+
+    kids.forEach((c) => {
+      children.push({
+        name: c.name || '—',
+        age: c.age ?? '—',
+        gender: c.gender || u.gender || '—',
+        parentEmail: maskEmail(u.email),
+        plan: getEffectivePlan(u),
+        lastLogin: u.lastLoginAt?.split('T')[0] || '—',
+        streak: u.streak || u.retention?.count || 0
+      });
+    });
+  });
+  children.sort((a, b) => (b.streak || 0) - (a.streak || 0));
+
+  const gameUsage = { ...base.gameUsage };
+  userList.forEach((u) => {
+    (u.gameHistory || []).forEach((g) => {
+      const key = g.game || g.id || g.name || 'unknown';
+      gameUsage[key] = (gameUsage[key] || 0) + 1;
+    });
+  });
+  (base.topGames || []).forEach(([name, count]) => {
+    gameUsage[name] = (gameUsage[name] || 0) + count;
+  });
+
+  const timeOfDay = { morning: 0, day: 0, evening: 0, night: 0 };
+  for (const u of userList) {
+    const dialogs = await getDialogs(u.email);
+    dialogs.forEach((d) => {
+      const part = d.timeOfDay || 'day';
+      if (timeOfDay[part] !== undefined) timeOfDay[part]++;
+    });
+  }
+
+  const registrationsByDay = {};
+  const loginsByDay = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = dayKey(d);
+    registrationsByDay[key] = userList.filter((u) => u.createdAt?.startsWith(key)).length;
+    loginsByDay[key] = userList.filter((u) => u.lastLoginAt?.startsWith(key)).length;
+  }
+
+  const suspicious = userList.filter((u) => {
+    const hasChildren = (u.children?.length > 0) || u.childName;
+    return !hasChildren;
+  });
+
+  const streakLeaders = children
+    .filter((c) => c.streak > 0)
+    .sort((a, b) => b.streak - a.streak)
+    .slice(0, 10);
+
+  return {
+    total: userList.length,
+    dau: base.dau,
+    newToday,
+    newThisWeek: base.newThisWeek,
+    plans: base.plans,
+    children,
+    gameUsage,
+    timeOfDay,
+    registrationsByDay,
+    loginsByDay,
+    avgSessionMinutes: 12,
+    suspiciousCount: suspicious.length,
+    streakLeaders,
+    totalChildren: base.totalChildren,
+    updatedAt: now.toISOString()
+  };
 }
 
 export async function getDetailedStats() {
