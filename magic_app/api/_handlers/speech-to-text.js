@@ -28,12 +28,18 @@ export default async function handler(req, res) {
     }
 
     const audioBytes = base64ToBytes(audio);
+    if (audioBytes.length < 3200) {
+      return res.status(400).json({ text: '', error: 'Audio too short', fallback: true });
+    }
+
     const contentType = req.body.contentType || 'audio/ogg;codecs=opus';
     const format = req.body.format || (contentType.includes('ogg') ? 'oggopus' : 'lpcm');
     const params = new URLSearchParams({
       lang: 'ru-RU',
       folderId: YANDEX_FOLDER_ID,
-      format
+      format,
+      topic: 'general',
+      profanityFilter: 'false'
     });
     if (format === 'lpcm') {
       params.set('sampleRateHz', String(req.body.sampleRateHz || 16000));
@@ -57,7 +63,15 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    return res.status(200).json({ text: data.result || '' });
+    const text = (data.result || '').trim();
+    if (!text) {
+      console.warn('Yandex STT empty result', {
+        audioBytes: audioBytes.length,
+        format,
+        sampleRateHz: params.get('sampleRateHz') || 'n/a'
+      });
+    }
+    return res.status(200).json({ text, audioBytes: audioBytes.length, empty: !text });
   } catch (error) {
     console.error('STT error:', error);
     return res.status(500).json({ text: '', error: 'Internal server error', fallback: true });

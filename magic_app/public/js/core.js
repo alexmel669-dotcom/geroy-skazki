@@ -12,7 +12,7 @@ import {
 } from './ai.js';
 import {
   startRecording, stopRecording, isRecording, getRecordingMimeType,
-  isMicrophoneSupported, prepareAudioForStt, browserSpeechRecognition
+  isMicrophoneSupported, prepareAudioForStt, getLiveSttText, clearLiveSttText
 } from './mic.js';
 import { synthesizeSpeech } from './audio.js';
 import { checkAchievements, showAchievement } from './achievements.js';
@@ -665,7 +665,9 @@ function initUI() {
   }
 
   const parent = document.getElementById('parentBtn');
-  if (parent && localStorage.getItem('childMode') !== 'true') {
+  const isGuest = localStorage.getItem('guestMode') === 'true';
+  const isChild = localStorage.getItem('childMode') === 'true';
+  if (parent && !isChild && !isGuest && localStorage.getItem('userToken')) {
     parent.onclick = () => { window.location.href = '/parent.html'; };
   } else if (parent) {
     parent.style.display = 'none';
@@ -827,6 +829,13 @@ function saveAlertForParent(text, words, source) {
 async function recognizeSpeech(blob) {
   if (!blob?.size) return { text: '', fallback: true };
 
+  const liveText = getLiveSttText();
+  if (liveText) {
+    clearLiveSttText();
+    console.log('🎙️ Using live browser STT:', liveText);
+    return { text: liveText, fallback: true };
+  }
+
   const tryServerStt = async () => {
     let prepared;
     try {
@@ -853,7 +862,7 @@ async function recognizeSpeech(blob) {
     if (response.ok && data.text?.trim()) {
       return { text: data.text.trim(), fallback: false };
     }
-    console.warn('STT API empty/fail:', data.error || response.status);
+    console.warn('STT API empty/fail:', data.error || response.status, data.audioBytes ? `${data.audioBytes} bytes` : '');
     return null;
   };
 
@@ -862,15 +871,6 @@ async function recognizeSpeech(blob) {
     if (server?.text) return server;
   } catch (e) {
     console.warn('STT API fail:', e.message);
-  }
-
-  try {
-    const browserText = await browserSpeechRecognition(8000);
-    if (browserText?.trim()) {
-      return { text: browserText.trim(), fallback: true };
-    }
-  } catch (e) {
-    console.warn('Browser STT fallback fail:', e.message);
   }
 
   return { text: '', fallback: true };

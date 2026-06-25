@@ -14,6 +14,9 @@ export default async function handler(req, res) {
   if (!decoded?.email) {
     return res.status(401).json({ error: 'Требуется авторизация' });
   }
+  if (decoded.role === 'child' || decoded.mode === 'child') {
+    return res.status(403).json({ error: 'Только для родителя' });
+  }
 
   try {
     const user = await findUser(decoded.email);

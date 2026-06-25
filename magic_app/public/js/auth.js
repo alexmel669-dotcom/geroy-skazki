@@ -114,7 +114,8 @@ async function handleLogin(e) {
         localStorage.setItem('childrenNames', data.user.children.map(c => c.name).join(', '));
         localStorage.setItem('activeChildIndex', data.user.children.length > 1 ? '-1' : '0');
       }
-      window.location.href = '/app.html';
+      const redirect = new URLSearchParams(window.location.search).get('redirect');
+      window.location.href = redirect === 'parent' ? '/parent.html' : '/app.html';
     } else {
       showError(errorEl, translateError(data.error) || 'Ошибка входа');
     }

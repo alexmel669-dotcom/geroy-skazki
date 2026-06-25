@@ -1,5 +1,5 @@
 import { bindNotificationSettingsUI, initNotificationScheduler, scheduleMissYouNotification } from './notifications.js';
-import { logout } from './auth.js';
+import { logout, checkAuth } from './auth.js';
 import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName } from './config.js';
 import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDaysRemaining, resetDailyCounters } from './core.js';
 import { getGameProgressSummary } from './game-progress.js';
@@ -44,11 +44,44 @@ function renderTimeStats(history) {
   }
 }
 
-async function enterParentCabinet() {
-  if (localStorage.getItem('childMode') === 'true') {
-    window.location.href = 'app.html';
-    return;
+function authHeaders() {
+  const token = localStorage.getItem('userToken');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+}
+
+function isChildToken() {
+  try {
+    const token = localStorage.getItem('userToken');
+    if (!token) return false;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.role === 'child' || payload.mode === 'child';
+  } catch {
+    return false;
   }
+}
+
+async function ensureParentAccess() {
+  if (localStorage.getItem('childMode') === 'true' || isChildToken()) {
+    window.location.href = 'app.html';
+    return false;
+  }
+  if (localStorage.getItem('guestMode') === 'true') {
+    window.location.href = 'login.html?redirect=parent';
+    return false;
+  }
+  const authed = await checkAuth();
+  if (!authed) {
+    window.location.href = 'login.html?redirect=parent';
+    return false;
+  }
+  return true;
+}
+
+async function enterParentCabinet() {
+  if (!(await ensureParentAccess())) return;
 
   const sessionOk = sessionStorage.getItem('parentPinOk') === 'true';
   if (sessionOk) {
@@ -63,17 +96,17 @@ async function enterParentCabinet() {
     return;
   }
 
-  const token = localStorage.getItem('userToken');
   try {
     const check = await fetch('/api/verify-pin', {
       method: 'POST',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      },
+      headers: authHeaders(),
       body: JSON.stringify({ checkOnly: true })
     });
+    if (check.status === 401) {
+      window.location.href = 'login.html?redirect=parent';
+      return;
+    }
     const data = await check.json();
     if (data.noPin) {
       sessionStorage.setItem('parentPinOk', 'true');
@@ -98,16 +131,17 @@ async function verifyPinSubmit() {
     return;
   }
 
-  const token = localStorage.getItem('userToken');
   const res = await fetch('/api/verify-pin', {
     method: 'POST',
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    },
+    headers: authHeaders(),
     body: JSON.stringify({ pin })
   });
+
+  if (res.status === 401) {
+    window.location.href = 'login.html?redirect=parent';
+    return;
+  }
 
   if (res.ok) {
     sessionStorage.setItem('parentPinOk', 'true');
@@ -130,14 +164,10 @@ async function verifyPinSubmit() {
 }
 
 async function connectChildDevice() {
-  const token = localStorage.getItem('userToken');
   const res = await fetch('/api/child-token', {
     method: 'POST',
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    },
+    headers: authHeaders(),
     body: JSON.stringify({ childIndex: currentChildIndex >= 0 ? currentChildIndex : 0 })
   });
   const data = await res.json();
@@ -601,11 +631,10 @@ document.getElementById('pinInput')?.addEventListener('keydown', (e) => {
 document.getElementById('connectChildDevice')?.addEventListener('click', connectChildDevice);
 document.getElementById('parentLogoutBtn')?.addEventListener('click', () => logout());
 document.getElementById('weeklyDigestBtn')?.addEventListener('click', async () => {
-  const token = localStorage.getItem('userToken');
   const res = await fetch('/api/weekly-digest', {
     method: 'POST',
     credentials: 'include',
-    headers: token ? { Authorization: `Bearer ${token}` } : {}
+    headers: authHeaders()
   });
   const data = await res.json();
   alert(res.ok ? 'Отчёт отправлен на email!' : (data.error || 'Не удалось отправить'));

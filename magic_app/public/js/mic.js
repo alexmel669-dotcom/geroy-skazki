@@ -17,6 +17,8 @@ let maxTimeTimer = null;
 let onAutoStopCallback = null;
 let onStateChangeCallback = null;
 let recordingStartTime = 0;
+let liveRecognition = null;
+let liveSttParts = [];
 
 const MIN_RECORD_MS = 600;
 const CHUNK_MS = 250;
@@ -142,6 +144,7 @@ export async function startRecording(options = {}) {
     onStateChangeCallback?.('recording');
     monitorVolume();
     console.log('🎙️ Recording started ✓ state:', mediaRecorder.state);
+    startLiveStt();
     maxTimeTimer = setTimeout(() => {
       if (isCurrentlyRecording && onAutoStopCallback) onAutoStopCallback('max_time');
     }, CONFIG.MAX_RECORD_TIME ?? 60000);
@@ -186,6 +189,20 @@ function resampleFloat32(input, fromRate, toRate) {
   return out;
 }
 
+function normalizePeak(samples, target = 0.9) {
+  let peak = 0;
+  for (let i = 0; i < samples.length; i++) {
+    peak = Math.max(peak, Math.abs(samples[i]));
+  }
+  if (peak < 1e-6) return samples;
+  const gain = target / peak;
+  const out = new Float32Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    out[i] = Math.max(-1, Math.min(1, samples[i] * gain));
+  }
+  return out;
+}
+
 function floatTo16BitPCM(float32) {
   const out = new Int16Array(float32.length);
   for (let i = 0; i < float32.length; i++) {
@@ -193,6 +210,71 @@ function floatTo16BitPCM(float32) {
     out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
   return out;
+}
+
+function startLiveStt() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  liveSttParts = [];
+  liveRecognition = new SR();
+  liveRecognition.lang = 'ru-RU';
+  liveRecognition.continuous = true;
+  liveRecognition.interimResults = true;
+  liveRecognition.onresult = (event) => {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const result = event.results[i];
+      if (result.isFinal) {
+        const part = (result[0]?.transcript || '').trim();
+        if (part) liveSttParts.push(part);
+      }
+    }
+  };
+  liveRecognition.onerror = (e) => {
+    if (e.error !== 'no-speech' && e.error !== 'aborted') {
+      console.warn('🎙️ Live STT error:', e.error);
+    }
+  };
+  liveRecognition.onend = () => {
+    if (isCurrentlyRecording && liveRecognition) {
+      try { liveRecognition.start(); } catch { /* ignore */ }
+    }
+  };
+  try {
+    liveRecognition.start();
+    console.log('🎙️ Live browser STT started');
+  } catch (e) {
+    console.warn('🎙️ Live STT start failed:', e.message);
+    liveRecognition = null;
+  }
+}
+
+function stopLiveStt() {
+  return new Promise((resolve) => {
+    const text = getLiveSttText();
+    if (!liveRecognition) {
+      resolve(text);
+      return;
+    }
+    const rec = liveRecognition;
+    liveRecognition = null;
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve(getLiveSttText());
+    };
+    rec.onend = finish;
+    try { rec.stop(); } catch { finish(); return; }
+    setTimeout(finish, 400);
+  });
+}
+
+export function getLiveSttText() {
+  return liveSttParts.filter(Boolean).join(' ').trim();
+}
+
+export function clearLiveSttText() {
+  liveSttParts = [];
 }
 
 function bytesToBase64(bytes) {
@@ -221,9 +303,12 @@ export async function prepareAudioForStt(blob) {
     const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
     const mono = decoded.numberOfChannels > 1 ? mixToMono(decoded) : decoded.getChannelData(0);
     const resampled = resampleFloat32(mono, decoded.sampleRate, 16000);
-    const pcm = floatTo16BitPCM(resampled);
+    const normalized = normalizePeak(resampled);
+    const pcm = floatTo16BitPCM(normalized);
+    const bytes = new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength);
+    console.log('🎙️ PCM for STT:', bytes.length, 'bytes,', Math.round(bytes.length / 32), 'ms');
     return {
-      base64: bytesToBase64(new Uint8Array(pcm.buffer)),
+      base64: bytesToBase64(bytes),
       contentType: 'audio/x-pcm;bit=16;rate=16000',
       format: 'lpcm',
       sampleRateHz: 16000
@@ -244,7 +329,7 @@ export async function stopRecording() {
       return;
     }
     onStateChangeCallback?.('processing');
-    mediaRecorder.addEventListener('stop', () => {
+    mediaRecorder.addEventListener('stop', async () => {
       const rawSize = audioChunks.reduce((s, c) => s + c.size, 0);
       console.log('🎙️ Stop: chunks=', audioChunks.length, 'rawSize=', rawSize);
       const audioBlob = new Blob(audioChunks, { type: getRecordingMimeType() });
@@ -254,6 +339,8 @@ export async function stopRecording() {
       cleanupAudioContext();
       cleanupStream();
       onAutoStopCallback = null;
+      const liveText = await stopLiveStt();
+      if (liveText) console.log('🎙️ Live STT result:', liveText);
       console.log('🎙️ Recording stopped, blob size:', audioBlob.size);
       resolve(audioBlob);
     }, { once: true });
@@ -271,15 +358,19 @@ export async function stopRecording() {
 
 export function cancelRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.addEventListener('stop', () => {
+    mediaRecorder.addEventListener('stop', async () => {
       audioChunks = [];
       isCurrentlyRecording = false;
       cleanupAudioContext();
       cleanupStream();
       onAutoStopCallback = null;
+      await stopLiveStt();
+      clearLiveSttText();
       onStateChangeCallback?.('idle');
     }, { once: true });
     mediaRecorder.stop();
+  } else {
+    stopLiveStt().then(() => clearLiveSttText());
   }
 }
 
@@ -365,5 +456,5 @@ export default {
   isRecording, startRecording, stopRecording, cancelRecording,
   getAudioBlob, playAudioFromUrl, getRecordingMimeType, prepareAudioForStt,
   isMicrophoneSupported, requestMicrophonePermission, setMicStateCallback,
-  browserSpeechRecognition
+  browserSpeechRecognition, getLiveSttText, clearLiveSttText
 };
