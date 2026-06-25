@@ -23,7 +23,13 @@ import { startMemoryGame } from './games/memory.js';
 import { startPuzzleGame } from './games/puzzle.js';
 import { startRiddlesGame } from './games/riddles.js';
 import { startQuestGame } from './games/quest.js';
-import { setAvatarState } from './ui.js';
+import { startMazeGame } from './games/maze.js';
+import { startQuizGame } from './games/quiz.js';
+import { setAvatarState, playPurrSound } from './ui.js';
+import { getTimeContext } from './context.js';
+import { detectRequestType, getDictionaryReply, learnFromResponse } from './dictionary.js';
+import { checkDailyStreak, updateStreakUI, getDailyAdventure } from './retention.js';
+import { initChildSwipe } from './child-swipe.js';
 
 // ========================================
 // STATE
@@ -367,6 +373,16 @@ export function initCore() {
   if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
   updateAvatarMoodState();
   setMicVisualState('idle');
+
+  checkDailyStreak();
+  updateStreakUI();
+  localStorage.setItem('geroy-last-visit', new Date().toISOString());
+
+  const adventure = getDailyAdventure();
+  if (adventure) {
+    setTimeout(() => synthesizeSpeech(adventure.message, getCharacter()).catch(() => {}), 2000);
+  }
+
   console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION} готов к работе`);
 }
 
@@ -518,11 +534,16 @@ export function saveChildStats(stats) {
 
 export function saveToChildHistory(entry) {
   if (!entry?.text) return;
+  const tc = getTimeContext(getActiveChildName());
   const stats = getChildStats();
   stats.history.push({
     role: entry.role || 'unknown',
     text: entry.text,
     timestamp: entry.timestamp || Date.now(),
+    timeOfDay: entry.timeOfDay || tc.partOfDay,
+    hour: entry.hour != null ? entry.hour : tc.hour,
+    dayOfWeek: entry.dayOfWeek || new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase(),
+    type: entry.type || 'chat',
     characterName: entry.characterName || null,
     childName: entry.childName || getActiveChildName(),
     alerted: entry.alerted || false,
@@ -635,17 +656,19 @@ function showCleaningAnimation() {
 
 function initUI() {
   const avatar = document.getElementById('avatar');
-  if (avatar) avatar.onclick = () => cycleCharacter(1);
+  if (avatar) {
+    avatar.onclick = () => {
+      playPurrSound();
+      cycleCharacter(1);
+    };
+    initChildSwipe(avatar);
+  }
 
   const parent = document.getElementById('parentBtn');
-  if (parent) parent.onclick = () => { window.location.href = '/parent.html'; };
-
-  const logoutBtn = document.getElementById('logoutBtn');
-  if (logoutBtn) {
-    if (localStorage.getItem('userToken') || document.cookie.includes('token=')) {
-      logoutBtn.style.display = 'flex';
-    }
-    logoutBtn.onclick = handleLogout;
+  if (parent && localStorage.getItem('childMode') !== 'true') {
+    parent.onclick = () => { window.location.href = '/parent.html'; };
+  } else if (parent) {
+    parent.style.display = 'none';
   }
 }
 
@@ -708,7 +731,7 @@ function initEventListeners() {
   }
 
   const avatarSection = document.querySelector('.avatar-section');
-  if (avatarSection) {
+  if (avatarSection && getChildren().length < 2) {
     let touchStartX = 0;
     avatarSection.ontouchstart = (e) => { touchStartX = e.touches[0].clientX; };
     avatarSection.ontouchend = (e) => {
@@ -962,10 +985,16 @@ async function handleLongPress() {
 
 async function handleUserMessage(text) {
   const avatar = document.getElementById('avatar');
+  const child = getActiveChild();
+  const childName = getActiveChildName();
+  const timeContext = getTimeContext(childName);
+  const requestType = detectRequestType(text);
 
-  if (getStoriesRemaining() <= 0) {
-    await handlePlanLimitExceeded();
-    return;
+  if (requestType === 'story') {
+    if (getStoriesRemaining() <= 0) {
+      await synthesizeSpeech('Мы сегодня уже рассказали все сказки! Но можем просто поболтать. О чём хочешь поговорить?', getCharacter());
+      return;
+    }
   }
 
   if (checkBadWords(text)) {
@@ -973,7 +1002,7 @@ async function handleUserMessage(text) {
     return;
   }
 
-  saveToChildHistory({ role: 'child', text, timestamp: Date.now(), childName: getActiveChildName() });
+  saveToChildHistory({ role: 'child', text, timestamp: Date.now(), childName, type: requestType });
   addToContext('child', text);
 
   const fears = detectFear(text);
@@ -985,20 +1014,37 @@ async function handleUserMessage(text) {
     saveAlertForParent(text, alerts, 'child');
   }
 
+  const dictReply = getDictionaryReply(text, childName, timeContext);
+  let reply;
+  let responseType = requestType;
+
   if (avatar) {
     avatar.classList.add('talking');
-    setAvatarState('speaking');
+    setAvatarState('listening');
+    playPurrSound();
   }
-  const aiResult = await generateResponse(text, getChildContextForAI());
-  let reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
-  if (typeof aiResult === 'object' && aiResult) {
-    if (aiResult.childName || aiResult.childAge != null) {
-      saveDetectedProfile({ childName: aiResult.childName, childAge: aiResult.childAge });
+
+  if (dictReply && requestType === 'chat') {
+    reply = dictReply;
+  } else {
+    const aiResult = await generateResponse(text, {
+      ...getChildContextForAI(),
+      requestType,
+      timeContext
+    });
+    reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
+    responseType = aiResult.type || requestType;
+    if (typeof aiResult === 'object' && aiResult) {
+      if (aiResult.childName || aiResult.childAge != null) {
+        saveDetectedProfile({ childName: aiResult.childName, childAge: aiResult.childAge });
+      }
+      if (aiResult.concerns?.length) saveParentConcerns(aiResult.concerns);
     }
-    if (aiResult.concerns?.length) saveParentConcerns(aiResult.concerns);
+    learnFromResponse(text, reply);
   }
+
   if (globalThis.__lastAiMs) applyAiTiming();
-  reply = sanitizeAIText(reply, getActiveChild()?.age || 7);
+  reply = sanitizeAIText(reply, child?.age || 7);
 
   const botAlerts = detectAlertWords(reply);
   const botPersonal = detectPersonalData(reply);
@@ -1012,6 +1058,7 @@ async function handleUserMessage(text) {
     role: 'bot',
     text: reply,
     timestamp: Date.now(),
+    type: responseType,
     characterName: CHARACTERS[getCharacter()]?.name || 'Люцик',
     alerted: isSuspicious,
     alertWords: [...botAlerts, ...botPersonal]
@@ -1019,14 +1066,17 @@ async function handleUserMessage(text) {
   addToContext('bot', reply);
   if (isSuspicious) saveAlertForParent(reply, [...botAlerts, ...botPersonal], 'ai');
 
+  setAvatarState('speaking');
   await synthesizeSpeech(reply, getCharacter());
   setAvatarState(null);
   updateAvatarMoodState();
   if (shouldSuggestFearGame(allFears)) {
     await synthesizeSpeech(getFearGameSuggestion(allFears[0]), getCharacter());
   }
-  if (reply.length > 200) incrementStories();
-  incrementDailyStories();
+  if (responseType === 'story' || (requestType === 'story' && reply.length > 120)) {
+    incrementStories();
+    incrementDailyStories();
+  }
   if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
   checkAchievements();
   updateStatsDisplay();
@@ -1091,6 +1141,8 @@ export function showGamesMenu() {
     puzzle: startPuzzleGame,
     riddles: startRiddlesGame,
     quest: startQuestGame,
+    maze: startMazeGame,
+    quiz: startQuizGame,
     emotion: startRiddlesGame,
     coloring: startQuestGame
   };

@@ -89,10 +89,26 @@
       min-width: 20px;
       accent-color: #6C63FF;
     }
+    .time-bar .bar-fill-time { height: 100%; background: #6C63FF; border-radius: 8px; min-width: 4px; }
+    .pin-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 3000; display: flex; align-items: center; justify-content: center; }
+    .pin-box { background: rgba(35,35,58,0.95); border-radius: 24px; padding: 28px; max-width: 320px; width: 90%; text-align: center; }
+    .pin-box input { width: 100%; padding: 14px; font-size: 1.4rem; text-align: center; letter-spacing: 8px; border-radius: 12px; border: none; margin: 16px 0; }
+    #childQrCode img { max-width: 220px; border-radius: 12px; margin: 12px 0; }
+    #childLink { word-break: break-all; font-size: 0.8rem; opacity: 0.8; margin-top: 8px; }
   </style>
 </head>
 <body>
-<div class="parent-container">
+<div class="pin-overlay" id="pinOverlay" style="display:none;">
+  <div class="pin-box">
+    <h3>🔐 PIN родительского кабинета</h3>
+    <p style="opacity:0.7;font-size:0.85rem;">Введите 4 цифры</p>
+    <input type="password" id="pinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+    <p id="pinError" style="color:#ff8a80;font-size:0.85rem;display:none;"></p>
+    <button class="btn-save" id="pinSubmitBtn" style="width:100%;">Войти</button>
+  </div>
+</div>
+
+<div class="parent-container" id="parentCabinet" style="display:none;">
   <a href="app.html" class="back-link">← Назад к Люцику</a>
   <a href="index.html" class="site-link">🏠 На сайт</a>
   <h1>👨‍👩‍👧 Родительский кабинет</h1>
@@ -124,6 +140,20 @@
       <input type="checkbox" id="notifyReport" checked>
       Отчёты о настроении
     </label>
+  </div>
+
+  <div class="card">
+    <h2>📱 Телефон ребёнка</h2>
+    <p style="opacity:0.75;font-size:0.85rem;">Откройте эту ссылку или QR на втором телефоне — ребёнок увидит только приложение без родительского кабинета.</p>
+    <button class="btn-save" id="connectChildDevice" type="button">📱 Подключить телефон ребёнка</button>
+    <div id="childQrCode"></div>
+    <div id="childLink"></div>
+  </div>
+
+  <div class="card time-stats" id="timeStatsCard">
+    <h2>📊 Активность по времени суток</h2>
+    <div class="time-bars" id="timeBarsContainer"><div class="empty-state">Нет данных</div></div>
+    <div class="insight-box" id="timeInsight" style="display:none;"></div>
   </div>
 
   <div class="card">
@@ -168,6 +198,11 @@
   <div class="card">
     <h2>💡 Выводы</h2>
     <div id="insightsContainer"><div class="empty-state">Недостаточно данных для выводов</div></div>
+  </div>
+
+  <div class="card">
+    <button class="btn-attention" id="weeklyDigestBtn" type="button" style="margin-top:0;">📧 Отправить недельный отчёт на email</button>
+    <button class="btn-save" id="parentLogoutBtn" type="button" style="width:100%;margin-top:12px;background:rgba(255,255,255,0.15);">🚪 Выйти из аккаунта</button>
   </div>
 </div>
 

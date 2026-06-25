@@ -11,14 +11,17 @@
     "deploy:env": "powershell -ExecutionPolicy Bypass -File scripts/set-vercel-env.ps1",
     "deploy:full": "npm run deploy:env && npm run deploy",
     "lint": "echo 'No linter configured'",
-    "test": "node scripts/check-syntax.mjs"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:syntax": "node scripts/check-syntax.mjs"
   },
   "dependencies": {
     "@upstash/redis": "^1.34.3",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
-    "vercel": "^32.0.0"
+    "vercel": "^32.0.0",
+    "vitest": "^3.0.5"
   },
   "engines": {
     "node": ">=18.0.0"

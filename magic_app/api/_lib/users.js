@@ -123,3 +123,44 @@ export async function updateChildProfile(email, data) {
 
   return saveUser(email, user);
 }
+
+export function getPartOfDayFromDate(d = new Date()) {
+  const h = d.getHours();
+  if (h >= 6 && h < 12) return 'morning';
+  if (h >= 12 && h < 17) return 'day';
+  if (h >= 17 && h < 21) return 'evening';
+  return 'night';
+}
+
+export async function saveDialogWithTime(email, dialog) {
+  const now = new Date();
+  const enriched = {
+    ...dialog,
+    timestamp: dialog.timestamp || now.toISOString(),
+    timeOfDay: dialog.timeOfDay || getPartOfDayFromDate(now),
+    dayOfWeek: dialog.dayOfWeek || now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase(),
+    date: dialog.date || now.toLocaleDateString('ru-RU'),
+    hour: dialog.hour != null ? dialog.hour : now.getHours()
+  };
+  return saveDialog(email, enriched);
+}
+
+export async function getWeeklyStats(email) {
+  const dialogs = await getDialogs(email);
+  const weekAgo = Date.now() - 7 * 86400000;
+  const recent = dialogs.filter((d) => new Date(d.timestamp).getTime() > weekAgo);
+
+  const totalChats = recent.filter((d) => d.role === 'child' || d.role === 'user').length;
+  const totalStories = recent.filter((d) => d.type === 'story').length;
+  const moods = recent.map((d) => d.mood).filter(Boolean);
+  const moodSummary = moods.length
+    ? (moods.filter((m) => m === 'positive').length > moods.length / 2 ? 'позитивное' : 'спокойное')
+    : 'нет данных';
+
+  return {
+    totalChats,
+    totalStories,
+    moodSummary,
+    stars: totalChats + totalStories
+  };
+}

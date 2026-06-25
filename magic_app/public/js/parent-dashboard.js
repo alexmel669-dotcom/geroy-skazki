@@ -1,7 +1,155 @@
-import { bindNotificationSettingsUI, initNotificationScheduler } from './notifications.js';
+import { bindNotificationSettingsUI, initNotificationScheduler, scheduleMissYouNotification } from './notifications.js';
+import { logout } from './auth.js';
 import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName } from './config.js';
 import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDaysRemaining, resetDailyCounters } from './core.js';
 import { getGameProgressSummary } from './game-progress.js';
+
+let pinAttempts = 0;
+let pinLockedUntil = 0;
+
+const TIME_LABELS = {
+  morning: '🌅 Утро',
+  day: '☀️ День',
+  evening: '🌆 Вечер',
+  night: '🌙 Ночь'
+};
+
+function renderTimeStats(history) {
+  const container = document.getElementById('timeBarsContainer');
+  const insightEl = document.getElementById('timeInsight');
+  if (!container) return;
+
+  const counts = { morning: 0, day: 0, evening: 0, night: 0 };
+  (history || []).forEach((h) => {
+    const part = h.timeOfDay || 'day';
+    if (counts[part] !== undefined) counts[part]++;
+  });
+
+  const max = Math.max(...Object.values(counts), 1);
+  container.innerHTML = Object.entries(TIME_LABELS).map(([key, label]) => {
+    const val = counts[key] || 0;
+    const pct = Math.round((val / max) * 100);
+    return `<div class="time-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0;">
+      <span style="min-width:72px;font-size:0.85rem;">${label}</span>
+      <div class="bar-bg" style="flex:1;"><div class="bar-fill-time" style="width:${pct}%"></div></div>
+      <span style="min-width:24px;text-align:right;">${val}</span>
+    </div>`;
+  }).join('');
+
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  const child = getChildren()[currentChildIndex];
+  if (insightEl && top && top[1] > 0) {
+    insightEl.style.display = 'block';
+    insightEl.innerHTML = `💡 <strong>Заметили:</strong> ${child?.name || 'Ребёнок'} чаще всего общается с Люциком (${TIME_LABELS[top[0]]?.replace(/^[^\s]+\s/, '') || top[0]}). Попробуйте вечернюю сказку пораньше, если это вечер.`;
+  }
+}
+
+async function enterParentCabinet() {
+  if (localStorage.getItem('childMode') === 'true') {
+    window.location.href = 'app.html';
+    return;
+  }
+
+  const sessionOk = sessionStorage.getItem('parentPinOk') === 'true';
+  if (sessionOk) {
+    document.getElementById('parentCabinet').style.display = 'block';
+    loadAllData();
+    return;
+  }
+
+  if (Date.now() < pinLockedUntil) {
+    alert('Слишком много попыток. Попробуйте через 5 минут.');
+    window.location.href = 'app.html';
+    return;
+  }
+
+  const token = localStorage.getItem('userToken');
+  try {
+    const check = await fetch('/api/verify-pin', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ checkOnly: true })
+    });
+    const data = await check.json();
+    if (data.noPin) {
+      sessionStorage.setItem('parentPinOk', 'true');
+      document.getElementById('parentCabinet').style.display = 'block';
+      loadAllData();
+      return;
+    }
+  } catch {
+    /* show pin overlay */
+  }
+
+  document.getElementById('pinOverlay').style.display = 'flex';
+  document.getElementById('parentCabinet').style.display = 'none';
+}
+
+async function verifyPinSubmit() {
+  const pin = document.getElementById('pinInput')?.value.trim();
+  const errEl = document.getElementById('pinError');
+  if (!/^\d{4}$/.test(pin)) {
+    errEl.textContent = 'Введите 4 цифры';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const token = localStorage.getItem('userToken');
+  const res = await fetch('/api/verify-pin', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ pin })
+  });
+
+  if (res.ok) {
+    sessionStorage.setItem('parentPinOk', 'true');
+    pinAttempts = 0;
+    document.getElementById('pinOverlay').style.display = 'none';
+    document.getElementById('parentCabinet').style.display = 'block';
+    loadAllData();
+    return;
+  }
+
+  pinAttempts++;
+  errEl.textContent = 'Неверный PIN';
+  errEl.style.display = 'block';
+  if (pinAttempts >= 3) {
+    pinLockedUntil = Date.now() + 300000;
+    pinAttempts = 0;
+    alert('Слишком много попыток. Попробуйте через 5 минут.');
+    window.location.href = 'app.html';
+  }
+}
+
+async function connectChildDevice() {
+  const token = localStorage.getItem('userToken');
+  const res = await fetch('/api/child-token', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ childIndex: currentChildIndex >= 0 ? currentChildIndex : 0 })
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    alert(data.error || 'Не удалось создать ссылку');
+    return;
+  }
+  const qr = document.getElementById('childQrCode');
+  const link = document.getElementById('childLink');
+  if (qr) qr.innerHTML = data.qrCodeUrl ? `<img src="${data.qrCodeUrl}" alt="QR">` : '';
+  if (link) link.innerHTML = `<a href="${data.url}" style="color:var(--accent);" target="_blank">${data.url}</a>`;
+}
 
 let currentChildIndex = parseInt(localStorage.getItem('activeChildIndex') ?? '-1', 10);
 if (Number.isNaN(currentChildIndex)) currentChildIndex = -1;
@@ -368,6 +516,7 @@ function loadAllData() {
   renderFears(fearStats);
   renderDialogs(history);
   renderInsights(fearStats, totalStories, totalGames, history);
+  renderTimeStats(history);
   renderChildSelector();
 }
 
@@ -445,4 +594,24 @@ window.selectChild = selectChild;
 window.saveChildrenNames = saveChildrenNames;
 window.showAttentionModal = showAttentionModal;
 
-document.addEventListener('DOMContentLoaded', loadAllData);
+document.getElementById('pinSubmitBtn')?.addEventListener('click', verifyPinSubmit);
+document.getElementById('pinInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') verifyPinSubmit();
+});
+document.getElementById('connectChildDevice')?.addEventListener('click', connectChildDevice);
+document.getElementById('parentLogoutBtn')?.addEventListener('click', () => logout());
+document.getElementById('weeklyDigestBtn')?.addEventListener('click', async () => {
+  const token = localStorage.getItem('userToken');
+  const res = await fetch('/api/weekly-digest', {
+    method: 'POST',
+    credentials: 'include',
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  const data = await res.json();
+  alert(res.ok ? 'Отчёт отправлен на email!' : (data.error || 'Не удалось отправить'));
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  enterParentCabinet();
+  scheduleMissYouNotification();
+});
