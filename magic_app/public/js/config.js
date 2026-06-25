@@ -10,7 +10,7 @@ export const PROMOCODES = {
 };
 
 export const CONFIG = {
-  APP_VERSION: '5.0.0',
+  APP_VERSION: '5.0.2',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,

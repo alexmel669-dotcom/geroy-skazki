@@ -1,7 +1,7 @@
 {
   "name": "Люцик — Герой Сказок",
   "short_name": "Люцик",
-  "version": "5.0.0",
+  "version": "5.0.2",
   "start_url": "/app.html",
   "display": "standalone",
   "background_color": "#151521",
