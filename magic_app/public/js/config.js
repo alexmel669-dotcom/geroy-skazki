@@ -10,7 +10,7 @@ export const PROMOCODES = {
 };
 
 export const CONFIG = {
-  APP_VERSION: '4.6.0',
+  APP_VERSION: '5.0.0',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -42,14 +42,14 @@ export const PLANS = {
     name: 'Базовый',
     storiesPerDay: 15,
     characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
-    games: ['fish', 'puzzle', 'memory', 'riddles', 'quest'],
+    games: ['fish', 'puzzle', 'memory', 'riddles', 'quest', 'maze', 'quiz'],
     memoryDays: 14
   },
   family: {
     name: 'Семейный',
     storiesPerDay: 15,
     characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
-    games: ['fish', 'puzzle', 'memory', 'riddles', 'quest'],
+    games: ['fish', 'puzzle', 'memory', 'riddles', 'quest', 'maze', 'quiz'],
     memoryDays: 14,
     maxChildren: 3
   }
@@ -62,7 +62,9 @@ export const GAMES = {
   puzzle: { name: 'Пазл', ages: [3, 14], icon: '🧩', levels: [3, 4, 6] },
   memory: { name: 'Мемори', ages: [3, 14], icon: '🧠' },
   riddles: { name: 'Загадки', ages: [8, 14], icon: '❓' },
-  quest: { name: 'Квест', ages: [10, 14], icon: '🗺️' }
+  quest: { name: 'Квест', ages: [10, 14], icon: '🗺️' },
+  maze: { name: 'Лабиринт', ages: [6, 14], icon: '🌀' },
+  quiz: { name: 'Викторина', ages: [8, 14], icon: '❓' }
 };
 
 export const CHARACTERS = {

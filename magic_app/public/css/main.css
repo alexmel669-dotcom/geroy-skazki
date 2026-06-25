@@ -1106,6 +1106,29 @@ body.has-dev-panel {
   padding-bottom: 56px;
 }
 
+.child-mode .parent-access,
+.child-mode .settings-btn,
+.child-mode .logout-btn {
+  display: none !important;
+}
+
+.streak-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 16px;
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+}
+
+.streak-display .star,
+.streak-display .streak-fire {
+  font-size: 1.1rem;
+}
+
 /* Responsive breakpoints */
 @media (max-width: 1024px) {
   .landing {

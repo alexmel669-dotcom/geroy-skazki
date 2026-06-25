@@ -26,6 +26,11 @@
         <span class="promocode-hint" id="promocodeHint"></span>
       </div>
 
+      <div class="form-group promocode-group">
+        <label for="parentPin">🔐 PIN для родительского кабинета (4 цифры)</label>
+        <input type="password" id="parentPin" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="1234" required autocomplete="off">
+      </div>
+
       <!-- Ребёнок 1 (обязательно) -->
       <div class="child-block">
         <label>👶 Ребёнок 1 *</label>
@@ -154,6 +159,13 @@
       errorDiv.style.display = 'block';
       return;
     }
+
+    const parentPin = document.getElementById('parentPin')?.value.trim() || '';
+    if (!/^\d{4}$/.test(parentPin)) {
+      errorDiv.textContent = 'PIN: ровно 4 цифры';
+      errorDiv.style.display = 'block';
+      return;
+    }
     
     // Собираем детей
     const children = [];
@@ -204,7 +216,7 @@
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, children, promocode })
+        body: JSON.stringify({ email, password, children, promocode, parentPin })
       });
       const data = await res.json();
       

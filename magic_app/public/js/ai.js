@@ -145,7 +145,8 @@ export async function generateResponse(prompt, childInfo = {}) {
         childAge: profile.age,
         character: currentCharacter,
         characterName: CHARACTERS[currentCharacter]?.name || 'Люцик',
-        systemPrompt: buildSystemPrompt({ name: profile.name || 'малыш', age: profile.age || 5 }),
+        requestType: childInfo.requestType || 'chat',
+        timeContext: childInfo.timeContext || null,
         history,
         topic: currentTopic,
         isFirstMessage: profile.isFirstMessage
@@ -157,6 +158,7 @@ export async function generateResponse(prompt, childInfo = {}) {
       if (data.reply) {
         return {
           text: data.reply,
+          type: data.type || childInfo.requestType || 'chat',
           childName: data.childName || null,
           childAge: data.childAge != null ? data.childAge : null,
           concerns: data.concerns || null,

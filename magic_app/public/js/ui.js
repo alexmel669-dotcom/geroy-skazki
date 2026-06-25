@@ -217,6 +217,26 @@ export function hideModal(modalId) {
     }
 }
 
+let purrCtx = null;
+
+export function playPurrSound() {
+  try {
+    if (!purrCtx) purrCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = purrCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 28;
+    gain.gain.value = 0.08;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    setTimeout(() => { osc.stop(); }, 400);
+  } catch {
+    /* audio optional */
+  }
+}
+
 let lastAiMs = 0;
 
 export function setLastAiTiming(ms) {
@@ -291,5 +311,6 @@ export default {
     hideModal,
     initDevPanel,
     setLastAiTiming,
-    setAvatarState
+    setAvatarState,
+    playPurrSound
 };

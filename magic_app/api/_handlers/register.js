@@ -63,7 +63,7 @@ export default async function handler(req, res) {
   try {
     const normalizedEmail = (req.body.email || req.body.username || '').trim().toLowerCase();
     const username = String(req.body.username || normalizedEmail.split('@')[0] || normalizedEmail).trim();
-    const { password, gender, age, children, promocode } = req.body;
+    const { password, gender, age, children, promocode, parentPin } = req.body;
 
     if (!normalizedEmail || !password) {
       return res.status(400).json({ error: 'Поля username, email, password обязательны' });
@@ -71,6 +71,11 @@ export default async function handler(req, res) {
 
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const pinStr = String(parentPin || '').trim();
+    if (!/^\d{4}$/.test(pinStr)) {
+      return res.status(400).json({ error: 'PIN должен состоять из 4 цифр' });
     }
 
     const exists = await userExists(normalizedEmail);
@@ -86,6 +91,7 @@ export default async function handler(req, res) {
     }
 
     const passwordHash = hashPassword(password);
+    const parentPinHash = hashPassword(pinStr);
     const role = ADMIN_EMAILS.includes(normalizedEmail) ? 'admin' : 'user';
 
     let plan = 'free';
@@ -106,6 +112,9 @@ export default async function handler(req, res) {
       username,
       email: normalizedEmail,
       passwordHash,
+      parentPinHash,
+      pinAttempts: 0,
+      lockedUntil: null,
       gender: gender || null,
       age: age != null ? parseInt(age, 10) : null,
       children: normalizedChildren,

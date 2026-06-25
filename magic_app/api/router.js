@@ -22,6 +22,9 @@ import psychologistHelp from './_handlers/psychologist-help.js';
 
 import promocode from './_handlers/promocode.js';
 import adminStats from './_handlers/admin-stats.js';
+import verifyPin from './_handlers/verify-pin.js';
+import childToken from './_handlers/child-token.js';
+import weeklyDigest from './_handlers/weekly-digest.js';
 
 
 
@@ -59,7 +62,13 @@ const ROUTES = {
 
   'psychologist-help': psychologistHelp,
 
-  promocode: promocode
+  promocode: promocode,
+
+  'verify-pin': verifyPin,
+
+  'child-token': childToken,
+
+  'weekly-digest': weeklyDigest
 
 };
 

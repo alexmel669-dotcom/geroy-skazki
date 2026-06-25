@@ -12,7 +12,7 @@ async function handleHealth(req, res) {
   const yandexFolder = process.env.YANDEX_FOLDER_ID?.trim();
   return res.status(200).json({
     ok: true,
-    version: '4.6.0',
+    version: '5.0.0',
     node: process.version,
     env: {
       jwt: Boolean(process.env.JWT_SECRET?.trim()),

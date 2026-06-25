@@ -147,6 +147,20 @@ if (ENV.isDev) {
   console.log('🔔 Notifications module loaded');
 }
 
+export function scheduleMissYouNotification() {
+  const lastVisit = localStorage.getItem('geroy-last-visit');
+  if (!lastVisit) return;
+
+  const daysSince = Math.floor((Date.now() - new Date(lastVisit).getTime()) / 86400000);
+  if (daysSince >= 2) {
+    scheduleNotification(
+      '😿 Люцик скучает!',
+      `Не заходил уже ${daysSince} ${daysSince === 1 ? 'день' : 'дня'}. Я жду тебя!`,
+      3000
+    );
+  }
+}
+
 export default {
   getNotificationSettings,
   saveNotificationSettings,
@@ -154,5 +168,6 @@ export default {
   scheduleNotification,
   initNotificationScheduler,
   notifyParentReport,
-  bindNotificationSettingsUI
+  bindNotificationSettingsUI,
+  scheduleMissYouNotification
 };

@@ -17,11 +17,15 @@
 <div class="container">
   <header>
     <div class="header-title">🐱 Люцик</div>
-    <div class="header-buttons">
-      <button class="btn-icon" id="logoutBtn" style="display:none;">🚪</button>
-      <button class="btn-icon" id="parentBtn">⚙️</button>
+    <div class="header-buttons parent-access">
+      <button class="btn-icon settings-btn" id="parentBtn">⚙️</button>
     </div>
   </header>
+
+  <div class="streak-display" id="streakDisplay">
+    <span class="star">⭐</span> × <span id="starCount">0</span>
+    <span class="streak-fire">🔥</span> <span id="streakDays">0</span> дн.
+  </div>
 
   <div class="avatar-section">
     <div class="avatar-container">
@@ -63,6 +67,10 @@
   </div>
 </div>
 
+<script type="module">
+  import { initChildModeFromUrl } from './js/child-mode.js';
+  initChildModeFromUrl();
+</script>
 <script type="module" src="js/main.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
