@@ -54,6 +54,7 @@ export default async function handler(req, res) {
     }
 
     user.pinAttempts = (user.pinAttempts || 0) + 1;
+    const attemptsLeft = Math.max(0, 3 - user.pinAttempts);
     if (user.pinAttempts >= 3) {
       user.lockedUntil = Date.now() + 300000;
       user.pinAttempts = 0;
@@ -62,7 +63,7 @@ export default async function handler(req, res) {
 
     return res.status(403).json({
       error: 'Неверный PIN',
-      attemptsLeft: Math.max(0, 3 - (user.pinAttempts || 0))
+      attemptsLeft: user.lockedUntil ? 0 : attemptsLeft
     });
   } catch (error) {
     console.error('verify-pin error:', error);

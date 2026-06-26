@@ -35,7 +35,7 @@ function applyChildTokenProfile() {
       const children = [{
         name: payload.childName,
         age: payload.childAge || 7,
-        avatar: payload.childAvatar || 'kid1.png',
+        avatar: payload.childAvatar || 'kid1.svg',
         avatarRole: payload.childAvatar?.includes('kid2') ? 'kid2' : 'kid1',
         gender: payload.childAvatar?.includes('kid2') ? 'male' : 'female',
         index: payload.childIndex || 0

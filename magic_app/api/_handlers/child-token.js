@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   }
 
   const decoded = verifyAuth(req);
-  if (!decoded?.email || decoded.role === 'child') {
+  if (!decoded?.email || decoded.role === 'child' || decoded.mode === 'child') {
     return res.status(403).json({ error: 'Только для родителя' });
   }
 
@@ -53,7 +53,6 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       url,
-      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`,
       childName: child.name,
       expiresIn: '30d'
     });

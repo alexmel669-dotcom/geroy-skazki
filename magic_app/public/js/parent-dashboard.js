@@ -143,6 +143,14 @@ async function verifyPinSubmit() {
     return;
   }
 
+  if (res.status === 429) {
+    const data = await res.json().catch(() => ({}));
+    pinLockedUntil = Date.now() + (data.waitSec || 300) * 1000;
+    errEl.textContent = data.error || 'Слишком много попыток';
+    errEl.style.display = 'block';
+    return;
+  }
+
   if (res.ok) {
     sessionStorage.setItem('parentPinOk', 'true');
     pinAttempts = 0;
@@ -152,10 +160,12 @@ async function verifyPinSubmit() {
     return;
   }
 
+  const data = await res.json().catch(() => ({}));
+
   pinAttempts++;
-  errEl.textContent = 'Неверный PIN';
+  errEl.textContent = data.error || 'Неверный PIN';
   errEl.style.display = 'block';
-  if (pinAttempts >= 3) {
+  if (data.attemptsLeft === 0 || pinAttempts >= 3) {
     pinLockedUntil = Date.now() + 300000;
     pinAttempts = 0;
     alert('Слишком много попыток. Попробуйте через 5 минут.');
@@ -177,8 +187,21 @@ async function connectChildDevice() {
   }
   const qr = document.getElementById('childQrCode');
   const link = document.getElementById('childLink');
-  if (qr) qr.innerHTML = data.qrCodeUrl ? `<img src="${data.qrCodeUrl}" alt="QR">` : '';
-  if (link) link.innerHTML = `<a href="${data.url}" style="color:var(--accent);" target="_blank">${data.url}</a>`;
+  if (qr) {
+    qr.innerHTML = `<p style="font-size:0.85rem;opacity:0.8;">Скопируйте ссылку и откройте на телефоне ребёнка:</p>`;
+  }
+  if (link) {
+    link.innerHTML = `<a href="${data.url}" style="color:var(--accent);word-break:break-all;" target="_blank">${data.url}</a>
+      <button type="button" class="btn-save" style="margin-top:10px;width:100%;" id="copyChildLinkBtn">📋 Скопировать ссылку</button>`;
+    document.getElementById('copyChildLinkBtn')?.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(data.url);
+        alert('Ссылка скопирована!');
+      } catch {
+        prompt('Скопируйте ссылку:', data.url);
+      }
+    });
+  }
 }
 
 let currentChildIndex = parseInt(localStorage.getItem('activeChildIndex') ?? '-1', 10);
@@ -271,29 +294,31 @@ function renderProgress(fearStats, totalStories, totalGames) {
 }
 
 function renderWeekActivity(history) {
-  const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const dayLabels = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
   const today = new Date();
-  const weekData = {};
+  const weekEntries = [];
 
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    weekData[d.toDateString()] = 0;
+    weekEntries.push({ date: d, key: d.toDateString(), count: 0 });
   }
 
   history.forEach(h => {
     if (h.timestamp) {
       const key = new Date(h.timestamp).toDateString();
-      if (key in weekData) weekData[key]++;
+      const entry = weekEntries.find((w) => w.key === key);
+      if (entry) entry.count++;
     }
   });
 
   let html = '<div class="week-grid">';
-  Object.entries(weekData).forEach(([key, count], idx) => {
+  weekEntries.forEach(({ date, count }) => {
     let cls = 'none';
     if (count > 3) cls = 'active';
     else if (count > 0) cls = 'partial';
-    html += `<div class="week-day ${cls}" title="${dayNames[idx]}: ${count}">${dayNames[idx]}</div>`;
+    const label = dayLabels[date.getDay()];
+    html += `<div class="week-day ${cls}" title="${date.toLocaleDateString('ru-RU')}: ${count}">${label}</div>`;
   });
   html += '</div>';
   document.getElementById('weekContainer').innerHTML = html;

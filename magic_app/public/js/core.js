@@ -11,7 +11,7 @@ import {
   shouldSuggestFearGame, getFearGameSuggestion
 } from './ai.js';
 import {
-  startRecording, stopRecording, isRecording, getRecordingMimeType,
+  startRecording, stopRecording, cancelRecording, isRecording, getRecordingMimeType,
   isMicrophoneSupported, prepareAudioForStt, getLiveSttText, clearLiveSttText
 } from './mic.js';
 import { synthesizeSpeech } from './audio.js';
@@ -202,7 +202,7 @@ function saveDetectedProfile({ childName, childAge }) {
     const ageNum = parseInt(childAge, 10) || 5;
     const gender = 'female';
     const avatarRole = 'kid1';
-    const newChild = { name: childName, age: ageNum, gender, avatar: 'kid1.png', avatarRole, index: 0 };
+    const newChild = { name: childName, age: ageNum, gender, avatar: 'kid1.svg', avatarRole, index: 0 };
     localStorage.setItem('children', JSON.stringify([newChild]));
     localStorage.setItem('childrenNames', childName);
     setActiveChild(0);
@@ -686,6 +686,7 @@ function initEventListeners() {
       if (e.type === 'mousedown' && e.button !== 0) return;
 
       activePointer = e.type === 'touchstart' ? 'touch' : 'mouse';
+      longPressHandled = false;
       e.preventDefault();
       pressTimer = setTimeout(handleLongPress, 1500);
       beginRecording();
@@ -700,6 +701,10 @@ function initEventListeners() {
       clearTimeout(pressTimer);
       pressTimer = null;
       activePointer = null;
+      if (longPressHandled) {
+        longPressHandled = false;
+        return;
+      }
       finishRecording();
     };
 
@@ -883,6 +888,7 @@ async function recognizeSpeech(blob) {
 let micEnding = false;
 let micStarting = false;
 let finishQueued = false;
+let longPressHandled = false;
 
 async function beginRecording() {
   if (planLimitActive || getStoriesRemaining() <= 0) {
@@ -950,32 +956,39 @@ async function finishRecordingInternal() {
 }
 
 async function handleLongPress() {
-  if (isProcessing || isRecording()) return;
+  if (isProcessing) return;
+  const hour = new Date().getHours();
+  if (hour < 20 && hour >= 6) return;
+
+  longPressHandled = true;
+
+  if (isRecording()) {
+    cancelRecording();
+  }
+
   if (getStoriesRemaining() <= 0) {
     await handlePlanLimitExceeded();
     return;
   }
-  const hour = new Date().getHours();
-  if (hour >= 20 || hour < 6) {
-    isProcessing = true;
-    const micBtn = document.getElementById('micBtn');
-    if (micBtn) micBtn.textContent = '🌙';
-    setAvatarState('eating');
-    try {
-      const aiResult = await generateResponse('Расскажи сказку на ночь', getChildContextForAI());
-      const reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
-      if (globalThis.__lastAiMs) applyAiTiming();
-      await synthesizeSpeech(reply, getCharacter());
-      incrementStories();
-      incrementDailyStories();
-      checkAchievements();
-    } catch (e) {
-      logError('bedtime_story', e.message);
-    } finally {
-      isProcessing = false;
-      if (micBtn) micBtn.textContent = '🎤';
-      updateAvatarMoodState();
-    }
+
+  isProcessing = true;
+  const micBtn = document.getElementById('micBtn');
+  if (micBtn) micBtn.textContent = '🌙';
+  setAvatarState('eating');
+  try {
+    const aiResult = await generateResponse('Расскажи сказку на ночь', getChildContextForAI());
+    const reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
+    if (globalThis.__lastAiMs) applyAiTiming();
+    await synthesizeSpeech(reply, getCharacter());
+    incrementStories();
+    incrementDailyStories();
+    checkAchievements();
+  } catch (e) {
+    logError('bedtime_story', e.message);
+  } finally {
+    isProcessing = false;
+    if (micBtn) micBtn.textContent = '🎤';
+    updateAvatarMoodState();
   }
 }
 

@@ -1,11 +1,14 @@
 import jwt from 'jsonwebtoken';
 
 export function getJwtSecret() {
-  const secret = process.env.JWT_SECRET;
-  if (!secret && process.env.NODE_ENV === 'production') {
-    console.error('JWT_SECRET is not set in production');
+  const secret = process.env.JWT_SECRET?.trim();
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+      throw new Error('JWT_SECRET is not set');
+    }
+    return 'dev-secret-key';
   }
-  return secret?.trim() || 'dev-secret-key';
+  return secret;
 }
 
 export function getTokenFromRequest(req) {
