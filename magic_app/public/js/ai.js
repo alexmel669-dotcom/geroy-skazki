@@ -132,7 +132,7 @@ export function getProfileForAI(childInfo = {}) {
 }
 
 export async function generateResponse(prompt, childInfo = {}) {
-  console.log('🤖 generate:', prompt, 'char:', currentCharacter, 'topic:', currentTopic);
+  console.log('🤖 Отправлено в ИИ:', prompt);
   const profile = getProfileForAI(childInfo);
   const store = readStore();
   const history = store.messages.slice(-MAX_API_MESSAGES).map((m) => ({
@@ -146,7 +146,8 @@ export async function generateResponse(prompt, childInfo = {}) {
     childAge: null,
     concerns: null,
     mood: 'neutral',
-    type: 'fallback'
+    type: 'fallback',
+    fromApi: false
   };
 
   const controller = new AbortController();
@@ -186,7 +187,8 @@ export async function generateResponse(prompt, childInfo = {}) {
           childName: data.childName || null,
           childAge: data.childAge != null ? data.childAge : null,
           concerns: data.concerns || null,
-          mood: data.mood || 'neutral'
+          mood: data.mood || 'neutral',
+          fromApi: true
         };
       }
     }

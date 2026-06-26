@@ -29,9 +29,13 @@ import { startQuizGame } from './games/quiz.js';
 import { getGameLevel } from './games/game-ui.js';
 import { setAvatarState, playPurrSound } from './ui.js';
 import { getTimeContext } from './context.js';
-import { detectRequestType, getDictionaryReply, learnFromResponse } from './dictionary.js';
+import { detectRequestType, getDictionaryFallback, learnFromResponse, isBedtimeStoryRequest } from './dictionary.js';
 import { checkDailyStreak, updateStreakUI, getDailyAdventure } from './retention.js';
 import { initChildSwipe } from './child-swipe.js';
+import {
+  getTamagotchi, applyTamagotchiTick, onChat, onGame, onFeed, onClean, onFearTalk,
+  getTamagotchiNeedsMessage
+} from './tamagotchi.js';
 
 // ========================================
 // STATE
@@ -93,6 +97,7 @@ export function getChildStatsKey() {
 
 const PLAN_COUNTERS_KEY = 'planDailyCounters';
 let planLimitActive = false;
+let tamagotchiTimer = null;
 
 export function getUserPlan() {
   if (localStorage.getItem('guestMode') === 'true') return 'free';
@@ -411,6 +416,18 @@ export function initCore() {
   }
 
   console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION} готов к работе`);
+
+  if (tamagotchiTimer) clearInterval(tamagotchiTimer);
+  tamagotchiTimer = setInterval(() => {
+    const stats = getChildStats();
+    applyTamagotchiTick(stats);
+    saveChildStats(stats);
+    updateStatsDisplay();
+    const needMsg = getTamagotchiNeedsMessage(stats);
+    if (needMsg && !isProcessing && !appState.gameActive) {
+      synthesizeSpeech(needMsg, getCharacter()).catch(() => {});
+    }
+  }, 60000);
 }
 
 // ========================================
@@ -570,6 +587,7 @@ export function saveToChildHistory(entry) {
     hour: entry.hour != null ? entry.hour : tc.hour,
     dayOfWeek: entry.dayOfWeek || new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase(),
     type: entry.type || 'chat',
+    mood: entry.mood || null,
     characterName: entry.characterName || null,
     childName: entry.childName || getActiveChildName(),
     alerted: entry.alerted || false,
@@ -602,6 +620,7 @@ export function incrementStories() {
 export function incrementGames() {
   const stats = getChildStats();
   stats.totalGames = (stats.totalGames || 0) + 1;
+  onGame(stats);
   saveChildStats(stats);
   localStorage.setItem('totalGames', String(Number(localStorage.getItem('totalGames') || 0) + 1));
   updateStatsDisplay();
@@ -616,16 +635,15 @@ export function saveChildData(data) {
 
 export function updateStatsDisplay() {
   const stats = getChildStats();
+  const t = getTamagotchi(stats);
   const mood = document.getElementById('moodFill');
   const hunger = document.getElementById('hungerFill');
   const energy = document.getElementById('energyFill');
   const bravery = document.getElementById('braveryFill');
-  if (mood) mood.style.width = '70%';
-  if (hunger) hunger.style.width = `${Math.min(100, appState.hunger || 60)}%`;
-  if (energy) energy.style.width = '50%';
-  if (bravery) {
-    bravery.style.width = Math.max(5, Math.min(100, (stats.totalStories || 0) * 10 + (stats.totalGames || 0) * 5)) + '%';
-  }
+  if (mood) mood.style.width = `${t.mood ?? 70}%`;
+  if (hunger) hunger.style.width = `${t.hunger ?? 60}%`;
+  if (energy) energy.style.width = `${t.energy ?? 50}%`;
+  if (bravery) bravery.style.width = `${Math.max(5, Math.min(100, t.courage ?? 10))}%`;
 }
 
 // ========================================
@@ -637,7 +655,7 @@ function animateStat(elementId, target) {
   if (!el) return;
   const current = parseInt(el.style.width, 10) || 0;
   const diff = target - current;
-  const duration = 400;
+  const duration = 1500;
   const startTime = performance.now();
 
   function step(timestamp) {
@@ -645,35 +663,62 @@ function animateStat(elementId, target) {
     const eased = 1 - Math.pow(1 - progress, 3);
     el.style.width = Math.min(100, current + diff * eased) + '%';
     if (progress < 1) requestAnimationFrame(step);
-    else setTimeout(() => { el.style.width = current + '%'; }, 2500);
   }
   requestAnimationFrame(step);
 }
 
 function showFeedingAnimation() {
-  const items = ['🍎', '🍪', '🧃', '🍌', '🍇'];
+  const avatar = document.getElementById('avatar');
+  const feedBtn = document.getElementById('feedBtn');
+  const items = ['🍎', '🍪', '🧃'];
+  const origin = feedBtn?.getBoundingClientRect() || { left: window.innerWidth / 2, top: window.innerHeight * 0.7 };
+  const target = avatar?.getBoundingClientRect() || { left: window.innerWidth / 2, top: window.innerHeight * 0.35 };
+
   items.forEach((item, i) => {
     setTimeout(() => {
       const span = document.createElement('span');
       span.textContent = item;
-      span.style.cssText = 'position:fixed;font-size:24px;pointer-events:none;z-index:9999;left:50%;top:40%;transition:all .8s;opacity:1;';
+      span.className = 'feed-fly-emoji';
+      span.style.cssText = `position:fixed;font-size:28px;pointer-events:none;z-index:9999;left:${origin.left}px;top:${origin.top}px;transition:all 1.2s ease-in;`;
       document.body.appendChild(span);
       requestAnimationFrame(() => {
-        span.style.transform = `translate(${(Math.random() - 0.5) * 200}px,-${100 + Math.random() * 100}px) scale(.3)`;
+        span.style.left = `${target.left + (target.width || 0) / 2}px`;
+        span.style.top = `${target.top}px`;
+        span.style.transform = 'scale(0.4)';
         span.style.opacity = '0';
       });
-      setTimeout(() => span.remove(), 900);
-    }, i * 100);
+      setTimeout(() => span.remove(), 1300);
+    }, i * 180);
   });
+
+  if (avatar) {
+    avatar.style.transition = 'transform 0.3s ease';
+    avatar.style.transform = 'scale(1.2)';
+    setTimeout(() => { avatar.style.transform = 'scale(1)'; }, 400);
+    setTimeout(() => { avatar.style.transform = 'scale(1.15)'; }, 700);
+    setTimeout(() => { avatar.style.transform = 'scale(1)'; avatar.style.transition = ''; }, 1100);
+  }
 }
 
 function showCleaningAnimation() {
   const avatar = document.getElementById('avatar');
   if (!avatar) return;
-  avatar.style.transform = 'rotate(-5deg)';
-  setTimeout(() => { avatar.style.transform = 'rotate(5deg)'; }, 150);
-  setTimeout(() => { avatar.style.transform = 'rotate(-3deg)'; }, 300);
-  setTimeout(() => { avatar.style.transform = 'rotate(0deg)'; }, 450);
+  avatar.style.transition = 'transform 0.25s ease';
+  [-5, 5, -4, 4, 0].forEach((deg, i) => {
+    setTimeout(() => { avatar.style.transform = `rotate(${deg}deg)`; }, i * 200);
+  });
+  setTimeout(() => { avatar.style.transition = ''; avatar.style.transform = ''; }, 1200);
+
+  for (let i = 0; i < 6; i++) {
+    setTimeout(() => {
+      const spark = document.createElement('span');
+      spark.textContent = '✨';
+      spark.style.cssText = `position:fixed;font-size:20px;pointer-events:none;z-index:9999;left:${50 + (Math.random() - 0.5) * 30}%;top:${30 + (Math.random() - 0.5) * 20}%;opacity:1;transition:opacity 1s;`;
+      document.body.appendChild(spark);
+      setTimeout(() => { spark.style.opacity = '0'; }, 400);
+      setTimeout(() => spark.remove(), 1400);
+    }, i * 120);
+  }
 }
 
 // ========================================
@@ -712,9 +757,10 @@ function initEventListeners() {
       if (e.type === 'mousedown' && e.button !== 0) return;
 
       activePointer = e.type === 'touchstart' ? 'touch' : 'mouse';
-      longPressHandled = false;
+      bedtimeLongPressArmed = false;
+      micPressStartedAt = Date.now();
       e.preventDefault();
-      pressTimer = setTimeout(handleLongPress, 1500);
+      pressTimer = setTimeout(armBedtimeLongPress, 1500);
       beginRecording();
     };
 
@@ -727,10 +773,6 @@ function initEventListeners() {
       clearTimeout(pressTimer);
       pressTimer = null;
       activePointer = null;
-      if (longPressHandled) {
-        longPressHandled = false;
-        return;
-      }
       finishRecording();
     };
 
@@ -747,8 +789,11 @@ function initEventListeners() {
   const feed = document.getElementById('feedBtn');
   if (feed) {
     feed.onclick = () => {
-      animateStat('hungerFill', 100);
-      appState.hunger = 100;
+      const stats = getChildStats();
+      onFeed(stats);
+      saveChildStats(stats);
+      animateStat('hungerFill', getTamagotchi(stats).hunger);
+      animateStat('moodFill', getTamagotchi(stats).mood);
       trackEvent('feed', getActiveChildName());
       showFeedingAnimation();
     };
@@ -757,7 +802,10 @@ function initEventListeners() {
   const room = document.getElementById('roomBtn');
   if (room) {
     room.onclick = () => {
-      animateStat('energyFill', 100);
+      const stats = getChildStats();
+      onClean(stats);
+      saveChildStats(stats);
+      animateStat('energyFill', getTamagotchi(stats).energy);
       trackEvent('clean', getActiveChildName());
       showCleaningAnimation();
     };
@@ -914,7 +962,7 @@ async function recognizeSpeech(blob) {
     };
     const text = pickBest(serverText, liveText);
     if (text.length >= 2) {
-      console.log('🎙️ STT result:', text, serverText ? '(server+live)' : '(live)');
+      console.log('🎤 Распознано:', text);
       return { text, fallback: !serverText || liveText.length > serverText.length };
     }
     if (serverText) return { text: serverText, fallback: false };
@@ -937,7 +985,8 @@ async function recognizeSpeech(blob) {
 let micEnding = false;
 let micStarting = false;
 let finishQueued = false;
-let longPressHandled = false;
+let bedtimeLongPressArmed = false;
+let micPressStartedAt = 0;
 
 async function beginRecording() {
   if (planLimitActive || getStoriesRemaining() <= 0) {
@@ -1004,17 +1053,15 @@ async function finishRecordingInternal() {
   }
 }
 
-async function handleLongPress() {
+function armBedtimeLongPress() {
+  bedtimeLongPressArmed = true;
+  console.log('🌙 Активирован режим сказки на ночь (удержание микрофона)');
+  const mic = document.getElementById('micBtn');
+  mic?.classList.add('mic-bedtime-armed');
+}
+
+async function runBedtimeStory(promptText) {
   if (isProcessing) return;
-  const hour = new Date().getHours();
-  if (hour < 20 && hour >= 6) return;
-
-  longPressHandled = true;
-
-  if (isRecording()) {
-    cancelRecording();
-  }
-
   if (getStoriesRemaining() <= 0) {
     await handlePlanLimitExceeded();
     return;
@@ -1023,29 +1070,40 @@ async function handleLongPress() {
   isProcessing = true;
   setMicVisualState('processing');
   setAvatarState('eating');
+  const child = getActiveChild();
   const childName = getActiveChildName();
-  const bedtimePrompt = 'Расскажи сказку на ночь';
+  const timeContext = getTimeContext(childName);
+  const gender = getChildGender(child);
+
   try {
-    const aiResult = await generateResponse(bedtimePrompt, getChildContextForAI());
-    const reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
-    if (globalThis.__lastAiMs) applyAiTiming();
-    saveToChildHistory({
-      role: 'child',
-      text: bedtimePrompt,
-      timestamp: Date.now(),
-      childName,
-      type: 'story'
+    showThinking();
+    const aiResult = await generateResponse(promptText, {
+      ...getChildContextForAI(),
+      requestType: 'bedtime_story',
+      timeContext
     });
-    addToContext('child', bedtimePrompt);
+    hideThinking();
+    let reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
+    reply = applyGenderToText(sanitizeAIText(reply, child?.age || 7), gender);
+    console.log('🐱 Ответ ИИ:', reply.slice(0, 100));
+
+    saveToChildHistory({ role: 'child', text: promptText, timestamp: Date.now(), childName, type: 'bedtime_story' });
+    addToContext('child', promptText);
     saveToChildHistory({
-      role: 'bot',
-      text: reply,
-      timestamp: Date.now(),
-      type: 'story',
+      role: 'bot', text: reply, timestamp: Date.now(), type: 'story',
+      mood: aiResult.mood || 'positive',
       characterName: CHARACTERS[getCharacter()]?.name || 'Люцик'
     });
     addToContext('bot', reply);
+
+    setAvatarState('speaking');
     await synthesizeSpeech(reply, getCharacter());
+    const goodnight = childName !== 'Гость' ? `Сладких снов, ${childName}!` : 'Сладких снов!';
+    await synthesizeSpeech(goodnight, getCharacter());
+
+    const stats = getChildStats();
+    onChat(stats);
+    saveChildStats(stats);
     incrementStories();
     incrementDailyStories();
     checkAchievements();
@@ -1054,7 +1112,9 @@ async function handleLongPress() {
   } finally {
     isProcessing = false;
     setMicVisualState('idle');
+    setAvatarState(null);
     updateAvatarMoodState();
+    updateStatsDisplay();
   }
 }
 
@@ -1062,14 +1122,18 @@ async function handleLongPress() {
 // AUDIO PROCESS
 // ========================================
 
-async function handleUserMessage(text) {
+async function handleUserMessage(text, options = {}) {
   const avatar = document.getElementById('avatar');
   const child = getActiveChild();
   const childName = getActiveChildName();
   const timeContext = getTimeContext(childName);
-  const requestType = detectRequestType(text);
+  let requestType = options.forceBedtime ? 'bedtime_story' : detectRequestType(text);
+  if (requestType === 'bedtime_story') {
+    console.log('🌙 Активирован режим сказки на ночь');
+  }
+  const isStoryRequest = requestType === 'story' || requestType === 'bedtime_story';
 
-  if (requestType === 'story') {
+  if (isStoryRequest) {
     if (getStoriesRemaining() <= 0) {
       await synthesizeSpeech('Мы сегодня уже рассказали все сказки! Но можем просто поболтать. О чём хочешь поговорить?', getCharacter());
       return;
@@ -1085,7 +1149,12 @@ async function handleUserMessage(text) {
   addToContext('child', text);
 
   const fears = detectFear(text);
-  if (fears.length) updateFearStats(fears);
+  if (fears.length) {
+    updateFearStats(fears);
+    const stats = getChildStats();
+    onFearTalk(stats);
+    saveChildStats(stats);
+  }
 
   const alerts = detectAlertWords(text);
   if (alerts.length) {
@@ -1093,9 +1162,10 @@ async function handleUserMessage(text) {
     saveAlertForParent(text, alerts, 'child');
   }
 
-  const dictReply = getDictionaryReply(text, childName, timeContext, getChildGender(child));
+  const dictFallback = getDictionaryFallback(text, childName, timeContext, getChildGender(child));
   let reply;
   let responseType = requestType;
+  let aiMood = null;
 
   if (avatar) {
     avatar.classList.add('talking');
@@ -1103,29 +1173,39 @@ async function handleUserMessage(text) {
     playPurrSound();
   }
 
-  if (dictReply && requestType === 'chat') {
-    reply = dictReply;
-  } else {
-    showThinking();
-    try {
-      const aiResult = await generateResponse(text, {
-        ...getChildContextForAI(),
-        requestType,
-        timeContext
-      });
-      reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
-      responseType = aiResult.type || requestType;
-      if (typeof aiResult === 'object' && aiResult) {
-        if (aiResult.childName || aiResult.childAge != null) {
-          saveDetectedProfile({ childName: aiResult.childName, childAge: aiResult.childAge });
-        }
-        if (aiResult.concerns?.length) saveParentConcerns(aiResult.concerns);
+  showThinking();
+  let aiResult = null;
+  try {
+    console.log('🤖 Отправлено в ИИ:', text);
+    aiResult = await generateResponse(text, {
+      ...getChildContextForAI(),
+      requestType,
+      timeContext
+    });
+    reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
+    responseType = aiResult.type || requestType;
+    aiMood = aiResult.mood || null;
+    if (typeof aiResult === 'object' && aiResult) {
+      if (aiResult.childName || aiResult.childAge != null) {
+        saveDetectedProfile({ childName: aiResult.childName, childAge: aiResult.childAge });
       }
-      learnFromResponse(text, reply);
-    } finally {
-      hideThinking();
+      if (aiResult.concerns?.length) saveParentConcerns(aiResult.concerns);
     }
+    if (!aiResult.fromApi && dictFallback) {
+      reply = dictFallback;
+      console.log('📖 Словарь (API недоступен):', reply.slice(0, 100));
+    } else {
+      learnFromResponse(text, reply);
+    }
+  } finally {
+    hideThinking();
   }
+
+  if (!reply && dictFallback) {
+    reply = dictFallback;
+  }
+
+  console.log('🐱 Ответ ИИ:', (reply || '').slice(0, 100));
 
   if (globalThis.__lastAiMs) applyAiTiming();
   reply = applyGenderToText(sanitizeAIText(reply, child?.age || 7), getChildGender(child));
@@ -1143,6 +1223,7 @@ async function handleUserMessage(text) {
     text: reply,
     timestamp: Date.now(),
     type: responseType,
+    mood: aiMood,
     characterName: CHARACTERS[getCharacter()]?.name || 'Люцик',
     alerted: isSuspicious,
     alertWords: [...botAlerts, ...botPersonal]
@@ -1150,14 +1231,30 @@ async function handleUserMessage(text) {
   addToContext('bot', reply);
   if (isSuspicious) saveAlertForParent(reply, [...botAlerts, ...botPersonal], 'ai');
 
+  const stats = getChildStats();
+  onChat(stats);
+  saveChildStats(stats);
+
   setAvatarState('speaking');
   await synthesizeSpeech(reply, getCharacter());
   setAvatarState(null);
   updateAvatarMoodState();
+
+  if (requestType === 'bedtime_story') {
+    const goodnight = childName !== 'Гость' ? `Сладких снов, ${childName}!` : 'Сладких снов!';
+    await synthesizeSpeech(goodnight, getCharacter());
+    incrementStories();
+    incrementDailyStories();
+    if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
+    checkAchievements();
+    updateStatsDisplay();
+    return;
+  }
+
   if (shouldSuggestFearGame(allFears)) {
     await synthesizeSpeech(getFearGameSuggestion(allFears[0]), getCharacter());
   }
-  if (responseType === 'story' || (requestType === 'story' && reply.length > 120)) {
+  if (responseType === 'story' || requestType === 'story' || reply.length > 120) {
     incrementStories();
     incrementDailyStories();
   }
@@ -1168,9 +1265,18 @@ async function handleUserMessage(text) {
 
 async function processAudio(audioBlob) {
   const avatar = document.getElementById('avatar');
+  const longPressBedtime = bedtimeLongPressArmed;
+  bedtimeLongPressArmed = false;
+  document.getElementById('micBtn')?.classList.remove('mic-bedtime-armed');
+
   try {
     if (audioBlob.size < 500) {
       console.warn('🎙️ Audio blob too small:', audioBlob.size);
+      if (longPressBedtime) {
+        console.log('🌙 Активирован режим сказки на ночь');
+        await runBedtimeStory('Расскажи сказку на ночь');
+        return;
+      }
       await handleMicFailure('empty_blob');
       return;
     }
@@ -1180,11 +1286,32 @@ async function processAudio(audioBlob) {
       console.log('🎙️ Trying browser STT fallback...');
       text = (await window.browserSpeechRecognition()).trim();
     }
+    console.log('🎤 Распознано:', text || '(пусто)');
+
     if (!text) {
+      if (longPressBedtime) {
+        console.log('🌙 Активирован режим сказки на ночь');
+        await runBedtimeStory('Расскажи сказку на ночь');
+        return;
+      }
       await handleMicFailure('stt_empty');
       return;
     }
+
     resetMicFailCount();
+
+    if (longPressBedtime && !isBedtimeStoryRequest(text)) {
+      console.log('🌙 Long press + речь → обычный диалог:', text);
+      await handleUserMessage(text);
+      return;
+    }
+
+    if (longPressBedtime || isBedtimeStoryRequest(text)) {
+      console.log('🌙 Активирован режим сказки на ночь');
+      await handleUserMessage(text, { forceBedtime: true });
+      return;
+    }
+
     await handleUserMessage(text);
   } catch (e) {
     logError('process_audio', e.message);
@@ -1206,7 +1333,7 @@ export function showGamesMenu() {
   overlay.className = 'game-overlay';
   const gameList = Object.entries(GAMES).map(([id, g]) => {
     const lvl = getGameLevel(id);
-    return { id, label: `${g.icon} ${g.name} · ур.${lvl}` };
+    return { id, label: `${g.icon} ${g.name} · Ур.${lvl}` };
   });
 
   const buttonsHtml = gameList.map(({ id, label }) => {

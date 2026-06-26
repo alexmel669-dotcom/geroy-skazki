@@ -4,14 +4,7 @@ import { recordPuzzleWin } from '../game-progress.js';
 import { setAvatarState } from '../ui.js';
 import { trackEvent } from '../analytics.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
-
-const GRID_BY_LEVEL = {
-  1: 3,
-  2: 3,
-  3: 4,
-  4: 4,
-  5: 5
-};
+import { getPuzzleGrid } from './game-difficulty.js';
 
 const PIECES = {
   3: ['🌟', '🌈', '🦁', '🐱', '🎨', '🎮', '🧩', '🍎', ''],
@@ -26,7 +19,7 @@ export function startPuzzleGame(level) {
 }
 
 function runPuzzle(level) {
-  const gridSize = GRID_BY_LEVEL[level] || 3;
+  const gridSize = getPuzzleGrid(level);
   const correctOrder = PIECES[gridSize] || PIECES[3];
 
   appState.gameActive = true;

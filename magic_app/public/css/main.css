@@ -311,6 +311,11 @@ header {
   cursor: not-allowed;
 }
 
+.mic-btn.mic-bedtime-armed {
+  box-shadow: 0 0 0 4px rgba(255, 213, 79, 0.45), 0 0 24px rgba(255, 213, 79, 0.35);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
 @keyframes micPulse {
   0%, 100% { box-shadow: 0 0 20px rgba(244, 67, 54, 0.5); }
   50% { box-shadow: 0 0 35px rgba(244, 67, 54, 0.8); }
@@ -582,8 +587,82 @@ header {
   border-radius: 24px;
   overflow: hidden;
   border: 2px solid rgba(0, 210, 255, 0.25);
-  box-shadow: inset 0 0 60px rgba(0, 210, 255, 0.08);
+  box-shadow: inset 0 0 60px rgba(0, 210, 255, 0.08), 0 0 24px rgba(108, 99, 255, 0.2);
   min-height: 55vh;
+}
+
+.fish-waves {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: repeating-linear-gradient(90deg, rgba(0, 210, 255, 0.15) 0 20px, transparent 20px 40px);
+  animation: fishWaveMove 4s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.fish-bubbles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(255,255,255,0.12) 0 4px, transparent 5px),
+    radial-gradient(circle at 60% 70%, rgba(255,255,255,0.1) 0 3px, transparent 4px),
+    radial-gradient(circle at 80% 85%, rgba(255,255,255,0.08) 0 5px, transparent 6px);
+  animation: bubbleFloat 6s ease-in-out infinite;
+}
+
+@keyframes fishWaveMove {
+  from { transform: translateX(0); }
+  to { transform: translateX(-40px); }
+}
+
+@keyframes bubbleFloat {
+  0%, 100% { opacity: 0.6; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-8px); }
+}
+
+.memory-board .memory-card {
+  perspective: 600px;
+  transition: transform 0.35s ease;
+}
+
+.memory-board .memory-card.flipped {
+  transform: rotateY(180deg);
+}
+
+.puzzle-cell {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.puzzle-cell:active {
+  transform: scale(0.95);
+}
+
+.quiz-opt-btn.correct-flash {
+  background: rgba(76, 175, 80, 0.5) !important;
+  animation: correctPulse 0.6s ease;
+}
+
+.quiz-opt-btn.wrong-flash {
+  background: rgba(244, 67, 54, 0.4) !important;
+  animation: wrongShake 0.4s ease;
+}
+
+@keyframes correctPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes wrongShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
 
 .fish-element {

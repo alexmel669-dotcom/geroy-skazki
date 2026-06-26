@@ -12,7 +12,7 @@ export const PROMOCODES = {
 export const ASSET_BASE = 'assets/images/';
 
 export const CONFIG = {
-  APP_VERSION: '5.0.8',
+  APP_VERSION: '5.0.10',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,

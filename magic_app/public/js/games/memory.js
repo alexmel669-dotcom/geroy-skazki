@@ -2,12 +2,13 @@ import { appState, getActiveChildName } from '../core.js';import { updateAchieve
 import { trackEvent } from '../analytics.js';
 import { recordMemoryWin } from '../game-progress.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
+import { getMemoryPairs } from './game-difficulty.js';
 
 export function startMemoryGame(level) {
   if (appState.gameActive) return;
   level = level || getGameLevel('memory');
 
-  const pairCount = Math.min(8, 3 + level);
+  const pairCount = getMemoryPairs(level);
   const cardCount = pairCount * 2;
   const cols = cardCount <= 8 ? 4 : cardCount <= 12 ? 4 : 5;
 

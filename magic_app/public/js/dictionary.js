@@ -56,6 +56,7 @@ export function fillTemplate(text, childName, timeContext, gender) {
 
 export function getDictionaryReply(question, childName, timeContext, gender = 'unknown') {
   const key = question.toLowerCase().trim().slice(0, 100);
+  if (!key) return null;
 
   const learned = getLearnedDictionary();
   if (learned[key]?.length) {
@@ -73,13 +74,37 @@ export function getDictionaryReply(question, childName, timeContext, gender = 'u
   return null;
 }
 
+/** Fallback-ответ только когда API недоступен */
+export function getDictionaryFallback(question, childName, timeContext, gender = 'unknown') {
+  return getDictionaryReply(question, childName, timeContext, gender);
+}
+
+const BEDTIME_TRIGGERS = [
+  'сказка на ночь',
+  'сказку на ночь',
+  'перед сном',
+  'хочу спать',
+  'спокойной ночи',
+  'уложи спать',
+  'пора спать'
+];
+
+const STORY_TRIGGERS = [
+  'расскажи сказку', 'расскажи историю', 'расскажи про',
+  'почитай сказку', 'почитай историю', 'хочу сказку', 'хочу историю'
+];
+
+export function isBedtimeStoryRequest(text) {
+  const lower = String(text || '').toLowerCase().trim();
+  if (!lower) return false;
+  return BEDTIME_TRIGGERS.some((t) => lower.includes(t));
+}
+
 export function detectRequestType(text) {
-  const storyTriggers = [
-    'расскажи сказку', 'сказку', 'историю', 'расскажи историю',
-    'почитай', 'сказка', 'расскажи про'
-  ];
-  const lower = String(text || '').toLowerCase();
-  const isStory = storyTriggers.some((t) => lower.includes(t));
+  const lower = String(text || '').toLowerCase().trim();
+  if (!lower) return 'chat';
+  if (isBedtimeStoryRequest(text)) return 'bedtime_story';
+  const isStory = STORY_TRIGGERS.some((t) => lower.includes(t));
   return isStory ? 'story' : 'chat';
 }
 
@@ -88,6 +113,8 @@ export default {
   saveLearnedDictionary,
   learnFromResponse,
   getDictionaryReply,
+  getDictionaryFallback,
   detectRequestType,
+  isBedtimeStoryRequest,
   fillTemplate
 };

@@ -73,12 +73,35 @@ ${genderLine}
 ${JSON_FORMAT_STORY}`;
 }
 
+function getBedtimeStoryPrompt(childName, childAge, timeContext, childGender) {
+  const ctx = timeContext || { time: '', day: '' };
+  const genderLine = buildGenderPrompt(childGender, childName);
+  return `Ты — Люцик, добрый кот. ${ctx.time}, ${ctx.day}. Сейчас время сна.
+
+${genderLine}
+
+Твоя задача — РАССКАЗАТЬ СКАЗКУ НА НОЧЬ для засыпания.
+- Длина: минимум 400 символов, 5-8 абзацев, спокойный ритм
+- Тема: мягкое волшебство, уют, звёзды, луна, тёплый дом
+- БЕЗ погонь, монстров, громких звуков, опасностей, возбуждающих событий
+- Плавное замедление к концу, герой засыпает или все засыпают
+- Закончи спокойной фразой перед сном (без вопросов ребёнку)
+- Герой сказки — с учётом пола ребёнка
+
+Ребёнок: ${childName || 'малыш'}${childAge ? `, ${childAge} лет` : ''}.
+
+${JSON_FORMAT_STORY}`;
+}
+
 function buildSystemPrompt({ childName, childAge, childGender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext }) {
   if (systemPrompt) return systemPrompt;
+  if (requestType === 'bedtime_story') {
+    return getBedtimeStoryPrompt(childName, childAge, timeContext, childGender);
+  }
   if (requestType === 'story') {
     return getStoryPrompt(childName, childAge, timeContext, topic, childGender);
   }
-  if (requestType === 'chat') {
+  if (requestType === 'chat' && (!character || character === 'lucik')) {
     return getChatPrompt(childName, childAge, timeContext, childGender);
   }
   const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : null;
@@ -152,7 +175,7 @@ export default async function handler(req, res) {
     }
     messages.push({ role: 'user', content: message });
 
-    const maxTokens = requestType === 'story' ? 400 : 100;
+    const maxTokens = requestType === 'bedtime_story' ? 550 : requestType === 'story' ? 400 : 100;
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -178,7 +201,7 @@ export default async function handler(req, res) {
     const safeMessage = applyGenderToText(sanitizeAIText(parsed.message, age), gender);
     return res.status(200).json({
       reply: safeMessage,
-      type: parsed.type || requestType || 'chat',
+      type: parsed.type || (requestType === 'bedtime_story' ? 'bedtime_story' : requestType) || 'chat',
       title: parsed.title || null,
       childName: parsed.childName || null,
       childAge: parsed.childAge != null ? parsed.childAge : null,

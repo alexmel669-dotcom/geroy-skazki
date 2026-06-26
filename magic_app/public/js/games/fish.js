@@ -4,19 +4,12 @@ import { updateAchievement } from '../achievements.js';
 import { trackEvent } from '../analytics.js';
 import { recordFishResult } from '../game-progress.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
-
-const LEVELS = {
-  1: { fishCount: 8, time: 35, fishSize: 56, speed: 1600 },
-  2: { fishCount: 12, time: 32, fishSize: 48, speed: 1300 },
-  3: { fishCount: 16, time: 30, fishSize: 42, speed: 1100 },
-  4: { fishCount: 20, time: 28, fishSize: 36, speed: 900 },
-  5: { fishCount: 25, time: 25, fishSize: 32, speed: 750 }
-};
+import { getFishConfig } from './game-difficulty.js';
 
 export function startFishGame(level) {
   if (appState.gameActive) return;
   level = level || getGameLevel('fish');
-  const cfg = LEVELS[level] || LEVELS[1];
+  const cfg = getFishConfig(level);
   const { fishCount, time, fishSize, speed } = cfg;
 
   appState.gameActive = true;
@@ -33,6 +26,7 @@ export function startFishGame(level) {
 
   const fishArea = document.createElement('div');
   fishArea.className = 'fish-area-full';
+  fishArea.innerHTML = '<div class="fish-waves" aria-hidden="true"></div><div class="fish-bubbles" aria-hidden="true"></div>';
 
   const fishElements = [];
   const fishTypes = ['🐟', '🐠', '🐡', '🦈', '🐙'];
@@ -60,7 +54,6 @@ export function startFishGame(level) {
     fish.style.opacity = '0';
     if (combo >= 3) score += Math.floor(combo / 3);
     scoreEl.textContent = `🐟 ${score}/${fishCount}`;
-    appState.hunger = Math.min(100, appState.hunger + 3);
     appState.fishScore++;
     updateStatsUI();
 

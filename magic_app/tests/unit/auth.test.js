@@ -38,8 +38,12 @@ describe('Security', () => {
 
 describe('Dictionary', () => {
   it('определяет тип запроса', async () => {
-    const { detectRequestType } = await import('../../public/js/dictionary.js');
+    const { detectRequestType, isBedtimeStoryRequest } = await import('../../public/js/dictionary.js');
     expect(detectRequestType('расскажи сказку про дракона')).toBe('story');
     expect(detectRequestType('как дела?')).toBe('chat');
+    expect(detectRequestType('привет')).toBe('chat');
+    expect(detectRequestType('расскажи сказку на ночь')).toBe('bedtime_story');
+    expect(isBedtimeStoryRequest('привет')).toBe(false);
+    expect(isBedtimeStoryRequest('хочу спать')).toBe(true);
   });
 });

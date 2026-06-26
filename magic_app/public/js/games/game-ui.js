@@ -5,19 +5,17 @@
 import { loadGameProgress, saveGameProgress } from '../game-progress.js';
 import { getActiveChildName } from '../core.js';
 
-export const MAX_GAME_LEVEL = 5;
-
 export function getGameLevel(gameId) {
   const p = loadGameProgress(getActiveChildName());
   const block = p[gameId] || {};
-  return Math.min(MAX_GAME_LEVEL, Math.max(1, block.level || 1));
+  return Math.max(1, block.level || 1);
 }
 
 export function recordGameWin(gameId, level) {
   const name = getActiveChildName();
   const p = loadGameProgress(name);
   const block = { ...(p[gameId] || {}), wins: (p[gameId]?.wins || 0) + 1 };
-  if (level >= (block.level || 1) && level < MAX_GAME_LEVEL) {
+  if (level >= (block.level || 1)) {
     block.level = level + 1;
   } else {
     block.level = Math.max(block.level || 1, level);
@@ -30,6 +28,7 @@ export function recordGameWin(gameId, level) {
 
 export function createGameScreen({ gameId, title, emoji = '🎮', level: levelOverride }) {
   const level = levelOverride ?? getGameLevel(gameId);
+  const filledDots = ((level - 1) % 5) + 1;
   const overlay = document.createElement('div');
   overlay.className = 'game-screen';
   overlay.setAttribute('role', 'dialog');
@@ -42,9 +41,9 @@ export function createGameScreen({ gameId, title, emoji = '🎮', level: levelOv
         <div>
           <div class="game-screen-title">${title}</div>
           <div class="game-level-track">
-            <span class="game-level-badge">Уровень ${level}</span>
-            <div class="game-level-dots">${Array.from({ length: MAX_GAME_LEVEL }, (_, i) =>
-              `<span class="game-level-dot${i < level ? ' filled' : ''}"></span>`
+            <span class="game-level-badge">Ур. ${level}</span>
+            <div class="game-level-dots">${Array.from({ length: 5 }, (_, i) =>
+              `<span class="game-level-dot${i < filledDots ? ' filled' : ''}"></span>`
             ).join('')}</div>
           </div>
         </div>
@@ -74,7 +73,7 @@ export function showGameResult({ won, level, scoreText, onNext, onClose }) {
       <div class="game-result-icon">${won ? '🎉' : '💪'}</div>
       <h3>${won ? 'Уровень пройден!' : 'Почти получилось!'}</h3>
       <p>${scoreText}</p>
-      ${won && level < MAX_GAME_LEVEL ? '<button type="button" class="modal-btn game-result-next">Следующий уровень →</button>' : ''}
+      ${won ? '<button type="button" class="modal-btn game-result-next">Следующий уровень →</button>' : ''}
       <button type="button" class="modal-btn secondary game-result-close">Закрыть</button>
     </div>
   `;
@@ -93,4 +92,4 @@ export function showGameResult({ won, level, scoreText, onNext, onClose }) {
   });
 }
 
-export default { getGameLevel, recordGameWin, createGameScreen, showGameResult, MAX_GAME_LEVEL };
+export default { getGameLevel, recordGameWin, createGameScreen, showGameResult };

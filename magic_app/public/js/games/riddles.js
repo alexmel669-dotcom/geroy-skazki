@@ -3,6 +3,7 @@ import { setAvatarState } from '../ui.js';
 import { updateAchievement } from '../achievements.js';
 import { trackEvent } from '../analytics.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
+import { getRiddlesConfig } from './game-difficulty.js';
 
 const RIDDLES = [
   { q: 'Зимой и летом одним цветом.', a: ['ёлка', 'елка', 'ёлочка', 'елочка'], hint: 'Растёт в лесу, зелёная' },
@@ -23,9 +24,8 @@ export function startRiddlesGame(level) {
   if (appState.gameActive) return;
   level = level || getGameLevel('riddles');
 
-  const total = Math.min(RIDDLES.length, 2 + level * 2);
-  const hintsLeft = Math.max(0, 4 - level);
-  const needToWin = Math.max(2, total - Math.floor(level / 2));
+  const { total: rawTotal, hintsLeft, needToWin } = getRiddlesConfig(level);
+  const total = Math.min(RIDDLES.length, rawTotal);
 
   appState.gameActive = true;
   let index = 0;

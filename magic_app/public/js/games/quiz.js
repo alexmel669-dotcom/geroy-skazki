@@ -36,6 +36,8 @@ export function startQuizGame(level) {
   const passScore = Math.ceil(questions.length * 0.6);
   let qi = 0;
   let score = 0;
+  let questionTimer = null;
+  let timeLeft = 15;
 
   appState.gameActive = true;
 
@@ -81,15 +83,22 @@ export function startQuizGame(level) {
 
   function render() {
     panel.innerHTML = '';
+    if (questionTimer) clearInterval(questionTimer);
     if (qi >= questions.length) {
       finish(score >= passScore);
       return;
     }
 
+    timeLeft = Math.max(10, 20 - level);
     const item = questions[qi];
     const title = document.createElement('h3');
     title.style.cssText = 'margin:0 0 12px;font-size:1rem;opacity:0.85;';
     title.textContent = `Вопрос ${qi + 1} / ${questions.length}`;
+
+    const timerEl = document.createElement('div');
+    timerEl.className = 'game-hud-row';
+    timerEl.style.cssText = 'margin-bottom:12px;font-size:1.1rem;';
+    timerEl.textContent = `⏱️ ${timeLeft}с`;
 
     const q = document.createElement('p');
     q.className = 'game-question-text';
@@ -99,30 +108,43 @@ export function startQuizGame(level) {
     const opts = document.createElement('div');
     opts.style.cssText = 'display:flex;flex-direction:column;gap:10px;width:100%;';
 
+    const lockOpts = (correct) => {
+      if (questionTimer) clearInterval(questionTimer);
+      opts.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      setTimeout(() => { qi++; render(); }, correct ? 400 : 900);
+    };
+
+    questionTimer = setInterval(() => {
+      timeLeft--;
+      timerEl.textContent = `⏱️ ${timeLeft}с`;
+      if (timeLeft <= 0) {
+        clearInterval(questionTimer);
+        questionTimer = null;
+        lockOpts(false);
+      }
+    }, 1000);
+
     item.options.forEach((opt, i) => {
       const btn = document.createElement('button');
       btn.className = 'modal-btn quiz-opt-btn';
       btn.textContent = opt;
       btn.onclick = () => {
+        if (questionTimer) clearInterval(questionTimer);
         if (i === item.correct) {
           score++;
-          btn.style.background = 'var(--green)';
+          btn.classList.add('correct-flash');
         } else {
-          btn.style.background = 'rgba(255,64,129,0.6)';
+          btn.classList.add('wrong-flash');
           item.options.forEach((_, j) => {
-            if (j === item.correct) opts.children[j].style.background = 'var(--green)';
+            if (j === item.correct) opts.children[j].classList.add('correct-flash');
           });
         }
-        opts.querySelectorAll('button').forEach((b) => { b.disabled = true; });
-        setTimeout(() => {
-          qi++;
-          render();
-        }, i === item.correct ? 400 : 900);
+        lockOpts(i === item.correct);
       };
       opts.appendChild(btn);
     });
 
-    panel.append(title, q, opts);
+    panel.append(title, timerEl, q, opts);
     if (!panel.parentElement) body.appendChild(panel);
   }
 

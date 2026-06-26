@@ -84,13 +84,13 @@ export function recordColoringComplete(childName = 'guest') {
 export function getGameProgressSummary(childName) {
   const p = loadGameProgress(childName);
   return [
-    { id: 'fish', label: '🎣 Рыбалка', value: p.fish.level || 1, max: 5, detail: `ур. ${p.fish.level || 1}, счёт ${p.fish.bestScore}` },
-    { id: 'memory', label: '🧠 Мемори', value: p.memory.level || 1, max: 5, detail: `ур. ${p.memory.level || 1}, побед: ${p.memory.wins || 0}` },
-    { id: 'puzzle', label: '🧩 Пазл', value: p.puzzle.level || 1, max: 5, detail: `ур. ${p.puzzle.level || 1}` },
-    { id: 'riddles', label: '❓ Загадки', value: p.riddles.level || 1, max: 5, detail: `ур. ${p.riddles.level || 1}` },
-    { id: 'quest', label: '🗺️ Квест', value: p.quest.level || 1, max: 5, detail: `ур. ${p.quest.level || 1}` },
-    { id: 'maze', label: '🌀 Лабиринт', value: p.maze.level || 1, max: 5, detail: `ур. ${p.maze.level || 1}` },
-    { id: 'quiz', label: '❓ Викторина', value: p.quiz.level || 1, max: 5, detail: `ур. ${p.quiz.level || 1}` }
+    { id: 'fish', label: '🎣 Рыбалка', value: p.fish.level || 1, detail: `ур. ${p.fish.level || 1}, счёт ${p.fish.bestScore}` },
+    { id: 'memory', label: '🧠 Мемори', value: p.memory.level || 1, detail: `ур. ${p.memory.level || 1}, побед: ${p.memory.wins || 0}` },
+    { id: 'puzzle', label: '🧩 Пазл', value: p.puzzle.level || 1, detail: `ур. ${p.puzzle.level || 1}` },
+    { id: 'riddles', label: '❓ Загадки', value: p.riddles.level || 1, detail: `ур. ${p.riddles.level || 1}` },
+    { id: 'quest', label: '🗺️ Квест', value: p.quest.level || 1, detail: `ур. ${p.quest.level || 1}` },
+    { id: 'maze', label: '🌀 Лабиринт', value: p.maze.level || 1, detail: `ур. ${p.maze.level || 1}` },
+    { id: 'quiz', label: '❓ Викторина', value: p.quiz.level || 1, detail: `ур. ${p.quiz.level || 1}` }
   ];
 }
 

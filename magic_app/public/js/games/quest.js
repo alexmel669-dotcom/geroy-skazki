@@ -3,6 +3,7 @@ import { setAvatarState } from '../ui.js';
 import { trackEvent } from '../analytics.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 import { getChildGender, formatChildText } from '../gender.js';
+import { getQuestMaxMoves } from './game-difficulty.js';
 const QUEST_STORY = {
   start: {
     text: '🗺️ Люцик потерял волшебный кристалл! Поможешь найти?\n\nВы стоите у лесной тропинки. Куда пойдёте?',
@@ -87,7 +88,7 @@ export function startQuestGame(level) {
 
   let step = START_BY_LEVEL[level] || 'start';
   let moves = 0;
-  const maxMoves = 14 - level;
+  const maxMoves = getQuestMaxMoves(level);
 
   appState.gameActive = true;
 

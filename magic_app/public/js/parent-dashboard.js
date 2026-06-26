@@ -85,48 +85,109 @@ async function updateParentGreeting() {
   }
 }
 
-function getWeeklyStatsLocal() {
-  const stats = getChildStats();
+function getTimeOfDayGreeting() {
+  const h = new Date().getHours();
+  if (h >= 6 && h < 12) return 'Доброе утро';
+  if (h >= 12 && h < 17) return 'Добрый день';
+  if (h >= 17 && h < 22) return 'Добрый вечер';
+  return 'Доброй ночи';
+}
+
+function getWeeklyStatsLocalForChild(childName) {
+  const key = childName ? `stats_${childName}` : 'stats_guest';
+  const stats = safeParseJSON(localStorage.getItem(key), {}) || {};
   const history = stats.history || [];
   const weekAgo = Date.now() - 7 * 86400000;
   const recent = history.filter((h) => new Date(h.timestamp || 0).getTime() > weekAgo);
   const totalChats = recent.filter((h) => h.role === 'child' || h.role === 'user').length;
-  const totalStories = recent.filter((h) => h.type === 'story').length;
+  const totalStories = recent.filter((h) => h.type === 'story' || h.type === 'bedtime_story').length;
   const moods = recent.map((h) => h.mood).filter(Boolean);
   let mood = 'neutral';
   if (moods.filter((m) => m === 'positive').length > moods.length / 2) mood = 'happy';
   else if (moods.filter((m) => m === 'concerned').length > 0) mood = 'anxious';
-  else if (moods.filter((m) => m === 'neutral').length === moods.length && moods.length) mood = 'neutral';
   const concerns = [...new Set(recent.flatMap((h) => h.alertWords || []).filter(Boolean))];
-  return { totalChats, totalStories, mood, concerns };
+  const fearStats = migrateFearStatsObject(stats.fearStats || {});
+  const fears = Object.entries(fearStats)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k]) => getFearDisplayName(k));
+  return { totalChats, totalStories, mood, concerns, fears, fearStats };
 }
 
-function generateReportText(stats, parentName, childName, gender = 'unknown') {
-  const moodMap = {
-    happy: 'хорошим',
-    neutral: 'спокойным',
-    sad: 'грустным',
-    anxious: 'тревожным'
+function getWeeklyStatsLocal() {
+  const child = getChildren()[currentChildIndex] || getChildren()[0];
+  return getWeeklyStatsLocalForChild(child?.name);
+}
+
+function mergeChildStats(serverEntry, childName, gender) {
+  const local = getWeeklyStatsLocalForChild(childName);
+  const games = getGameProgressSummary(childName);
+  const base = {
+    ...local,
+    childName,
+    gender: gender || resolveChildGender(childName, null),
+    games
   };
-  const mood = moodMap[stats.mood] || 'разным';
-  const concernLine = stats.concerns?.length
-    ? 'Были моменты, на которые стоит обратить внимание.'
-    : 'Всё в порядке.';
-  const chatted = chattedPast(gender);
-  return [
-    `${parentName}, здравствуйте!`,
-    `На этой неделе ${childName} ${chatted} со мной ${stats.totalChats} раз.`,
-    `Мы рассказали ${stats.totalStories} сказок.`,
-    `Настроение было в основном ${mood}.`,
-    concernLine,
-    'Спасибо, что вы с нами!'
-  ].join(' ');
+  if (!serverEntry || (serverEntry.totalChats === 0 && local.totalChats > 0)) {
+    return base;
+  }
+  return {
+    ...base,
+    totalChats: Math.max(local.totalChats, serverEntry.totalChats ?? 0),
+    totalStories: Math.max(local.totalStories, serverEntry.totalStories ?? 0),
+    mood: local.totalChats >= (serverEntry.totalChats ?? 0) ? local.mood : (serverEntry.mood || local.mood),
+    concerns: [...new Set([...(local.concerns || []), ...(serverEntry.concerns || [])])],
+    fears: local.fears?.length ? local.fears : base.fears
+  };
 }
 
-function resolveChildGender(childName, genderHint) {
-  if (genderHint && genderHint !== 'unknown') return genderHint;
-  const child = getChildren().find((c) => c.name === childName);
-  return getChildGender(child) || guessGenderFromName(childName);
+function buildAllChildrenStats(serverStats) {
+  const children = getChildren();
+  if (!children.length) {
+    const name = serverStats?.[0]?.childName || 'ребёнок';
+    return [mergeChildStats(serverStats?.[0], name, serverStats?.[0]?.gender)];
+  }
+  return children.map((child) => {
+    const serverEntry = serverStats?.find((s) => s.childName === child.name || s.name === child.name);
+    return mergeChildStats(serverEntry, child.name, child.gender);
+  });
+}
+
+function generateChildReportText(stats, childName, gender, multiChild) {
+  const chatted = chattedPast(gender);
+  const parts = [];
+  if (multiChild) parts.push(`Теперь о ${childName}:`);
+
+  if (stats.totalChats > 0) {
+    parts.push(`За последнюю неделю ${childName} ${chatted} со мной ${stats.totalChats} раз.`);
+  } else {
+    parts.push(`За последнюю неделю ${childName} пока не ${chatted === 'общалась' ? 'общалась' : 'общался'} со мной.`);
+  }
+
+  if (stats.totalStories > 0) {
+    parts.push(`Мы рассказали ${stats.totalStories} сказок.`);
+  }
+
+  if (stats.fears?.length) {
+    parts.push(`Мы обсуждали: ${stats.fears.slice(0, 5).join(', ')}.`);
+  }
+
+  const gameParts = (stats.games || [])
+    .filter((g) => g.value > 1 || g.detail)
+    .map((g) => {
+      const short = g.label.replace(/^[^\s]+\s/, '').toLowerCase();
+      return `${short} ур.${g.value}`;
+    });
+  if (gameParts.length) {
+    parts.push(`В играх: ${gameParts.join(', ')}.`);
+  }
+
+  const moodMap = { happy: 'хорошим', neutral: 'спокойным', anxious: 'тревожным' };
+  if (stats.totalChats > 0) {
+    parts.push(`Настроение было в основном ${moodMap[stats.mood] || 'разным'}.`);
+  }
+
+  return parts.join(' ');
 }
 
 async function fetchWeeklyStatsFromServer() {
@@ -191,6 +252,12 @@ async function playTextAsSpeech(text) {
   return false;
 }
 
+function resolveChildGender(childName, genderHint) {
+  if (genderHint && genderHint !== 'unknown') return genderHint;
+  const child = getChildren().find((c) => c.name === childName);
+  return getChildGender(child) || guessGenderFromName(childName);
+}
+
 async function speakReport() {
   const btn = document.getElementById('speakReportBtn');
   if (btn) {
@@ -200,23 +267,27 @@ async function speakReport() {
   try {
     const user = await getCurrentUser();
     const serverStats = await fetchWeeklyStatsFromServer();
-    const childrenStats = serverStats?.length
-      ? serverStats
-      : [{ ...getWeeklyStatsLocal(), childName: user.childName }];
+    const childrenStats = buildAllChildrenStats(serverStats);
+    const multiChild = childrenStats.length > 1;
+
+    const greeting = getTimeOfDayGreeting();
+    await playTextAsSpeech(`${greeting}, ${user.parentName || user.username}!`);
 
     for (let i = 0; i < childrenStats.length; i++) {
       const stats = childrenStats[i];
       const childName = stats.childName || user.childName;
       const gender = resolveChildGender(childName, stats.gender);
-      if (btn && childrenStats.length > 1) {
+      if (btn && multiChild) {
         btn.textContent = `🎤 ${i + 1}/${childrenStats.length}: ${childName}...`;
       }
-      const text = generateReportText(stats, user.parentName, childName, gender);
+      const text = generateChildReportText(stats, childName, gender, multiChild);
       await playTextAsSpeech(text);
       if (i < childrenStats.length - 1) {
-        await new Promise((r) => setTimeout(r, 800));
+        await new Promise((r) => setTimeout(r, 2000));
       }
     }
+
+    await playTextAsSpeech('Спасибо, что вы с нами!');
   } finally {
     if (btn) {
       btn.disabled = false;
