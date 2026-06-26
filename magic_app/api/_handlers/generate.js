@@ -1,13 +1,14 @@
 import { getAgeBasedTone, sanitizeAIText } from '../_lib/content-filter.js';
 import { setCors } from '../_middleware/cors.js';
 import { applyAiRateLimit } from '../_middleware/ai-rate-limit.js';
+import { buildGenderPrompt, applyGenderToText, normalizeGender } from '../_lib/gender-ru.js';
 
 const CHARACTER_PROMPTS = {
   lucik: 'Ты — Люцик, сказочный кот-волшебник, друг и помощник ребёнка. Тёплый, с мурчанием (мурр, мяу). Помогаешь через сказки и игры.',
-  mom: 'Ты — мама ребёнка. Ласковая: солнышко, родной. Успокаиваешь, обнимаешь словами.',
-  dad: 'Ты — папа ребёнка. Уверенный, спокойный: давай разберёмся, я рядом, ты справишься.',
-  kid1: 'Ты — подруга-сверстница. Простые, короткие фразы. Делитесь секретами на равных.',
-  kid2: 'Ты — друг-сверстник мальчик. Простые, короткие фразы. Делитесь секретами на равных.'
+  mom: 'Ты — мама ребёнка. Ласковая: солнышко. К мальчику: родной, мой хороший, сынок. К девочке: родная, моя хорошая, доченька. Успокаивай, обнимай словами.',
+  dad: 'Ты — папа ребёнка. Уверенный, спокойный: давай разберёмся, я рядом, ты справишься. Хвали за смелость с учётом пола ребёнка.',
+  kid1: 'Ты — подруга-сверстница (девочка). Простые, короткие фразы. Делитесь секретами на равных.',
+  kid2: 'Ты — друг-сверстник (мальчик). Простые, короткие фразы. Делитесь секретами на равных.'
 };
 
 const SOFT_FEAR_PROMPT = `Ты — мягкий и добрый собеседник для ребёнка.
@@ -34,12 +35,15 @@ const JSON_FORMAT_CHAT = `Ответь ТОЛЬКО валидным JSON без
 const JSON_FORMAT_STORY = `Ответь ТОЛЬКО валидным JSON без markdown:
 {"message":"текст сказки","title":"название","childName":null или "имя","childAge":null или число,"concerns":null или ["тема"],"mood":"positive|neutral|concerned","type":"story"}`;
 
-function getChatPrompt(childName, childAge, timeContext) {
+function getChatPrompt(childName, childAge, timeContext, childGender) {
   const ctx = timeContext || { time: '', day: '', greeting: '' };
+  const genderLine = buildGenderPrompt(childGender, childName);
   return `Ты — Люцик, добрый кот-помощник. ${ctx.time}, ${ctx.day}.
 
+${genderLine}
+
 Твоя задача — ПРОСТО ОБЩАТЬСЯ с ребёнком. Это НЕ сказка.
-- Спроси как дела, как прошёл день
+- Спроси как дела, как прошёл день (с учётом пола: «как прошёл/прошла твой день»)
 - Отреагируй на настроение
 - Ответь коротко (2-4 предложения)
 - Будь тёплым и заботливым
@@ -51,9 +55,12 @@ function getChatPrompt(childName, childAge, timeContext) {
 ${JSON_FORMAT_CHAT}`;
 }
 
-function getStoryPrompt(childName, childAge, timeContext, topic) {
+function getStoryPrompt(childName, childAge, timeContext, topic, childGender) {
   const ctx = timeContext || { time: '', day: '' };
+  const genderLine = buildGenderPrompt(childGender, childName);
   return `Ты — Люцик, сказочный кот. ${ctx.time}, ${ctx.day}.
+
+${genderLine}
 
 Твоя задача — РАССКАЗАТЬ СКАЗКУ для ребёнка.
 - Длина: 3-5 минут чтения
@@ -66,17 +73,18 @@ function getStoryPrompt(childName, childAge, timeContext, topic) {
 ${JSON_FORMAT_STORY}`;
 }
 
-function buildSystemPrompt({ childName, childAge, character, systemPrompt, topic, isFirstMessage, requestType, timeContext }) {
+function buildSystemPrompt({ childName, childAge, childGender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext }) {
   if (systemPrompt) return systemPrompt;
   if (requestType === 'story') {
-    return getStoryPrompt(childName, childAge, timeContext, topic);
+    return getStoryPrompt(childName, childAge, timeContext, topic, childGender);
   }
   if (requestType === 'chat') {
-    return getChatPrompt(childName, childAge, timeContext);
+    return getChatPrompt(childName, childAge, timeContext, childGender);
   }
   const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : null;
   const role = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
   const tone = age ? getAgeBasedTone(age) : '';
+  const genderLine = buildGenderPrompt(childGender, childName);
   const nameLine = childName
     ? `Ребёнка зовут ${childName}${age ? `, ${age} лет` : ''}. Обращайся по имени.`
     : 'Имя ребёнка пока неизвестно.';
@@ -84,7 +92,7 @@ function buildSystemPrompt({ childName, childAge, character, systemPrompt, topic
   const firstLine = isFirstMessage ? '\nЭто первое сообщение в диалоге.' : '';
   const continueHint = 'Если ребёнок говорит «давай», «расскажи ещё», «продолжай» — продолжай предыдущую тему.';
   const toneLine = tone ? `\n\nСтиль общения:\n${tone}` : '';
-  return `${role}\n\n${nameLine}${topicLine}${firstLine}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
+  return `${role}\n\n${nameLine}\n\n${genderLine}${topicLine}${firstLine}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
 }
 
 function parseAiJson(raw) {
@@ -107,16 +115,22 @@ export default async function handler(req, res) {
 
   const started = Date.now();
   try {
-    const { message, childName, childAge, character, systemPrompt, history, topic, isFirstMessage, requestType, timeContext } = req.body;
+    const { message, childName, childAge, childGender, character, systemPrompt, history, topic, isFirstMessage, requestType, timeContext } = req.body;
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
-    const sys = buildSystemPrompt({ childName, childAge, character, systemPrompt, topic, isFirstMessage, requestType, timeContext });
+    const gender = normalizeGender(childGender);
+    const sys = buildSystemPrompt({ childName, childAge, childGender: gender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext });
 
     if (!process.env.DEEPSEEK_API_KEY) {
+      const devReply = childName
+        ? (gender === 'female'
+          ? `Мурр! Рада тебя слышать, ${childName}! 🐱`
+          : gender === 'male'
+            ? `Мурр! Рад тебя слышать, ${childName}! 🐱`
+            : `Мурр! Как хорошо слышать тебя, ${childName}! 🐱`)
+        : 'Привет! Я кот Люцик. Как тебя зовут?';
       return res.status(200).json({
-        reply: childName
-          ? `Мурр! Рад тебя слышать, ${childName}! 🐱`
-          : 'Привет! Я кот Люцик. Как тебя зовут?',
+        reply: devReply,
         childName: null,
         childAge: null,
         concerns: null,
@@ -161,7 +175,7 @@ export default async function handler(req, res) {
 
     const parsed = parseAiJson(raw);
     const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : 7;
-    const safeMessage = sanitizeAIText(parsed.message, age);
+    const safeMessage = applyGenderToText(sanitizeAIText(parsed.message, age), gender);
     return res.status(200).json({
       reply: safeMessage,
       type: parsed.type || requestType || 'chat',

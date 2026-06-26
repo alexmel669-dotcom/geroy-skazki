@@ -4,7 +4,7 @@
 
 import { CONFIG, validateConfig, ENV, CHARACTERS } from './config.js';
 import {
-  initCore, getActiveChildName, updateStatsUI, cycleCharacter,
+  initCore, getActiveChildName, getActiveChild, updateStatsUI, cycleCharacter,
   selectGuestMode, showChildSelectModal, saveChildData, appState
 } from './core.js';
 import { getCharacter } from './ai.js';
@@ -12,7 +12,6 @@ import { synthesizeSpeech } from './audio.js';
 import { startRecording, stopRecording, isRecording, browserSpeechRecognition } from './mic.js';
 import { updateUI, showNotification, initDevPanel } from './ui.js';
 import { initNotificationScheduler, checkPlanExpiryNotification } from './notifications.js';
-import { initFeedbackButton } from './feedback.js';
 
 async function playWelcomeGreeting() {
   const modal = document.getElementById('childSelectModal');
@@ -40,7 +39,6 @@ function initializeApp() {
   if (ENV.isDev || ENV.isStaging) initDevPanel();
   initNotificationScheduler().catch(() => {});
   checkPlanExpiryNotification();
-  initFeedbackButton();
   setTimeout(() => {
     playWelcomeGreeting().catch((err) => console.warn('Welcome failed:', err));
   }, 1000);

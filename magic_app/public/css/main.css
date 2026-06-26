@@ -19,7 +19,9 @@ body {
   margin: 0;
   min-height: 100vh;
   background-color: #151521;
-  background-image: url('/assets/images/parent-bg.svg');
+  background-image:
+    linear-gradient(180deg, rgba(21, 21, 33, 0.35) 0%, rgba(21, 21, 33, 0.55) 100%),
+    url('../assets/images/parent-bg.png');
   background-repeat: no-repeat;
   background-position: center center;
   background-attachment: fixed;
@@ -48,6 +50,14 @@ header {
 .header-title {
   font-weight: 600;
   font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-avatar {
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .header-buttons {
@@ -377,6 +387,286 @@ header {
   align-items: center;
   justify-content: center;
   color: #fff;
+}
+
+.game-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  opacity: 0;
+  transform: scale(1.02);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.game-screen-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.game-screen-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(108, 99, 255, 0.35), transparent 45%),
+    radial-gradient(circle at 80% 70%, rgba(255, 64, 129, 0.25), transparent 40%),
+    linear-gradient(160deg, #0f1028 0%, #1a1a3e 45%, #12122a 100%);
+  animation: gameBgPulse 8s ease-in-out infinite alternate;
+}
+
+.game-screen-stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 70% 60%, rgba(255,255,255,0.35), transparent),
+    radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,0.4), transparent);
+  animation: gameStarsDrift 20s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes gameBgPulse {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.08); }
+}
+
+@keyframes gameStarsDrift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-12px); }
+}
+
+.game-screen-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(16px, env(safe-area-inset-top)) 16px 12px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.55), transparent);
+}
+
+.game-screen-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.game-screen-emoji {
+  font-size: 2rem;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+}
+
+.game-screen-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.game-level-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.game-level-badge {
+  font-size: 0.75rem;
+  background: rgba(255,255,255,0.12);
+  padding: 2px 10px;
+  border-radius: 12px;
+}
+
+.game-level-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.game-level-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  transition: transform 0.3s, background 0.3s;
+}
+
+.game-level-dot.filled {
+  background: var(--yellow);
+  transform: scale(1.15);
+  box-shadow: 0 0 8px rgba(255, 213, 79, 0.6);
+}
+
+.game-close-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.game-screen-body {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px max(16px, env(safe-area-inset-bottom));
+  overflow: auto;
+  width: 100%;
+}
+
+.game-result-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.game-result-modal.visible {
+  opacity: 1;
+}
+
+.game-result-box {
+  background: rgba(35, 35, 58, 0.95);
+  border-radius: 24px;
+  padding: 28px 24px;
+  text-align: center;
+  max-width: 320px;
+  width: 90%;
+  animation: gameResultPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 2px solid rgba(255,255,255,0.1);
+}
+
+.game-result-box.won {
+  border-color: rgba(255, 213, 79, 0.5);
+  box-shadow: 0 0 40px rgba(255, 213, 79, 0.2);
+}
+
+.game-result-icon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+  animation: gameResultBounce 0.6s ease;
+}
+
+@keyframes gameResultPop {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes gameResultBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.game-result-box .modal-btn {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.fish-area-full {
+  flex: 1;
+  width: 100%;
+  max-width: 520px;
+  position: relative;
+  background: linear-gradient(180deg, rgba(26, 58, 92, 0.9), rgba(13, 33, 55, 0.95));
+  border-radius: 24px;
+  overflow: hidden;
+  border: 2px solid rgba(0, 210, 255, 0.25);
+  box-shadow: inset 0 0 60px rgba(0, 210, 255, 0.08);
+  min-height: 55vh;
+}
+
+.fish-element {
+  animation: fishSwim 3s ease-in-out infinite alternate;
+}
+
+@keyframes fishSwim {
+  from { transform: rotate(-5deg) scale(1); }
+  to { transform: rotate(5deg) scale(1.05); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.child-chip-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.landing-link {
+  font-size: 1rem !important;
+  text-decoration: none;
+}
+
+.game-panel {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 20px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.game-text-input {
+  width: 100%;
+  max-width: 320px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-size: 1rem;
+  margin: 8px 0;
+}
+
+.game-text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.game-text-input.shake {
+  animation: inputShake 0.4s ease;
+}
+
+@keyframes inputShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+.quest-choice-btn,
+.quiz-opt-btn {
+  width: 100%;
+  transition: transform 0.15s, background 0.2s;
+}
+
+.quest-choice-btn:active,
+.quiz-opt-btn:active {
+  transform: scale(0.98);
+}
+
+.puzzle-board-animated .puzzle-cell {
+  animation: puzzleFadeIn 0.35s ease backwards;
+}
+
+@keyframes puzzleFadeIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .memory-board,

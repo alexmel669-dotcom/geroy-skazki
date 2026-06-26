@@ -1,55 +1,51 @@
 import { appState, getActiveChildName } from '../core.js';
-import { showModal } from '../ui.js';
 import { updateAchievement } from '../achievements.js';
 import { recordPuzzleWin } from '../game-progress.js';
 import { setAvatarState } from '../ui.js';
+import { trackEvent } from '../analytics.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 
-const LEVELS = {
-  3: { label: '3×3 — легко (3–8 лет)', pieces: ['🌟', '🌈', '🦁', '🐱', '🎨', '🎮', '🧩', '🍎', ''] },
-  4: { label: '4×4 — средне (8–11 лет)', pieces: ['🌟', '🌈', '🦁', '🐱', '🎨', '🎮', '🧩', '🍎', '🚀', '⭐', '🎵', '🌸', '🐶', '🦋', ''] },
-  6: { label: '6×6 — сложно (12–14 лет)', pieces: Array.from({ length: 35 }, (_, i) => (i < 34 ? String((i % 9) + 1) : '')) }
+const GRID_BY_LEVEL = {
+  1: 3,
+  2: 3,
+  3: 4,
+  4: 4,
+  5: 5
 };
 
-export function startPuzzleGame() {
+const PIECES = {
+  3: ['🌟', '🌈', '🦁', '🐱', '🎨', '🎮', '🧩', '🍎', ''],
+  4: ['🌟', '🌈', '🦁', '🐱', '🎨', '🎮', '🧩', '🍎', '🚀', '⭐', '🎵', '🌸', '🐶', '🦋', '🐸', ''],
+  5: ['🌟', '🌈', '🦁', '🐱', '🎨', '🎮', '🧩', '🍎', '🚀', '⭐', '🎵', '🌸', '🐶', '🦋', '🐸', '🦄', '🎪', '🍭', '🎁', '🏆', '🌙', '☀️', '🍀', '🎈', '']
+};
+
+export function startPuzzleGame(level) {
   if (appState.gameActive) return;
-
-  const picker = document.createElement('div');
-  picker.className = 'game-overlay';
-  picker.innerHTML = `
-    <div style="text-align:center;max-width:320px;">
-      <h2>🧩 Выбери уровень</h2>
-      <div style="display:flex;flex-direction:column;gap:10px;margin:16px 0;">
-        ${Object.entries(LEVELS).map(([size, lv]) =>
-          `<button class="modal-btn" data-size="${size}">${lv.label}</button>`
-        ).join('')}
-        <button class="modal-btn secondary" data-size="close">✕ Закрыть</button>
-      </div>
-    </div>`;
-
-  picker.querySelectorAll('[data-size]').forEach((btn) => {
-    btn.onclick = () => {
-      const size = btn.dataset.size;
-      picker.remove();
-      if (size === 'close') return;
-      runPuzzle(parseInt(size, 10));
-    };
-  });
-  document.body.appendChild(picker);
+  level = level || getGameLevel('puzzle');
+  runPuzzle(level);
 }
 
-function runPuzzle(gridSize) {
+function runPuzzle(level) {
+  const gridSize = GRID_BY_LEVEL[level] || 3;
+  const correctOrder = PIECES[gridSize] || PIECES[3];
+
   appState.gameActive = true;
-  const correctOrder = LEVELS[gridSize]?.pieces || LEVELS[3].pieces;
+  let moves = 0;
 
-  const container = document.createElement('div');
-  container.className = 'game-overlay';
+  const { body, close } = createGameScreen({
+    gameId: 'puzzle',
+    title: `Пазл ${gridSize}×${gridSize}`,
+    emoji: '🧩',
+    level
+  });
 
-  const title = document.createElement('h2');
-  title.textContent = `🧩 Пазл ${gridSize}×${gridSize}`;
+  const hud = document.createElement('p');
+  hud.style.cssText = 'text-align:center;opacity:0.85;margin:0 0 8px;';
+  hud.textContent = `Сдвигай плитки · ходов: 0`;
 
   const board = document.createElement('div');
-  board.className = 'puzzle-board';
-  board.style.cssText = `display:grid;grid-template-columns:repeat(${gridSize},1fr);gap:6px;max-width:min(90vw,360px);margin:16px auto;`;
+  board.className = 'puzzle-board puzzle-board-animated';
+  board.style.cssText = `display:grid;grid-template-columns:repeat(${gridSize},1fr);gap:6px;max-width:min(92vw,380px);width:100%;margin:0 auto;`;
 
   let pieces = [...correctOrder];
   if (gridSize <= 4) {
@@ -62,19 +58,27 @@ function runPuzzle(gridSize) {
 
   function renderBoard() {
     board.innerHTML = '';
-    pieces.forEach((piece) => {
+    pieces.forEach((piece, idx) => {
       const cell = document.createElement('div');
+      cell.className = 'puzzle-cell';
       cell.style.cssText = `
         aspect-ratio: 1;
-        background: ${piece ? '#4a4a6a' : '#2a2a4a'};
-        border-radius: 8px;
+        background: ${piece ? 'linear-gradient(135deg,#5a5a8a,#7a7ab0)' : 'rgba(0,0,0,0.25)'};
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: ${gridSize >= 6 ? '1rem' : '1.5rem'};
+        font-size: ${gridSize >= 5 ? '1.1rem' : '1.45rem'};
         cursor: ${piece ? 'pointer' : 'default'};
+        transition: transform 0.2s, background 0.2s;
+        box-shadow: ${piece ? '0 4px 12px rgba(0,0,0,0.25)' : 'none'};
       `;
       cell.textContent = piece;
+      cell.dataset.index = String(idx);
+      if (piece) {
+        cell.onmouseenter = () => { cell.style.transform = 'scale(1.05)'; };
+        cell.onmouseleave = () => { cell.style.transform = 'scale(1)'; };
+      }
       board.appendChild(cell);
     });
   }
@@ -91,40 +95,44 @@ function runPuzzle(gridSize) {
     return Math.abs(fromRow - toRow) + Math.abs(fromCol - toCol) === 1;
   }
 
+  function winGame() {
+    updateAchievement('puzzle_solver');
+    recordPuzzleWin(getActiveChildName());
+    recordGameWin('puzzle', level);
+    setAvatarState('happy');
+    appState.gameActive = false;
+    close();
+    setTimeout(() => setAvatarState(null), 800);
+    showGameResult({
+      won: true,
+      level,
+      scoreText: `Собрано за ${moves} ходов!`,
+      onNext: () => startPuzzleGame(level + 1)
+    });
+    trackEvent('puzzle_won', { level, moves, gridSize });
+  }
+
   board.addEventListener('click', (e) => {
-    const cell = e.target;
-    if (!cell.parentElement || cell.parentElement !== board) return;
-    const clickedIndex = Array.from(board.children).indexOf(cell);
-    if (clickedIndex === -1 || !pieces[clickedIndex]) return;
+    const cell = e.target.closest('.puzzle-cell');
+    if (!cell) return;
+    const clickedIndex = parseInt(cell.dataset.index, 10);
+    if (!pieces[clickedIndex]) return;
     const emptyIndex = findEmptyIndex();
     if (emptyIndex === -1 || !canMove(clickedIndex, emptyIndex, gridSize)) return;
     [pieces[clickedIndex], pieces[emptyIndex]] = [pieces[emptyIndex], pieces[clickedIndex]];
+    moves++;
+    hud.textContent = `Сдвигай плитки · ходов: ${moves}`;
     renderBoard();
     if (pieces.every((p, i) => p === correctOrder[i])) {
-      updateAchievement('puzzle_solver');
-      recordPuzzleWin(getActiveChildName());
-      setAvatarState('happy');
-      setTimeout(() => {
-        setAvatarState(null);
-        showModal('Победа!', '🎉 Ты собрал пазл! Молодец!');
-        container.remove();
-        appState.gameActive = false;
-      }, 300);
+      board.style.animation = 'gameResultBounce 0.5s ease';
+      setTimeout(winGame, 400);
     }
   });
 
+  body.appendChild(hud);
+  body.appendChild(board);
   renderBoard();
-
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'modal-btn secondary';
-  closeBtn.textContent = 'Закрыть';
-  closeBtn.onclick = () => {
-    container.remove();
-    appState.gameActive = false;
-  };
-
-  container.append(title, board, closeBtn);
-  document.body.appendChild(container);
+  trackEvent('puzzle_started', { level, gridSize });
 }
 
 function isPuzzleSolvable(pieces, size) {

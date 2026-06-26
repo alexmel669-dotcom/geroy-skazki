@@ -212,6 +212,8 @@ function floatTo16BitPCM(float32) {
   return out;
 }
 
+let liveSttInterim = '';
+
 function startLiveStt() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return;
@@ -221,11 +223,15 @@ function startLiveStt() {
   liveRecognition.continuous = true;
   liveRecognition.interimResults = true;
   liveRecognition.onresult = (event) => {
+    liveSttInterim = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const result = event.results[i];
+      const part = (result[0]?.transcript || '').trim();
+      if (!part) continue;
       if (result.isFinal) {
-        const part = (result[0]?.transcript || '').trim();
-        if (part) liveSttParts.push(part);
+        liveSttParts.push(part);
+      } else {
+        liveSttInterim = part;
       }
     }
   };
@@ -270,11 +276,13 @@ function stopLiveStt() {
 }
 
 export function getLiveSttText() {
-  return liveSttParts.filter(Boolean).join(' ').trim();
+  const finalText = liveSttParts.filter(Boolean).join(' ').trim();
+  return finalText || liveSttInterim.trim();
 }
 
 export function clearLiveSttText() {
   liveSttParts = [];
+  liveSttInterim = '';
 }
 
 function bytesToBase64(bytes) {

@@ -107,6 +107,7 @@ async function submitFeedback() {
 }
 
 export function initFeedbackButton() {
+  if (window.location.pathname.includes('app.html')) return;
   if (document.getElementById('feedbackFab')) return;
   ensureFeedbackModal();
   const btn = document.createElement('button');

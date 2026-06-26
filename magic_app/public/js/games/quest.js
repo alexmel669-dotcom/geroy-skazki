@@ -1,7 +1,8 @@
-import { appState } from '../core.js';
-import { showModal } from '../ui.js';
+import { appState, getActiveChild } from '../core.js';
 import { setAvatarState } from '../ui.js';
-
+import { trackEvent } from '../analytics.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
+import { getChildGender, formatChildText } from '../gender.js';
 const QUEST_STORY = {
   start: {
     text: '🗺️ Люцик потерял волшебный кристалл! Поможешь найти?\n\nВы стоите у лесной тропинки. Куда пойдёте?',
@@ -36,7 +37,7 @@ const QUEST_STORY = {
     ]
   },
   cave: {
-    text: '🕳️ В пещере темно, но ты смелый! Там светится что-то...',
+    text: '🕳️ В пещере темно, но ты {смелый}! Там светится что-то...',
     emoji: '💎',
     choices: [
       { label: '✨ Взять кристалл', next: 'win_cave' },
@@ -66,64 +67,110 @@ const QUEST_STORY = {
     emoji: '🗺️',
     choices: [{ label: '🌉 К мосту', next: 'bridge' }]
   },
-  win_cave: { end: true, text: '🎉 Ты нашёл кристалл в пещере! Люцик сияет от радости!', emoji: '✨', win: true },
+  win_cave: { end: true, text: '🎉 Ты {нашёл} кристалл в пещере! Люцик сияет от радости!', emoji: '✨', win: true },
   win_kind: { end: true, text: '🎉 Дракончик съел яблоко и отдал кристалл! Вы — настоящие друзья!', emoji: '💎', win: true },
   win_meadow: { end: true, text: '🎉 Кристалл на поляне найден! Люцик может творить волшебство снова!', emoji: '🌟', win: true },
-  lose_run: { end: true, text: '😅 Дракончик спрятал кристалл. Но ты смелый — попробуй ещё раз!', emoji: '🐉', win: false }
+  lose_run: { end: true, text: '😅 Дракончик спрятал кристалл. Но ты {смелый} — попробуй ещё раз!', emoji: '🐉', win: false }
 };
 
-export function startQuestGame() {
+const START_BY_LEVEL = {
+  1: 'start',
+  2: 'mountain',
+  3: 'river',
+  4: 'village',
+  5: 'bridge'
+};
+
+export function startQuestGame(level) {
   if (appState.gameActive) return;
+  level = level || getGameLevel('quest');
+
+  let step = START_BY_LEVEL[level] || 'start';
+  let moves = 0;
+  const maxMoves = 14 - level;
+
   appState.gameActive = true;
 
-  let step = 'start';
-  const container = document.createElement('div');
-  container.className = 'game-overlay';
+  const { body, close } = createGameScreen({
+    gameId: 'quest',
+    title: 'Текстовый квест',
+    emoji: '🗺️',
+    level
+  });
+
+  const panel = document.createElement('div');
+  panel.className = 'game-panel quest-panel';
+  panel.style.cssText = 'max-width:400px;width:100%;text-align:center;';
 
   const art = document.createElement('div');
-  art.style.cssText = 'font-size:4rem;margin:10px 0;';
+  art.className = 'quest-art';
+  art.style.cssText = 'font-size:4.5rem;margin:8px 0;animation:gameResultBounce 2s ease-in-out infinite;';
 
   const text = document.createElement('p');
-  text.style.cssText = 'line-height:1.55;font-size:1rem;max-width:340px;margin:0 auto 16px;';
+  text.style.cssText = 'line-height:1.55;font-size:1rem;margin:0 0 16px;';
+
+  const movesEl = document.createElement('p');
+  movesEl.style.cssText = 'font-size:0.8rem;opacity:0.7;margin-bottom:12px;';
 
   const choices = document.createElement('div');
-  choices.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+  choices.style.cssText = 'display:flex;flex-direction:column;gap:10px;width:100%;';
+
+  function finishEnd(node) {
+    appState.gameActive = false;
+    close();
+    if (node.win) {
+      setAvatarState('happy');
+      setTimeout(() => setAvatarState(null), 1200);
+      recordGameWin('quest', level);
+      showGameResult({
+        won: true,
+        level,
+        scoreText: `Квест пройден за ${moves} шагов!`,
+        onNext: () => startQuestGame(level + 1)
+      });
+      trackEvent('quest_won', { level, moves });
+    } else {
+      showGameResult({
+        won: false,
+        level,
+        scoreText: formatChildText(node.text, getChildGender(getActiveChild())),
+        onClose: () => startQuestGame(level)
+      });
+      trackEvent('quest_lost', { level });
+    }
+  }
 
   function render() {
     const node = QUEST_STORY[step];
     if (!node) return;
+
     art.textContent = node.emoji || '🗺️';
-    text.textContent = node.text;
+    const gender = getChildGender(getActiveChild());
+    text.textContent = formatChildText(node.text, gender);
+    movesEl.textContent = `Шагов: ${moves}${maxMoves < 14 ? ` · лимит ${maxMoves}` : ''}`;
 
     if (node.end) {
       choices.innerHTML = '';
-      if (node.win) {
-        setAvatarState('happy');
-        setTimeout(() => setAvatarState(null), 1600);
-      }
       const again = document.createElement('button');
       again.className = 'modal-btn';
       again.textContent = node.win ? '🎉 Ура!' : '🔄 Ещё раз';
-      again.onclick = () => {
-        if (node.win) {
-          showModal('Квест пройден!', node.text);
-          container.remove();
-          appState.gameActive = false;
-        } else {
-          step = 'start';
-          render();
-        }
-      };
+      again.onclick = () => finishEnd(node);
       choices.appendChild(again);
+      return;
+    }
+
+    if (moves >= maxMoves) {
+      finishEnd({ win: false, text: '⏱️ Время вышло! Попробуй короче путь.' });
       return;
     }
 
     choices.innerHTML = '';
     node.choices.forEach((c) => {
       const btn = document.createElement('button');
-      btn.className = 'modal-btn';
+      btn.className = 'modal-btn quest-choice-btn';
       btn.textContent = c.label;
       btn.onclick = () => {
+        moves++;
         step = c.next;
         render();
       };
@@ -131,21 +178,10 @@ export function startQuestGame() {
     });
   }
 
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'modal-btn secondary';
-  closeBtn.textContent = 'Закрыть';
-  closeBtn.style.marginTop = '14px';
-  closeBtn.onclick = () => {
-    container.remove();
-    appState.gameActive = false;
-  };
-
-  const title = document.createElement('h2');
-  title.textContent = '🗺️ Текстовый квест';
-
-  container.append(title, art, text, choices, closeBtn);
-  document.body.appendChild(container);
+  panel.append(art, text, movesEl, choices);
+  body.appendChild(panel);
   render();
+  trackEvent('quest_started', { level });
 }
 
 export default startQuestGame;

@@ -1,43 +1,43 @@
-import { appState, saveChildData, getActiveChildName } from '../core.js';
-import { showModal } from '../ui.js';
-import { updateAchievement } from '../achievements.js';
+import { appState, getActiveChildName } from '../core.js';import { updateAchievement } from '../achievements.js';
 import { trackEvent } from '../analytics.js';
 import { recordMemoryWin } from '../game-progress.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 
-export function startMemoryGame() {
+export function startMemoryGame(level) {
   if (appState.gameActive) return;
-  
+  level = level || getGameLevel('memory');
+
+  const pairCount = Math.min(8, 3 + level);
+  const cardCount = pairCount * 2;
+  const cols = cardCount <= 8 ? 4 : cardCount <= 12 ? 4 : 5;
+
   appState.gameActive = true;
-  
-  const emojis = ['😊','😢','😨','😡','😴','😍','🥳','🤗'];
-  appState.memoryCards = [...emojis, ...emojis]
-    .sort(() => Math.random() - 0.5);
-  appState.memoryFlipped = new Array(16).fill(false);
+
+  const emojiPool = ['😊','😢','😨','😡','😴','😍','🥳','🤗','🐱','🌟','🎈','🦋','🌈','🍎','🎸','⚽'];
+  const picked = emojiPool.slice(0, pairCount);
+  appState.memoryCards = [...picked, ...picked].sort(() => Math.random() - 0.5);
+  appState.memoryFlipped = new Array(cardCount).fill(false);
   appState.memoryMatches = 0;
   appState.memoryLocked = false;
-  
+
   let attempts = 0;
   let firstCardIndex = null;
   let firstCardElement = null;
-  
-  const container = document.createElement('div');
-  container.className = 'game-overlay';
-  container.setAttribute('aria-label', 'Игра Мемори');
-  
-  const title = document.createElement('h2');
-  title.textContent = '🧠 Найди пару';
-  title.style.cssText = 'color:white;margin:10px 0;';
-  
+
+  const { body, close } = createGameScreen({ gameId: 'memory', title: 'Мемори', emoji: '🧠', level });
+
+  const info = document.createElement('div');
+  info.style.cssText = 'margin:8px 0;font-size:1rem;color:white;text-align:center;';
+  info.textContent = `Найдено пар: 0 / ${pairCount} | Попытки: 0`;
+
   const board = document.createElement('div');
   board.className = 'memory-board';
-  board.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:360px;margin:16px auto;';
-  
-  const info = document.createElement('div');
-  info.style.cssText = 'margin:15px 0;font-size:1.2rem;color:white;';
-  info.textContent = 'Найдено пар: 0 / 8 | Попытки: 0';
-  
-  // Создаем карточки
-  for (let i = 0; i < 16; i++) {
+  board.style.cssText = `display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;max-width:min(420px,92vw);margin:0 auto;width:100%;`;
+
+  body.appendChild(info);
+  body.appendChild(board);
+
+  for (let i = 0; i < cardCount; i++) {
     const card = document.createElement('div');
     card.style.cssText = `
       aspect-ratio: 1;
@@ -69,7 +69,7 @@ export function startMemoryGame() {
       } else {
         // Вторая карточка
         attempts++;
-        info.textContent = `Найдено пар: ${appState.memoryMatches} / 8 | Попытки: ${attempts}`;
+        info.textContent = `Найдено пар: ${appState.memoryMatches} / ${pairCount} | Попытки: ${attempts}`;
         
         appState.memoryLocked = true;
         
@@ -90,22 +90,22 @@ export function startMemoryGame() {
               firstCardElement = null;
               appState.memoryLocked = false;
               
-              info.textContent = `Найдено пар: ${appState.memoryMatches} / 8 | Попытки: ${attempts}`;
+              info.textContent = `Найдено пар: ${appState.memoryMatches} / ${pairCount} | Попытки: ${attempts}`;
               
               // Проверка победы
-              if (appState.memoryMatches === 8) {
+              if (appState.memoryMatches === pairCount) {
                 updateAchievement('memory_champion');
-                recordMemoryWin(8, getActiveChildName());
-                trackEvent('memory_game_won', { attempts });
-                
-                setTimeout(() => {
-                  showModal(
-                    '🎉 Победа!', 
-                    `Ты нашёл все пары за ${attempts} попыток! Отличная память!`
-                  );
-                  container.remove();
-                  appState.gameActive = false;
-                }, 500);
+                recordMemoryWin(pairCount, getActiveChildName());
+                recordGameWin('memory', level);
+                trackEvent('memory_game_won', { attempts, level });
+                appState.gameActive = false;
+                close();
+                showGameResult({
+                  won: true,
+                  level,
+                  scoreText: `Все пары за ${attempts} попыток!`,
+                  onNext: () => startMemoryGame(level + 1)
+                });
               }
             }, 300);
           }, 500);
@@ -152,31 +152,5 @@ export function startMemoryGame() {
     card.style.transform = 'scale(1)';
   }
   
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = 'Закрыть';
-  closeBtn.style.cssText = `
-    padding: 10px 20px;
-    border-radius: 30px;
-    background: #ff4081;
-    color: white;
-    border: none;
-    cursor: pointer;
-    margin-top: 15px;
-    font-size: 1rem;
-  `;
-  closeBtn.onclick = () => {
-    container.remove();
-    appState.gameActive = false;
-    appState.memoryLocked = false;
-    saveChildData(appState.currentChildIndex);
-    trackEvent('memory_game_exited', { matches: appState.memoryMatches, attempts });
-  };
-  
-  container.appendChild(title);
-  container.appendChild(board);
-  container.appendChild(info);
-  container.appendChild(closeBtn);
-  document.body.appendChild(container);
-  
-  trackEvent('memory_game_started');
+  trackEvent('memory_game_started', { level });
 }

@@ -3,11 +3,15 @@
 // ========================================
 
 const DEFAULT_PROGRESS = {
-  fish: { bestScore: 0, bestLevel: 1 },
-  memory: { pairsCollected: 0, wins: 0 },
-  puzzle: { levelsCompleted: 0 },
-  emotion: { completed: false, bestScore: 0 },
-  coloring: { completed: false }
+  fish: { bestScore: 0, bestLevel: 1, level: 1, wins: 0 },
+  memory: { pairsCollected: 0, wins: 0, level: 1 },
+  puzzle: { levelsCompleted: 0, level: 1 },
+  riddles: { completed: 0, level: 1, wins: 0 },
+  quest: { completed: 0, level: 1 },
+  maze: { level: 1, wins: 0 },
+  quiz: { level: 1, wins: 0 },
+  emotion: { completed: false, bestScore: 0, level: 1 },
+  coloring: { completed: false, level: 1 }
 };
 
 export function getGameProgressKey(childName) {
@@ -80,11 +84,13 @@ export function recordColoringComplete(childName = 'guest') {
 export function getGameProgressSummary(childName) {
   const p = loadGameProgress(childName);
   return [
-    { id: 'fish', label: '🎣 Рыбалка', value: p.fish.bestScore, max: 30, detail: `лучший счёт: ${p.fish.bestScore}` },
-    { id: 'memory', label: '🧠 Мемори', value: p.memory.pairsCollected, max: 8, detail: `побед: ${p.memory.wins}` },
-    { id: 'puzzle', label: '🧩 Пазл', value: p.puzzle.levelsCompleted, max: 5, detail: `уровней: ${p.puzzle.levelsCompleted}` },
-    { id: 'riddles', label: '❓ Загадки', value: p.emotion.completed ? 5 : p.emotion.bestScore, max: 5, detail: p.emotion.completed ? 'пройдено' : `очков: ${p.emotion.bestScore}` },
-    { id: 'quest', label: '🗺️ Квест', value: p.coloring.completed ? 1 : 0, max: 1, detail: p.coloring.completed ? 'готово' : 'не завершено' }
+    { id: 'fish', label: '🎣 Рыбалка', value: p.fish.level || 1, max: 5, detail: `ур. ${p.fish.level || 1}, счёт ${p.fish.bestScore}` },
+    { id: 'memory', label: '🧠 Мемори', value: p.memory.level || 1, max: 5, detail: `ур. ${p.memory.level || 1}, побед: ${p.memory.wins || 0}` },
+    { id: 'puzzle', label: '🧩 Пазл', value: p.puzzle.level || 1, max: 5, detail: `ур. ${p.puzzle.level || 1}` },
+    { id: 'riddles', label: '❓ Загадки', value: p.riddles.level || 1, max: 5, detail: `ур. ${p.riddles.level || 1}` },
+    { id: 'quest', label: '🗺️ Квест', value: p.quest.level || 1, max: 5, detail: `ур. ${p.quest.level || 1}` },
+    { id: 'maze', label: '🌀 Лабиринт', value: p.maze.level || 1, max: 5, detail: `ур. ${p.maze.level || 1}` },
+    { id: 'quiz', label: '❓ Викторина', value: p.quiz.level || 1, max: 5, detail: `ур. ${p.quiz.level || 1}` }
   ];
 }
 

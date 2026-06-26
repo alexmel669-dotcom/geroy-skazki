@@ -47,14 +47,14 @@ function updateAvatar() {
 
     const savedChar = localStorage.getItem('currentCharacter') || 'lucik';
     const charIcon = {
-        lucik: '/assets/images/avatar.svg',
-        mom: '/assets/images/mom.svg',
-        dad: '/assets/images/dad.svg',
-        kid1: '/assets/images/kid1.svg',
-        kid2: '/assets/images/kid2.svg'
+        lucik: 'assets/images/avatar.svg',
+        mom: 'assets/images/mom.svg',
+        dad: 'assets/images/dad.svg',
+        kid1: 'assets/images/kid1.svg',
+        kid2: 'assets/images/kid2.svg'
     };
 
-    const src = charIcon[savedChar] || '/assets/images/avatar.svg';
+    const src = charIcon[savedChar] || 'assets/images/avatar.svg';
     if (avatar.tagName === 'IMG') {
         avatar.src = src;
     } else {

@@ -4,6 +4,7 @@
 
 import { CHARACTERS, PLANS } from './config.js';
 import { getTimeContext } from './context.js';
+import { buildGenderPrompt, applyGenderToText, guessGenderFromName } from './gender.js';
 
 const AI_TIMEOUT = 8000;
 
@@ -24,7 +25,7 @@ function getChatRetentionMs() {
 
 const CHARACTER_PROMPTS = {
   lucik: 'Ты — Люцик, сказочный кот-волшебник, друг и помощник ребёнка. Говори тепло, с мурчанием (мурр, мяу). Помогаешь через сказки и игры. Не читай нотации, не будь как родитель. В игровой форме помогаешь рассказать о страхах.',
-  mom: 'Ты — мама ребёнка. Говори ласково: солнышко, родной, мой хороший. Успокаивай, обнимай словами. Мягко спрашивай о чувствах без давления.',
+  mom: 'Ты — мама ребёнка. Ласково: солнышко. Мальчику — родной, мой хороший, сынок. Девочке — родная, моя хорошая, доченька. Успокаивай, обнимай словами.',
   dad: 'Ты — папа ребёнка. Говори уверенно и по-доброму: давай разберёмся, я рядом, ты справишься. Хвали за смелость, придумывайте истории про героев.',
   kid1: 'Ты — подруга-сверстница. Говори просто, коротко, эмоционально. Делитесь секретами. «Я тоже иногда боюсь, но знаешь что мне помогает?»',
   kid2: 'Ты — друг-сверстник мальчик. Говори просто, коротко, эмоционально. Делитесь секретами. «Я тоже иногда боюсь, но знаешь что мне помогает?»'
@@ -111,10 +112,12 @@ export function buildSystemPrompt(childInfo = {}) {
   const role = CHARACTER_PROMPTS[currentCharacter] || CHARACTER_PROMPTS.lucik;
   const name = childInfo.name || 'малыш';
   const age = childInfo.age || 5;
-  const fearHint = 'Будь мягким собеседником. Не спрашивай прямо про страхи. Рассказывай сказки и спрашивай «А как бы ты поступил?»';
+  const gender = childInfo.gender || guessGenderFromName(name);
+  const genderLine = buildGenderPrompt(gender, name);
+  const fearHint = 'Будь мягким собеседником. Не спрашивай прямо про страхи. Рассказывай сказки и спрашивай «А как бы ты поступил?» или «А как бы ты поступила?» — с учётом пола ребёнка.';
   const continueHint = 'Если ребёнок говорит «давай», «расскажи ещё», «продолжай» — продолжай предыдущую тему. Не начинай новый разговор.';
   const topicLine = currentTopic ? `\nТекущая тема: ${currentTopic}` : '';
-  return `${role}\n\nРебёнка зовут ${name}, ${age} лет.${topicLine}\n\n${fearHint}\n${continueHint}\n\nОтвечай на русском, 2-5 предложений.`;
+  return `${role}\n\nРебёнка зовут ${name}, ${age} лет.\n${genderLine}${topicLine}\n\n${fearHint}\n${continueHint}\n\nОтвечай на русском, 2-5 предложений.`;
 }
 
 export function getProfileForAI(childInfo = {}) {
@@ -122,9 +125,10 @@ export function getProfileForAI(childInfo = {}) {
   const storedAge = localStorage.getItem('profileChildAge') || '';
   const name = childInfo.name && childInfo.name !== 'Гость' ? childInfo.name : storedName;
   const age = childInfo.age || (storedAge ? parseInt(storedAge, 10) : null);
+  const gender = childInfo.gender || guessGenderFromName(name);
   const store = readStore();
   const isFirstMessage = store.messages.length === 0;
-  return { name: name || null, age: age || null, isFirstMessage };
+  return { name: name || null, age: age || null, gender, isFirstMessage };
 }
 
 export async function generateResponse(prompt, childInfo = {}) {
@@ -137,7 +141,7 @@ export async function generateResponse(prompt, childInfo = {}) {
   }));
 
   const fallback = {
-    text: localFallback(prompt),
+    text: applyGenderToText(localFallback(prompt), profile.gender),
     childName: null,
     childAge: null,
     concerns: null,
@@ -160,6 +164,7 @@ export async function generateResponse(prompt, childInfo = {}) {
         message: prompt,
         childName: profile.name,
         childAge: profile.age,
+        childGender: profile.gender,
         character: currentCharacter,
         characterName: CHARACTERS[currentCharacter]?.name || 'Люцик',
         requestType: childInfo.requestType || 'chat',
@@ -174,8 +179,9 @@ export async function generateResponse(prompt, childInfo = {}) {
       const data = await response.json();
       if (typeof data.ms === 'number') globalThis.__lastAiMs = data.ms;
       if (data.reply) {
+        const gender = profile.gender || 'unknown';
         return {
-          text: data.reply,
+          text: applyGenderToText(data.reply, gender),
           type: data.type || childInfo.requestType || 'chat',
           childName: data.childName || null,
           childAge: data.childAge != null ? data.childAge : null,
@@ -188,7 +194,7 @@ export async function generateResponse(prompt, childInfo = {}) {
     if (err.name === 'AbortError') {
       console.warn('⚠️ AI timeout, using fallback');
       const ctx = childInfo.timeContext || getTimeContext(profile.name || 'друг');
-      fallback.text = ctx.greeting || localFallback(prompt);
+      fallback.text = applyGenderToText(ctx.greeting || localFallback(prompt), profile.gender);
       return fallback;
     }
     console.warn('⚠️ generate API failed:', err);

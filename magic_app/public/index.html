@@ -16,7 +16,7 @@
 <body>
 <div class="container landing">
   <div class="landing-hero">
-    <img src="assets/images/avatar.svg" alt="Люцик" class="landing-hero-img" onerror="this.style.display='none'">
+    <img src="assets/images/avatar.svg" alt="Люцик" class="landing-hero-img">
     <h1>Герой Сказок — твой волшебный друг</h1>
     <p class="landing-subtitle">Люцик говорит с ребёнком голосом, помогает справляться со страхами и играет в игры</p>
   </div>
@@ -25,6 +25,7 @@
     <a href="app.html" class="btn btn-primary" id="playGuestLink">🎮 Играть с Люциком</a>
     <a href="register.html" class="btn btn-secondary">✨ Попробовать бесплатно</a>
     <a href="pricing.html" class="btn btn-accent">💎 Тарифы</a>
+    <a href="#" class="btn btn-secondary" id="feedbackLandingBtn">💬 Оставить отзыв</a>
   </div>
 
   <section class="features">
@@ -174,9 +175,13 @@
 </script>
 <script type="module">
   import { trackEvent } from './js/analytics.js';
-  import { initFeedbackButton } from './js/feedback.js';
+  import { initFeedbackButton, openFeedbackModal } from './js/feedback.js';
   trackEvent('page_view', 'landing');
   initFeedbackButton();
+  document.getElementById('feedbackLandingBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openFeedbackModal();
+  });
 </script>
 </body>
 </html>

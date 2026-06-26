@@ -3,6 +3,7 @@ import { logout, checkAuth } from './auth.js';
 import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName } from './config.js';
 import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDaysRemaining, resetDailyCounters } from './core.js';
 import { getGameProgressSummary } from './game-progress.js';
+import { getChildGender, guessGenderFromName, chattedPast } from './gender.js';
 
 let pinAttempts = 0;
 let pinLockedUntil = 0;
@@ -100,7 +101,7 @@ function getWeeklyStatsLocal() {
   return { totalChats, totalStories, mood, concerns };
 }
 
-function generateReportText(stats, parentName, childName) {
+function generateReportText(stats, parentName, childName, gender = 'unknown') {
   const moodMap = {
     happy: 'хорошим',
     neutral: 'спокойным',
@@ -111,9 +112,10 @@ function generateReportText(stats, parentName, childName) {
   const concernLine = stats.concerns?.length
     ? 'Были моменты, на которые стоит обратить внимание.'
     : 'Всё в порядке.';
+  const chatted = chattedPast(gender);
   return [
     `${parentName}, здравствуйте!`,
-    `На этой неделе ${childName} общался со мной ${stats.totalChats} раз.`,
+    `На этой неделе ${childName} ${chatted} со мной ${stats.totalChats} раз.`,
     `Мы рассказали ${stats.totalStories} сказок.`,
     `Настроение было в основном ${mood}.`,
     concernLine,
@@ -121,20 +123,72 @@ function generateReportText(stats, parentName, childName) {
   ].join(' ');
 }
 
+function resolveChildGender(childName, genderHint) {
+  if (genderHint && genderHint !== 'unknown') return genderHint;
+  const child = getChildren().find((c) => c.name === childName);
+  return getChildGender(child) || guessGenderFromName(childName);
+}
+
 async function fetchWeeklyStatsFromServer() {
   try {
-    const res = await fetch('/api/weekly-stats', { headers: authHeaders() });
+    const res = await fetch('/api/weekly-stats?all=1', { headers: authHeaders() });
     if (!res.ok) return null;
     const data = await res.json();
-    return {
+    if (data.children?.length) {
+      return data.children.map((c) => ({
+        totalChats: c.totalChats ?? 0,
+        totalStories: c.totalStories ?? 0,
+        mood: c.mood || 'neutral',
+        concerns: c.concerns || [],
+        childName: c.name,
+        gender: c.gender
+      }));
+    }
+    return [{
       totalChats: data.totalChats ?? 0,
       totalStories: data.totalStories ?? 0,
       mood: data.mood || 'neutral',
-      concerns: data.concerns || []
-    };
+      concerns: data.concerns || [],
+      childName: data.childName
+    }];
   } catch {
     return null;
   }
+}
+
+async function playTextAsSpeech(text) {
+  try {
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ text, voice: 'jane' })
+    });
+    const data = await res.json();
+    if (data.audioUrl) {
+      await new Promise((resolve, reject) => {
+        const audio = new Audio(data.audioUrl);
+        audio.onended = resolve;
+        audio.onerror = reject;
+        audio.play().catch(reject);
+      });
+      return true;
+    }
+  } catch {
+    /* browser fallback */
+  }
+
+  if ('speechSynthesis' in window) {
+    await new Promise((resolve) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ru-RU';
+      utterance.rate = 0.9;
+      utterance.onend = resolve;
+      utterance.onerror = resolve;
+      window.speechSynthesis.speak(utterance);
+    });
+    return true;
+  }
+  return false;
 }
 
 async function speakReport() {
@@ -145,44 +199,28 @@ async function speakReport() {
   }
   try {
     const user = await getCurrentUser();
-    const stats = (await fetchWeeklyStatsFromServer()) || getWeeklyStatsLocal();
-    const text = generateReportText(stats, user.parentName, user.childName);
+    const serverStats = await fetchWeeklyStatsFromServer();
+    const childrenStats = serverStats?.length
+      ? serverStats
+      : [{ ...getWeeklyStatsLocal(), childName: user.childName }];
 
-    try {
-      const res = await fetch('/api/tts', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ text, voice: 'jane' })
-      });
-      const data = await res.json();
-      if (data.audioUrl) {
-        await new Promise((resolve, reject) => {
-          const audio = new Audio(data.audioUrl);
-          audio.onended = resolve;
-          audio.onerror = reject;
-          audio.play().catch(reject);
-        });
-        return;
+    for (let i = 0; i < childrenStats.length; i++) {
+      const stats = childrenStats[i];
+      const childName = stats.childName || user.childName;
+      const gender = resolveChildGender(childName, stats.gender);
+      if (btn && childrenStats.length > 1) {
+        btn.textContent = `🎤 ${i + 1}/${childrenStats.length}: ${childName}...`;
       }
-    } catch {
-      /* browser fallback */
-    }
-
-    if ('speechSynthesis' in window) {
-      await new Promise((resolve) => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'ru-RU';
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        utterance.onend = resolve;
-        utterance.onerror = resolve;
-        window.speechSynthesis.speak(utterance);
-      });
+      const text = generateReportText(stats, user.parentName, childName, gender);
+      await playTextAsSpeech(text);
+      if (i < childrenStats.length - 1) {
+        await new Promise((r) => setTimeout(r, 800));
+      }
     }
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = '🎤 Прослушать отчёт';
+      btn.textContent = '🎤 Прослушать отчёт по всем детям';
     }
   }
 }

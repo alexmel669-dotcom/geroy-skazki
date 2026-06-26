@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geroy-skazki-v5.0.5';
+const CACHE_NAME = 'geroy-skazki-v5.0.8';
 const ASSETS = [
   '/',
   '/app.html',
@@ -12,6 +12,13 @@ const ASSETS = [
   '/terms.html',
   '/css/main.css',
   '/css/auth.css',
+  '/assets/images/parent-bg.png',
+  '/assets/images/avatar.svg',
+  '/assets/images/kid1.svg',
+  '/assets/images/kid2.svg',
+  '/assets/images/mom.svg',
+  '/assets/images/dad.svg',
+  '/assets/images/parent-bg.svg',
   '/js/main.js',
   '/js/core.js',
   '/js/config.js',
@@ -20,10 +27,10 @@ const ASSETS = [
   '/js/ai.js',
   '/js/auth.js',
   '/js/security.js',
-  '/js/feedback.js',
   '/js/audio.js',
   '/js/context.js',
   '/js/dictionary.js',
+  '/js/gender.js',
   '/js/analytics.js',
   '/js/achievements.js',
   '/js/notifications.js',
@@ -31,8 +38,7 @@ const ASSETS = [
   '/js/child-mode.js',
   '/js/child-swipe.js',
   '/js/game-progress.js',
-  '/js/admin-dashboard.js',
-  '/js/parent-dashboard.js',
+  '/js/games/game-ui.js',
   '/js/games/fish.js',
   '/js/games/memory.js',
   '/js/games/puzzle.js',
@@ -40,12 +46,6 @@ const ASSETS = [
   '/js/games/quest.js',
   '/js/games/maze.js',
   '/js/games/quiz.js',
-  '/assets/images/avatar.svg',
-  '/assets/images/kid1.svg',
-  '/assets/images/kid2.svg',
-  '/assets/images/mom.svg',
-  '/assets/images/dad.svg',
-  '/assets/images/parent-bg.svg',
   '/manifest.json'
 ];
 
@@ -69,7 +69,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return;
   if (event.request.method !== 'GET') return;
 
-  if (url.pathname.startsWith('/js/')) {
+  if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/assets/')) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {

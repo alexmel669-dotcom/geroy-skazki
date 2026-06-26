@@ -1,10 +1,12 @@
+import { friendWord, bestFriendPhrase, applyGenderToText } from './gender.js';
+
 const BASE_DICTIONARY = {
   'привет': ['Привет, {имя}!', 'Здравствуй, {имя}! {timeGreeting}'],
   'как дела': ['У меня всё отлично! А у тебя как?', 'Замечательно! Расскажи, что интересного сегодня было?'],
   'что делаешь': ['Я думаю о волшебных приключениях! А ты чем занимаешься?'],
   'пока': ['До встречи, {имя}! Буду ждать тебя!', 'Пока-пока! Приходи ещё!'],
   'спокойной ночи': ['Сладких снов, {имя}! Пусть тебе приснится волшебный лес.'],
-  'я тебя люблю': ['Я тебя тоже очень люблю, {имя}! Ты мой лучший друг!'],
+  'я тебя люблю': ['Я тебя тоже очень люблю, {имя}! {bestFriend}'],
   'мне грустно': ['Знаешь, {имя}, иногда всем бывает грустно. Это нормально. Давай подышим вместе?'],
   'мне страшно': ['Я рядом, {имя}. Вместе мы справимся. Давай я расскажу тебе спокойную сказку?'],
   'расскажи сказку': ['С удовольствием! Но это будет считаться сказкой. Продолжить?']
@@ -43,25 +45,28 @@ export function learnFromResponse(question, aiResponse) {
   saveLearnedDictionary(dict);
 }
 
-export function fillTemplate(text, childName, timeContext) {
+export function fillTemplate(text, childName, timeContext, gender) {
+  const friend = friendWord(gender);
   return String(text)
-    .replace(/\{имя\}/g, childName || 'друг')
-    .replace(/\{timeGreeting\}/g, timeContext?.greeting || '');
+    .replace(/\{имя\}/g, childName || friend)
+    .replace(/\{timeGreeting\}/g, timeContext?.greeting || '')
+    .replace(/\{bestFriend\}/g, bestFriendPhrase(gender))
+    .replace(/\{друг\}/g, friend);
 }
 
-export function getDictionaryReply(question, childName, timeContext) {
+export function getDictionaryReply(question, childName, timeContext, gender = 'unknown') {
   const key = question.toLowerCase().trim().slice(0, 100);
 
   const learned = getLearnedDictionary();
   if (learned[key]?.length) {
     const reply = learned[key][Math.floor(Math.random() * learned[key].length)];
-    return fillTemplate(reply, childName, timeContext);
+    return applyGenderToText(fillTemplate(reply, childName, timeContext, gender), gender);
   }
 
   for (const [pattern, replies] of Object.entries(BASE_DICTIONARY)) {
     if (key.includes(pattern)) {
       const reply = replies[Math.floor(Math.random() * replies.length)];
-      return fillTemplate(reply, childName, timeContext);
+      return applyGenderToText(fillTemplate(reply, childName, timeContext, gender), gender);
     }
   }
 

@@ -1,6 +1,6 @@
 import { setCors } from '../_middleware/cors.js';
 import { verifyAuth } from '../_middleware/auth.js';
-import { findUser, getWeeklyStats } from '../_lib/users.js';
+import { findUser, getWeeklyStats, getWeeklyStatsAllChildren } from '../_lib/users.js';
 
 function mapMood(moodSummary) {
   if (moodSummary === 'позитивное') return 'happy';
@@ -24,6 +24,22 @@ export default async function handler(req, res) {
     const user = await findUser(decoded.email);
     if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    const allChildren = req.query?.all === '1'
+      || req.url?.includes('all=1')
+      || req.body?.allChildren === true;
+
+    if (allChildren) {
+      const childrenStats = await getWeeklyStatsAllChildren(decoded.email);
+      return res.status(200).json({
+        parentName: user.parentName || user.username || 'родитель',
+        children: childrenStats.map((c) => ({
+          ...c,
+          mood: mapMood(c.moodSummary),
+          concerns: user.concerns || []
+        }))
+      });
     }
 
     const weekStats = await getWeeklyStats(decoded.email);

@@ -145,10 +145,17 @@ export async function saveDialogWithTime(email, dialog) {
   return saveDialog(email, enriched);
 }
 
-export async function getWeeklyStats(email) {
+export async function getWeeklyStats(email, childName = null) {
   const dialogs = await getDialogs(email);
   const weekAgo = Date.now() - 7 * 86400000;
-  const recent = dialogs.filter((d) => new Date(d.timestamp).getTime() > weekAgo);
+  let recent = dialogs.filter((d) => new Date(d.timestamp).getTime() > weekAgo);
+
+  if (childName) {
+    recent = recent.filter((d) => {
+      if (!d.childName) return true;
+      return d.childName === childName;
+    });
+  }
 
   const totalChats = recent.filter((d) => d.role === 'child' || d.role === 'user').length;
   const totalStories = recent.filter((d) => d.type === 'story').length;
@@ -163,4 +170,25 @@ export async function getWeeklyStats(email) {
     moodSummary,
     stars: totalChats + totalStories
   };
+}
+
+export async function getWeeklyStatsAllChildren(email) {
+  const user = await findUser(email);
+  if (!user) return [];
+
+  const children = user.children?.length
+    ? user.children
+    : [{ name: user.childName || 'ребёнок', age: user.childAge }];
+
+  const results = [];
+  for (const child of children) {
+    const stats = await getWeeklyStats(email, child.name);
+    results.push({
+      name: child.name,
+      age: child.age,
+      gender: child.gender || null,
+      ...stats
+    });
+  }
+  return results;
 }

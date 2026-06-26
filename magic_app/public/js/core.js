@@ -4,6 +4,7 @@
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject } from './config.js';
+import { getChildGender, guessGenderFromName, applyGenderToText, gladToSeePhrase } from './gender.js';
 import {
   generateResponse, detectFear, detectPersonalData,
   setCharacter, getCharacter, addToContext, clearContext,
@@ -25,6 +26,7 @@ import { startRiddlesGame } from './games/riddles.js';
 import { startQuestGame } from './games/quest.js';
 import { startMazeGame } from './games/maze.js';
 import { startQuizGame } from './games/quiz.js';
+import { getGameLevel } from './games/game-ui.js';
 import { setAvatarState, playPurrSound } from './ui.js';
 import { getTimeContext } from './context.js';
 import { detectRequestType, getDictionaryReply, learnFromResponse } from './dictionary.js';
@@ -198,11 +200,13 @@ function saveDetectedProfile({ childName, childAge }) {
   }
 
   const children = getChildren();
+  let gender = null;
   if (childName && (children.length === 0 || getActiveChildName() === 'Гость')) {
     const ageNum = parseInt(childAge, 10) || 5;
-    const gender = 'female';
-    const avatarRole = 'kid1';
-    const newChild = { name: childName, age: ageNum, gender, avatar: 'kid1.svg', avatarRole, index: 0 };
+    gender = guessGenderFromName(childName);
+    const avatarRole = gender === 'male' ? 'kid2' : 'kid1';
+    const avatar = gender === 'male' ? 'kid2.svg' : 'kid1.svg';
+    const newChild = { name: childName, age: ageNum, gender, avatar, avatarRole, index: 0 };
     localStorage.setItem('children', JSON.stringify([newChild]));
     localStorage.setItem('childrenNames', childName);
     setActiveChild(0);
@@ -211,12 +215,21 @@ function saveDetectedProfile({ childName, childAge }) {
     if (children[idx]) {
       children[idx].name = childName;
       if (childAge != null) children[idx].age = parseInt(childAge, 10) || children[idx].age;
+      if (!children[idx].gender || children[idx].gender === 'unknown') {
+        const g = guessGenderFromName(childName);
+        if (g !== 'unknown') {
+          children[idx].gender = g;
+          children[idx].avatarRole = g === 'male' ? 'kid2' : 'kid1';
+          children[idx].avatar = g === 'male' ? 'kid2.svg' : 'kid1.svg';
+        }
+      }
+      gender = children[idx].gender;
       localStorage.setItem('children', JSON.stringify(children));
       setActiveChild(idx);
     }
   }
 
-  syncProfileToServer({ childName, childAge });
+  syncProfileToServer({ childName, childAge, gender: gender || getChildGender(getActiveChild()) });
 }
 
 function saveParentConcerns(concerns) {
@@ -231,19 +244,26 @@ function getChildContextForAI() {
   const child = getActiveChild();
   const profileName = localStorage.getItem('profileChildName');
   const profileAge = localStorage.getItem('profileChildAge');
+  const gender = getChildGender(child);
   if (child?.name && child.name !== 'Гость') {
-    return { name: child.name, age: child.age || parseInt(profileAge, 10) || 5 };
+    return {
+      name: child.name,
+      age: child.age || parseInt(profileAge, 10) || 5,
+      gender
+    };
   }
+  const name = profileName || 'малыш';
   return {
-    name: profileName || 'малыш',
-    age: profileAge ? parseInt(profileAge, 10) : 5
+    name,
+    age: profileAge ? parseInt(profileAge, 10) : 5,
+    gender: gender !== 'unknown' ? gender : guessGenderFromName(name)
   };
 }
 
-function childGenderEmoji(role) {
-  if (role === 'kid1') return '👧';
-  if (role === 'kid2') return '👦';
-  return '🐱';
+function childAvatarImg(role) {
+  const map = { kid1: 'kid1.svg', kid2: 'kid2.svg', lucik: 'avatar.svg' };
+  const file = map[role] || 'avatar.svg';
+  return `<img src="assets/images/${file}" alt="" class="child-chip-avatar">`;
 }
 
 function applyChildAvatar(child) {
@@ -252,7 +272,7 @@ function applyChildAvatar(child) {
   if (CHARACTERS[role]) {
     setAvatarIcon(CHARACTERS[role].icon);
   } else if (child.avatar) {
-    setAvatarIcon(`/assets/images/${child.avatar}`);
+    setAvatarIcon(`assets/images/${child.avatar}`);
   }
 }
 
@@ -430,8 +450,7 @@ export function setActiveChild(index, options = {}) {
   const label = document.getElementById('childNameLabel');
   if (label) {
     if (child) {
-      const emoji = childGenderEmoji(child.avatarRole);
-      label.textContent = `${emoji} ${child.name}, ${child.age} лет`;
+      label.textContent = `${child.name}, ${child.age} лет`;
     } else {
       label.textContent = 'Гость';
     }
@@ -448,7 +467,8 @@ export function setActiveChild(index, options = {}) {
   loadChatHistory(child?.name || 'guest');
 
   if (options.greet && child?.name) {
-    synthesizeSpeech(`Привет, ${child.name}! Я рад тебя видеть!`, getCharacter()).catch(() => {});
+    const gender = getChildGender(child);
+    synthesizeSpeech(`Привет, ${child.name}! ${gladToSeePhrase(gender)}`, getCharacter()).catch(() => {});
   }
 }
 
@@ -472,9 +492,8 @@ export function showChildSelectModal() {
   if (!modal || !list) return;
 
   list.innerHTML = children.map((c, i) => {
-    const emoji = childGenderEmoji(c.avatarRole);
     return `<button class="modal-btn" style="width:100%;text-align:left;display:flex;align-items:center;gap:12px;" data-index="${i}">
-      <span style="font-size:1.5rem;">${emoji}</span><span>${sanitizeInput(c.name)}, ${c.age} лет</span></button>`;
+      ${childAvatarImg(c.avatarRole)}<span>${sanitizeInput(c.name)}, ${c.age} лет</span></button>`;
   }).join('');
 
   modal.style.display = 'flex';
@@ -884,16 +903,28 @@ async function recognizeSpeech(blob) {
 
   try {
     const server = await tryServerStt();
-    if (server?.text) return server;
+    const serverText = server?.text?.trim() || '';
+    const liveText = getLiveSttText().trim();
+    clearLiveSttText();
+
+    const pickBest = (a, b) => {
+      if (!a) return b;
+      if (!b) return a;
+      return b.length > a.length ? b : a;
+    };
+    const text = pickBest(serverText, liveText);
+    if (text.length >= 2) {
+      console.log('🎙️ STT result:', text, serverText ? '(server+live)' : '(live)');
+      return { text, fallback: !serverText || liveText.length > serverText.length };
+    }
+    if (serverText) return { text: serverText, fallback: false };
   } catch (e) {
     console.warn('STT API fail:', e.message);
-  }
-
-  const liveText = getLiveSttText();
-  if (liveText) {
+    const liveText = getLiveSttText().trim();
     clearLiveSttText();
-    console.log('🎙️ Fallback to live browser STT:', liveText);
-    return { text: liveText, fallback: true };
+    if (liveText.length >= 2) {
+      return { text: liveText, fallback: true };
+    }
   }
 
   return { text: '', fallback: true };
@@ -1062,7 +1093,7 @@ async function handleUserMessage(text) {
     saveAlertForParent(text, alerts, 'child');
   }
 
-  const dictReply = getDictionaryReply(text, childName, timeContext);
+  const dictReply = getDictionaryReply(text, childName, timeContext, getChildGender(child));
   let reply;
   let responseType = requestType;
 
@@ -1097,7 +1128,7 @@ async function handleUserMessage(text) {
   }
 
   if (globalThis.__lastAiMs) applyAiTiming();
-  reply = sanitizeAIText(reply, child?.age || 7);
+  reply = applyGenderToText(sanitizeAIText(reply, child?.age || 7), getChildGender(child));
 
   const botAlerts = detectAlertWords(reply);
   const botPersonal = detectPersonalData(reply);
@@ -1144,13 +1175,17 @@ async function processAudio(audioBlob) {
       return;
     }
     const stt = await recognizeSpeech(audioBlob);
-    if (!stt.text?.trim()) {
-      console.warn('🎙️ STT empty, blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
+    let text = stt.text?.trim();
+    if (!text && typeof window.browserSpeechRecognition === 'function') {
+      console.log('🎙️ Trying browser STT fallback...');
+      text = (await window.browserSpeechRecognition()).trim();
+    }
+    if (!text) {
       await handleMicFailure('stt_empty');
       return;
     }
     resetMicFailCount();
-    await handleUserMessage(stt.text);
+    await handleUserMessage(text);
   } catch (e) {
     logError('process_audio', e.message);
     await handleMicFailure('process_error');
@@ -1169,7 +1204,10 @@ export function showGamesMenu() {
   const overlay = document.createElement('div');
   overlay.id = 'gamesMenuOverlay';
   overlay.className = 'game-overlay';
-  const gameList = Object.entries(GAMES).map(([id, g]) => ({ id, label: `${g.icon} ${g.name}` }));
+  const gameList = Object.entries(GAMES).map(([id, g]) => {
+    const lvl = getGameLevel(id);
+    return { id, label: `${g.icon} ${g.name} · ур.${lvl}` };
+  });
 
   const buttonsHtml = gameList.map(({ id, label }) => {
     const lockedPlan = !canAccessGame(id);
@@ -1195,9 +1233,7 @@ export function showGamesMenu() {
     riddles: startRiddlesGame,
     quest: startQuestGame,
     maze: startMazeGame,
-    quiz: startQuizGame,
-    emotion: startRiddlesGame,
-    coloring: startQuestGame
+    quiz: startQuizGame
   };
 
   overlay.querySelectorAll('[data-game]').forEach((btn) => {
@@ -1211,7 +1247,8 @@ export function showGamesMenu() {
       }
       incrementGames();
       updateStatsDisplay();
-      games[id]?.();
+      const lvl = getGameLevel(id);
+      games[id]?.(lvl);
       checkAchievements();
       trackEvent('game_selected', id);
     };
@@ -1222,7 +1259,7 @@ export function showGamesMenu() {
 
 export function launchFishGame() {
   incrementGames();
-  startFishGame();
+  startFishGame(getGameLevel('fish'));
   trackEvent('fish_start', getActiveChildName());
 }
 
