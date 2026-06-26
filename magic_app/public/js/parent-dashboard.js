@@ -1,9 +1,9 @@
 import { bindNotificationSettingsUI, initNotificationScheduler, scheduleMissYouNotification } from './notifications.js';
 import { logout, checkAuth } from './auth.js';
-import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName } from './config.js';
+import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName, avatarImgHtml } from './config.js';
 import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDaysRemaining, resetDailyCounters } from './core.js';
-import { getGameProgressSummary } from './game-progress.js';
-import { getChildGender, guessGenderFromName, chattedPast } from './gender.js';
+import { getGameProgressSummary, loadGameProgress } from './game-progress.js';
+import { getChildGender, guessGenderFromName, chattedPast, pickByGender } from './gender.js';
 
 let pinAttempts = 0;
 let pinLockedUntil = 0;
@@ -81,7 +81,7 @@ async function updateParentGreeting() {
   const user = await getCurrentUser();
   const el = document.getElementById('parentGreeting');
   if (el) {
-    el.textContent = `👋 Здравствуйте, ${user.parentName || user.username}!`;
+    el.textContent = `${getTimeOfDayGreeting()}, ${getParentDisplayName(user)}!`;
   }
 }
 
@@ -153,39 +153,111 @@ function buildAllChildrenStats(serverStats) {
   });
 }
 
-function generateChildReportText(stats, childName, gender, multiChild) {
-  const chatted = chattedPast(gender);
-  const parts = [];
-  if (multiChild) parts.push(`Теперь о ${childName}:`);
+function getParentDisplayName(user) {
+  const name = user?.parentName || localStorage.getItem('parentName');
+  if (name && name !== 'Родитель' && !String(name).includes('@')) return name;
+  return 'родители';
+}
 
-  if (stats.totalChats > 0) {
-    parts.push(`За последнюю неделю ${childName} ${chatted} со мной ${stats.totalChats} раз.`);
-  } else {
-    parts.push(`За последнюю неделю ${childName} пока не ${chatted === 'общалась' ? 'общалась' : 'общался'} со мной.`);
+function reportPronoun(gender) {
+  return pickByGender(gender, 'он', 'она', 'он');
+}
+
+function reportGenitive(gender) {
+  return pickByGender(gender, 'него', 'неё', 'него');
+}
+
+function generateGameReportLines(childName, gender) {
+  const p = loadGameProgress(childName);
+  const lines = [];
+  const he = reportPronoun(gender);
+  const gen = reportGenitive(gender);
+
+  const fishLevel = p.fish?.level || p.fish?.bestLevel || 1;
+  if ((p.fish?.bestScore || 0) > 0 || (p.fish?.wins || 0) > 0 || fishLevel > 1) {
+    lines.push(`В рыбалке ${childName} достиг ${fishLevel} уровня! Эта игра развивает ловкость и внимание — и ${he} отлично с этим справляется!`);
   }
 
-  if (stats.totalStories > 0) {
-    parts.push(`Мы рассказали ${stats.totalStories} сказок.`);
+  const memLevel = p.memory?.level || 1;
+  if ((p.memory?.wins || 0) > 0 || memLevel > 1) {
+    lines.push(`В мемори — ${memLevel} уровень. Игра тренирует память, и у ${gen} отличные результаты!`);
+  }
+
+  const puzzleLevel = p.puzzle?.level || 1;
+  if (puzzleLevel > 1 || p.puzzle?.levelsCompleted) {
+    const praise = pickByGender(gender, 'молодец', 'умница', 'молодец');
+    lines.push(`Пазлы — ${puzzleLevel} уровень. Логика и усидчивость — ${childName} просто ${praise}!`);
+  }
+
+  if (p.emotion?.completed || (p.emotion?.bestScore || 0) > 0) {
+    const learned = pickByGender(gender, 'научился', 'научилась', 'научился');
+    lines.push(`В эмоциях ${childName} ${learned} лучше понимать чувства — это очень важно!`);
+  }
+
+  const coloringCount = p.coloring?.level || (p.coloring?.completed ? 1 : 0);
+  if (coloringCount > 0 || p.coloring?.completed) {
+    const painted = pickByGender(gender, 'раскрасил', 'раскрасила', 'раскрасил');
+    const count = Math.max(coloringCount, p.coloring?.completed ? 1 : 0);
+    lines.push(`Творческие способности тоже развиваются — ${childName} ${painted} уже ${count} картинок!`);
+  }
+
+  const questLevel = p.quest?.level || 1;
+  if (questLevel > 1 || p.quest?.completed) {
+    lines.push(`В квесте ${childName} на ${questLevel} уровне! Эта игра развивает решение задач и смекалку — ${he} отлично справляется!`);
+  }
+
+  const mazeLevel = p.maze?.level || 1;
+  if (mazeLevel > 1 || p.maze?.wins) {
+    lines.push(`Лабиринт — ${mazeLevel} уровень. Ориентация и планирование — у ${gen} замечательный прогресс!`);
+  }
+
+  const quizLevel = p.quiz?.level || 1;
+  if (quizLevel > 1 || p.quiz?.wins) {
+    const praise = pickByGender(gender, 'молодец', 'умница', 'молодец');
+    lines.push(`В викторине ${childName} на ${quizLevel} уровне! Игра расширяет знания и кругозор — ${he} ${praise}!`);
+  }
+
+  const riddlesLevel = p.riddles?.level || 1;
+  if (riddlesLevel > 1 || p.riddles?.completed) {
+    lines.push(`Загадки — ${riddlesLevel} уровень. Мышление и сообразительность у ${gen} на высоте!`);
+  }
+
+  return lines;
+}
+
+function generateChildReportText(stats, childName, gender, multiChild) {
+  const parts = [];
+  if (multiChild) {
+    parts.push(`Сейчас расскажу про ${childName}.`);
+  }
+
+  const chatted = chattedPast(gender);
+  const pron = reportPronoun(gender);
+
+  if (stats.totalChats > 0) {
+    parts.push(`За неделю ${pron} ${chatted} со мной ${stats.totalChats} ${stats.totalChats === 1 ? 'раз' : stats.totalChats < 5 ? 'раза' : 'раз'}.`);
+  } else {
+    parts.push(`За неделю ${childName} пока не ${chatted} со мной.`);
   }
 
   if (stats.fears?.length) {
-    parts.push(`Мы обсуждали: ${stats.fears.slice(0, 5).join(', ')}.`);
+    parts.push(`Мы говорили о: ${stats.fears.slice(0, 5).join(', ')}.`);
   }
 
-  const gameParts = (stats.games || [])
-    .filter((g) => g.value > 1 || g.detail)
-    .map((g) => {
-      const short = g.label.replace(/^[^\s]+\s/, '').toLowerCase();
-      return `${short} ур.${g.value}`;
-    });
-  if (gameParts.length) {
-    parts.push(`В играх: ${gameParts.join(', ')}.`);
-  }
-
-  const moodMap = { happy: 'хорошим', neutral: 'спокойным', anxious: 'тревожным' };
   if (stats.totalChats > 0) {
-    parts.push(`Настроение было в основном ${moodMap[stats.mood] || 'разным'}.`);
+    const brave = pickByGender(gender, 'смелый', 'смелая', 'смелый');
+    const open = pickByGender(gender, 'открытый', 'открытая', 'открытый');
+    parts.push(`${childName} очень ${brave} и ${open}, ${pron} не боится говорить о своих чувствах!`);
   }
+
+  parts.push(...generateGameReportLines(childName, gender));
+
+  const became = pickByGender(gender, 'стал', 'стала', 'стал');
+  const confident = pickByGender(gender, 'уверенным', 'уверенной', 'уверенным');
+  const calm = pickByGender(gender, 'спокойным', 'спокойной', 'спокойным');
+  const glad = pickByGender(gender, 'рад', 'рада', 'рад');
+  const summaryHe = pickByGender(gender, 'Он', 'Она', 'Он');
+  parts.push(`В целом, ${childName} делает большие успехи! ${summaryHe} ${became} более ${confident} и ${calm}. Я ${glad}, что мы друзья!`);
 
   return parts.join(' ');
 }
@@ -271,7 +343,8 @@ async function speakReport() {
     const multiChild = childrenStats.length > 1;
 
     const greeting = getTimeOfDayGreeting();
-    await playTextAsSpeech(`${greeting}, ${user.parentName || user.username}!`);
+    const parentName = getParentDisplayName(user);
+    await playTextAsSpeech(`${greeting}, ${parentName}!`);
 
     for (let i = 0; i < childrenStats.length; i++) {
       const stats = childrenStats[i];
@@ -488,10 +561,9 @@ function getChildStats() {
   };
 }
 
-function childEmoji(role) {
-  if (role === 'kid1') return '👧';
-  if (role === 'kid2') return '👦';
-  return '🐱';
+function childAvatarChip(role) {
+  if (role === 'kid1' || role === 'kid2') return avatarImgHtml(role, 36);
+  return avatarImgHtml('lucik', 36);
 }
 
 function renderChildSelector() {
@@ -499,9 +571,9 @@ function renderChildSelector() {
   const container = document.getElementById('childSelector');
   if (!container) return;
 
-  let html = `<button class="child-chip ${currentChildIndex === -1 ? 'active' : ''}" data-index="-1">🐾 Гость</button>`;
+  let html = `<button class="child-chip ${currentChildIndex === -1 ? 'active' : ''}" data-index="-1">${avatarImgHtml('lucik', 28)} Гость</button>`;
   html += children.map((c, i) =>
-    `<button class="child-chip ${i === currentChildIndex ? 'active' : ''}" data-index="${i}">${childEmoji(c.avatarRole)} ${c.name}, ${c.age} лет</button>`
+    `<button class="child-chip ${i === currentChildIndex ? 'active' : ''}" data-index="${i}">${childAvatarChip(c.avatarRole)} ${c.name}, ${c.age} лет</button>`
   ).join('');
 
   container.innerHTML = html || '<span style="opacity:0.5;font-size:0.85rem;">Добавьте детей</span>';
@@ -628,7 +700,8 @@ function renderDialogs(history) {
     const time = date.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     const isChild = h.role === 'child';
     const cls = isChild ? 'child' : 'lucik';
-    const prefix = isChild ? '👶 Ребёнок' : (h.characterName ? `🐱 ${h.characterName}` : '🐱 Люцик');
+    const lucikIcon = avatarImgHtml('lucik', 18);
+    const prefix = isChild ? 'Ребёнок' : (h.characterName ? `${lucikIcon} ${h.characterName}` : `${lucikIcon} Люцик`);
     const attentionWords = !isChild ? (h.alertWords || checkAttentionWords(h.text)) : [];
     const isAlerted = h.alerted || attentionWords.length > 0;
     const text = (h.text || '').substring(0, 150);
@@ -893,7 +966,7 @@ function showAttentionModal() {
       return `
         <div class="attention-item">
           <div class="attn-text">${(item.text || '').substring(0, 200)}</div>
-          <div class="attn-meta">🐱 ${item.characterName} · ${time} · ${item.words.join(', ')}</div>
+          <div class="attn-meta">${avatarImgHtml('lucik', 16)} ${item.characterName} · ${time} · ${item.words.join(', ')}</div>
         </div>
       `;
     }).join('');

@@ -3,7 +3,7 @@
 // v5.0.5 (аудит безопасности и стабильности)
 // ========================================
 
-import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject } from './config.js';
+import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl } from './config.js';
 import { getChildGender, guessGenderFromName, applyGenderToText, gladToSeePhrase } from './gender.js';
 import {
   generateResponse, detectFear, detectPersonalData,
@@ -266,9 +266,8 @@ function getChildContextForAI() {
 }
 
 function childAvatarImg(role) {
-  const map = { kid1: 'kid1.svg', kid2: 'kid2.svg', lucik: 'avatar.svg' };
-  const file = map[role] || 'avatar.svg';
-  return `<img src="assets/images/${file}" alt="" class="child-chip-avatar">`;
+  const map = { kid1: 'kid1', kid2: 'kid2', lucik: 'lucik' };
+  return avatarImgHtml(map[role] || 'lucik', 36);
 }
 
 function applyChildAvatar(child) {
@@ -277,7 +276,7 @@ function applyChildAvatar(child) {
   if (CHARACTERS[role]) {
     setAvatarIcon(CHARACTERS[role].icon);
   } else if (child.avatar) {
-    setAvatarIcon(`assets/images/${child.avatar}`);
+    setAvatarIcon(assetUrl(child.avatar));
   }
 }
 

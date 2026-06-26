@@ -1,4 +1,4 @@
-import { CONFIG, ENV } from './config.js';
+import { CONFIG, ENV, AVATAR_ICONS } from './config.js';
 
 import { getActiveChildName, getActiveChild, updateStatsUI } from './core.js';
 
@@ -46,15 +46,7 @@ function updateAvatar() {
     if (!avatar) return;
 
     const savedChar = localStorage.getItem('currentCharacter') || 'lucik';
-    const charIcon = {
-        lucik: 'assets/images/avatar.svg',
-        mom: 'assets/images/mom.svg',
-        dad: 'assets/images/dad.svg',
-        kid1: 'assets/images/kid1.svg',
-        kid2: 'assets/images/kid2.svg'
-    };
-
-    const src = charIcon[savedChar] || 'assets/images/avatar.svg';
+    const src = AVATAR_ICONS[savedChar] || AVATAR_ICONS.lucik;
     if (avatar.tagName === 'IMG') {
         avatar.src = src;
     } else {

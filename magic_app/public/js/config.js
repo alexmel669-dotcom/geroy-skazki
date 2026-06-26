@@ -9,10 +9,29 @@ export const PROMOCODES = {
   FRIENDLYCAT: { plan: 'basic', days: 7 }
 };
 
-export const ASSET_BASE = 'assets/images/';
+export const ASSET_BASE = '/assets/images/';
+
+export const AVATAR_ICONS = {
+  lucik: '/assets/images/avatar.svg',
+  mom: '/assets/images/mom.svg',
+  dad: '/assets/images/dad.svg',
+  kid1: '/assets/images/kid1.svg',
+  kid2: '/assets/images/kid2.svg'
+};
+
+export function assetUrl(path) {
+  if (!path) return AVATAR_ICONS.lucik;
+  if (path.startsWith('http') || path.startsWith('/')) return path;
+  return `${ASSET_BASE}${path.replace(/^\/?assets\/images\//, '')}`;
+}
+
+export function avatarImgHtml(role, size = 36) {
+  const src = AVATAR_ICONS[role] || AVATAR_ICONS.lucik;
+  return `<img src="${src}" width="${size}" height="${size}" alt="" class="child-chip-avatar" style="border-radius:50%;object-fit:cover;vertical-align:middle;">`;
+}
 
 export const CONFIG = {
-  APP_VERSION: '5.0.10',
+  APP_VERSION: '5.0.11',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -75,7 +94,7 @@ export const CHARACTERS = {
     name: 'Люцик',
     voice: 'zahar',
     gender: 'male',
-    icon: 'assets/images/avatar.svg',
+    icon: '/assets/images/avatar.svg',
     avatar: 'avatar.svg',
     premium: false,
     description: 'Добрый волшебник'
@@ -85,7 +104,7 @@ export const CHARACTERS = {
     name: 'Мама',
     voice: 'jane',
     gender: 'female',
-    icon: 'assets/images/mom.svg',
+    icon: '/assets/images/mom.svg',
     avatar: 'mom.svg',
     premium: false,
     description: 'Заботливая мама'
@@ -95,7 +114,7 @@ export const CHARACTERS = {
     name: 'Папа',
     voice: 'ermil',
     gender: 'male',
-    icon: 'assets/images/dad.svg',
+    icon: '/assets/images/dad.svg',
     avatar: 'dad.svg',
     premium: false,
     description: 'Надёжный папа'
@@ -105,7 +124,7 @@ export const CHARACTERS = {
     name: 'Девочка',
     voice: 'oksana',
     gender: 'female',
-    icon: 'assets/images/kid1.svg',
+    icon: '/assets/images/kid1.svg',
     avatar: 'kid1.svg',
     premium: false,
     description: 'Добрая девочка'
@@ -115,7 +134,7 @@ export const CHARACTERS = {
     name: 'Мальчик',
     voice: 'oksana',
     gender: 'male',
-    icon: 'assets/images/kid2.svg',
+    icon: '/assets/images/kid2.svg',
     avatar: 'kid2.svg',
     premium: false,
     description: 'Весёлый мальчик'

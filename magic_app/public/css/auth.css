@@ -36,8 +36,16 @@ body {
 }
 
 .auth-avatar {
-  font-size: 64px;
   margin-bottom: 16px;
+}
+
+.auth-avatar img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto;
 }
 
 h1 {
