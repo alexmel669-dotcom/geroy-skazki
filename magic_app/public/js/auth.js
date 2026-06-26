@@ -47,6 +47,7 @@ export async function checkAuth() {
       if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan);
       if (data.user?.planExpiry) localStorage.setItem('planExpiry', data.user.planExpiry);
       if (data.user?.promocodeUsed) localStorage.setItem('promocodeUsed', data.user.promocodeUsed);
+      if (data.user?.parentName) localStorage.setItem('parentName', data.user.parentName);
       return true;
     } else {
       console.log('❌ Токен невалиден');
@@ -109,6 +110,7 @@ async function handleLogin(e) {
       if (data.user?.promocodeUsed) localStorage.setItem('promocodeUsed', data.user.promocodeUsed);
       else localStorage.removeItem('promocodeUsed');
       if (data.user?.role) localStorage.setItem('userRole', data.user.role);
+      if (data.user?.parentName) localStorage.setItem('parentName', data.user.parentName);
       if (data.user?.children?.length) {
         localStorage.setItem('children', JSON.stringify(data.user.children));
         localStorage.setItem('childrenNames', data.user.children.map(c => c.name).join(', '));

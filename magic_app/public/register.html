@@ -17,6 +17,12 @@
     
     <form id="registerForm">
       <input type="email" id="regEmail" placeholder="Ваш Email" required autocomplete="email">
+
+      <div class="form-group promocode-group">
+        <label for="parentName">👤 Ваше имя</label>
+        <input type="text" id="parentName" placeholder="Анна" required autocomplete="name">
+      </div>
+
       <input type="password" id="regPassword" placeholder="Пароль (мин. 6 символов)" required autocomplete="new-password" minlength="6">
       <input type="password" id="regPasswordConfirm" placeholder="Повторите пароль" required autocomplete="new-password" minlength="6">
 
@@ -205,6 +211,13 @@
       return;
     }
     
+    const parentName = document.getElementById('parentName')?.value.trim() || '';
+    if (!parentName) {
+      errorDiv.textContent = 'Введите ваше имя';
+      errorDiv.style.display = 'block';
+      return;
+    }
+
     const promocode = document.getElementById('promocode')?.value.trim() || '';
     errorDiv.style.display = 'none';
     const btn = e.target.querySelector('button');
@@ -216,7 +229,7 @@
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, children, promocode, parentPin })
+        body: JSON.stringify({ email, password, parentName, children, promocode, parentPin })
       });
       const data = await res.json();
       
@@ -230,6 +243,7 @@
         if (data.user?.promocodeUsed) localStorage.setItem('promocodeUsed', data.user.promocodeUsed);
         if (data.promoMessage) localStorage.setItem('promoMessage', data.promoMessage);
         if (data.user?.role) localStorage.setItem('userRole', data.user.role);
+        if (data.user?.parentName) localStorage.setItem('parentName', data.user.parentName);
         const savedChildren = data.user?.children?.length ? data.user.children : children;
         saveChildrenToLocal(savedChildren);
         window.location.href = '/app.html';

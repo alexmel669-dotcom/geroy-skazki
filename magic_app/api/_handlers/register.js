@@ -21,7 +21,7 @@ function normalizeChildren(children) {
   return children.slice(0, 3).map((child, index) => {
     const gender = child.gender === 'female' ? 'female' : 'male';
     const avatarRole = gender === 'male' ? 'kid2' : 'kid1';
-    const avatar = gender === 'male' ? 'kid2.png' : 'kid1.png';
+    const avatar = gender === 'male' ? 'kid2.svg' : 'kid1.svg';
     const age = Math.min(MAX_AGE, Math.max(MIN_AGE, parseInt(child.age, 10) || 5));
     return {
       name: String(child.name || '').trim(),
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
   try {
     const normalizedEmail = (req.body.email || req.body.username || '').trim().toLowerCase();
     const username = String(req.body.username || normalizedEmail.split('@')[0] || normalizedEmail).trim();
-    const { password, gender, age, children, promocode, parentPin } = req.body;
+    const { password, gender, age, children, promocode, parentPin, parentName } = req.body;
 
     if (!normalizedEmail || !password) {
       return res.status(400).json({ error: 'Поля username, email, password обязательны' });
@@ -113,6 +113,7 @@ export default async function handler(req, res) {
       email: normalizedEmail,
       passwordHash,
       parentPinHash,
+      parentName: String(parentName || '').trim() || username,
       pinAttempts: 0,
       lockedUntil: null,
       gender: gender || null,
@@ -138,6 +139,7 @@ export default async function handler(req, res) {
       user: {
         username: saved.username,
         email: normalizedEmail,
+        parentName: saved.parentName || username,
         plan: effectivePlan,
         planExpiry: saved.planExpiry || null,
         promocodeUsed: saved.promocodeUsed || null,

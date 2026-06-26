@@ -46,10 +46,14 @@ export default async function handler(req, res) {
     }
 
     const weekStats = await getWeeklyStats(decoded.email);
-    const childName = user.children?.[0]?.name || user.childName || 'ребёнок';
+    const childName = user.children?.[user.activeChildIndex ?? 0]?.name
+      || user.children?.[0]?.name
+      || user.childName
+      || 'ребёнок';
+    const parentName = user.parentName || user.username || 'родитель';
 
     const html = `
-      <h2>Привет, ${user.username || 'родитель'}!</h2>
+      <h2>Привет, ${parentName}!</h2>
       <p>Вот как прошла неделя у ${childName}:</p>
       <ul>
         <li>🗣️ Разговоров: ${weekStats.totalChats}</li>
@@ -62,7 +66,7 @@ export default async function handler(req, res) {
 
     const sent = await sendViaResend({
       to: user.email,
-      subject: `📊 Отчёт за неделю: ${childName} и Люцик`,
+      subject: `${parentName}, отчёт за неделю для ${childName}`,
       html
     });
 

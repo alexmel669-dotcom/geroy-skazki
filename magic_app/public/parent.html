@@ -73,6 +73,30 @@
     .attention-item .attn-text { font-size: 0.85rem; margin-bottom: 4px; }
     .attention-item .attn-meta { opacity: 0.4; font-size: 0.7rem; }
 
+    .parent-greeting {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 8px 0 12px;
+    }
+
+    .btn-voice {
+      background: #6C63FF;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      min-height: 44px;
+    }
+
+    .btn-voice:hover { background: #5A52E0; }
+    .btn-voice:disabled { opacity: 0.6; cursor: wait; }
+
     .notification-settings label.notify-label {
       display: flex;
       align-items: center;
@@ -112,6 +136,8 @@
   <a href="app.html" class="back-link">← Назад к Люцику</a>
   <a href="index.html" class="site-link">🏠 На сайт</a>
   <h1>👨‍👩‍👧 Родительский кабинет</h1>
+  <h2 id="parentGreeting" class="parent-greeting">👋 Здравствуйте!</h2>
+  <button id="speakReportBtn" class="btn-voice" type="button">🎤 Прослушать отчёт</button>
   <p class="subtitle" id="childInfo">Статистика и прогресс</p>
   
   <div class="psychologist-help" id="psychologistBlock" style="display:none;">

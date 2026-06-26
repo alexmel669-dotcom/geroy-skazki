@@ -106,12 +106,16 @@ export async function initNotificationScheduler() {
   localStorage.setItem('lastAppVisit', String(Date.now()));
 }
 
-export function notifyParentReport() {
+export function notifyParentReport(parentName, childName) {
   const settings = getNotificationSettings();
   if (!settings.notifyReport || Notification.permission !== 'granted') return;
+  const pname = parentName || localStorage.getItem('parentName') || 'Родитель';
+  const cname = childName
+    || localStorage.getItem('childrenNames')?.split(',')[0]?.trim()
+    || 'ребёнка';
   scheduleNotification(
-    '📊 Новый отчёт о настроении ребёнка готов.',
-    'Откройте родительский кабинет.',
+    '📊 Отчёт готов',
+    `${pname}, посмотрите как прошла неделя у ${cname}`,
     1000
   );
 }

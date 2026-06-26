@@ -17,8 +17,11 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       user: {
-        childName: profile.childName || null,
-        childAge: profile.childAge ?? null,
+        username: profile.username || user.email,
+        parentName: profile.parentName || profile.username || null,
+        childName: profile.childName || profile.children?.[0]?.name || null,
+        childAge: profile.childAge ?? profile.children?.[0]?.age ?? null,
+        children: profile.children || [],
         concerns: profile.concerns || [],
         plan: getEffectivePlan(profile),
         planExpiry: profile.planExpiry || null,

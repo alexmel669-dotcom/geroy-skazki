@@ -44,6 +44,133 @@ function renderTimeStats(history) {
   }
 }
 
+async function getCurrentUser() {
+  const token = localStorage.getItem('userToken');
+  const children = getChildren();
+  const child = currentChildIndex >= 0 ? children[currentChildIndex] : children[0];
+  const fallback = {
+    parentName: localStorage.getItem('parentName') || localStorage.getItem('userEmail')?.split('@')[0] || 'Родитель',
+    username: localStorage.getItem('userEmail')?.split('@')[0] || 'Родитель',
+    childName: child?.name || 'ребёнок'
+  };
+  if (!token || localStorage.getItem('guestMode') === 'true') return fallback;
+
+  try {
+    const res = await fetch('/api/profile-update', {
+      credentials: 'include',
+      headers: authHeaders()
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const u = data.user || {};
+      if (u.parentName) localStorage.setItem('parentName', u.parentName);
+      return {
+        parentName: u.parentName || u.username || fallback.parentName,
+        username: u.username || fallback.username,
+        childName: child?.name || u.childName || u.children?.[0]?.name || fallback.childName
+      };
+    }
+  } catch {
+    /* local fallback */
+  }
+  return fallback;
+}
+
+async function updateParentGreeting() {
+  const user = await getCurrentUser();
+  const el = document.getElementById('parentGreeting');
+  if (el) {
+    el.textContent = `👋 Здравствуйте, ${user.parentName || user.username}!`;
+  }
+}
+
+function getWeeklyStatsLocal() {
+  const stats = getChildStats();
+  const history = stats.history || [];
+  const weekAgo = Date.now() - 7 * 86400000;
+  const recent = history.filter((h) => new Date(h.timestamp || 0).getTime() > weekAgo);
+  const totalChats = recent.filter((h) => h.role === 'child' || h.role === 'user').length;
+  const totalStories = recent.filter((h) => h.type === 'story').length;
+  const moods = recent.map((h) => h.mood).filter(Boolean);
+  let mood = 'neutral';
+  if (moods.filter((m) => m === 'positive').length > moods.length / 2) mood = 'happy';
+  else if (moods.filter((m) => m === 'concerned').length > 0) mood = 'anxious';
+  else if (moods.filter((m) => m === 'neutral').length === moods.length && moods.length) mood = 'neutral';
+  const concerns = [...new Set(recent.flatMap((h) => h.alertWords || []).filter(Boolean))];
+  return { totalChats, totalStories, mood, concerns };
+}
+
+function generateReportText(stats, parentName, childName) {
+  const moodMap = {
+    happy: 'хорошим',
+    neutral: 'спокойным',
+    sad: 'грустным',
+    anxious: 'тревожным'
+  };
+  const mood = moodMap[stats.mood] || 'разным';
+  const concernLine = stats.concerns?.length
+    ? 'Были моменты, на которые стоит обратить внимание.'
+    : 'Всё в порядке.';
+  return [
+    `${parentName}, здравствуйте!`,
+    `На этой неделе ${childName} общался со мной ${stats.totalChats} раз.`,
+    `Мы рассказали ${stats.totalStories} сказок.`,
+    `Настроение было в основном ${mood}.`,
+    concernLine,
+    'Спасибо, что вы с нами!'
+  ].join(' ');
+}
+
+async function speakReport() {
+  const btn = document.getElementById('speakReportBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Готовим...';
+  }
+  try {
+    const user = await getCurrentUser();
+    const stats = getWeeklyStatsLocal();
+    const text = generateReportText(stats, user.parentName, user.childName);
+
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: 'jane' })
+      });
+      const data = await res.json();
+      if (data.audioUrl) {
+        await new Promise((resolve, reject) => {
+          const audio = new Audio(data.audioUrl);
+          audio.onended = resolve;
+          audio.onerror = reject;
+          audio.play().catch(reject);
+        });
+        return;
+      }
+    } catch {
+      /* browser fallback */
+    }
+
+    if ('speechSynthesis' in window) {
+      await new Promise((resolve) => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ru-RU';
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.onend = resolve;
+        utterance.onerror = resolve;
+        window.speechSynthesis.speak(utterance);
+      });
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🎤 Прослушать отчёт';
+    }
+  }
+}
+
 function authHeaders() {
   const token = localStorage.getItem('userToken');
   return {
@@ -449,6 +576,9 @@ async function renderPlanInfo() {
           promocodeUsed = data.user.promocodeUsed;
           localStorage.setItem('promocodeUsed', promocodeUsed);
         }
+        if (data.user?.parentName) {
+          localStorage.setItem('parentName', data.user.parentName);
+        }
       }
     } catch {
       /* local fallback */
@@ -539,6 +669,7 @@ async function renderPsychologistBlock() {
 }
 
 function loadAllData() {
+  updateParentGreeting();
   renderPlanInfo();
   renderPsychologistBlock();
   bindNotificationSettingsUI();
@@ -654,6 +785,7 @@ document.getElementById('pinInput')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') verifyPinSubmit();
 });
 document.getElementById('connectChildDevice')?.addEventListener('click', connectChildDevice);
+document.getElementById('speakReportBtn')?.addEventListener('click', speakReport);
 document.getElementById('parentLogoutBtn')?.addEventListener('click', () => logout());
 document.getElementById('weeklyDigestBtn')?.addEventListener('click', async () => {
   const res = await fetch('/api/weekly-digest', {

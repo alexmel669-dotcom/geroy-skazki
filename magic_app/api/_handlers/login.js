@@ -73,6 +73,7 @@ export default async function handler(req, res) {
         planExpiry: saved.planExpiry || null,
         promocodeUsed: saved.promocodeUsed || null,
         role: saved.role || 'user',
+        parentName: saved.parentName || saved.username,
         gender: saved.gender,
         age: saved.age,
         children: saved.children || []

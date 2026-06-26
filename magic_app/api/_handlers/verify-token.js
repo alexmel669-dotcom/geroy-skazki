@@ -20,6 +20,7 @@ export default async function handler(req, res) {
     user: {
       email: user.email,
       username: user.username || user.email,
+      parentName: profile?.parentName || profile?.username || null,
       role: user.role,
       plan,
       planExpiry: profile?.planExpiry || null,
