@@ -149,9 +149,13 @@ export async function generateResponse(prompt, childInfo = {}) {
   const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT);
 
   try {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('userToken') : null;
     const response = await fetch('/api/generate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
       body: JSON.stringify({
         message: prompt,
         childName: profile.name,

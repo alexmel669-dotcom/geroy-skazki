@@ -121,6 +121,22 @@ function generateReportText(stats, parentName, childName) {
   ].join(' ');
 }
 
+async function fetchWeeklyStatsFromServer() {
+  try {
+    const res = await fetch('/api/weekly-stats', { headers: authHeaders() });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return {
+      totalChats: data.totalChats ?? 0,
+      totalStories: data.totalStories ?? 0,
+      mood: data.mood || 'neutral',
+      concerns: data.concerns || []
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function speakReport() {
   const btn = document.getElementById('speakReportBtn');
   if (btn) {
@@ -129,13 +145,13 @@ async function speakReport() {
   }
   try {
     const user = await getCurrentUser();
-    const stats = getWeeklyStatsLocal();
+    const stats = (await fetchWeeklyStatsFromServer()) || getWeeklyStatsLocal();
     const text = generateReportText(stats, user.parentName, user.childName);
 
     try {
       const res = await fetch('/api/tts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ text, voice: 'jane' })
       });
       const data = await res.json();
@@ -648,7 +664,7 @@ async function renderPsychologistBlock() {
       const res = await fetch('/api/psychologist-help', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ concerns, childAge })
       });
       const data = await res.json();

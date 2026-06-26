@@ -2,7 +2,7 @@ import { setCors } from '../_middleware/cors.js';
 import { verifyAuth } from '../_middleware/auth.js';
 import { findUser, saveUser } from '../_lib/users.js';
 import { getEffectivePlan } from '../_lib/promocodes.js';
-import { ADMIN_API_TOKEN } from '../_lib/admin-token.js';
+import { isValidAdminToken } from '../_lib/admin-token.js';
 import { getRecentFeedbacks, saveFeedback, hasFeedbackBonus, markFeedbackBonus } from '../_lib/feedbacks.js';
 
 export { getRecentFeedbacks };
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   if (setCors(req, res)) return;
 
   if (req.method === 'GET') {
-    if (req.headers.authorization !== ADMIN_API_TOKEN) {
+    if (!isValidAdminToken(req)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     const feedbacks = await getRecentFeedbacks(20);

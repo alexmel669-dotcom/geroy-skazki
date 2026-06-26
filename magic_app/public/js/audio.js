@@ -59,9 +59,13 @@ export async function synthesizeSpeech(text, character = 'lucik') {
   }
 
   try {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('userToken') : null;
     const response = await fetch('/api/tts', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
       body: JSON.stringify({ text, voice: character })
     });
 

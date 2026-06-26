@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geroy-skazki-v5.0.4';
+const CACHE_NAME = 'geroy-skazki-v5.0.5';
 const ASSETS = [
   '/',
   '/app.html',
@@ -21,6 +21,25 @@ const ASSETS = [
   '/js/auth.js',
   '/js/security.js',
   '/js/feedback.js',
+  '/js/audio.js',
+  '/js/context.js',
+  '/js/dictionary.js',
+  '/js/analytics.js',
+  '/js/achievements.js',
+  '/js/notifications.js',
+  '/js/retention.js',
+  '/js/child-mode.js',
+  '/js/child-swipe.js',
+  '/js/game-progress.js',
+  '/js/admin-dashboard.js',
+  '/js/parent-dashboard.js',
+  '/js/games/fish.js',
+  '/js/games/memory.js',
+  '/js/games/puzzle.js',
+  '/js/games/riddles.js',
+  '/js/games/quest.js',
+  '/js/games/maze.js',
+  '/js/games/quiz.js',
   '/assets/images/avatar.svg',
   '/assets/images/kid1.svg',
   '/assets/images/kid2.svg',
@@ -49,6 +68,21 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.pathname.startsWith('/api/')) return;
   if (event.request.method !== 'GET') return;
+
+  if (url.pathname.startsWith('/js/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || new Response('Нет сети', { status: 503 })))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

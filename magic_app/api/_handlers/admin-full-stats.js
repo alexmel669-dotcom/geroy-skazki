@@ -1,8 +1,6 @@
 import { setCors } from '../_middleware/cors.js';
 import { buildFullStats } from './admin-stats.js';
-import { ADMIN_API_TOKEN } from '../_lib/admin-token.js';
-
-export { ADMIN_API_TOKEN };
+import { isValidAdminToken } from '../_lib/admin-token.js';
 
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
@@ -11,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Метод не разрешён' });
   }
 
-  if (req.headers.authorization !== ADMIN_API_TOKEN) {
+  if (!isValidAdminToken(req)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 

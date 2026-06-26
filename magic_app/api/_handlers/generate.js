@@ -1,6 +1,6 @@
 import { getAgeBasedTone, sanitizeAIText } from '../_lib/content-filter.js';
 import { setCors } from '../_middleware/cors.js';
-import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
+import { applyAiRateLimit } from '../_middleware/ai-rate-limit.js';
 
 const CHARACTER_PROMPTS = {
   lucik: 'Ты — Люцик, сказочный кот-волшебник, друг и помощник ребёнка. Тёплый, с мурчанием (мурр, мяу). Помогаешь через сказки и игры.',
@@ -102,8 +102,8 @@ export default async function handler(req, res) {
   if (setCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const key = getRateLimitKey(req);
-  if (!checkRateLimit(key, 10)) return res.status(429).json({ error: 'Too many requests' });
+  const { allowed } = applyAiRateLimit(req, res, { authMax: 15, anonMax: 5 });
+  if (!allowed) return;
 
   const started = Date.now();
   try {

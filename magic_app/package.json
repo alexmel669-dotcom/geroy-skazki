@@ -1,10 +1,10 @@
 {
   "name": "geroy-skazki",
-  "version": "4.1.0",
-  "description": "Люцик — Герой Сказок: ИИ-помощник для детей 3–14 лет",
+  "version": "5.0.5",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev --listen 3000",
+    "dev": "echo 'use npx vercel dev --listen 3000'",
+    "serve": "vercel dev --listen 3000",
     "start": "vercel dev --listen 3000",
     "static": "npx --yes serve public -l 3000",
     "deploy": "vercel --prod",
@@ -20,7 +20,7 @@
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
-    "vercel": "^32.0.0",
+    "vercel": "^32.7.2",
     "vitest": "^3.0.5"
   },
   "engines": {

@@ -1,9 +1,3 @@
-const ADMIN_CREDENTIALS = {
-  email: 'admin@geroy-skazki.local',
-  password: 'admintuti13'
-};
-
-const ADMIN_API_TOKEN = 'Bearer admin-token-v5.0.3';
 const API = '/api/admin/full-stats';
 
 const PLAN_LABELS = { free: 'Бесплатный', basic: 'Базовый', family: 'Семейный' };
@@ -13,6 +7,10 @@ const TIME_LABELS = {
   evening: '🌆 Вечер',
   night: '🌙 Ночь'
 };
+
+function getAdminToken() {
+  return sessionStorage.getItem('admin-token') || '';
+}
 
 function showDashboard() {
   document.getElementById('adminLogin').style.display = 'none';
@@ -25,24 +23,53 @@ function showLogin() {
   document.getElementById('adminDashboard').style.display = 'none';
 }
 
-function adminLogin() {
+async function adminLogin() {
   const email = document.getElementById('adminEmail')?.value.trim();
   const password = document.getElementById('adminPassword')?.value;
   const errEl = document.getElementById('adminError');
+  const btn = document.getElementById('adminLoginBtn');
 
-  if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
-    sessionStorage.setItem('admin-auth', 'true');
-    errEl.textContent = '';
-    showDashboard();
-    loadAdminStats();
+  if (!email || !password) {
+    errEl.textContent = 'Введите email и пароль';
     return;
   }
 
-  errEl.textContent = 'Неверный логин или пароль';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Вход...';
+  }
+  errEl.textContent = '';
+
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      sessionStorage.setItem('admin-auth', 'true');
+      sessionStorage.setItem('admin-token', data.token);
+      showDashboard();
+      loadAdminStats();
+      return;
+    }
+
+    errEl.textContent = 'Неверный логин или пароль';
+  } catch {
+    errEl.textContent = 'Ошибка сети. Попробуйте позже.';
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Войти';
+    }
+  }
 }
 
 function adminLogout() {
   sessionStorage.removeItem('admin-auth');
+  sessionStorage.removeItem('admin-token');
   document.getElementById('adminPassword').value = '';
   document.getElementById('adminError').textContent = '';
   showLogin();
@@ -145,8 +172,8 @@ function renderFeedbacks(feedbacks) {
   }
   tbody.innerHTML = feedbacks.map((f) => `
     <tr>
-      <td>${escapeHtml((f.createdAt || '').split('T')[0] || '—')}</td>
-      <td>${'★'.repeat(f.rating || 0)}</td>
+      <td>${escapeHtml(new Date(f.timestamp || f.createdAt || Date.now()).toLocaleString('ru-RU'))}</td>
+      <td>${'⭐'.repeat(Math.min(5, Math.max(1, f.rating || 5)))}</td>
       <td>${escapeHtml((f.text || '—').slice(0, 120))}</td>
       <td>${escapeHtml(f.page || '—')}</td>
       <td>${escapeHtml(f.email || 'guest')}</td>
@@ -156,16 +183,23 @@ function renderFeedbacks(feedbacks) {
 
 async function loadAdminStats() {
   const errEl = document.getElementById('adminLoadError');
+  const token = getAdminToken();
+  if (!token) {
+    adminLogout();
+    return;
+  }
+
   errEl.style.display = 'none';
 
   try {
     const res = await fetch(API, {
-      headers: { Authorization: ADMIN_API_TOKEN }
+      headers: { Authorization: token }
     });
 
     if (res.status === 403) {
-      errEl.textContent = 'Доступ к API запрещён';
+      errEl.textContent = 'Сессия администратора истекла. Войдите снова.';
       errEl.style.display = 'block';
+      adminLogout();
       return;
     }
 
@@ -211,7 +245,7 @@ document.getElementById('adminLogoutBtn')?.addEventListener('click', adminLogout
 document.getElementById('refreshStatsBtn')?.addEventListener('click', loadAdminStats);
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (sessionStorage.getItem('admin-auth') === 'true') {
+  if (sessionStorage.getItem('admin-auth') === 'true' && getAdminToken()) {
     showDashboard();
     loadAdminStats();
   } else {

@@ -1,11 +1,11 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v4.1.0 (на базе 4.0.8 + доработки)
+// v5.0.5 (аудит безопасности и стабильности)
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject } from './config.js';
 import {
-  generateResponse, detectFear, detectAlertWords, detectPersonalData,
+  generateResponse, detectFear, detectPersonalData,
   setCharacter, getCharacter, addToContext, clearContext,
   loadChatHistory, setChatChild, extractFearsFromText,
   shouldSuggestFearGame, getFearGameSuggestion
@@ -17,7 +17,7 @@ import {
 import { synthesizeSpeech } from './audio.js';
 import { checkAchievements, showAchievement } from './achievements.js';
 import { trackEvent, logError } from './analytics.js';
-import { initSecurity, checkBadWords, sanitizeInput, sanitizeAIText } from './security.js';
+import { initSecurity, checkBadWords, sanitizeInput, sanitizeAIText, detectAlertWords } from './security.js';
 import { startFishGame } from './games/fish.js';
 import { startMemoryGame } from './games/memory.js';
 import { startPuzzleGame } from './games/puzzle.js';
@@ -839,13 +839,13 @@ function saveAlertForParent(text, words, source) {
 // ========================================
 
 async function recognizeSpeech(blob) {
-  if (!blob?.size) return { text: '', fallback: true };
-
-  const liveText = getLiveSttText();
-  if (liveText) {
-    clearLiveSttText();
-    console.log('🎙️ Using live browser STT:', liveText);
-    return { text: liveText, fallback: true };
+  if (!blob?.size) {
+    const liveOnly = getLiveSttText();
+    if (liveOnly) {
+      clearLiveSttText();
+      return { text: liveOnly, fallback: true };
+    }
+    return { text: '', fallback: true };
   }
 
   const tryServerStt = async () => {
@@ -858,9 +858,13 @@ async function recognizeSpeech(blob) {
     }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), CONFIG.AUDIO_TIMEOUT);
+    const token = localStorage.getItem('userToken');
     const response = await fetch('/api/speech-to-text', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
       body: JSON.stringify({
         audio: prepared.base64,
         contentType: prepared.contentType,
@@ -883,6 +887,13 @@ async function recognizeSpeech(blob) {
     if (server?.text) return server;
   } catch (e) {
     console.warn('STT API fail:', e.message);
+  }
+
+  const liveText = getLiveSttText();
+  if (liveText) {
+    clearLiveSttText();
+    console.log('🎙️ Fallback to live browser STT:', liveText);
+    return { text: liveText, fallback: true };
   }
 
   return { text: '', fallback: true };
@@ -981,10 +992,28 @@ async function handleLongPress() {
   isProcessing = true;
   setMicVisualState('processing');
   setAvatarState('eating');
+  const childName = getActiveChildName();
+  const bedtimePrompt = 'Расскажи сказку на ночь';
   try {
-    const aiResult = await generateResponse('Расскажи сказку на ночь', getChildContextForAI());
+    const aiResult = await generateResponse(bedtimePrompt, getChildContextForAI());
     const reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
     if (globalThis.__lastAiMs) applyAiTiming();
+    saveToChildHistory({
+      role: 'child',
+      text: bedtimePrompt,
+      timestamp: Date.now(),
+      childName,
+      type: 'story'
+    });
+    addToContext('child', bedtimePrompt);
+    saveToChildHistory({
+      role: 'bot',
+      text: reply,
+      timestamp: Date.now(),
+      type: 'story',
+      characterName: CHARACTERS[getCharacter()]?.name || 'Люцик'
+    });
+    addToContext('bot', reply);
     await synthesizeSpeech(reply, getCharacter());
     incrementStories();
     incrementDailyStories();

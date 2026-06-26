@@ -23,9 +23,11 @@ import psychologistHelp from './_handlers/psychologist-help.js';
 import promocode from './_handlers/promocode.js';
 import adminStats from './_handlers/admin-stats.js';
 import adminFullStats from './_handlers/admin-full-stats.js';
+import adminLogin from './_handlers/admin-login.js';
 import verifyPin from './_handlers/verify-pin.js';
 import childToken from './_handlers/child-token.js';
 import weeklyDigest from './_handlers/weekly-digest.js';
+import weeklyStats from './_handlers/weekly-stats.js';
 import feedback from './_handlers/feedback.js';
 
 
@@ -58,6 +60,8 @@ const ROUTES = {
 
   'admin/full-stats': adminFullStats,
 
+  'admin/login': adminLogin,
+
   'sync-child-data': sync,
 
   'user/sync': sync,
@@ -73,6 +77,8 @@ const ROUTES = {
   'child-token': childToken,
 
   'weekly-digest': weeklyDigest,
+
+  'weekly-stats': weeklyStats,
 
   feedback
 

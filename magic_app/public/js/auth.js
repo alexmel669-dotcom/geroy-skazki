@@ -56,8 +56,7 @@ export async function checkAuth() {
     }
   } catch (error) {
     console.error('Auth check error:', error);
-    // При ошибке сети разрешаем оффлайн-доступ
-    if (localStorage.getItem('isAuth') === 'true') {
+    if (token && localStorage.getItem('isAuth') === 'true') {
       return true;
     }
     return false;
@@ -238,15 +237,19 @@ function isValidEmail(email) {
 }
 
 function clearAuthData() {
-  localStorage.removeItem('isAuth');
-  localStorage.removeItem('userToken');
-  localStorage.removeItem('userEmail');
-  localStorage.removeItem('userRole');
-  localStorage.removeItem('userPlan');
-  localStorage.removeItem('planExpiry');
-  localStorage.removeItem('promocodeUsed');
-  localStorage.removeItem('isPremium');
-  localStorage.removeItem('guestMode');
+  const fixedKeys = [
+    'isAuth', 'userToken', 'userEmail', 'userRole', 'userPlan', 'planExpiry',
+    'promocodeUsed', 'isPremium', 'guestMode', 'parentName', 'parentPinOk',
+    'children', 'childrenNames', 'activeChildIndex', 'profileChildName', 'profileChildAge',
+    'profileComplete', 'parentConcerns', 'parentAlerts', 'childMode', 'currentCharacter',
+    'lastAppVisit', 'geroy-last-visit', 'geroy-streak', 'analytics_events', 'error_log'
+  ];
+  fixedKeys.forEach((k) => localStorage.removeItem(k));
+  Object.keys(localStorage).forEach((k) => {
+    if (/^(stats_|chatHistory_|gameProgress_|planCounters|geroy-notif-|notificationSettings)/.test(k)) {
+      localStorage.removeItem(k);
+    }
+  });
   document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 }
 
