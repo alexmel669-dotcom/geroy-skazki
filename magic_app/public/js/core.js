@@ -3,7 +3,7 @@
 // v5.0.5 (аудит безопасности и стабильности)
 // ========================================
 
-import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl } from './config.js';
+import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
 import { getChildGender, guessGenderFromName, applyGenderToText, gladToSeePhrase } from './gender.js';
 import {
   generateResponse, detectFear, detectPersonalData,
@@ -265,9 +265,10 @@ function getChildContextForAI() {
   };
 }
 
-function childAvatarImg(role) {
+function childAvatarImg(role, gender) {
+  const resolved = role || (gender === 'male' ? 'kid2' : 'kid1');
   const map = { kid1: 'kid1', kid2: 'kid2', lucik: 'lucik' };
-  return avatarImgHtml(map[role] || 'lucik', 36);
+  return avatarImgHtml(map[resolved] || 'lucik', 36);
 }
 
 function applyChildAvatar(child) {
@@ -509,8 +510,9 @@ export function showChildSelectModal() {
 
   list.innerHTML = children.map((c, i) => {
     return `<button class="modal-btn" style="width:100%;text-align:left;display:flex;align-items:center;gap:12px;" data-index="${i}">
-      ${childAvatarImg(c.avatarRole)}<span>${sanitizeInput(c.name)}, ${c.age} лет</span></button>`;
+      ${childAvatarImg(c.avatarRole, c.gender)}<span>${sanitizeInput(c.name)}, ${c.age} лет</span></button>`;
   }).join('');
+  initAvatarImages();
 
   modal.style.display = 'flex';
   list.querySelectorAll('[data-index]').forEach((btn) => {

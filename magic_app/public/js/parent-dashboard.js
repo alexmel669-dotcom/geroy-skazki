@@ -1,6 +1,6 @@
 import { bindNotificationSettingsUI, initNotificationScheduler, scheduleMissYouNotification } from './notifications.js';
 import { logout, checkAuth } from './auth.js';
-import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName, avatarImgHtml } from './config.js';
+import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName, avatarImgHtml, initAvatarImages } from './config.js';
 import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDaysRemaining, resetDailyCounters } from './core.js';
 import { getGameProgressSummary, loadGameProgress } from './game-progress.js';
 import { getChildGender, guessGenderFromName, chattedPast, pickByGender } from './gender.js';
@@ -184,7 +184,7 @@ function generateGameReportLines(childName, gender) {
   }
 
   const puzzleLevel = p.puzzle?.level || 1;
-  if (puzzleLevel > 1 || p.puzzle?.levelsCompleted) {
+  if (puzzleLevel > 1 || (p.puzzle?.levelsCompleted || 0) > 0) {
     const praise = pickByGender(gender, 'молодец', 'умница', 'молодец');
     lines.push(`Пазлы — ${puzzleLevel} уровень. Логика и усидчивость — ${childName} просто ${praise}!`);
   }
@@ -194,10 +194,9 @@ function generateGameReportLines(childName, gender) {
     lines.push(`В эмоциях ${childName} ${learned} лучше понимать чувства — это очень важно!`);
   }
 
-  const coloringCount = p.coloring?.level || (p.coloring?.completed ? 1 : 0);
-  if (coloringCount > 0 || p.coloring?.completed) {
+  if (p.coloring?.completed || (p.coloring?.level || 1) > 1) {
     const painted = pickByGender(gender, 'раскрасил', 'раскрасила', 'раскрасил');
-    const count = Math.max(coloringCount, p.coloring?.completed ? 1 : 0);
+    const count = Math.max(p.coloring?.level || 1, p.coloring?.completed ? 1 : 0);
     lines.push(`Творческие способности тоже развиваются — ${childName} ${painted} уже ${count} картинок!`);
   }
 
@@ -250,14 +249,22 @@ function generateChildReportText(stats, childName, gender, multiChild) {
     parts.push(`${childName} очень ${brave} и ${open}, ${pron} не боится говорить о своих чувствах!`);
   }
 
-  parts.push(...generateGameReportLines(childName, gender));
+  const gameLines = generateGameReportLines(childName, gender);
+  parts.push(...gameLines);
 
-  const became = pickByGender(gender, 'стал', 'стала', 'стал');
-  const confident = pickByGender(gender, 'уверенным', 'уверенной', 'уверенным');
-  const calm = pickByGender(gender, 'спокойным', 'спокойной', 'спокойным');
-  const glad = pickByGender(gender, 'рад', 'рада', 'рад');
-  const summaryHe = pickByGender(gender, 'Он', 'Она', 'Он');
-  parts.push(`В целом, ${childName} делает большие успехи! ${summaryHe} ${became} более ${confident} и ${calm}. Я ${glad}, что мы друзья!`);
+  const hasActivity = stats.totalChats > 0 || gameLines.length > 0;
+
+  if (hasActivity) {
+    const became = pickByGender(gender, 'стал', 'стала', 'стал');
+    const confident = pickByGender(gender, 'уверенным', 'уверенной', 'уверенным');
+    const calm = pickByGender(gender, 'спокойным', 'спокойной', 'спокойным');
+    const glad = pickByGender(gender, 'рад', 'рада', 'рад');
+    const summaryHe = pickByGender(gender, 'Он', 'Она', 'Он');
+    parts.push(`В целом, ${childName} делает большие успехи! ${summaryHe} ${became} более ${confident} и ${calm}. Я ${glad}, что мы друзья!`);
+  } else {
+    const waited = pickByGender(gender, 'буду ждать его', 'буду ждать её', 'буду ждать');
+    parts.push(`На этой неделе активности пока мало — ${waited} с радостью!`);
+  }
 
   return parts.join(' ');
 }
@@ -344,7 +351,8 @@ async function speakReport() {
 
     const greeting = getTimeOfDayGreeting();
     const parentName = getParentDisplayName(user);
-    await playTextAsSpeech(`${greeting}, ${parentName}!`);
+    const greetingOk = await playTextAsSpeech(`${greeting}, ${parentName}!`);
+    if (!greetingOk) throw new Error('tts_failed');
 
     for (let i = 0; i < childrenStats.length; i++) {
       const stats = childrenStats[i];
@@ -354,17 +362,23 @@ async function speakReport() {
         btn.textContent = `🎤 ${i + 1}/${childrenStats.length}: ${childName}...`;
       }
       const text = generateChildReportText(stats, childName, gender, multiChild);
-      await playTextAsSpeech(text);
+      const ok = await playTextAsSpeech(text);
+      if (!ok) throw new Error('tts_failed');
       if (i < childrenStats.length - 1) {
         await new Promise((r) => setTimeout(r, 2000));
       }
     }
 
     await playTextAsSpeech('Спасибо, что вы с нами!');
+  } catch (err) {
+    if (btn) btn.textContent = '⚠️ Не удалось воспроизвести отчёт';
+    console.warn('speakReport failed:', err);
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = '🎤 Прослушать отчёт по всем детям';
+      if (!String(btn.textContent).startsWith('⚠️')) {
+        btn.textContent = '🎤 Прослушать отчёт по всем детям';
+      }
     }
   }
 }
@@ -561,7 +575,9 @@ function getChildStats() {
   };
 }
 
-function childAvatarChip(role) {
+function childAvatarChip(child) {
+  const role = child.avatarRole
+    || (child.gender === 'male' ? 'kid2' : child.gender === 'female' ? 'kid1' : 'kid1');
   if (role === 'kid1' || role === 'kid2') return avatarImgHtml(role, 36);
   return avatarImgHtml('lucik', 36);
 }
@@ -573,10 +589,11 @@ function renderChildSelector() {
 
   let html = `<button class="child-chip ${currentChildIndex === -1 ? 'active' : ''}" data-index="-1">${avatarImgHtml('lucik', 28)} Гость</button>`;
   html += children.map((c, i) =>
-    `<button class="child-chip ${i === currentChildIndex ? 'active' : ''}" data-index="${i}">${childAvatarChip(c.avatarRole)} ${c.name}, ${c.age} лет</button>`
+    `<button class="child-chip ${i === currentChildIndex ? 'active' : ''}" data-index="${i}">${childAvatarChip(c)} ${c.name}, ${c.age} лет</button>`
   ).join('');
 
   container.innerHTML = html || '<span style="opacity:0.5;font-size:0.85rem;">Добавьте детей</span>';
+  initAvatarImages();
   container.querySelectorAll('.child-chip').forEach(btn => {
     btn.addEventListener('click', () => selectChild(parseInt(btn.dataset.index, 10)));
   });
@@ -712,6 +729,7 @@ function renderDialogs(history) {
       </div>
     `;
   }).join('');
+  initAvatarImages();
 }
 
 function renderInsights(fearStats, totalStories, totalGames, history) {
@@ -740,7 +758,7 @@ function renderGameProgress(childName) {
   if (!container) return;
   const games = getGameProgressSummary(childName === 'Гость' ? 'guest' : childName);
   container.innerHTML = games.map((g) => {
-    const pct = Math.min(100, Math.round((g.value / g.max) * 100));
+    const pct = g.max ? Math.min(100, Math.round((g.value / g.max) * 100)) : 0;
     return `
       <div class="fear-item" style="margin-bottom:12px;">
         <div class="fear-header">
@@ -920,7 +938,7 @@ function saveChildrenNames() {
       age: prev?.age || 5,
       index: i,
       gender: prev?.gender || 'unknown',
-      avatarRole: prev?.avatarRole || 'lucik'
+      avatarRole: prev?.avatarRole || (prev?.gender === 'male' ? 'kid2' : 'kid1')
     };
   });
 
@@ -970,6 +988,7 @@ function showAttentionModal() {
         </div>
       `;
     }).join('');
+    initAvatarImages();
   }
   document.getElementById('attentionModal').style.display = 'flex';
 }
@@ -996,6 +1015,7 @@ document.getElementById('weeklyDigestBtn')?.addEventListener('click', async () =
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+  initAvatarImages();
   enterParentCabinet();
   scheduleMissYouNotification();
 });

@@ -3,6 +3,10 @@ import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 import { getChildGender, applyGenderToText } from '../gender.js';
+import { avatarUrl } from '../config.js';
+
+const lucikSprite = new Image();
+lucikSprite.src = avatarUrl('lucik');
 
 const MAZES = [
   [[1,1,1,1,1],[1,0,0,0,1],[1,0,1,0,1],[1,0,0,0,1],[1,1,1,1,1]],
@@ -60,6 +64,7 @@ export function startMazeGame(level) {
   const ctx = canvas.getContext('2d');
   let startX = 0;
   let startY = 0;
+  lucikSprite.onload = () => draw();
 
   function draw() {
     ctx.fillStyle = '#0d1025';
@@ -85,10 +90,24 @@ export function startMazeGame(level) {
     ctx.arc(exit.x * cell + cell / 2, exit.y * cell + cell / 2, cell * 0.28, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.font = `${cell * 0.65}px serif`;
+    const pxX = px * cell + 2;
+    const pyY = py * cell + 2;
+    const size = cell - 4;
+    if (lucikSprite.complete && lucikSprite.naturalWidth) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(pxX + size / 2, pyY + size / 2, size / 2, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(lucikSprite, pxX, pyY, size, size);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#ffb347';
+      ctx.beginPath();
+      ctx.arc(pxX + size / 2, pyY + size / 2, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🐱', px * cell + cell / 2, py * cell + cell / 2);
     ctx.fillText('⭐', exit.x * cell + cell / 2, exit.y * cell + cell / 2 + cell * 0.35);
   }
 

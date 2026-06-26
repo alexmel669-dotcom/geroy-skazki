@@ -1,3 +1,5 @@
+import { initAvatarImages } from './config.js';
+
 const API_BASE = '/api';
 
 const ERROR_MESSAGES = {
@@ -263,6 +265,7 @@ function getCookie(name) {
 // Инициализация обработчиков форм
 if (typeof window !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
+    initAvatarImages();
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
     

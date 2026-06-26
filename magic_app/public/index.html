@@ -10,13 +10,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
-  <link rel="apple-touch-icon" href="/assets/images/icon-192.svg">
-  <link rel="icon" href="/assets/images/icon-192.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/images/icon-192.svg">
+  <link rel="icon" href="assets/images/icon-192.svg" type="image/svg+xml">
 </head>
 <body>
 <div class="container landing">
   <div class="landing-hero">
-    <img src="/assets/images/avatar.svg" alt="Люцик" class="landing-hero-img" width="110" height="110" style="border-radius:50%; border:4px solid rgba(255,255,255,0.25); box-shadow:0 10px 35px rgba(0,0,0,0.5);">
+    <img src="assets/images/avatar.svg" data-avatar="lucik" alt="Люцик" class="landing-hero-img" width="110" height="110" style="border-radius:50%; border:4px solid rgba(255,255,255,0.25); box-shadow:0 10px 35px rgba(0,0,0,0.5);">
     <h1>Герой Сказок — твой волшебный друг</h1>
     <p class="landing-subtitle">Люцик говорит с ребёнком голосом, помогает справляться со страхами и играет в игры</p>
   </div>
@@ -47,7 +47,7 @@
         <p>5 игр для разных возрастов: от рыбалки до текстовых квестов. Память, логика, эмоциональный интеллект.</p>
       </div>
       <div class="feature-card">
-        <span class="feature-icon">👨‍👩‍👧</span>
+        <img src="assets/images/avatar.svg" data-avatar="lucik" alt="" class="feature-avatar-img" width="48" height="48" style="border-radius:50%;">
         <h3>Родительский кабинет</h3>
         <p>Статистика общения, выявленные беспокойства, рекомендации психолога. Вы в курсе, но без вторжения.</p>
       </div>
@@ -176,6 +176,8 @@
 <script type="module">
   import { trackEvent } from './js/analytics.js';
   import { initFeedbackButton, openFeedbackModal } from './js/feedback.js';
+  import { initAvatarImages } from './js/config.js';
+  initAvatarImages();
   trackEvent('page_view', 'landing');
   initFeedbackButton();
   document.getElementById('feedbackLandingBtn')?.addEventListener('click', (e) => {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geroy-skazki-v5.0.11';
+const CACHE_NAME = 'geroy-skazki-v5.0.12';
 const ASSETS = [
   '/',
   '/app.html',
@@ -14,10 +14,15 @@ const ASSETS = [
   '/css/auth.css',
   '/assets/images/parent-bg.png',
   '/assets/images/avatar.svg',
+  '/assets/images/avatar.png',
   '/assets/images/kid1.svg',
+  '/assets/images/kid1.png',
   '/assets/images/kid2.svg',
+  '/assets/images/kid2.png',
   '/assets/images/mom.svg',
+  '/assets/images/mom.png',
   '/assets/images/dad.svg',
+  '/assets/images/dad.png',
   '/assets/images/parent-bg.svg',
   '/js/main.js',
   '/js/core.js',
@@ -50,6 +55,9 @@ const ASSETS = [
   '/js/games/quest.js',
   '/js/games/maze.js',
   '/js/games/quiz.js',
+  '/js/parent-dashboard.js',
+  '/js/feedback.js',
+  '/js/admin-dashboard.js',
   '/manifest.json'
 ];
 

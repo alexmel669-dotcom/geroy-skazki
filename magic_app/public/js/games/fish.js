@@ -103,7 +103,7 @@ export function startFishGame(level) {
     appState.gameActive = false;
     clearInterval(timerInterval);
     clearInterval(moveInterval);
-    saveChildData(appState.currentChildIndex);
+    saveChildData({ fishScore: appState.fishScore || 0 });
     const childName = getActiveChildName();
     recordFishResult(score, level, childName);
     close();

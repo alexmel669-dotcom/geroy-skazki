@@ -9,29 +9,55 @@ export const PROMOCODES = {
   FRIENDLYCAT: { plan: 'basic', days: 7 }
 };
 
-export const ASSET_BASE = '/assets/images/';
+const AVATAR_FILES = { lucik: 'avatar', mom: 'mom', dad: 'dad', kid1: 'kid1', kid2: 'kid2' };
 
-export const AVATAR_ICONS = {
-  lucik: '/assets/images/avatar.svg',
-  mom: '/assets/images/mom.svg',
-  dad: '/assets/images/dad.svg',
-  kid1: '/assets/images/kid1.svg',
-  kid2: '/assets/images/kid2.svg'
-};
+let _assetBase = null;
 
-export function assetUrl(path) {
-  if (!path) return AVATAR_ICONS.lucik;
-  if (path.startsWith('http') || path.startsWith('/')) return path;
-  return `${ASSET_BASE}${path.replace(/^\/?assets\/images\//, '')}`;
+/** Базовый путь к картинкам: file:// → относительный, иначе от корня сайта */
+export function resolveAssetBase() {
+  if (_assetBase) return _assetBase;
+  if (typeof window === 'undefined') {
+    _assetBase = '/assets/images/';
+  } else if (window.location.protocol === 'file:') {
+    _assetBase = 'assets/images/';
+  } else {
+    _assetBase = '/assets/images/';
+  }
+  return _assetBase;
 }
 
-export function avatarImgHtml(role, size = 36) {
-  const src = AVATAR_ICONS[role] || AVATAR_ICONS.lucik;
-  return `<img src="${src}" width="${size}" height="${size}" alt="" class="child-chip-avatar" style="border-radius:50%;object-fit:cover;vertical-align:middle;">`;
+export const ASSET_BASE = '/assets/images/';
+
+export function avatarUrl(role, ext = 'svg') {
+  const name = AVATAR_FILES[role] || AVATAR_FILES.lucik;
+  return `${resolveAssetBase()}${name}.${ext}`;
+}
+
+export function getAvatarIcon(role) {
+  return avatarUrl(role, 'svg');
+}
+
+export const AVATAR_ICONS = new Proxy({}, {
+  get(_t, prop) {
+    return getAvatarIcon(String(prop));
+  }
+});
+
+export function assetUrl(path) {
+  if (!path) return avatarUrl('lucik');
+  if (path.startsWith('http') || path.startsWith('data:')) return path;
+  const file = path.replace(/^\/?assets\/images\//, '');
+  return `${resolveAssetBase()}${file}`;
+}
+
+export function avatarImgHtml(role, size = 36, className = 'child-chip-avatar') {
+  const svg = avatarUrl(role, 'svg');
+  const png = avatarUrl(role, 'png');
+  return `<img src="${svg}" data-png="${png}" data-avatar="${role}" width="${size}" height="${size}" alt="" class="${className}" style="border-radius:50%;object-fit:cover;vertical-align:middle;" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src=this.dataset.png}">`;
 }
 
 export const CONFIG = {
-  APP_VERSION: '5.0.11',
+  APP_VERSION: '5.0.12',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -141,6 +167,44 @@ export const CHARACTERS = {
   }
 };
 
+export function refreshCharacterIcons() {
+  for (const c of Object.values(CHARACTERS)) {
+    if (c.avatar) c.icon = assetUrl(c.avatar);
+  }
+}
+
+export function initAvatarImages() {
+  refreshCharacterIcons();
+  const fix = (img) => {
+    if (!img || img.dataset.avatarReady) return;
+    const role = img.dataset.avatar;
+    if (role) {
+      img.src = avatarUrl(role, 'svg');
+      img.dataset.png = avatarUrl(role, 'png');
+    } else {
+      const file = (img.getAttribute('src') || '').split('/').pop() || '';
+      const map = { 'avatar.svg': 'lucik', 'avatar.png': 'lucik', 'mom.svg': 'mom', 'dad.svg': 'dad', 'kid1.svg': 'kid1', 'kid2.svg': 'kid2' };
+      const r = map[file];
+      if (r) {
+        img.src = avatarUrl(r, 'svg');
+        img.dataset.png = avatarUrl(r, 'png');
+      } else if (file) {
+        img.src = assetUrl(file);
+        img.dataset.png = img.src.replace(/\.svg(\?.*)?$/i, '.png');
+      }
+    }
+    img.dataset.avatarReady = '1';
+    img.onerror = () => {
+      if (img.dataset.fb) return;
+      img.dataset.fb = '1';
+      if (img.dataset.png) img.src = img.dataset.png;
+    };
+  };
+  document.querySelectorAll(
+    'img[data-avatar], .header-avatar, .avatar-img, #avatar, .auth-avatar img, .landing-hero-img, .child-chip-avatar, .feature-avatar-img'
+  ).forEach(fix);
+}
+
 export const FALLBACK_REPLIES = {
   lucik: 'Мурр... Я немного задумался. Давай попробуем ещё раз? 🐱',
   mom: 'Дорогой, я тебя слушаю. Расскажи ещё раз?',
@@ -206,9 +270,14 @@ export function getFearDisplayName(key) {
 }
 
 export function validateConfig() {
+  refreshCharacterIcons();
   console.log('✅ Config validated, version:', CONFIG.APP_VERSION, 'env:', ENV.mode);
   if (ENV.isDev || ENV.isStaging) console.log('🛠 Dev/staging mode active');
   return true;
 }
 
-export default { CONFIG, PLANS, GAMES, PROMOCODES, CHARACTERS, FALLBACK_REPLIES, FEAR_LABELS, ADMIN_EMAILS, ENV, validateConfig, getAppMode };
+export default {
+  CONFIG, PLANS, GAMES, PROMOCODES, CHARACTERS, FALLBACK_REPLIES, FEAR_LABELS, ADMIN_EMAILS, ENV,
+  ASSET_BASE, AVATAR_ICONS, assetUrl, avatarUrl, avatarImgHtml, initAvatarImages, resolveAssetBase,
+  migrateFearStatsObject, getFearDisplayName, validateConfig, getAppMode
+};

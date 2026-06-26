@@ -2,7 +2,7 @@
 // main.js — ГЛАВНЫЙ ФАЙЛ ПРИЛОЖЕНИЯ
 // ========================================
 
-import { CONFIG, validateConfig, ENV, CHARACTERS } from './config.js';
+import { CONFIG, validateConfig, ENV, CHARACTERS, initAvatarImages } from './config.js';
 import {
   initCore, getActiveChildName, getActiveChild, updateStatsUI, cycleCharacter,
   selectGuestMode, showChildSelectModal, saveChildData, appState
@@ -33,9 +33,11 @@ async function tryBrowserSpeechRecognition() {
 function initializeApp() {
   console.log('🚀 Initializing Main App v' + CONFIG.APP_VERSION);
   validateConfig();
+  initAvatarImages();
   initCore();
   setupAdditionalHandlers();
   updateUI();
+  initAvatarImages();
   if (ENV.isDev || ENV.isStaging) initDevPanel();
   initNotificationScheduler().catch(() => {});
   checkPlanExpiryNotification();

@@ -1,4 +1,4 @@
-import { CONFIG, ENV, AVATAR_ICONS } from './config.js';
+import { CONFIG, ENV, avatarUrl } from './config.js';
 
 import { getActiveChildName, getActiveChild, updateStatsUI } from './core.js';
 
@@ -41,12 +41,7 @@ export function setAvatarState(state) {
   if (map[state]) avatar.classList.add(map[state]);
 }
 
-function updateAvatar() {
-    const avatar = document.getElementById('avatar');
-    if (!avatar) return;
-
-    const savedChar = localStorage.getItem('currentCharacter') || 'lucik';
-    const src = AVATAR_ICONS[savedChar] || AVATAR_ICONS.lucik;
+function setAvatarElementSrc(avatar, src) {
     if (avatar.tagName === 'IMG') {
         avatar.src = src;
     } else {
@@ -54,6 +49,21 @@ function updateAvatar() {
         avatar.style.backgroundSize = 'cover';
         avatar.style.backgroundPosition = 'center';
     }
+}
+
+function updateAvatar() {
+    const avatar = document.getElementById('avatar');
+    if (!avatar) return;
+
+    const child = getActiveChild();
+    if (child) {
+        const role = child.avatarRole || (String(child.avatar || '').includes('kid2') ? 'kid2' : 'kid1');
+        setAvatarElementSrc(avatar, avatarUrl(role));
+        return;
+    }
+
+    const savedChar = localStorage.getItem('currentCharacter') || 'lucik';
+    setAvatarElementSrc(avatar, avatarUrl(savedChar));
 }
 
 // ========================================

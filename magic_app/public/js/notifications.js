@@ -1,6 +1,8 @@
-import { ENV } from './config.js';
+import { ENV, avatarUrl } from './config.js';
 
-const ICON = '/assets/images/avatar.svg';
+function getNotifyIcon() {
+  return avatarUrl('lucik');
+}
 const STORAGE_KEY = 'notificationSettings';
 
 const DEFAULT_SETTINGS = {
@@ -38,16 +40,16 @@ export function scheduleNotification(title, body, delayMs = 0) {
       navigator.serviceWorker.ready.then((reg) => {
         reg.showNotification(title, {
           body,
-          icon: ICON,
-          badge: ICON,
+          icon: getNotifyIcon(),
+          badge: getNotifyIcon(),
           vibrate: [200, 100, 200],
           data: { url: '/app.html' }
         });
       }).catch(() => {
-        new Notification(title, { body, icon: ICON });
+        new Notification(title, { body, icon: getNotifyIcon() });
       });
     } else {
-      new Notification(title, { body, icon: ICON });
+      new Notification(title, { body, icon: getNotifyIcon() });
     }
   }, delayMs);
 
