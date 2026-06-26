@@ -138,6 +138,8 @@ export default async function handler(req, res) {
     }
     messages.push({ role: 'user', content: message });
 
+    const maxTokens = requestType === 'story' ? 400 : 100;
+
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -147,7 +149,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages,
-        max_tokens: 400,
+        max_tokens: maxTokens,
         temperature: 0.85
       })
     });

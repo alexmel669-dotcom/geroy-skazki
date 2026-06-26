@@ -30,7 +30,7 @@
 
   <div class="avatar-section">
     <div class="avatar-container">
-      <img class="avatar avatar-img" id="avatar" src="/assets/images/avatar.svg" alt="Люцик">
+      <img class="avatar avatar-img" id="avatar" src="/assets/images/avatar.svg" alt="Люцик" onerror="this.style.display='none'">
     </div>
     <div class="child-name" id="childNameLabel">Загрузка...</div>
   </div>
@@ -54,7 +54,10 @@
   </div>
 
   <div class="mic-wrapper">
-    <button class="mic-btn" id="micBtn">🎤</button>
+    <p id="thinkingDots" class="thinking-dots" style="display:none;">🤔 Люцик думает...</p>
+    <button class="mic-btn mic-idle" id="micBtn" type="button" aria-label="Микрофон">
+      <span class="mic-icon">🎤</span>
+    </button>
   </div>
 </div>
 
@@ -70,12 +73,27 @@
 
 <script type="module">
   import { initChildModeFromUrl } from './js/child-mode.js';
+  import { initFeedbackButton } from './js/feedback.js';
   initChildModeFromUrl();
+  initFeedbackButton();
 </script>
 <script type="module" src="js/main.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#6C63FF;color:#fff;padding:12px;text-align:center;z-index:9999;font-size:14px;';
+            banner.innerHTML = '🔄 Доступна новая версия! <button type="button" onclick="location.reload()" style="margin-left:12px;padding:6px 16px;background:#fff;color:#6C63FF;border:none;border-radius:4px;cursor:pointer;">Обновить</button>';
+            document.body.appendChild(banner);
+          }
+        });
+      });
+    }).catch(() => {});
   }
 </script>
 </body>

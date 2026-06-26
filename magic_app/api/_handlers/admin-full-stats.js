@@ -1,7 +1,8 @@
 import { setCors } from '../_middleware/cors.js';
 import { buildFullStats } from './admin-stats.js';
+import { ADMIN_API_TOKEN } from '../_lib/admin-token.js';
 
-export const ADMIN_API_TOKEN = 'Bearer admin-token-v5.0.2';
+export { ADMIN_API_TOKEN };
 
 export default async function handler(req, res) {
   if (setCors(req, res)) return;

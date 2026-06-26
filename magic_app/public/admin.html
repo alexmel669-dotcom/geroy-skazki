@@ -13,7 +13,7 @@
   <div class="admin-login" id="adminLogin">
     <div class="admin-login-card">
       <h2>🔐 Вход в админ-панель</h2>
-      <p class="admin-login-sub">«Герой Сказок» v5.0.2</p>
+      <p class="admin-login-sub">«Герой Сказок» v5.0.3</p>
       <input type="email" id="adminEmail" placeholder="Email" value="admin@geroy-skazki.local" autocomplete="username">
       <input type="password" id="adminPassword" placeholder="Пароль" autocomplete="current-password">
       <button type="button" id="adminLoginBtn">Войти</button>
@@ -113,6 +113,24 @@
     <div class="admin-section">
       <h3>⏰ Активность по времени суток</h3>
       <div class="time-bars" id="timeOfDay"></div>
+    </div>
+
+    <div class="admin-section">
+      <h3>💬 Последние отзывы</h3>
+      <div class="admin-table-wrap">
+        <table class="admin-table" id="feedbacksTable">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Оценка</th>
+              <th>Текст</th>
+              <th>Страница</th>
+              <th>Кто</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </div>
 

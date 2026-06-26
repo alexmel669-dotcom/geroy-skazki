@@ -300,17 +300,24 @@ function setAvatarIcon(src) {
 function setMicVisualState(state) {
   const micBtn = document.getElementById('micBtn');
   if (!micBtn) return;
-  micBtn.classList.remove('mic-recording', 'mic-processing', 'mic-idle');
+  micBtn.classList.remove('mic-recording', 'mic-processing', 'mic-idle', 'recording', 'processing');
   if (state === 'recording') {
-    micBtn.classList.add('mic-recording');
-    micBtn.textContent = '⏺️';
+    micBtn.classList.add('mic-recording', 'recording');
   } else if (state === 'processing') {
-    micBtn.classList.add('mic-processing');
-    micBtn.textContent = '⏳';
+    micBtn.classList.add('mic-processing', 'processing');
   } else {
     micBtn.classList.add('mic-idle');
-    micBtn.textContent = '🎤';
   }
+}
+
+function showThinking() {
+  const dots = document.getElementById('thinkingDots');
+  if (dots) dots.style.display = 'block';
+}
+
+function hideThinking() {
+  const dots = document.getElementById('thinkingDots');
+  if (dots) dots.style.display = 'none';
 }
 
 const MIC_RETRY_PHRASES = [
@@ -972,8 +979,7 @@ async function handleLongPress() {
   }
 
   isProcessing = true;
-  const micBtn = document.getElementById('micBtn');
-  if (micBtn) micBtn.textContent = '🌙';
+  setMicVisualState('processing');
   setAvatarState('eating');
   try {
     const aiResult = await generateResponse('Расскажи сказку на ночь', getChildContextForAI());
@@ -987,7 +993,7 @@ async function handleLongPress() {
     logError('bedtime_story', e.message);
   } finally {
     isProcessing = false;
-    if (micBtn) micBtn.textContent = '🎤';
+    setMicVisualState('idle');
     updateAvatarMoodState();
   }
 }
@@ -1040,20 +1046,25 @@ async function handleUserMessage(text) {
   if (dictReply && requestType === 'chat') {
     reply = dictReply;
   } else {
-    const aiResult = await generateResponse(text, {
-      ...getChildContextForAI(),
-      requestType,
-      timeContext
-    });
-    reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
-    responseType = aiResult.type || requestType;
-    if (typeof aiResult === 'object' && aiResult) {
-      if (aiResult.childName || aiResult.childAge != null) {
-        saveDetectedProfile({ childName: aiResult.childName, childAge: aiResult.childAge });
+    showThinking();
+    try {
+      const aiResult = await generateResponse(text, {
+        ...getChildContextForAI(),
+        requestType,
+        timeContext
+      });
+      reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
+      responseType = aiResult.type || requestType;
+      if (typeof aiResult === 'object' && aiResult) {
+        if (aiResult.childName || aiResult.childAge != null) {
+          saveDetectedProfile({ childName: aiResult.childName, childAge: aiResult.childAge });
+        }
+        if (aiResult.concerns?.length) saveParentConcerns(aiResult.concerns);
       }
-      if (aiResult.concerns?.length) saveParentConcerns(aiResult.concerns);
+      learnFromResponse(text, reply);
+    } finally {
+      hideThinking();
     }
-    learnFromResponse(text, reply);
   }
 
   if (globalThis.__lastAiMs) applyAiTiming();

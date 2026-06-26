@@ -26,6 +26,7 @@ import adminFullStats from './_handlers/admin-full-stats.js';
 import verifyPin from './_handlers/verify-pin.js';
 import childToken from './_handlers/child-token.js';
 import weeklyDigest from './_handlers/weekly-digest.js';
+import feedback from './_handlers/feedback.js';
 
 
 
@@ -71,7 +72,9 @@ const ROUTES = {
 
   'child-token': childToken,
 
-  'weekly-digest': weeklyDigest
+  'weekly-digest': weeklyDigest,
+
+  feedback
 
 };
 

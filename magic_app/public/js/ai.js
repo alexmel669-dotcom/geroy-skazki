@@ -3,6 +3,9 @@
 // ========================================
 
 import { CHARACTERS, PLANS } from './config.js';
+import { getTimeContext } from './context.js';
+
+const AI_TIMEOUT = 8000;
 
 let currentCharacter = 'lucik';
 let currentTopic = '';
@@ -133,7 +136,17 @@ export async function generateResponse(prompt, childInfo = {}) {
     content: m.message
   }));
 
-  const fallback = { text: localFallback(prompt), childName: null, childAge: null, concerns: null, mood: 'neutral' };
+  const fallback = {
+    text: localFallback(prompt),
+    childName: null,
+    childAge: null,
+    concerns: null,
+    mood: 'neutral',
+    type: 'fallback'
+  };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT);
 
   try {
     const response = await fetch('/api/generate', {
@@ -150,7 +163,8 @@ export async function generateResponse(prompt, childInfo = {}) {
         history,
         topic: currentTopic,
         isFirstMessage: profile.isFirstMessage
-      })
+      }),
+      signal: controller.signal
     });
     if (response.ok) {
       const data = await response.json();
@@ -167,7 +181,15 @@ export async function generateResponse(prompt, childInfo = {}) {
       }
     }
   } catch (err) {
+    if (err.name === 'AbortError') {
+      console.warn('⚠️ AI timeout, using fallback');
+      const ctx = childInfo.timeContext || getTimeContext(profile.name || 'друг');
+      fallback.text = ctx.greeting || localFallback(prompt);
+      return fallback;
+    }
     console.warn('⚠️ generate API failed:', err);
+  } finally {
+    clearTimeout(timeout);
   }
   return fallback;
 }

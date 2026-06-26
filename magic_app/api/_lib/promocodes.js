@@ -1,4 +1,5 @@
 export const PROMOCODES = {
+  /** Тестерский промокод: basic 30 дней. За 3 дня до конца — уведомление; продление +7 дней за отзыв ⭐4+ */
   TESTER2026: { plan: 'basic', days: 30 },
   FAMILYTEST: { plan: 'family', days: 14 },
   PSYCHOLOGIST: { plan: 'basic', days: 90 },

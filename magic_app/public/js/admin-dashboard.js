@@ -3,7 +3,7 @@ const ADMIN_CREDENTIALS = {
   password: 'admintuti13'
 };
 
-const ADMIN_API_TOKEN = 'Bearer admin-token-v5.0.2';
+const ADMIN_API_TOKEN = 'Bearer admin-token-v5.0.3';
 const API = '/api/admin/full-stats';
 
 const PLAN_LABELS = { free: 'Бесплатный', basic: 'Базовый', family: 'Семейный' };
@@ -136,6 +136,24 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+function renderFeedbacks(feedbacks) {
+  const tbody = document.querySelector('#feedbacksTable tbody');
+  if (!tbody) return;
+  if (!feedbacks?.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Отзывов пока нет</td></tr>';
+    return;
+  }
+  tbody.innerHTML = feedbacks.map((f) => `
+    <tr>
+      <td>${escapeHtml((f.createdAt || '').split('T')[0] || '—')}</td>
+      <td>${'★'.repeat(f.rating || 0)}</td>
+      <td>${escapeHtml((f.text || '—').slice(0, 120))}</td>
+      <td>${escapeHtml(f.page || '—')}</td>
+      <td>${escapeHtml(f.email || 'guest')}</td>
+    </tr>
+  `).join('');
+}
+
 async function loadAdminStats() {
   const errEl = document.getElementById('adminLoadError');
   errEl.style.display = 'none';
@@ -177,6 +195,7 @@ async function loadAdminStats() {
     renderChildrenTable(stats.children);
     renderGameUsage(stats.gameUsage);
     renderTimeOfDay(stats.timeOfDay);
+    renderFeedbacks(stats.feedbacks);
   } catch (error) {
     console.error('Admin stats error:', error);
     errEl.textContent = 'Ошибка сети при загрузке статистики';

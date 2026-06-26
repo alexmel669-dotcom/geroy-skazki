@@ -4,6 +4,7 @@ import { verifyAdmin } from '../_middleware/auth.js';
 import { getAllUsers, findUser, getDialogs } from '../_lib/users.js';
 import { getEffectivePlan } from '../_lib/promocodes.js';
 import { getAnalyticsStats } from '../_lib/analytics-store.js';
+import { getRecentFeedbacks } from '../_lib/feedbacks.js';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
@@ -109,6 +110,8 @@ export async function buildFullStats() {
     .sort((a, b) => b.streak - a.streak)
     .slice(0, 10);
 
+  const feedbacks = await getRecentFeedbacks(20);
+
   return {
     total: userList.length,
     dau: base.dau,
@@ -123,6 +126,7 @@ export async function buildFullStats() {
     avgSessionMinutes: 12,
     suspiciousCount: suspicious.length,
     streakLeaders,
+    feedbacks,
     totalChildren: base.totalChildren,
     updatedAt: now.toISOString()
   };

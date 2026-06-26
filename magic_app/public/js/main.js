@@ -11,7 +11,8 @@ import { getCharacter } from './ai.js';
 import { synthesizeSpeech } from './audio.js';
 import { startRecording, stopRecording, isRecording, browserSpeechRecognition } from './mic.js';
 import { updateUI, showNotification, initDevPanel } from './ui.js';
-import { initNotificationScheduler } from './notifications.js';
+import { initNotificationScheduler, checkPlanExpiryNotification } from './notifications.js';
+import { initFeedbackButton } from './feedback.js';
 
 async function playWelcomeGreeting() {
   const modal = document.getElementById('childSelectModal');
@@ -38,6 +39,8 @@ function initializeApp() {
   updateUI();
   if (ENV.isDev || ENV.isStaging) initDevPanel();
   initNotificationScheduler().catch(() => {});
+  checkPlanExpiryNotification();
+  initFeedbackButton();
   setTimeout(() => {
     playWelcomeGreeting().catch((err) => console.warn('Welcome failed:', err));
   }, 1000);

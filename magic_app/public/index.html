@@ -9,13 +9,14 @@
   <meta name="theme-color" content="#6C63FF">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" href="assets/images/avatar.svg">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
 </head>
 <body>
 <div class="container landing">
   <div class="landing-hero">
-    <img src="assets/images/avatar.svg" alt="Люцик" class="landing-hero-img">
+    <img src="assets/images/avatar.svg" alt="Люцик" class="landing-hero-img" onerror="this.style.display='none'">
     <h1>Герой Сказок — твой волшебный друг</h1>
     <p class="landing-subtitle">Люцик говорит с ребёнком голосом, помогает справляться со страхами и играет в игры</p>
   </div>
@@ -173,7 +174,9 @@
 </script>
 <script type="module">
   import { trackEvent } from './js/analytics.js';
+  import { initFeedbackButton } from './js/feedback.js';
   trackEvent('page_view', 'landing');
+  initFeedbackButton();
 </script>
 </body>
 </html>

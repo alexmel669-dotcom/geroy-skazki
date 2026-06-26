@@ -1,20 +1,15 @@
 {
-  "name": "Люцик — Герой Сказок",
-  "short_name": "Люцик",
-  "version": "5.0.2",
+  "name": "Герой Сказок",
+  "short_name": "Герой Сказок",
+  "description": "Люцик — ИИ-помощник для детей 3-14 лет",
+  "version": "5.0.3",
   "start_url": "/app.html",
   "display": "standalone",
-  "background_color": "#151521",
-  "theme_color": "#6C63FF",
   "orientation": "portrait",
+  "background_color": "#6C63FF",
+  "theme_color": "#6C63FF",
   "icons": [
-    { "src": "assets/images/avatar.svg", "sizes": "72x72", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "assets/images/avatar.svg", "sizes": "96x96", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "assets/images/avatar.svg", "sizes": "128x128", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "assets/images/avatar.svg", "sizes": "144x144", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "assets/images/avatar.svg", "sizes": "152x152", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "assets/images/avatar.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },
-    { "src": "assets/images/avatar.svg", "sizes": "384x384", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "assets/images/avatar.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/assets/images/avatar.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/assets/images/avatar.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }

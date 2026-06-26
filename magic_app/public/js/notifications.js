@@ -147,6 +147,20 @@ if (ENV.isDev) {
   console.log('🔔 Notifications module loaded');
 }
 
+export function checkPlanExpiryNotification() {
+  const expiry = localStorage.getItem('planExpiry');
+  if (!expiry) return;
+  const daysLeft = Math.ceil((new Date(expiry) - Date.now()) / 86400000);
+  if (daysLeft > 3 || daysLeft < 0) return;
+  if (alreadySentToday('planExpiry3d')) return;
+  scheduleNotification(
+    '⏰ Тариф скоро закончится',
+    `Осталось ${daysLeft} ${daysLeft === 1 ? 'день' : 'дня'}. Оставьте отзыв — продлим на 7 дней!`,
+    2000
+  );
+  markSentToday('planExpiry3d');
+}
+
 export function scheduleMissYouNotification() {
   const lastVisit = localStorage.getItem('geroy-last-visit');
   if (!lastVisit) return;
