@@ -185,11 +185,13 @@
 
   <div class="card">
     <h2>👶 Дети</h2>
+    <div class="children-tabs" id="childrenTabs"></div>
     <div class="child-selector" id="childSelector"></div>
     <input type="text" id="childrenNamesInput" class="children-input" placeholder="Имена через запятую: Саша, Миша, Катя">
     <button class="btn-save" onclick="saveChildrenNames()">💾 Сохранить</button>
   </div>
-  
+
+  <div id="childStats">
   <div class="card">
     <h2>📊 Общая статистика</h2>
     <div id="statsContainer"><div class="empty-state">Загрузка...</div></div>
@@ -225,6 +227,7 @@
   <div class="card">
     <h2>💡 Выводы</h2>
     <div id="insightsContainer"><div class="empty-state">Недостаточно данных для выводов</div></div>
+  </div>
   </div>
 
   <div class="card">

@@ -78,7 +78,7 @@ export function avatarImgHtml(role, size = 36, className = 'child-chip-avatar') 
 }
 
 export const CONFIG = {
-  APP_VERSION: '5.1.3',
+  APP_VERSION: '5.1.4',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -103,21 +103,21 @@ export const PLANS = {
     name: 'Бесплатный',
     storiesPerDay: 3,
     characters: ['lucik'],
-    games: ['fish', 'memory'],
+    games: ['fish', 'memory', 'runner', 'musicCat'],
     memoryDays: 3
   },
   basic: {
     name: 'Базовый',
     storiesPerDay: 15,
     characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
-    games: ['fish', 'puzzle', 'memory', 'riddles', 'quest', 'maze', 'quiz'],
+    games: ['fish', 'puzzle', 'memory', 'riddles', 'quest', 'maze', 'quiz', 'runner', 'drawAi', 'musicCat', 'constellation', 'popFears'],
     memoryDays: 14
   },
   family: {
     name: 'Семейный',
     storiesPerDay: 15,
     characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
-    games: ['fish', 'puzzle', 'memory', 'riddles', 'quest', 'maze', 'quiz'],
+    games: ['fish', 'puzzle', 'memory', 'riddles', 'quest', 'maze', 'quiz', 'runner', 'drawAi', 'musicCat', 'constellation', 'popFears'],
     memoryDays: 14,
     maxChildren: 3
   }
@@ -132,7 +132,12 @@ export const GAMES = {
   riddles: { name: 'Загадки', ages: [8, 14], icon: '❓' },
   quest: { name: 'Квест', ages: [10, 14], icon: '🗺️' },
   maze: { name: 'Лабиринт', ages: [6, 14], icon: '🌀' },
-  quiz: { name: 'Викторина', ages: [8, 14], icon: '❓' }
+  quiz: { name: 'Викторина', ages: [8, 14], icon: '❓' },
+  runner: { name: 'Люцик-раннер', ages: [4, 14], icon: '🏃', file: 'runner' },
+  drawAi: { name: 'Рисовалка с ИИ', ages: [5, 14], icon: '🎨', file: 'draw-ai' },
+  musicCat: { name: 'Музыкальный кот', ages: [3, 14], icon: '🎵', file: 'music-cat' },
+  constellation: { name: 'Созвездия', ages: [6, 14], icon: '🌟', file: 'constellation' },
+  popFears: { name: 'Лопни страхи', ages: [4, 10], icon: '🫧', file: 'pop-fears' }
 };
 
 export const CHARACTERS = {
@@ -183,7 +188,7 @@ export const CHARACTERS = {
   kid2: {
     id: 'kid2',
     name: 'Мальчик',
-    voice: 'oksana',
+    voice: 'filipp',
     gender: 'male',
     avatar: 'assets/images/kid2.png',
     emoji: '👦',

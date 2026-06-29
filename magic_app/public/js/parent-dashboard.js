@@ -513,11 +513,12 @@ async function verifyPinSubmit() {
 }
 
 async function connectChildDevice() {
-  const res = await fetch('/api/child-token', {
+  const idx = currentChildIndex >= 0 ? currentChildIndex : 0;
+  const res = await fetch(`/api/child-token?child=${idx}`, {
     method: 'POST',
     credentials: 'include',
     headers: authHeaders(),
-    body: JSON.stringify({ childIndex: currentChildIndex >= 0 ? currentChildIndex : 0 })
+    body: JSON.stringify({ childIndex: idx })
   });
   const data = await res.json();
   if (!res.ok) {
@@ -545,6 +546,79 @@ async function connectChildDevice() {
 
 let currentChildIndex = parseInt(localStorage.getItem('activeChildIndex') ?? '-1', 10);
 if (Number.isNaN(currentChildIndex)) currentChildIndex = -1;
+let activeChild = currentChildIndex >= 0 ? currentChildIndex : 0;
+
+function childTabEmoji(child) {
+  if (child.avatar && !String(child.avatar).includes('/')) return child.avatar;
+  if (child.gender === 'male') return '👦';
+  if (child.gender === 'female') return '👧';
+  return '👶';
+}
+
+function renderTabs(children) {
+  const tabs = document.getElementById('childrenTabs');
+  if (!tabs) return;
+  if (!children.length) {
+    tabs.innerHTML = '';
+    return;
+  }
+  if (currentChildIndex < 0) currentChildIndex = 0;
+  activeChild = currentChildIndex;
+  tabs.innerHTML = children.map((c, i) =>
+    `<button type="button" class="tab ${i === activeChild ? 'active' : ''}" data-child="${i}">${childTabEmoji(c)} ${c.name}</button>`
+  ).join('');
+  tabs.querySelectorAll('.tab').forEach((t) => {
+    t.addEventListener('click', function onTabClick() {
+      activeChild = +this.dataset.child;
+      currentChildIndex = activeChild;
+      localStorage.setItem('activeChildIndex', String(activeChild));
+      tabs.querySelectorAll('.tab').forEach((x) => x.classList.remove('active'));
+      this.classList.add('active');
+      loadChildStats(activeChild);
+      renderChildSelector();
+    });
+  });
+}
+
+function loadChildStats(index) {
+  currentChildIndex = index;
+  activeChild = index;
+  localStorage.setItem('activeChildIndex', String(index));
+
+  const children = getChildren();
+  const stats = getChildStats();
+  const history = stats.history || [];
+  const fearStats = stats.fearStats || migrateFearStatsObject({});
+  const totalStories = stats.totalStories || 0;
+  const totalGames = stats.totalGames || 0;
+
+  const child = children[index] || null;
+  const childInfo = document.getElementById('childInfo');
+  if (childInfo) {
+    childInfo.textContent = child
+      ? `${child.name}, ${child.age} лет`
+      : 'Гость — общая статистика';
+  }
+
+  const statsContainer = document.getElementById('statsContainer');
+  if (statsContainer) {
+    statsContainer.innerHTML = `
+    <div class="row"><span class="label">📚 Создано сказок</span><span class="value">${totalStories}</span></div>
+    <div class="row"><span class="label">🎮 Сыграно игр</span><span class="value">${totalGames}</span></div>
+    <div class="row"><span class="label">💬 Всего диалогов</span><span class="value">${history.length}</span></div>
+    <div class="row"><span class="label">🎯 Страхов в работе</span><span class="value">${Object.values(fearStats).filter(v => v > 0).length} из ${Object.keys(FEAR_LABELS).length}</span></div>
+    <div class="row"><span class="label">📱 Дней активности</span><span class="value">${calculateActiveDays(history)}</span></div>
+  `;
+  }
+
+  renderProgress(fearStats, totalStories, totalGames);
+  renderGameProgress(child ? child.name : 'guest');
+  renderWeekActivity(history);
+  renderFears(fearStats);
+  renderDialogs(history);
+  renderInsights(fearStats, totalStories, totalGames, history);
+  renderTimeStats(history);
+}
 
 const ATTENTION_KEYWORDS = [
   'адрес', 'улица', 'дом', 'квартира', 'телефон', 'номер', 'звони',
@@ -601,9 +675,11 @@ function renderChildSelector() {
 
 function selectChild(index) {
   currentChildIndex = index;
+  activeChild = index >= 0 ? index : 0;
   localStorage.setItem('activeChildIndex', String(index));
   renderChildSelector();
-  loadAllData();
+  renderTabs(getChildren());
+  loadChildStats(index >= 0 ? index : 0);
 }
 
 function calculateActiveDays(history) {
@@ -891,34 +967,12 @@ function loadAllData() {
   bindNotificationSettingsUI();
   initNotificationScheduler().catch(() => {});
   const children = getChildren();
-  const stats = getChildStats();
-  const history = stats.history || [];
-  const fearStats = stats.fearStats || migrateFearStatsObject({});
-  const totalStories = stats.totalStories || 0;
-  const totalGames = stats.totalGames || 0;
 
   document.getElementById('childrenNamesInput').value = localStorage.getItem('childrenNames') || '';
 
-  const child = currentChildIndex >= 0 ? (children[currentChildIndex] || null) : null;
-  document.getElementById('childInfo').textContent = child
-    ? `${child.name}, ${child.age} лет`
-    : 'Гость — общая статистика';
-
-  document.getElementById('statsContainer').innerHTML = `
-    <div class="row"><span class="label">📚 Создано сказок</span><span class="value">${totalStories}</span></div>
-    <div class="row"><span class="label">🎮 Сыграно игр</span><span class="value">${totalGames}</span></div>
-    <div class="row"><span class="label">💬 Всего диалогов</span><span class="value">${history.length}</span></div>
-    <div class="row"><span class="label">🎯 Страхов в работе</span><span class="value">${Object.values(fearStats).filter(v => v > 0).length} из ${Object.keys(FEAR_LABELS).length}</span></div>
-    <div class="row"><span class="label">📱 Дней активности</span><span class="value">${calculateActiveDays(history)}</span></div>
-  `;
-
-  renderProgress(fearStats, totalStories, totalGames);
-  renderGameProgress(child ? child.name : 'guest');
-  renderWeekActivity(history);
-  renderFears(fearStats);
-  renderDialogs(history);
-  renderInsights(fearStats, totalStories, totalGames, history);
-  renderTimeStats(history);
+  renderTabs(children);
+  if (children.length && currentChildIndex < 0) currentChildIndex = 0;
+  loadChildStats(currentChildIndex >= 0 ? currentChildIndex : 0);
   renderChildSelector();
 }
 

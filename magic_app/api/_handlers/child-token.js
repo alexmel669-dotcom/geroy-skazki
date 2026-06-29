@@ -22,12 +22,11 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
 
-    const childIndex = parseInt(req.body?.childIndex, 10);
-    const idx = Number.isFinite(childIndex) ? childIndex : parseInt(user.activeChildIndex, 10) || 0;
-    const child = user.children?.[idx] || user.children?.[0];
+    const childIndex = parseInt(req.query?.child ?? req.body?.childIndex ?? '0', 10);
+    const child = user.children?.[childIndex];
 
     if (!child) {
-      return res.status(400).json({ error: 'Добавьте ребёнка в профиль' });
+      return res.status(404).json({ error: 'Ребёнок не найден' });
     }
 
     const childToken = jwt.sign(
@@ -36,8 +35,9 @@ export default async function handler(req, res) {
         parentEmail: decoded.email,
         childName: child.name,
         childAge: child.age,
+        childGender: child.gender,
         childAvatar: child.avatar,
-        childIndex: idx,
+        childIndex,
         plan: user.plan || 'free',
         mode: 'child',
         role: 'child'
@@ -54,6 +54,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       url,
       childName: child.name,
+      childIndex,
       expiresIn: '30d'
     });
   } catch (error) {

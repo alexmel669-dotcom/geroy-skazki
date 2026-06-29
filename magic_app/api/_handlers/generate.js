@@ -2,7 +2,7 @@ import { getAgeBasedTone, sanitizeAIText } from '../_lib/content-filter.js';
 import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit } from '../_middleware/ai-rate-limit.js';
 import { buildGenderPrompt, applyGenderToText, normalizeGender } from '../_lib/gender-ru.js';
-import { GRAMMAR_RULES, getAgeWord, applyGrammarFixes } from '../_lib/grammar-ru.js';
+import { GRAMMAR_RULES, getAgeWord, applyGrammarFixes, getCorrectNameForm } from '../_lib/grammar-ru.js';
 
 const CHARACTER_PROMPTS = {
   lucik: 'Ты — Люцик, сказочный кот-волшебник, друг и помощник ребёнка. Тёплый, с мурчанием (мурр, мяу). Помогаешь через сказки и игры.',
@@ -47,6 +47,13 @@ function grammarBlock(childName) {
   return GRAMMAR_RULES.replace(/\{childName\}/g, childName || 'малыш');
 }
 
+function nameFormsBlock(childName, childGender) {
+  if (!childName) return 'Имя ребёнка пока неизвестно.';
+  const g = childGender === 'female' ? 'female' : 'male';
+  const forms = getCorrectNameForm(childName, g);
+  return `Ребёнок: ${childName} (именительный: ${forms.nom}, дательный: ${forms.dat}, родительный: ${forms.gen})`;
+}
+
 function roleIntro(character) {
   return CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
 }
@@ -62,6 +69,8 @@ function getChatPrompt(childName, childAge, timeContext, childGender, character 
 ${genderLine}
 
 ${grammarBlock(childName)}
+
+${nameFormsBlock(childName, childGender)}
 
 ВАЖНО: используй правильные падежи при обращении к ${childName || 'ребёнку'}.
 ${childGender === 'female' ? 'Обращайся в женском роде: "ты сказала", "ты сделала", "как прошла твой день".' : childGender === 'male' ? 'Обращайся в мужском роде: "ты сказал", "ты сделал", "как прошёл твой день".' : ''}
@@ -91,6 +100,8 @@ ${genderLine}
 
 ${grammarBlock(childName)}
 
+${nameFormsBlock(childName, childGender)}
+
 Твоя задача — РАССКАЗАТЬ СКАЗКУ для ребёнка.
 - Длина: 3-5 минут чтения
 - Тема: ${topic || 'волшебное приключение'}
@@ -113,6 +124,8 @@ function getBedtimeStoryPrompt(childName, childAge, timeContext, childGender, ch
 ${genderLine}
 
 ${grammarBlock(childName)}
+
+${nameFormsBlock(childName, childGender)}
 
 Твоя задача — РАССКАЗАТЬ СКАЗКУ НА НОЧЬ для засыпания.
 - Длина: минимум 400 символов, 5-8 абзацев, спокойный ритм
@@ -170,7 +183,7 @@ function buildSystemPrompt({ childName, childAge, childGender, character, system
   const tone = age ? getAgeBasedTone(age) : '';
   const genderLine = buildGenderPrompt(childGender, childName);
   const nameLine = childName
-    ? `Ребёнка зовут ${childName}${age ? `, ${age} ${getAgeWord(age)}` : ''}. Обращайся по имени.`
+    ? `${nameFormsBlock(childName, childGender)}${age ? `, ${age} ${getAgeWord(age)}` : ''}.`
     : 'Имя ребёнка пока неизвестно.';
   const topicLine = topic ? `\nТекущая тема: ${topic}` : '';
   const firstLine = isFirstMessage ? '\nЭто первое сообщение в диалоге.' : '';
@@ -181,7 +194,7 @@ function buildSystemPrompt({ childName, childAge, childGender, character, system
     : childGender === 'male'
       ? 'Обращайся в мужском роде: "ты сказал", "ты сделал", "как прошёл твой день".'
       : '';
-  return `${role}\n\n${nameLine}\n\n${genderLine}\n\n${grammarBlock(childName)}\n\nВАЖНО: используй правильные падежи при обращении к ${childName || 'ребёнку'}.\n${genderHint}${topicLine}${firstLine}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
+  return `${role}\n\n${nameLine}\n\n${genderLine}\n\n${grammarBlock(childName)}\n\n${nameFormsBlock(childName, childGender)}\n\nВАЖНО: используй правильные падежи при обращении к ${childName || 'ребёнку'}.\n${genderHint}${topicLine}${firstLine}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
 }
 
 function parseAiJson(raw) {

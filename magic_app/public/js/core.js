@@ -29,6 +29,11 @@ import { startRiddlesGame } from './games/riddles.js';
 import { startQuestGame } from './games/quest.js';
 import { startMazeGame } from './games/maze.js';
 import { startQuizGame } from './games/quiz.js';
+import { startRunnerGame } from './games/runner.js';
+import { startDrawAIGame } from './games/draw-ai.js';
+import { startMusicCatGame } from './games/music-cat.js';
+import { startConstellationGame } from './games/constellation.js';
+import { startPopFearsGame } from './games/pop-fears.js';
 import { getGameLevel } from './games/game-ui.js';
 import { setAvatarState, playPurrSound, switchCharacter } from './ui.js';
 import { getTimeContext } from './context.js';
@@ -1474,7 +1479,12 @@ export function showGamesMenu() {
     riddles: startRiddlesGame,
     quest: startQuestGame,
     maze: startMazeGame,
-    quiz: startQuizGame
+    quiz: startQuizGame,
+    runner: startRunnerGame,
+    drawAi: startDrawAIGame,
+    musicCat: startMusicCatGame,
+    constellation: startConstellationGame,
+    popFears: startPopFearsGame
   };
 
   overlay.querySelectorAll('[data-game]').forEach((btn) => {
