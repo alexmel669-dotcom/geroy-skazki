@@ -7,7 +7,7 @@ import {
 import { getCharacter } from './ai.js';
 import { ttsEngine, synthesizeSpeech } from './audio.js';
 import { startRecording, stopRecording, isRecording, browserSpeechRecognition } from './mic.js';
-import { updateUI, showNotification, initDevPanel } from './ui.js';
+import { updateUI, showNotification, initDevPanel, initVoiceHints } from './ui.js';
 import { initNotificationScheduler, checkPlanExpiryNotification } from './notifications.js';
 import { startOnboarding } from './onboarding.js';
 
@@ -40,7 +40,8 @@ function initializeApp() {
   if (ENV.isDev || ENV.isStaging) initDevPanel();
   initNotificationScheduler().catch(() => {});
   checkPlanExpiryNotification();
-  setTimeout(() => startOnboarding(), 1500);
+  setTimeout(() => startOnboarding(), 2000);
+  initVoiceHints();
   setTimeout(() => {
     playWelcomeGreeting().catch((err) => console.warn('Welcome failed:', err));
   }, 1000);

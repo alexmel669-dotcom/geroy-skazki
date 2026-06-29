@@ -965,6 +965,16 @@ async function recognizeSpeech(blob) {
 let micEnding = false;
 let micStarting = false;
 let finishQueued = false;
+let firstMicUse = !localStorage.getItem('first-mic-done');
+
+function onFirstMicSuccess() {
+  if (!firstMicUse) return;
+  setTimeout(() => {
+    window.ttsEngine?.speak('Отлично! Я тебя услышал. Теперь мы можем общаться!');
+  }, 1500);
+  localStorage.setItem('first-mic-done', 'true');
+  firstMicUse = false;
+}
 
 async function beginRecording() {
   if (planLimitActive || getStoriesRemaining() <= 0) {
@@ -1267,6 +1277,7 @@ async function processAudio(audioBlob) {
     }
 
     resetMicFailCount();
+    onFirstMicSuccess();
 
     if (isBedtimeStoryRequest(text)) {
       console.log('🌙 Активирован режим сказки на ночь');

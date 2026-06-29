@@ -1,48 +1,34 @@
-// onboarding.js — пошаговый гид для детей
+// onboarding.js — голосовой гид для детей
 import { ttsEngine } from './audio.js';
 
 const STORAGE_KEY = 'ob-done';
 const LEGACY_KEY = 'geroy-onboarding-done';
 
-const STEPS = [
-  {
-    target: '#micButton, #mic-button',
-    title: '🎤 Говори',
-    text: 'Нажми и держи микрофон. Отпусти — Люцик ответит!',
-    position: 'top'
-  },
-  {
-    target: '#avatar, .character-avatar',
-    title: '🐱 Друг',
-    text: 'Свайпни, чтобы сменить персонажа.',
-    position: 'bottom'
-  },
-  {
-    target: '#send-text-btn',
-    title: 'Клавиатура ✉️',
-    text: 'Можешь написать сообщение, если не хочешь говорить.',
-    position: 'top'
-  },
-  {
-    target: '#games-menu',
-    title: 'Игры 🎮',
-    text: 'Здесь живут волшебные игры — нажми и выбирай!',
-    position: 'top'
-  },
-  {
-    target: '#achievements-btn',
-    title: 'Награды ⭐',
-    text: 'Собирай звёздочки за сказки и игры!',
-    position: 'bottom'
-  }
-];
+function markHintsPlayed() {
+  localStorage.setItem('mic-hint-played', 'true');
+  localStorage.setItem('games-hint-played', 'true');
+  localStorage.setItem('swipe-hint-played', 'true');
+}
 
 export class OnboardingGuide {
   constructor() {
-    this.step = 0;
-    this.overlay = null;
-    this.tooltip = null;
-    this.spotlight = null;
+    this.steps = [
+      {
+        target: '#micButton, #mic-button',
+        voice: 'Нажми и держи микрофон, чтобы говорить со мной. Отпусти — и я отвечу!',
+        text: '🎤 Говори с Люциком'
+      },
+      {
+        target: '#avatar, .character-avatar',
+        voice: 'Свайпни по мне, чтобы увидеть маму, папу и друзей!',
+        text: '🐱 Сменяй персонажей'
+      },
+      {
+        target: '#games-menu, .game-menu',
+        voice: 'Здесь игры! Давай поиграем вместе!',
+        text: '🎮 Игры'
+      }
+    ];
   }
 
   start() {
@@ -51,79 +37,40 @@ export class OnboardingGuide {
       setTimeout(() => this.start(), 800);
       return;
     }
-    this.step = 0;
-    this._buildOverlay();
-    this._showStep();
+    this.show(0);
   }
 
-  _buildOverlay() {
-    this.overlay = document.createElement('div');
-    this.overlay.className = 'onboarding-overlay';
-    this.overlay.innerHTML = '<div class="onboarding-spotlight"></div>';
-    this.spotlight = this.overlay.querySelector('.onboarding-spotlight');
-
-    this.tooltip = document.createElement('div');
-    this.tooltip.className = 'onboarding-tooltip';
-    this.overlay.appendChild(this.tooltip);
-    document.body.appendChild(this.overlay);
-  }
-
-  _showStep() {
-    const def = STEPS[this.step];
-    if (!def) return this._finish();
-
-    const el = document.querySelector(def.target);
-    if (!el) {
-      this.step += 1;
-      return this._showStep();
+  show(i) {
+    if (i >= this.steps.length) {
+      localStorage.setItem(STORAGE_KEY, '1');
+      localStorage.setItem(LEGACY_KEY, 'true');
+      markHintsPlayed();
+      return;
     }
 
-    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    const rect = el.getBoundingClientRect();
-    const pad = 8;
+    const step = this.steps[i];
+    const el = document.querySelector(step.target);
+    if (!el) return this.show(i + 1);
 
-    this.spotlight.style.cssText = `
-      top:${rect.top - pad}px;left:${rect.left - pad}px;
-      width:${rect.width + pad * 2}px;height:${rect.height + pad * 2}px;
-    `;
+    el.style.boxShadow = '0 0 0 9999px rgba(0,0,0,.5), 0 0 0 4px #FFB800';
+    el.style.position = 'relative';
+    el.style.zIndex = '3000';
 
-    const dots = STEPS.map((_, i) =>
-      `<span class="onboarding-dot${i === this.step ? ' active' : ''}"></span>`
-    ).join('');
+    ttsEngine.speak(step.voice).catch(() => {});
 
-    this.tooltip.innerHTML = `
-      <div class="onboarding-progress">${dots}</div>
-      <h3>${def.title}</h3>
-      <p>${def.text}</p>
-      <div class="onboarding-actions">
-        <button type="button" class="onboarding-skip">Пропустить</button>
-        <button type="button" class="onboarding-next">Дальше →</button>
-      </div>
-    `;
+    const tip = document.createElement('div');
+    tip.className = 'ob-tip';
+    tip.innerHTML = `<p>${step.text}</p><button type="button" id="obNext">Далее →</button>`;
 
-    const tipRect = this.tooltip.getBoundingClientRect();
-    let top = def.position === 'bottom' ? rect.bottom + 16 : rect.top - tipRect.height - 16;
-    let left = rect.left + rect.width / 2 - 140;
-    top = Math.max(12, Math.min(top, window.innerHeight - 180));
-    left = Math.max(12, Math.min(left, window.innerWidth - 292));
-    this.tooltip.style.top = `${top}px`;
-    this.tooltip.style.left = `${left}px`;
+    const r = el.getBoundingClientRect();
+    tip.style.cssText = `position:fixed;left:${Math.max(12, r.left)}px;top:${r.bottom + 10}px;z-index:3001;`;
+    document.body.appendChild(tip);
 
-    this.tooltip.querySelector('.onboarding-skip').onclick = () => this._finish(true);
-    this.tooltip.querySelector('.onboarding-next').onclick = () => {
-      this.step += 1;
-      this._showStep();
+    tip.querySelector('#obNext').onclick = () => {
+      el.style.cssText = '';
+      tip.remove();
+      this.show(i + 1);
     };
-  }
-
-  _finish(skipped = false) {
-    this.overlay?.remove();
-    this.overlay = null;
-    localStorage.setItem(STORAGE_KEY, '1');
-    localStorage.setItem(LEGACY_KEY, 'true');
-    if (!skipped) {
-      ttsEngine.speak('Привет! Я Люцик. Давай поговорим или поиграем!', 'lucik').catch(() => {});
-    }
   }
 }
 
