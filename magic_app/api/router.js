@@ -64,6 +64,8 @@ const ROUTES = {
 
   'admin/login': adminLogin,
 
+  'admin-login': adminLogin,
+
   'sync-child-data': sync,
 
   'user/sync': sync,

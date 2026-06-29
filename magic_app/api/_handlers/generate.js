@@ -1,6 +1,6 @@
 import { getAgeBasedTone, sanitizeAIText } from '../_lib/content-filter.js';
 import { setCors } from '../_middleware/cors.js';
-import { applyAiRateLimit } from '../_middleware/ai-rate-limit.js';
+import { checkRateLimit } from '../_middleware/ai-rate-limit.js';
 import { buildGenderPrompt, applyGenderToText, normalizeGender } from '../_lib/gender-ru.js';
 import { GRAMMAR_RULES, getAgeWord, applyGrammarFixes } from '../_lib/grammar-ru.js';
 
@@ -162,8 +162,10 @@ export default async function handler(req, res) {
   if (setCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { allowed } = applyAiRateLimit(req, res, { authMax: 15, anonMax: 5 });
-  if (!allowed) return;
+  const rateCheck = checkRateLimit(req, 'generate');
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ error: 'Слишком много запросов', retryAfter: rateCheck.retryAfter });
+  }
 
   const started = Date.now();
   try {

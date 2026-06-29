@@ -1,5 +1,4 @@
 import { CONFIG, ENV, CHARACTERS } from './config.js';
-import { setAvatarImage } from './avatar.js';
 
 import { getActiveChildName, getActiveChild, updateStatsUI } from './core.js';
 
@@ -42,12 +41,31 @@ export function setAvatarState(state) {
   if (map[state]) avatar.classList.add(map[state]);
 }
 
-export { setAvatarImage } from './avatar.js';
-
 export function switchCharacter(charId) {
+  const char = CHARACTERS[charId];
+  if (!char) return;
+
   const avatar = document.getElementById('avatar');
-  if (!CHARACTERS[charId] || !avatar) return;
-  setAvatarImage(avatar, charId);
+  const emoji = document.getElementById('avatarEmoji');
+  if (!avatar) return;
+
+  avatar.src = char.avatar;
+  avatar.style.display = 'block';
+  if (emoji) emoji.style.display = 'none';
+
+  avatar.onerror = function onPngErr() {
+    const svgPath = char.avatar.replace('.png', '.svg');
+    avatar.onerror = function onSvgErr() {
+      avatar.style.display = 'none';
+      if (emoji) {
+        emoji.textContent = char.emoji || '🐱';
+        emoji.style.display = 'block';
+      }
+      avatar.removeEventListener('error', onSvgErr);
+    };
+    avatar.src = svgPath;
+    avatar.removeEventListener('error', onPngErr);
+  };
 }
 
 function updateAvatar() {

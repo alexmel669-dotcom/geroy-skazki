@@ -1,19 +1,20 @@
 // onboarding.js — пошаговый гид для детей
 import { ttsEngine } from './audio.js';
 
-const STORAGE_KEY = 'geroy-onboarding-done';
+const STORAGE_KEY = 'ob-done';
+const LEGACY_KEY = 'geroy-onboarding-done';
 
 const STEPS = [
   {
-    target: '#mic-button',
-    title: 'Микрофон 🎤',
-    text: 'Нажми и говори — Люцик тебя услышит!',
+    target: '#micButton, #mic-button',
+    title: '🎤 Говори',
+    text: 'Нажми и держи микрофон. Отпусти — Люцик ответит!',
     position: 'top'
   },
   {
-    target: '.character-avatar',
-    title: 'Друзья 🐱',
-    text: 'Свайпай аватар, чтобы выбрать друга для разговора.',
+    target: '#avatar, .character-avatar',
+    title: '🐱 Друг',
+    text: 'Свайпни, чтобы сменить персонажа.',
     position: 'bottom'
   },
   {
@@ -45,7 +46,7 @@ export class OnboardingGuide {
   }
 
   start() {
-    if (localStorage.getItem(STORAGE_KEY) === 'true') return;
+    if (localStorage.getItem(STORAGE_KEY) === '1' || localStorage.getItem(LEGACY_KEY) === 'true') return;
     if (document.getElementById('childSelectModal')?.style.display === 'flex') {
       setTimeout(() => this.start(), 800);
       return;
@@ -118,7 +119,8 @@ export class OnboardingGuide {
   _finish(skipped = false) {
     this.overlay?.remove();
     this.overlay = null;
-    localStorage.setItem(STORAGE_KEY, 'true');
+    localStorage.setItem(STORAGE_KEY, '1');
+    localStorage.setItem(LEGACY_KEY, 'true');
     if (!skipped) {
       ttsEngine.speak('Привет! Я Люцик. Давай поговорим или поиграем!', 'lucik').catch(() => {});
     }
@@ -129,6 +131,10 @@ export function startOnboarding() {
   const guide = new OnboardingGuide();
   guide.start();
   return guide;
+}
+
+if (typeof window !== 'undefined') {
+  window.onboarding = new OnboardingGuide();
 }
 
 export default { OnboardingGuide, startOnboarding };

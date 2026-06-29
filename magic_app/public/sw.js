@@ -43,6 +43,8 @@ const ASSETS = [
   '/js/gender.js',
   '/assets/images/icon-192.svg',
   '/assets/images/icon-512.svg',
+  '/assets/images/icon-192.png',
+  '/assets/images/icon-512.png',
   '/js/tamagotchi.js',
   '/js/games/game-difficulty.js',
   '/js/analytics.js',

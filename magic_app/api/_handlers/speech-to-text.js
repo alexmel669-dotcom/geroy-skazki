@@ -1,5 +1,5 @@
 import { setCors } from '../_middleware/cors.js';
-import { applyAiRateLimit } from '../_middleware/ai-rate-limit.js';
+import { checkRateLimit } from '../_middleware/ai-rate-limit.js';
 import { base64ToBytes } from '../_lib/base64.js';
 
 export default async function handler(req, res) {
@@ -9,8 +9,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { allowed } = applyAiRateLimit(req, res, { authMax: 25, anonMax: 10 });
-  if (!allowed) return;
+  const rateCheck = checkRateLimit(req, 'stt');
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ error: 'Слишком много запросов', retryAfter: rateCheck.retryAfter });
+  }
 
   try {
     const { audio } = req.body;

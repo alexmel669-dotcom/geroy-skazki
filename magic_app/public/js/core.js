@@ -13,7 +13,8 @@ import {
 } from './ai.js';
 import {
   startRecording, stopRecording, cancelRecording, isRecording, getRecordingMimeType,
-  isMicrophoneSupported, prepareAudioForStt, getLiveSttText, clearLiveSttText
+  isMicrophoneSupported, prepareAudioForStt, getLiveSttText, clearLiveSttText,
+  getMicState, setMicState, onMicProcessingDone
 } from './mic.js';
 import { synthesizeSpeech } from './audio.js';
 import { checkAchievements, showAchievement } from './achievements.js';
@@ -280,7 +281,7 @@ function applyChildAvatar(child) {
 function showPlanLimitUI(show) {
   planLimitActive = show;
   const bar = document.getElementById('planLimitBar');
-  const micBtn = document.getElementById('mic-button');
+  const micBtn = document.getElementById('micButton') || document.getElementById('mic-button');
   if (bar) bar.style.display = show ? 'flex' : 'none';
   if (micBtn) {
     micBtn.classList.toggle('mic-disabled', show);
@@ -304,18 +305,12 @@ function isPremiumUser() {
 
 
 function setMicVisualState(state) {
-  const micBtn = document.getElementById('mic-button');
+  setMicState(state || 'idle');
+  const micBtn = document.getElementById('micButton') || document.getElementById('mic-button');
   if (!micBtn) return;
-  micBtn.classList.remove('mic-recording', 'mic-processing', 'mic-idle', 'mic-bedtime-armed', 'recording', 'processing');
-  if (state === 'recording') {
-    micBtn.classList.add('mic-recording', 'recording');
-    micBtn.disabled = false;
-  } else if (state === 'processing') {
-    micBtn.classList.add('mic-processing', 'processing');
-    micBtn.disabled = true;
-  } else {
-    micBtn.classList.add('mic-idle');
+  if (state === 'idle' || !state) {
     micBtn.disabled = isMicDisabled();
+    if (isMicDisabled()) micBtn.classList.add('mic-disabled');
   }
 }
 
@@ -343,7 +338,7 @@ function isMicDisabled() {
 }
 
 function setMicDisabled(disabled) {
-  const micBtn = document.getElementById('mic-button');
+  const micBtn = document.getElementById('micButton') || document.getElementById('mic-button');
   if (!micBtn) return;
   micBtn.classList.toggle('mic-disabled', disabled);
   micBtn.disabled = disabled;
@@ -388,8 +383,10 @@ export function initCore() {
   resetDailyCounters();
   if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
   updateAvatarMoodState();
-  micState = 'idle';
   setMicVisualState('idle');
+  if (typeof window !== 'undefined' && window.tamagotchi?.start) {
+    window.tamagotchi.start();
+  }
 
   checkDailyStreak();
   updateStreakUI();
@@ -409,7 +406,7 @@ export function initCore() {
     saveChildStats(stats);
     updateStatsDisplay();
     const needMsg = getTamagotchiNeedsMessage(stats);
-    if (needMsg && micState === 'idle' && !appState.gameActive) {
+    if (needMsg && getMicState() === 'idle' && !appState.gameActive) {
       synthesizeSpeech(needMsg, getCharacter()).catch(() => {});
     }
   }, 60000);
@@ -731,12 +728,12 @@ function initUI() {
 }
 
 function initEventListeners() {
-  const mic = document.getElementById('mic-button');
+  const mic = document.getElementById('micButton') || document.getElementById('mic-button');
   if (mic) {
     let activePointer = null;
 
     const onDown = (e) => {
-      if (micState === 'processing' || isMicDisabled()) {
+      if (getMicState() === 'processing' || isMicDisabled()) {
         e.preventDefault();
         return;
       }
@@ -968,20 +965,14 @@ async function recognizeSpeech(blob) {
 let micEnding = false;
 let micStarting = false;
 let finishQueued = false;
-let micState = 'idle';
-
-function setMicState(state) {
-  micState = state;
-  setMicVisualState(state);
-}
 
 async function beginRecording() {
   if (planLimitActive || getStoriesRemaining() <= 0) {
     await handlePlanLimitExceeded();
     return;
   }
-  if (micState !== 'idle' || isMicDisabled() || isRecording() || micStarting) {
-    console.warn('🎙️ Mic busy, state:', micState);
+  if (getMicState() !== 'idle' || isMicDisabled() || isRecording() || micStarting) {
+    console.warn('🎙️ Mic busy, state:', getMicState());
     return;
   }
   if (!isMicrophoneSupported()) {
@@ -989,12 +980,11 @@ async function beginRecording() {
     return;
   }
   micStarting = true;
-  micState = 'recording';
   setMicVisualState('recording');
   try {
     await startRecording({
       onAutoStop: () => finishRecording(),
-      onStateChange: (s) => { if (s === 'processing') setMicState('processing'); }
+      onStateChange: (s) => { if (s === 'processing') setMicVisualState('processing'); }
     });
     setAvatarState('listening');
     document.getElementById('avatar')?.classList.add('listening');
@@ -1004,7 +994,7 @@ async function beginRecording() {
     }
   } catch (e) {
     logError('mic', e.message);
-    setMicState('idle');
+    setMicVisualState('idle');
     await handleMicFailure(e.message);
   } finally {
     micStarting = false;
@@ -1012,7 +1002,7 @@ async function beginRecording() {
 }
 
 async function finishRecording() {
-  if (micState === 'processing' || micEnding) return;
+  if (getMicState() === 'processing' || micEnding) return;
   if (micStarting || !isRecording()) {
     finishQueued = true;
     return;
@@ -1021,11 +1011,10 @@ async function finishRecording() {
 }
 
 async function finishRecordingInternal() {
-  if (micEnding || !isRecording() || micState === 'processing') return;
+  if (micEnding || !isRecording() || getMicState() === 'processing') return;
   micEnding = true;
-  micState = 'processing';
-  isProcessing = true;
   setMicVisualState('processing');
+  isProcessing = true;
   try {
     const audio = await stopRecording();
     if (audio?.size > 0) {
@@ -1039,7 +1028,7 @@ async function finishRecordingInternal() {
     isProcessing = false;
     micEnding = false;
     finishQueued = false;
-    micState = 'idle';
+    onMicProcessingDone();
     setMicVisualState('idle');
     setAvatarState(null);
     updateAvatarMoodState();

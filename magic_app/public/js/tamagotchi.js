@@ -48,3 +48,66 @@ export default {
   getTamagotchi, applyTamagotchiTick, bumpTamagotchi,
   onChat, onGame, onFeed, onClean, onRest, onFearTalk, getTamagotchiNeedsMessage
 };
+
+class Tamagotchi {
+  constructor() {
+    this.hunger = 100;
+    this.energy = 100;
+    this.mood = 100;
+    this.timer = null;
+  }
+
+  start() {
+    if (this.timer) return;
+    this.timer = setInterval(() => this.tick(), 60000);
+    this.updateBars();
+  }
+
+  stop() {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+  }
+
+  tick() {
+    this.hunger = Math.max(0, this.hunger - 1);
+    this.energy = Math.max(0, this.energy - 0.5);
+    this.mood = Math.max(0, this.mood - 0.3);
+    this.updateBars();
+    if (this.hunger < 20) window.ttsEngine?.speak('Я голоден! Давай поиграем?');
+    if (this.energy < 20) window.ttsEngine?.speak('Я устал...');
+  }
+
+  updateBars() {
+    const bars = [
+      ['hunger', this.hunger],
+      ['energy', this.energy],
+      ['mood', this.mood]
+    ];
+    for (const [key, val] of bars) {
+      const el = document.getElementById(`${key}Bar`) || document.getElementById(`${key}Fill`);
+      if (el) el.style.width = `${val}%`;
+    }
+  }
+
+  feed() {
+    this.hunger = Math.min(100, this.hunger + 30);
+    this.mood = Math.min(100, this.mood + 10);
+    this.updateBars();
+  }
+
+  play() {
+    this.mood = Math.min(100, this.mood + 20);
+    this.energy = Math.max(0, this.energy - 10);
+    this.updateBars();
+  }
+
+  sleep() {
+    this.energy = 100;
+    this.updateBars();
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.tamagotchi = new Tamagotchi();
+}
+

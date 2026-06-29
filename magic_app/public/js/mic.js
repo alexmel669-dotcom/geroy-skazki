@@ -460,9 +460,46 @@ export function setMicStateCallback(cb) {
   onStateChangeCallback = cb;
 }
 
+let micState = 'idle';
+
+export function getMicState() {
+  return micState;
+}
+
+export function setMicState(state) {
+  micState = state;
+  const btn = document.getElementById('micButton') || document.getElementById('mic-button');
+  if (!btn) return;
+  btn.classList.remove('mic-recording', 'mic-processing', 'mic-idle', 'mic-bedtime-armed', 'recording', 'processing');
+  btn.className = 'mic-btn mic-' + state;
+  if (state === 'recording') btn.classList.add('recording');
+  if (state === 'processing') {
+    btn.disabled = true;
+    btn.classList.add('processing');
+  } else {
+    btn.disabled = false;
+  }
+}
+
+export function startMicSession() {
+  if (micState !== 'idle') return false;
+  setMicState('recording');
+  return true;
+}
+
+export function finishMicSession() {
+  if (micState !== 'recording') return;
+  setMicState('processing');
+}
+
+export function onMicProcessingDone() {
+  setMicState('idle');
+}
+
 export default {
   isRecording, startRecording, stopRecording, cancelRecording,
   getAudioBlob, playAudioFromUrl, getRecordingMimeType, prepareAudioForStt,
   isMicrophoneSupported, requestMicrophonePermission, setMicStateCallback,
-  browserSpeechRecognition, getLiveSttText, clearLiveSttText
+  browserSpeechRecognition, getLiveSttText, clearLiveSttText,
+  getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone
 };

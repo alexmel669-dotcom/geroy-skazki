@@ -1,3 +1,4 @@
+import './error-monitor.js';
 import { CONFIG, validateConfig, ENV, CHARACTERS, initAvatarImages } from './config.js';
 import {
   initCore, getActiveChildName, getActiveChild, updateStatsUI, cycleCharacter,
@@ -13,7 +14,7 @@ import { startOnboarding } from './onboarding.js';
 async function playWelcomeGreeting() {
   const modal = document.getElementById('childSelectModal');
   if (modal?.style.display === 'flex') return;
-  if (localStorage.getItem('geroy-onboarding-done') !== 'true') return;
+  if (localStorage.getItem('ob-done') !== '1' && localStorage.getItem('geroy-onboarding-done') !== 'true') return;
   const name = getActiveChildName();
   const charId = getCharacter();
   const charName = CHARACTERS[charId]?.name || 'Люцик';

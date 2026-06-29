@@ -24,7 +24,7 @@ export default async function handler(req, res) {
 
   const { email, password } = req.body || {};
   if (email === getAdminEmail() && password === getAdminPassword()) {
-    return res.status(200).json({ token: getAdminApiToken() });
+    return res.status(200).json({ success: true, token: getAdminApiToken() });
   }
 
   return res.status(401).json({ error: 'Invalid credentials' });
