@@ -47,24 +47,31 @@ function grammarBlock(childName) {
   return GRAMMAR_RULES.replace(/\{childName\}/g, childName || 'малыш');
 }
 
-function getChatPrompt(childName, childAge, timeContext, childGender) {
+function roleIntro(character) {
+  return CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
+}
+
+function getChatPrompt(childName, childAge, timeContext, childGender, character = 'lucik') {
   const ctx = timeContext || { time: '', day: '', greeting: '' };
   const genderLine = buildGenderPrompt(childGender, childName);
   const ageStr = formatChildAge(childAge);
-  return `Ты — Люцик, добрый кот-помощник. ${ctx.time}, ${ctx.day}.
+  const role = roleIntro(character);
+  const postupil = childGender === 'female' ? 'поступила' : 'поступил';
+  return `${role} ${ctx.time}, ${ctx.day}.
 
 ${genderLine}
 
 ${grammarBlock(childName)}
 
 ВАЖНО: используй правильные падежи при обращении к ${childName || 'ребёнку'}.
-${childGender === 'female' ? 'Обращайся в женском роде: "ты сказала", "ты сделала".' : childGender === 'male' ? 'Обращайся в мужском роде: "ты сказал", "ты сделал".' : ''}
+${childGender === 'female' ? 'Обращайся в женском роде: "ты сказала", "ты сделала", "как прошла твой день".' : childGender === 'male' ? 'Обращайся в мужском роде: "ты сказал", "ты сделал", "как прошёл твой день".' : ''}
 
 Твоя задача — ПРОСТО ОБЩАТЬСЯ с ребёнком. Это НЕ сказка.
-- Спроси как дела, как прошёл день (с учётом пола: «как прошёл/прошла твой день»)
+- Спроси как дела, как прошёл/прошла день (с учётом пола)
 - Отреагируй на настроение
 - Ответь коротко (2-4 предложения)
 - Будь тёплым и заботливым
+- Спрашивай: «А как бы ты ${postupil}?» — с учётом пола ребёнка
 - Если ребёнок просит сказку — скажи: «С удовольствием! Но это будет считаться сказкой. Продолжить?»
 
 Ребёнок: ${childName || 'малыш'}${ageStr}.
@@ -73,11 +80,12 @@ ${childGender === 'female' ? 'Обращайся в женском роде: "т
 ${JSON_FORMAT_CHAT}`;
 }
 
-function getStoryPrompt(childName, childAge, timeContext, topic, childGender) {
+function getStoryPrompt(childName, childAge, timeContext, topic, childGender, character = 'lucik') {
   const ctx = timeContext || { time: '', day: '' };
   const genderLine = buildGenderPrompt(childGender, childName);
   const ageStr = formatChildAge(childAge);
-  return `Ты — Люцик, сказочный кот. ${ctx.time}, ${ctx.day}.
+  const role = roleIntro(character);
+  return `${role} ${ctx.time}, ${ctx.day}.
 
 ${genderLine}
 
@@ -87,6 +95,7 @@ ${grammarBlock(childName)}
 - Длина: 3-5 минут чтения
 - Тема: ${topic || 'волшебное приключение'}
 - Мягкий сюжет, добрый конец
+- Герой сказки — с учётом пола ребёнка
 - Включи элементы, которые помогут справиться со страхами (не называя их)
 
 Ребёнок: ${childName || 'малыш'}${ageStr}.
@@ -94,11 +103,12 @@ ${grammarBlock(childName)}
 ${JSON_FORMAT_STORY}`;
 }
 
-function getBedtimeStoryPrompt(childName, childAge, timeContext, childGender) {
+function getBedtimeStoryPrompt(childName, childAge, timeContext, childGender, character = 'lucik') {
   const ctx = timeContext || { time: '', day: '' };
   const genderLine = buildGenderPrompt(childGender, childName);
   const ageStr = formatChildAge(childAge);
-  return `Ты — Люцик, добрый кот. ${ctx.time}, ${ctx.day}. Сейчас время сна.
+  const role = roleIntro(character);
+  return `${role} ${ctx.time}, ${ctx.day}. Сейчас время сна.
 
 ${genderLine}
 
@@ -119,14 +129,15 @@ ${JSON_FORMAT_STORY}`;
 
 function buildSystemPrompt({ childName, childAge, childGender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext }) {
   if (systemPrompt) return systemPrompt;
+  const charId = character || 'lucik';
   if (requestType === 'bedtime_story') {
-    return getBedtimeStoryPrompt(childName, childAge, timeContext, childGender);
+    return getBedtimeStoryPrompt(childName, childAge, timeContext, childGender, charId);
   }
   if (requestType === 'story') {
-    return getStoryPrompt(childName, childAge, timeContext, topic, childGender);
+    return getStoryPrompt(childName, childAge, timeContext, topic, childGender, charId);
   }
-  if (requestType === 'chat' && (!character || character === 'lucik')) {
-    return getChatPrompt(childName, childAge, timeContext, childGender);
+  if (requestType === 'chat' && charId === 'lucik') {
+    return getChatPrompt(childName, childAge, timeContext, childGender, charId);
   }
   const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : null;
   const role = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
@@ -140,9 +151,9 @@ function buildSystemPrompt({ childName, childAge, childGender, character, system
   const continueHint = 'Если ребёнок говорит «давай», «расскажи ещё», «продолжай» — продолжай предыдущую тему.';
   const toneLine = tone ? `\n\nСтиль общения:\n${tone}` : '';
   const genderHint = childGender === 'female'
-    ? 'Обращайся в женском роде: "ты сказала", "ты сделала".'
+    ? 'Обращайся в женском роде: "ты сказала", "ты сделала", "как прошла твой день".'
     : childGender === 'male'
-      ? 'Обращайся в мужском роде: "ты сказал", "ты сделал".'
+      ? 'Обращайся в мужском роде: "ты сказал", "ты сделал", "как прошёл твой день".'
       : '';
   return `${role}\n\n${nameLine}\n\n${genderLine}\n\n${grammarBlock(childName)}\n\nВАЖНО: используй правильные падежи при обращении к ${childName || 'ребёнку'}.\n${genderHint}${topicLine}${firstLine}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
 }

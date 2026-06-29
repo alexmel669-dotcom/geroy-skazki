@@ -182,7 +182,7 @@ export async function generateResponse(prompt, childInfo = {}) {
       if (data.reply) {
         const gender = profile.gender || 'unknown';
         return {
-          text: applyGenderToText(data.reply, gender),
+          text: data.reply,
           type: data.type || childInfo.requestType || 'chat',
           childName: data.childName || null,
           childAge: data.childAge != null ? data.childAge : null,
