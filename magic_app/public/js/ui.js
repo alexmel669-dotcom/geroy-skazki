@@ -1,4 +1,5 @@
-import { CONFIG, ENV, avatarUrl, CHARACTERS, assetUrl } from './config.js';
+import { CONFIG, ENV, CHARACTERS } from './config.js';
+import { setAvatarImage } from './avatar.js';
 
 import { getActiveChildName, getActiveChild, updateStatsUI } from './core.js';
 
@@ -41,41 +42,12 @@ export function setAvatarState(state) {
   if (map[state]) avatar.classList.add(map[state]);
 }
 
-function setAvatarElementSrc(avatar, src) {
-    if (avatar.tagName === 'IMG') {
-        avatar.src = src;
-    } else {
-        avatar.style.backgroundImage = `url('${src}')`;
-        avatar.style.backgroundSize = 'cover';
-        avatar.style.backgroundPosition = 'center';
-    }
-}
+export { setAvatarImage } from './avatar.js';
 
 export function switchCharacter(charId) {
-  const char = CHARACTERS[charId];
   const avatar = document.getElementById('avatar');
-  const emoji = document.getElementById('avatarEmoji');
-  if (!char || !avatar) return;
-
-  avatar.style.opacity = '1';
-  avatar.style.display = 'block';
-  avatar.src = assetUrl(char.avatar);
-  if (emoji) emoji.style.display = 'none';
-
-  avatar.onerror = function onAvatarErr() {
-    avatar.style.display = 'none';
-    if (emoji) {
-      emoji.textContent = char.emoji || '🐱';
-      emoji.style.display = 'block';
-    }
-    avatar.removeEventListener('error', onAvatarErr);
-  };
-
-  avatar.onload = function onAvatarLoad() {
-    avatar.style.display = 'block';
-    if (emoji) emoji.style.display = 'none';
-    avatar.removeEventListener('load', onAvatarLoad);
-  };
+  if (!CHARACTERS[charId] || !avatar) return;
+  setAvatarImage(avatar, charId);
 }
 
 function updateAvatar() {

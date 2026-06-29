@@ -7,6 +7,49 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN
 });
 
+async function sendAdminAlert(errors) {
+  const key = process.env.RESEND_API_KEY?.trim();
+  const adminEmail = (process.env.ADMIN_EMAILS || 'admin@geroy-skazki.local').split(',')[0]?.trim();
+  if (!key || !adminEmail) return;
+
+  const summary = errors.slice(0, 5).map((e) =>
+    `<li><b>${e.type}</b>: ${String(e.message || '').slice(0, 120)}</li>`
+  ).join('');
+
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Люцик <lucik@geroy-skazki.ru>',
+        to: [adminEmail],
+        subject: `[Герой Сказок] Критическая ошибка клиента`,
+        html: `<p>Зафиксировано ${errors.length} критических ошибок:</p><ul>${summary}</ul>`
+      })
+    });
+  } catch (err) {
+    console.error('Admin alert email failed:', err.message);
+  }
+}
+
+async function storeClientErrors(errors) {
+  const dateKey = new Date().toISOString().slice(0, 10);
+  const redisKey = `errors:${dateKey}`;
+  try {
+    const existing = (await redis.get(redisKey)) || [];
+    const merged = [...existing, ...errors].slice(-500);
+    await redis.set(redisKey, merged);
+  } catch (err) {
+    console.warn('Client errors Redis store failed:', err.message);
+  }
+
+  const critical = errors.filter((e) => e.critical);
+  if (critical.length) await sendAdminAlert(critical);
+}
+
 async function handleHealth(req, res) {
   const yandexKey = process.env.YANDEX_API_KEY?.trim();
   const yandexFolder = process.env.YANDEX_FOLDER_ID?.trim();
@@ -45,6 +88,14 @@ async function handleAnalyticsPost(req, res) {
   const { events } = req.body || {};
   if (!events || !Array.isArray(events)) {
     return res.status(400).json({ error: 'Events array required' });
+  }
+
+  const clientErrorEvents = events.filter((e) => e.name === 'client_errors');
+  for (const evt of clientErrorEvents) {
+    const batch = evt.data?.errors;
+    if (Array.isArray(batch) && batch.length) {
+      await storeClientErrors(batch);
+    }
   }
 
   const hasLandingView = events.some((e) => e.name === 'page_view' || e.name === 'landing_view');

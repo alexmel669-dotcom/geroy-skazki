@@ -11,6 +11,27 @@ export const PROMOCODES = {
 
 const AVATAR_FILES = { lucik: 'avatar', mom: 'mom', dad: 'dad', kid1: 'kid1', kid2: 'kid2' };
 
+/** Пути к SVG и PNG для каждого персонажа */
+export const AVATARS = {
+  lucik: { svg: 'avatar.svg', png: 'avatar.png', name: 'Люцик', emoji: '🐱' },
+  mom:   { svg: 'mom.svg',   png: 'mom.png',   name: 'Мама',  emoji: '👩' },
+  dad:   { svg: 'dad.svg',   png: 'dad.png',   name: 'Папа',  emoji: '👨' },
+  kid1:  { svg: 'kid1.svg',  png: 'kid1.png',  name: 'Девочка', emoji: '👧' },
+  kid2:  { svg: 'kid2.svg',  png: 'kid2.png',  name: 'Мальчик', emoji: '👦' }
+};
+
+export function getAvatarPaths(role) {
+  const meta = AVATARS[role] || AVATARS.lucik;
+  const base = resolveAssetBase();
+  return {
+    svg: `${base}${meta.svg}`,
+    png: `${base}${meta.png}`,
+    name: meta.name,
+    emoji: meta.emoji,
+    letter: (meta.name || 'Л')[0]
+  };
+}
+
 let _assetBase = null;
 
 /** Базовый путь к картинкам: file:// → относительный, иначе от корня сайта */
@@ -57,7 +78,7 @@ export function avatarImgHtml(role, size = 36, className = 'child-chip-avatar') 
 }
 
 export const CONFIG = {
-  APP_VERSION: '5.0.14',
+  APP_VERSION: '5.1.0',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -180,38 +201,7 @@ export function refreshCharacterIcons() {
 
 export function initAvatarImages() {
   refreshCharacterIcons();
-  const fix = (img) => {
-    if (!img || img.dataset.avatarReady) return;
-    if (img.id === 'avatar') {
-      img.dataset.avatarReady = '1';
-      return;
-    }
-    const role = img.dataset.avatar;
-    if (role) {
-      img.src = avatarUrl(role, 'svg');
-      img.dataset.png = avatarUrl(role, 'png');
-    } else {
-      const file = (img.getAttribute('src') || '').split('/').pop() || '';
-      const map = { 'avatar.svg': 'lucik', 'avatar.png': 'lucik', 'mom.svg': 'mom', 'dad.svg': 'dad', 'kid1.svg': 'kid1', 'kid2.svg': 'kid2' };
-      const r = map[file];
-      if (r) {
-        img.src = avatarUrl(r, 'svg');
-        img.dataset.png = avatarUrl(r, 'png');
-      } else if (file) {
-        img.src = assetUrl(file);
-        img.dataset.png = img.src.replace(/\.svg(\?.*)?$/i, '.png');
-      }
-    }
-    img.dataset.avatarReady = '1';
-    img.onerror = () => {
-      if (img.dataset.fb) return;
-      img.dataset.fb = '1';
-      if (img.dataset.png) img.src = img.dataset.png;
-    };
-  };
-  document.querySelectorAll(
-    'img[data-avatar], .header-avatar, .avatar-img, #avatar, .auth-avatar img, .landing-hero-img, .child-chip-avatar, .feature-avatar-img'
-  ).forEach(fix);
+  import('./avatar.js').then(({ initAllAvatarImages }) => initAllAvatarImages()).catch(() => {});
 }
 
 export const FALLBACK_REPLIES = {

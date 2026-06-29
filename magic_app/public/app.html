@@ -7,12 +7,13 @@
   <title>Люцик — Герой Сказок</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="assets/images/icon-192.svg" type="image/svg+xml">
+  <link rel="icon" type="image/svg+xml" href="/assets/images/avatar.svg">
+  <link rel="alternate icon" type="image/png" href="/assets/images/avatar.png">
   <meta name="theme-color" content="#6C63FF">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="assets/images/icon-192.svg">
+  <link rel="apple-touch-icon" href="/assets/images/avatar.png">
 </head>
 <body>
 <div class="container">
@@ -25,14 +26,16 @@
   </header>
 
   <div class="streak-display" id="streakDisplay">
-    <span class="star">⭐</span> × <span id="starCount">0</span>
-    <span class="streak-fire">🔥</span> <span id="streakDays">0</span> дн.
+    <button type="button" class="streak-btn" id="achievements-btn" title="Звёзды и достижения">
+      <span class="star">⭐</span> × <span id="starCount">0</span>
+      <span class="streak-fire">🔥</span> <span id="streakDays">0</span> дн.
+    </button>
   </div>
 
   <div class="avatar-section">
     <div class="avatar-container">
-      <img id="avatar" class="avatar avatar-img" data-avatar="lucik" src="assets/images/avatar.svg" alt="Люцик">
-      <span id="avatarEmoji" style="display:none; font-size:80px; line-height:1;">🐱</span>
+      <img id="avatar" class="avatar avatar-img character-avatar" data-avatar="lucik" src="assets/images/avatar.svg" alt="Люцик">
+      <span id="avatarEmoji" class="avatar-fallback" style="display:none;">🐱</span>
     </div>
     <div class="child-name" id="childNameLabel">Загрузка...</div>
   </div>
@@ -46,8 +49,13 @@
 
   <div class="actions-row">
     <button class="action-btn" id="feedBtn">🍎</button>
-    <button class="action-btn" id="gamesBtn">🎮</button>
+    <button class="action-btn" id="games-menu">🎮</button>
     <button class="action-btn" id="roomBtn">🏠</button>
+  </div>
+
+  <div class="text-chat-row">
+    <input type="text" id="textChatInput" placeholder="Напиши сообщение..." maxlength="200" autocomplete="off">
+    <button type="button" class="action-btn" id="send-text-btn" title="Отправить">✉️</button>
   </div>
 
   <div class="plan-limit-bar" id="planLimitBar">
@@ -58,7 +66,7 @@
   <div class="mic-wrapper">
     <p id="thinkingDots" class="thinking-dots" style="display:none;">🤔 Люцик думает...</p>
     <p class="mic-hint" style="font-size:0.75rem;opacity:0.65;margin:0 0 8px;text-align:center;">Нажми и говори 🎤</p>
-    <button class="mic-btn mic-idle" id="micBtn" type="button" aria-label="Микрофон">
+    <button class="mic-btn mic-idle" id="mic-button" type="button" aria-label="Микрофон">
       <span class="mic-icon">🎤</span>
     </button>
   </div>
@@ -78,6 +86,7 @@
   import { initChildModeFromUrl } from './js/child-mode.js';
   initChildModeFromUrl();
 </script>
+<script type="module" src="js/error-monitor.js"></script>
 <script type="module" src="js/main.js"></script>
 <script>
   if ('serviceWorker' in navigator) {

@@ -1,37 +1,35 @@
-// ========================================
-// main.js — ГЛАВНЫЙ ФАЙЛ ПРИЛОЖЕНИЯ
-// ========================================
-
 import { CONFIG, validateConfig, ENV, CHARACTERS, initAvatarImages } from './config.js';
 import {
   initCore, getActiveChildName, getActiveChild, updateStatsUI, cycleCharacter,
-  selectGuestMode, showChildSelectModal, saveChildData, appState
+  selectGuestMode, showChildSelectModal, saveChildData, appState, sendTextMessage
 } from './core.js';
 import { getCharacter } from './ai.js';
-import { synthesizeSpeech } from './audio.js';
+import { ttsEngine, synthesizeSpeech } from './audio.js';
 import { startRecording, stopRecording, isRecording, browserSpeechRecognition } from './mic.js';
 import { updateUI, showNotification, initDevPanel } from './ui.js';
 import { initNotificationScheduler, checkPlanExpiryNotification } from './notifications.js';
+import { startOnboarding } from './onboarding.js';
 
 async function playWelcomeGreeting() {
   const modal = document.getElementById('childSelectModal');
   if (modal?.style.display === 'flex') return;
+  if (localStorage.getItem('geroy-onboarding-done') !== 'true') return;
   const name = getActiveChildName();
   const charId = getCharacter();
   const charName = CHARACTERS[charId]?.name || 'Люцик';
   const text = name !== 'Гость' && localStorage.getItem('profileComplete') === 'true'
     ? `Привет, ${name}! Я ${charName}. Давай поговорим или поиграем!`
     : 'Привет! Я кот Люцик. Как тебя зовут?';
-  await synthesizeSpeech(text, charId);
+  await ttsEngine.speak(text, charId);
 }
 
-/** Fallback STT — если серверное распознавание не сработало */
 async function tryBrowserSpeechRecognition() {
   return browserSpeechRecognition();
 }
 
 function initializeApp() {
   console.log('🚀 Initializing Main App v' + CONFIG.APP_VERSION);
+  localStorage.setItem('appVersion', CONFIG.APP_VERSION);
   validateConfig();
   initAvatarImages();
   initCore();
@@ -41,6 +39,7 @@ function initializeApp() {
   if (ENV.isDev || ENV.isStaging) initDevPanel();
   initNotificationScheduler().catch(() => {});
   checkPlanExpiryNotification();
+  setTimeout(() => startOnboarding(), 1500);
   setTimeout(() => {
     playWelcomeGreeting().catch((err) => console.warn('Welcome failed:', err));
   }, 1000);
@@ -54,13 +53,25 @@ function setupAdditionalHandlers() {
       if (e.target === modal) modal.style.display = 'none';
     });
   }
-  window.addEventListener('error', (e) => {
-    console.error('Global error:', e.error);
-    showNotification('Произошла ошибка, попробуйте ещё раз', 'error');
+
+  document.getElementById('send-text-btn')?.addEventListener('click', async () => {
+    const input = document.getElementById('textChatInput');
+    const text = input?.value?.trim();
+    if (!text) return;
+    input.value = '';
+    try {
+      await sendTextMessage(text);
+    } catch (e) {
+      showNotification('Не удалось отправить сообщение', 'error');
+    }
   });
-  window.addEventListener('unhandledrejection', (e) => {
-    console.error('Unhandled rejection:', e.reason);
-    showNotification('Ошибка: ' + (e.reason?.message || 'Неизвестная ошибка'), 'error');
+
+  document.getElementById('textChatInput')?.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') document.getElementById('send-text-btn')?.click();
+  });
+
+  document.getElementById('achievements-btn')?.addEventListener('click', () => {
+    showNotification('Собирай звёзды за сказки и игры! ⭐', 'info');
   });
 }
 
@@ -79,13 +90,14 @@ if (typeof window !== 'undefined') {
   window.saveChildData = saveChildData;
   window.appState = appState;
   window.browserSpeechRecognition = browserSpeechRecognition;
+  window.sendTextMessage = sendTextMessage;
 }
 
 export {
   initializeApp, startRecording, stopRecording, isRecording,
-  synthesizeSpeech, browserSpeechRecognition, tryBrowserSpeechRecognition
+  synthesizeSpeech, browserSpeechRecognition, tryBrowserSpeechRecognition, ttsEngine
 };
 export default {
   initializeApp, startRecording, stopRecording, isRecording,
-  synthesizeSpeech, browserSpeechRecognition, tryBrowserSpeechRecognition
+  synthesizeSpeech, browserSpeechRecognition, tryBrowserSpeechRecognition, ttsEngine
 };

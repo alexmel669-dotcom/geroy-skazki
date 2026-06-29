@@ -280,7 +280,7 @@ function applyChildAvatar(child) {
 function showPlanLimitUI(show) {
   planLimitActive = show;
   const bar = document.getElementById('planLimitBar');
-  const micBtn = document.getElementById('micBtn');
+  const micBtn = document.getElementById('mic-button');
   if (bar) bar.style.display = show ? 'flex' : 'none';
   if (micBtn) {
     micBtn.classList.toggle('mic-disabled', show);
@@ -304,7 +304,7 @@ function isPremiumUser() {
 
 
 function setMicVisualState(state) {
-  const micBtn = document.getElementById('micBtn');
+  const micBtn = document.getElementById('mic-button');
   if (!micBtn) return;
   micBtn.classList.remove('mic-recording', 'mic-processing', 'mic-idle', 'mic-bedtime-armed', 'recording', 'processing');
   if (state === 'recording') {
@@ -343,7 +343,7 @@ function isMicDisabled() {
 }
 
 function setMicDisabled(disabled) {
-  const micBtn = document.getElementById('micBtn');
+  const micBtn = document.getElementById('mic-button');
   if (!micBtn) return;
   micBtn.classList.toggle('mic-disabled', disabled);
   micBtn.disabled = disabled;
@@ -731,7 +731,7 @@ function initUI() {
 }
 
 function initEventListeners() {
-  const mic = document.getElementById('micBtn');
+  const mic = document.getElementById('mic-button');
   if (mic) {
     let activePointer = null;
 
@@ -766,7 +766,7 @@ function initEventListeners() {
     mic.addEventListener('touchcancel', onUp, { passive: false });
   }
 
-  const games = document.getElementById('gamesBtn');
+  const games = document.getElementById('games-menu');
   if (games) games.onclick = showGamesMenu;
 
   const feed = document.getElementById('feedBtn');
@@ -1108,6 +1108,11 @@ async function runBedtimeStory(promptText) {
 // ========================================
 // AUDIO PROCESS
 // ========================================
+
+export async function sendTextMessage(text) {
+  if (!text || !String(text).trim()) return;
+  await handleUserMessage(String(text).trim());
+}
 
 async function handleUserMessage(text, options = {}) {
   const avatar = document.getElementById('avatar');
