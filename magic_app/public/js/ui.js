@@ -1,4 +1,4 @@
-import { CONFIG, ENV, avatarUrl } from './config.js';
+import { CONFIG, ENV, avatarUrl, CHARACTERS, assetUrl } from './config.js';
 
 import { getActiveChildName, getActiveChild, updateStatsUI } from './core.js';
 
@@ -51,6 +51,42 @@ function setAvatarElementSrc(avatar, src) {
     }
 }
 
+export function switchCharacter(charId) {
+  const char = CHARACTERS[charId];
+  const avatar = document.getElementById('avatar');
+  const emojiEl = document.getElementById('avatarEmoji');
+  if (!char || !avatar) return;
+
+  const pngSrc = assetUrl(char.avatar.replace(/\.svg$/i, '.png'));
+  avatar.style.opacity = '0.4';
+  avatar.style.display = 'block';
+  if (emojiEl) emojiEl.style.display = 'none';
+
+  avatar.onload = function onAvatarLoad() {
+    avatar.style.opacity = '1';
+    avatar.style.display = 'block';
+    if (emojiEl) emojiEl.style.display = 'none';
+    avatar.removeEventListener('load', onAvatarLoad);
+  };
+
+  avatar.onerror = function onAvatarErr() {
+    if (avatar.dataset.fallbackPng !== '1' && pngSrc && !avatar.src.endsWith('.png')) {
+      avatar.dataset.fallbackPng = '1';
+      avatar.src = pngSrc;
+      return;
+    }
+    avatar.style.display = 'none';
+    if (emojiEl) {
+      emojiEl.textContent = char.emoji || '🐱';
+      emojiEl.style.display = 'block';
+    }
+    avatar.removeEventListener('error', onAvatarErr);
+  };
+
+  avatar.dataset.fallbackPng = '';
+  avatar.src = assetUrl(char.avatar);
+}
+
 function updateAvatar() {
     const avatar = document.getElementById('avatar');
     if (!avatar) return;
@@ -58,12 +94,13 @@ function updateAvatar() {
     const child = getActiveChild();
     if (child) {
         const role = child.avatarRole || (String(child.avatar || '').includes('kid2') ? 'kid2' : 'kid1');
-        setAvatarElementSrc(avatar, avatarUrl(role));
+        if (CHARACTERS[role]) {
+          switchCharacter(role);
+        }
         return;
     }
 
-    const savedChar = localStorage.getItem('currentCharacter') || 'lucik';
-    setAvatarElementSrc(avatar, avatarUrl(savedChar));
+    switchCharacter(localStorage.getItem('currentCharacter') || 'lucik');
 }
 
 // ========================================
@@ -306,6 +343,7 @@ if (typeof window !== 'undefined') {
 
 export default {
     updateUI,
+    switchCharacter,
     showNotification,
     showLoader,
     hideLoader,

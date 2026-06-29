@@ -2,6 +2,8 @@
 // security.js — БЕЗОПАСНОСТЬ И ФИЛЬТРАЦИЯ
 // ========================================
 
+import { fixCommonGrammarMistakes } from './grammar.js';
+
 // Список запрещенных слов
 export const ALLOWED_SLANG = [
   'круто', 'классно', 'здорово', 'супер',
@@ -101,7 +103,7 @@ export function sanitizeAIText(text, age) {
         });
     }
 
-    return cleaned;
+    return fixCommonGrammarMistakes(cleaned);
 }
 
 /**

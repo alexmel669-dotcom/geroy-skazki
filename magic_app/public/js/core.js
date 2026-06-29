@@ -27,7 +27,7 @@ import { startQuestGame } from './games/quest.js';
 import { startMazeGame } from './games/maze.js';
 import { startQuizGame } from './games/quiz.js';
 import { getGameLevel } from './games/game-ui.js';
-import { setAvatarState, playPurrSound } from './ui.js';
+import { setAvatarState, playPurrSound, switchCharacter } from './ui.js';
 import { getTimeContext } from './context.js';
 import { detectRequestType, getDictionaryFallback, learnFromResponse, isBedtimeStoryRequest } from './dictionary.js';
 import { checkDailyStreak, updateStreakUI, getDailyAdventure } from './retention.js';
@@ -274,11 +274,7 @@ function childAvatarImg(role, gender) {
 function applyChildAvatar(child) {
   if (!child) return;
   const role = child.avatarRole || (String(child.avatar || '').includes('kid2') ? 'kid2' : 'kid1');
-  if (CHARACTERS[role]) {
-    setAvatarIcon(CHARACTERS[role].icon);
-  } else if (child.avatar) {
-    setAvatarIcon(assetUrl(child.avatar));
-  }
+  switchCharacter(CHARACTERS[role] ? role : 'lucik');
 }
 
 function showPlanLimitUI(show) {
@@ -306,21 +302,6 @@ function isPremiumUser() {
   return plan === 'basic' || plan === 'family';
 }
 
-function setAvatarIcon(src) {
-  const avatar = document.getElementById('avatar');
-  if (!avatar) return;
-  if (avatar.tagName === 'IMG') {
-    avatar.style.opacity = '0.4';
-    setTimeout(() => {
-      avatar.src = src;
-      avatar.style.opacity = '1';
-    }, 150);
-  } else {
-    avatar.style.backgroundImage = `url('${src}')`;
-    avatar.style.backgroundSize = 'cover';
-    avatar.style.backgroundPosition = 'center';
-  }
-}
 
 function setMicVisualState(state) {
   const micBtn = document.getElementById('micBtn');
@@ -475,8 +456,7 @@ export function setActiveChild(index, options = {}) {
 
   applyChildAvatar(child);
   if (!child) {
-    const saved = localStorage.getItem('currentCharacter') || 'lucik';
-    setAvatarIcon(CHARACTERS[saved]?.icon || CHARACTERS.lucik.icon);
+    switchCharacter(localStorage.getItem('currentCharacter') || 'lucik');
   }
 
   trackEvent('child_select', child?.name || 'guest');
@@ -828,7 +808,7 @@ function loadState() {
   setCharacter(saved);
   characterCycleIndex = characterIds.indexOf(saved);
   if (characterCycleIndex < 0) characterCycleIndex = 0;
-  setAvatarIcon(CHARACTERS[saved]?.icon || CHARACTERS.lucik.icon);
+  switchCharacter(saved);
 }
 
 // ========================================
@@ -848,7 +828,7 @@ export function cycleCharacter(direction = 1) {
     setCharacter(id);
     localStorage.setItem('currentCharacter', id);
     clearContext();
-    setAvatarIcon(char.icon);
+    switchCharacter(id);
 
     const avatar = document.getElementById('avatar');
     if (avatar) {

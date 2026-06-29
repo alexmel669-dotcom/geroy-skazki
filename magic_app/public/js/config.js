@@ -57,7 +57,7 @@ export function avatarImgHtml(role, size = 36, className = 'child-chip-avatar') 
 }
 
 export const CONFIG = {
-  APP_VERSION: '5.0.12',
+  APP_VERSION: '5.0.13',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -120,8 +120,9 @@ export const CHARACTERS = {
     name: 'Люцик',
     voice: 'zahar',
     gender: 'male',
-    icon: '/assets/images/avatar.svg',
-    avatar: 'avatar.svg',
+    avatar: 'assets/images/avatar.svg',
+    emoji: '🐱',
+    icon: 'assets/images/avatar.svg',
     premium: false,
     description: 'Добрый волшебник'
   },
@@ -130,8 +131,9 @@ export const CHARACTERS = {
     name: 'Мама',
     voice: 'jane',
     gender: 'female',
-    icon: '/assets/images/mom.svg',
-    avatar: 'mom.svg',
+    avatar: 'assets/images/mom.svg',
+    emoji: '👩',
+    icon: 'assets/images/mom.svg',
     premium: false,
     description: 'Заботливая мама'
   },
@@ -140,8 +142,9 @@ export const CHARACTERS = {
     name: 'Папа',
     voice: 'ermil',
     gender: 'male',
-    icon: '/assets/images/dad.svg',
-    avatar: 'dad.svg',
+    avatar: 'assets/images/dad.svg',
+    emoji: '👨',
+    icon: 'assets/images/dad.svg',
     premium: false,
     description: 'Надёжный папа'
   },
@@ -150,8 +153,9 @@ export const CHARACTERS = {
     name: 'Девочка',
     voice: 'oksana',
     gender: 'female',
-    icon: '/assets/images/kid1.svg',
-    avatar: 'kid1.svg',
+    avatar: 'assets/images/kid1.svg',
+    emoji: '👧',
+    icon: 'assets/images/kid1.svg',
     premium: false,
     description: 'Добрая девочка'
   },
@@ -160,8 +164,9 @@ export const CHARACTERS = {
     name: 'Мальчик',
     voice: 'oksana',
     gender: 'male',
-    icon: '/assets/images/kid2.svg',
-    avatar: 'kid2.svg',
+    avatar: 'assets/images/kid2.svg',
+    emoji: '👦',
+    icon: 'assets/images/kid2.svg',
     premium: false,
     description: 'Весёлый мальчик'
   }
