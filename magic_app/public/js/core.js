@@ -14,8 +14,10 @@ import {
 import {
   startRecording, stopRecording, cancelRecording, isRecording, getRecordingMimeType,
   isMicrophoneSupported, prepareAudioForStt, getLiveSttText, clearLiveSttText,
-  getMicState, setMicState, onMicProcessingDone
+  getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
+  isProcessingLocked
 } from './mic.js';
+import { getAgeWord } from './grammar.js';
 import { synthesizeSpeech } from './audio.js';
 import { checkAchievements, showAchievement } from './achievements.js';
 import { trackEvent, logError } from './analytics.js';
@@ -207,7 +209,7 @@ function saveDetectedProfile({ childName, childAge }) {
 
   const children = getChildren();
   let gender = null;
-  if (childName && (children.length === 0 || getActiveChildName() === 'Гость')) {
+  if (childName && childAge != null && (children.length === 0 || getActiveChildName() === 'Гость')) {
     const ageNum = parseInt(childAge, 10) || 5;
     gender = guessGenderFromName(childName);
     const avatarRole = gender === 'male' ? 'kid2' : 'kid1';
@@ -251,19 +253,143 @@ function getChildContextForAI() {
   const profileName = localStorage.getItem('profileChildName');
   const profileAge = localStorage.getItem('profileChildAge');
   const gender = getChildGender(child);
+  const isGuest = isGuestUser();
   if (child?.name && child.name !== 'Гость') {
     return {
       name: child.name,
-      age: child.age || parseInt(profileAge, 10) || 5,
-      gender
+      age: child.age || parseInt(profileAge, 10) || null,
+      gender,
+      isGuest: false
     };
   }
-  const name = profileName || 'малыш';
+  if (isGuest && !profileName) {
+    return { name: null, age: null, gender: 'unknown', isGuest: true };
+  }
+  const name = profileName || null;
   return {
     name,
-    age: profileAge ? parseInt(profileAge, 10) : 5,
-    gender: gender !== 'unknown' ? gender : guessGenderFromName(name)
+    age: profileAge ? parseInt(profileAge, 10) : null,
+    gender: gender !== 'unknown' ? gender : guessGenderFromName(name),
+    isGuest
   };
+}
+
+export function isGuestUser() {
+  return localStorage.getItem('guestMode') === 'true'
+    || getActiveChildIndex() < 0
+    || getActiveChildName() === 'Гость';
+}
+
+export function getCurrentUser() {
+  const child = getActiveChild();
+  const profileName = localStorage.getItem('profileChildName') || '';
+  const profileAgeRaw = localStorage.getItem('profileChildAge');
+  const isGuest = isGuestUser();
+  let childName = null;
+  let childAge = null;
+
+  if (child?.name && child.name !== 'Гость') {
+    childName = child.name;
+    childAge = child.age ?? null;
+  } else if (profileName) {
+    childName = profileName;
+    childAge = profileAgeRaw ? parseInt(profileAgeRaw, 10) : null;
+  }
+
+  return { isGuest, childName, childAge, profileComplete: localStorage.getItem('profileComplete') === 'true' };
+}
+
+function extractGuestName(text) {
+  const skip = new Set(['меня', 'зовут', 'называют', 'я', 'это', 'привет', 'кот', 'люцик', 'меня зовут']);
+  const lower = text.toLowerCase();
+  const named = lower.match(/(?:меня\s+зовут|зовут\s+меня|я\s+)([а-яё]{2,15})/i);
+  if (named?.[1]) return named[1].charAt(0).toUpperCase() + named[1].slice(1);
+  const words = text.match(/\b([А-ЯЁ][а-яё]{1,15})\b/g);
+  if (!words) return text.trim().slice(0, 20) || null;
+  for (const w of words) {
+    if (!skip.has(w.toLowerCase())) return w;
+  }
+  return words[words.length - 1];
+}
+
+function extractGuestAge(text) {
+  const match = text.match(/\b(\d{1,2})\b/);
+  if (!match) return null;
+  const age = parseInt(match[1], 10);
+  return age >= 3 && age <= 14 ? age : null;
+}
+
+async function handleGuestIntroduction(text) {
+  const user = getCurrentUser();
+  if (!user.isGuest) return false;
+  if (user.childName && user.childAge) return false;
+
+  const profileName = localStorage.getItem('profileChildName');
+  const profileAge = localStorage.getItem('profileChildAge');
+
+  if (!profileName && !user.childName) {
+    const name = extractGuestName(text);
+    if (!name) return false;
+    localStorage.setItem('profileChildName', name);
+    localStorage.setItem('profileComplete', 'partial');
+    saveDetectedProfile({ childName: name, childAge: null });
+    refreshGuestLabel();
+    updateTextInputVisibility();
+    await synthesizeSpeech(`Очень приятно, ${name}! А сколько тебе лет?`, getCharacter());
+    return true;
+  }
+
+  if (!profileAge && !user.childAge) {
+    const age = extractGuestAge(text);
+    if (!age) return false;
+    const name = profileName || user.childName;
+    localStorage.setItem('profileChildAge', String(age));
+    localStorage.setItem('profileComplete', 'true');
+    saveDetectedProfile({ childName: name, childAge: age });
+    refreshGuestLabel();
+    updateTextInputVisibility();
+    const ageWord = getAgeWord(age);
+    await synthesizeSpeech(`${age} ${ageWord} — это здорово! Теперь расскажи, что тебе интересно?`, getCharacter());
+    return true;
+  }
+
+  return false;
+}
+
+export function updateTextInputVisibility() {
+  const user = getCurrentUser();
+  const age = user.childAge || 0;
+  const row = document.querySelector('.text-chat-row');
+  if (row) {
+    row.style.display = age >= 7 ? 'flex' : 'none';
+  }
+}
+
+function refreshGuestLabel() {
+  const label = document.getElementById('childNameLabel');
+  const user = getCurrentUser();
+  if (!label) return;
+  if (user.childName && user.childAge) {
+    label.textContent = `${user.childName}, ${user.childAge} лет`;
+  } else if (user.childName) {
+    label.textContent = user.childName;
+  }
+}
+
+export async function playWelcomeGreeting() {
+  const modal = document.getElementById('childSelectModal');
+  if (modal?.style.display === 'flex') return;
+  if (localStorage.getItem('ob-done') !== '1' && localStorage.getItem('geroy-onboarding-done') !== 'true') return;
+
+  const user = getCurrentUser();
+  const timeContext = getTimeContext(user.childName || '');
+
+  if (user.childName && user.childAge) {
+    const greeting = timeContext.greeting.replace(user.childName, user.childName);
+    await synthesizeSpeech(greeting, getCharacter());
+  } else if (user.isGuest || !user.profileComplete) {
+    await synthesizeSpeech('Привет! Я кот Люцик. Давай познакомимся! Как тебя зовут?', getCharacter());
+  }
 }
 
 function childAvatarImg(role, gender) {
@@ -380,6 +506,7 @@ export function initCore() {
   setChatChild(getActiveChildName());
   loadChatHistory(getActiveChildName());
   updateStatsDisplay();
+  updateTextInputVisibility();
   resetDailyCounters();
   if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
   updateAvatarMoodState();
@@ -506,10 +633,12 @@ export function showChildSelectModal() {
 }
 
 export function selectGuestMode() {
+  localStorage.setItem('guestMode', 'true');
   setActiveChild(-1);
   const modal = document.getElementById('childSelectModal');
   if (modal) modal.style.display = 'none';
   updateStatsDisplay();
+  updateTextInputVisibility();
 }
 
 // ========================================
@@ -733,9 +862,10 @@ function initEventListeners() {
     let activePointer = null;
 
     const onDown = (e) => {
-      if (getMicState() === 'processing' || isMicDisabled()) {
+      if (getMicState() === 'processing' || isProcessingLocked() || isMicDisabled()) {
         e.preventDefault();
-        return;
+        e.stopPropagation();
+        return false;
       }
       if (activePointer !== null) return;
       if (e.type === 'mousedown' && e.button !== 0) return;
@@ -977,24 +1107,30 @@ function onFirstMicSuccess() {
 }
 
 async function beginRecording() {
+  if (!startMicSession()) {
+    console.warn('🎙️ Mic busy, state:', getMicState());
+    return;
+  }
   if (planLimitActive || getStoriesRemaining() <= 0) {
+    onMicProcessingDone();
     await handlePlanLimitExceeded();
     return;
   }
-  if (getMicState() !== 'idle' || isMicDisabled() || isRecording() || micStarting) {
+  if (isMicDisabled() || isRecording() || micStarting) {
+    onMicProcessingDone();
     console.warn('🎙️ Mic busy, state:', getMicState());
     return;
   }
   if (!isMicrophoneSupported()) {
+    onMicProcessingDone();
     await handleMicFailure('not_supported');
     return;
   }
   micStarting = true;
-  setMicVisualState('recording');
   try {
     await startRecording({
       onAutoStop: () => finishRecording(),
-      onStateChange: (s) => { if (s === 'processing') setMicVisualState('processing'); }
+      onStateChange: (s) => { if (s === 'processing') finishMicSession(); }
     });
     setAvatarState('listening');
     document.getElementById('avatar')?.classList.add('listening');
@@ -1004,7 +1140,7 @@ async function beginRecording() {
     }
   } catch (e) {
     logError('mic', e.message);
-    setMicVisualState('idle');
+    onMicProcessingDone();
     await handleMicFailure(e.message);
   } finally {
     micStarting = false;
@@ -1023,7 +1159,7 @@ async function finishRecording() {
 async function finishRecordingInternal() {
   if (micEnding || !isRecording() || getMicState() === 'processing') return;
   micEnding = true;
-  setMicVisualState('processing');
+  finishMicSession();
   isProcessing = true;
   try {
     const audio = await stopRecording();
@@ -1031,15 +1167,15 @@ async function finishRecordingInternal() {
       await processAudio(audio);
     } else {
       await handleMicFailure('empty_blob');
+      onMicProcessingDone();
     }
   } catch (e) {
     logError('record', e.message);
+    onMicProcessingDone();
   } finally {
     isProcessing = false;
     micEnding = false;
     finishQueued = false;
-    onMicProcessingDone();
-    setMicVisualState('idle');
     setAvatarState(null);
     updateAvatarMoodState();
     document.getElementById('avatar')?.classList.remove('listening', 'talking');
@@ -1133,6 +1269,10 @@ async function handleUserMessage(text, options = {}) {
 
   if (checkBadWords(text)) {
     await synthesizeSpeech('Давай говорить добрые слова', getCharacter());
+    return;
+  }
+
+  if (await handleGuestIntroduction(text)) {
     return;
   }
 
@@ -1290,6 +1430,7 @@ async function processAudio(audioBlob) {
     logError('process_audio', e.message);
     await handleMicFailure('process_error');
   } finally {
+    onMicProcessingDone();
     if (avatar) avatar.classList.remove('talking', 'listening');
   }
 }

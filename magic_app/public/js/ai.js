@@ -123,12 +123,13 @@ export function buildSystemPrompt(childInfo = {}) {
 export function getProfileForAI(childInfo = {}) {
   const storedName = localStorage.getItem('profileChildName') || '';
   const storedAge = localStorage.getItem('profileChildAge') || '';
-  const name = childInfo.name && childInfo.name !== 'Гость' ? childInfo.name : storedName;
-  const age = childInfo.age || (storedAge ? parseInt(storedAge, 10) : null);
+  const isGuest = localStorage.getItem('guestMode') === 'true';
+  const name = childInfo.name && childInfo.name !== 'Гость' ? childInfo.name : (storedName || null);
+  const age = childInfo.age ?? (storedAge ? parseInt(storedAge, 10) : null);
   const gender = childInfo.gender || guessGenderFromName(name);
   const store = readStore();
   const isFirstMessage = store.messages.length === 0;
-  return { name: name || null, age: age || null, gender, isFirstMessage };
+  return { name, age, gender, isGuest, isFirstMessage };
 }
 
 export async function generateResponse(prompt, childInfo = {}) {
@@ -168,6 +169,7 @@ export async function generateResponse(prompt, childInfo = {}) {
         childGender: profile.gender,
         character: currentCharacter,
         characterName: CHARACTERS[currentCharacter]?.name || 'Люцик',
+        isGuest: childInfo.isGuest ?? profile.isGuest ?? false,
         requestType: childInfo.requestType || 'chat',
         timeContext: childInfo.timeContext || null,
         history,

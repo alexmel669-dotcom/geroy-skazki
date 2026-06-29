@@ -1,8 +1,9 @@
 import './error-monitor.js';
-import { CONFIG, validateConfig, ENV, CHARACTERS, initAvatarImages } from './config.js';
+import { CONFIG, validateConfig, ENV, initAvatarImages } from './config.js';
 import {
   initCore, getActiveChildName, getActiveChild, updateStatsUI, cycleCharacter,
-  selectGuestMode, showChildSelectModal, saveChildData, appState, sendTextMessage
+  selectGuestMode, showChildSelectModal, saveChildData, appState, sendTextMessage,
+  playWelcomeGreeting
 } from './core.js';
 import { getCharacter } from './ai.js';
 import { ttsEngine, synthesizeSpeech } from './audio.js';
@@ -10,19 +11,6 @@ import { startRecording, stopRecording, isRecording, browserSpeechRecognition } 
 import { updateUI, showNotification, initDevPanel, initVoiceHints } from './ui.js';
 import { initNotificationScheduler, checkPlanExpiryNotification } from './notifications.js';
 import { startOnboarding } from './onboarding.js';
-
-async function playWelcomeGreeting() {
-  const modal = document.getElementById('childSelectModal');
-  if (modal?.style.display === 'flex') return;
-  if (localStorage.getItem('ob-done') !== '1' && localStorage.getItem('geroy-onboarding-done') !== 'true') return;
-  const name = getActiveChildName();
-  const charId = getCharacter();
-  const charName = CHARACTERS[charId]?.name || 'Люцик';
-  const text = name !== 'Гость' && localStorage.getItem('profileComplete') === 'true'
-    ? `Привет, ${name}! Я ${charName}. Давай поговорим или поиграем!`
-    : 'Привет! Я кот Люцик. Как тебя зовут?';
-  await ttsEngine.speak(text, charId);
-}
 
 async function tryBrowserSpeechRecognition() {
   return browserSpeechRecognition();
@@ -44,7 +32,7 @@ function initializeApp() {
   initVoiceHints();
   setTimeout(() => {
     playWelcomeGreeting().catch((err) => console.warn('Welcome failed:', err));
-  }, 1000);
+  }, 3000);
   console.log('✅ App initialized, child:', getActiveChildName());
 }
 

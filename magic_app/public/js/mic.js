@@ -461,9 +461,14 @@ export function setMicStateCallback(cb) {
 }
 
 let micState = 'idle';
+let processingLock = false;
 
 export function getMicState() {
   return micState;
+}
+
+export function isProcessingLocked() {
+  return processingLock;
 }
 
 export function setMicState(state) {
@@ -473,16 +478,24 @@ export function setMicState(state) {
   btn.classList.remove('mic-recording', 'mic-processing', 'mic-idle', 'mic-bedtime-armed', 'recording', 'processing');
   btn.className = 'mic-btn mic-' + state;
   if (state === 'recording') btn.classList.add('recording');
+
   if (state === 'processing') {
     btn.disabled = true;
     btn.classList.add('processing');
-  } else {
+    processingLock = true;
+  } else if (state === 'idle') {
+    btn.disabled = false;
+    processingLock = false;
+  } else if (state === 'recording') {
     btn.disabled = false;
   }
 }
 
 export function startMicSession() {
-  if (micState !== 'idle') return false;
+  if (micState !== 'idle' || processingLock) {
+    console.warn('🎙️ Mic busy:', micState);
+    return false;
+  }
   setMicState('recording');
   return true;
 }
@@ -493,13 +506,17 @@ export function finishMicSession() {
 }
 
 export function onMicProcessingDone() {
+  processingLock = false;
   setMicState('idle');
 }
+
+export const onProcessingDone = onMicProcessingDone;
 
 export default {
   isRecording, startRecording, stopRecording, cancelRecording,
   getAudioBlob, playAudioFromUrl, getRecordingMimeType, prepareAudioForStt,
   isMicrophoneSupported, requestMicrophonePermission, setMicStateCallback,
   browserSpeechRecognition, getLiveSttText, clearLiveSttText,
-  getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone
+  getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
+  onProcessingDone, isProcessingLocked
 };

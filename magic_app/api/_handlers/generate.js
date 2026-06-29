@@ -127,9 +127,35 @@ ${grammarBlock(childName)}
 ${JSON_FORMAT_STORY}`;
 }
 
-function buildSystemPrompt({ childName, childAge, childGender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext }) {
+function getGuestPrompt(childName, childAge) {
+  const known = [];
+  if (childName) known.push(`Имя уже известно: ${childName}. Спроси возраст, если ещё не знаешь.`);
+  if (childAge) known.push(`Возраст уже известен: ${childAge}.`);
+  const knownBlock = known.length ? `\n${known.join('\n')}` : '';
+
+  return `Ты — Люцик, добрый кот.
+Ты ТОЛЬКО ЧТО познакомился с ребёнком. Ты НЕ знаешь его имя и возраст (или знаешь частично).${knownBlock}
+
+Твоя задача:
+1. Спросить имя (если ещё не знаешь)
+2. Спросить возраст (если ещё не знаешь)
+3. После знакомства — поддерживать дружеский разговор
+4. НЕ спрашивать о страхах, проблемах, тревогах
+5. БЫТЬ другом, а не психологом
+6. Говорить просто и тепло
+
+${GRAMMAR_RULES}
+
+${JSON_FORMAT}`;
+}
+
+function buildSystemPrompt({ childName, childAge, childGender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext, isGuest }) {
   if (systemPrompt) return systemPrompt;
   const charId = character || 'lucik';
+  const needsGuestIntro = isGuest && (!childName || !childAge);
+  if (needsGuestIntro && requestType !== 'story' && requestType !== 'bedtime_story') {
+    return getGuestPrompt(childName, childAge);
+  }
   if (requestType === 'bedtime_story') {
     return getBedtimeStoryPrompt(childName, childAge, timeContext, childGender, charId);
   }
@@ -180,11 +206,11 @@ export default async function handler(req, res) {
 
   const started = Date.now();
   try {
-    const { message, childName, childAge, childGender, character, systemPrompt, history, topic, isFirstMessage, requestType, timeContext } = req.body;
+    const { message, childName, childAge, childGender, character, systemPrompt, history, topic, isFirstMessage, requestType, timeContext, isGuest } = req.body;
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
     const gender = normalizeGender(childGender);
-    const sys = buildSystemPrompt({ childName, childAge, childGender: gender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext });
+    const sys = buildSystemPrompt({ childName, childAge, childGender: gender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext, isGuest });
 
     if (!process.env.DEEPSEEK_API_KEY) {
       const devReply = childName
