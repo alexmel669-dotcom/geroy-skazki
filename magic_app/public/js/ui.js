@@ -54,37 +54,28 @@ function setAvatarElementSrc(avatar, src) {
 export function switchCharacter(charId) {
   const char = CHARACTERS[charId];
   const avatar = document.getElementById('avatar');
-  const emojiEl = document.getElementById('avatarEmoji');
+  const emoji = document.getElementById('avatarEmoji');
   if (!char || !avatar) return;
 
-  const pngSrc = assetUrl(char.avatar.replace(/\.svg$/i, '.png'));
-  avatar.style.opacity = '0.4';
+  avatar.style.opacity = '1';
   avatar.style.display = 'block';
-  if (emojiEl) emojiEl.style.display = 'none';
-
-  avatar.onload = function onAvatarLoad() {
-    avatar.style.opacity = '1';
-    avatar.style.display = 'block';
-    if (emojiEl) emojiEl.style.display = 'none';
-    avatar.removeEventListener('load', onAvatarLoad);
-  };
+  avatar.src = assetUrl(char.avatar);
+  if (emoji) emoji.style.display = 'none';
 
   avatar.onerror = function onAvatarErr() {
-    if (avatar.dataset.fallbackPng !== '1' && pngSrc && !avatar.src.endsWith('.png')) {
-      avatar.dataset.fallbackPng = '1';
-      avatar.src = pngSrc;
-      return;
-    }
     avatar.style.display = 'none';
-    if (emojiEl) {
-      emojiEl.textContent = char.emoji || '🐱';
-      emojiEl.style.display = 'block';
+    if (emoji) {
+      emoji.textContent = char.emoji || '🐱';
+      emoji.style.display = 'block';
     }
     avatar.removeEventListener('error', onAvatarErr);
   };
 
-  avatar.dataset.fallbackPng = '';
-  avatar.src = assetUrl(char.avatar);
+  avatar.onload = function onAvatarLoad() {
+    avatar.style.display = 'block';
+    if (emoji) emoji.style.display = 'none';
+    avatar.removeEventListener('load', onAvatarLoad);
+  };
 }
 
 function updateAvatar() {

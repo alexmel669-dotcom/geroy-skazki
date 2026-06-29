@@ -36,6 +36,7 @@ export default async function handler(req, res) {
     const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID?.trim();
 
     if (!YANDEX_API_KEY || !YANDEX_FOLDER_ID) {
+      console.error('TTS: Missing Yandex credentials');
       return res.status(503).json({ error: 'TTS not configured', fallback: true });
     }
 
@@ -59,12 +60,12 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Yandex TTS error:', response.status, errorText);
-      return res.status(500).json({
+      console.error('TTS Error: Yandex', response.status, errorText);
+      return res.status(503).json({
         error: 'TTS synthesis failed',
+        details: errorText.slice(0, 200),
         fallback: true,
-        yandexStatus: response.status,
-        hint: response.status === 401 ? 'Check YANDEX_API_KEY on Vercel' : undefined
+        yandexStatus: response.status
       });
     }
 
@@ -77,7 +78,7 @@ export default async function handler(req, res) {
       size: audioArrayBuffer.byteLength
     });
   } catch (error) {
-    console.error('❌ TTS error:', error.message);
-    return res.status(500).json({ error: error.message, fallback: true });
+    console.error('TTS Error:', error.message);
+    return res.status(503).json({ error: 'TTS error', details: error.message, fallback: true });
   }
 }

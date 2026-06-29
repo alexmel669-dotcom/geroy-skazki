@@ -7,6 +7,7 @@ import { logError } from '../_lib/auth-log.js';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '../_middleware/auth.js';
 import { validatePromocode, buildPlanFromPromo, getEffectivePlan } from '../_lib/promocodes.js';
+import { isValidSecretQuestionKey, normalizeSecretAnswer } from '../_lib/secret-questions.js';
 
 const MIN_AGE = 3;
 const MAX_AGE = 14;
@@ -63,7 +64,7 @@ export default async function handler(req, res) {
   try {
     const normalizedEmail = (req.body.email || req.body.username || '').trim().toLowerCase();
     const username = String(req.body.username || normalizedEmail.split('@')[0] || normalizedEmail).trim();
-    const { password, gender, age, children, promocode, parentPin, parentName } = req.body;
+    const { password, gender, age, children, promocode, parentPin, parentName, secretQuestion, secretAnswer } = req.body;
 
     if (!normalizedEmail || !password) {
       return res.status(400).json({ error: 'Поля username, email, password обязательны' });
@@ -76,6 +77,15 @@ export default async function handler(req, res) {
     const pinStr = String(parentPin || '').trim();
     if (!/^\d{4}$/.test(pinStr)) {
       return res.status(400).json({ error: 'PIN должен состоять из 4 цифр' });
+    }
+
+    const secretKey = String(secretQuestion || '').trim();
+    const secretAnswerNorm = normalizeSecretAnswer(secretAnswer);
+    if (!isValidSecretQuestionKey(secretKey)) {
+      return res.status(400).json({ error: 'Выберите секретный вопрос' });
+    }
+    if (secretAnswerNorm.length < 2) {
+      return res.status(400).json({ error: 'Ответ на секретный вопрос слишком короткий' });
     }
 
     const exists = await userExists(normalizedEmail);
@@ -92,6 +102,7 @@ export default async function handler(req, res) {
 
     const passwordHash = hashPassword(password);
     const parentPinHash = hashPassword(pinStr);
+    const secretAnswerHash = hashPassword(secretAnswerNorm);
     const role = ADMIN_EMAILS.includes(normalizedEmail) ? 'admin' : 'user';
 
     let plan = 'free';
@@ -123,6 +134,8 @@ export default async function handler(req, res) {
       planExpiry,
       promocodeUsed,
       role,
+      secretQuestion: secretKey,
+      secretAnswerHash,
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString()
     };

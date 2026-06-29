@@ -37,6 +37,16 @@
         <input type="password" id="parentPin" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="1234" required autocomplete="off">
       </div>
 
+      <div class="form-group promocode-group">
+        <label for="secretQuestion">🔑 Секретный вопрос (для восстановления пароля)</label>
+        <select id="secretQuestion" required>
+          <option value="pet">Кличка вашего первого питомца?</option>
+          <option value="city">Город, в котором вы родились?</option>
+          <option value="mother">Девичья фамилия мамы?</option>
+        </select>
+        <input type="text" id="secretAnswer" placeholder="Ваш ответ" required autocomplete="off">
+      </div>
+
       <!-- Ребёнок 1 (обязательно) -->
       <div class="child-block">
         <label>👶 Ребёнок 1 *</label>
@@ -172,6 +182,14 @@
       errorDiv.style.display = 'block';
       return;
     }
+
+    const secretQuestion = document.getElementById('secretQuestion')?.value || '';
+    const secretAnswer = document.getElementById('secretAnswer')?.value.trim() || '';
+    if (!secretAnswer || secretAnswer.length < 2) {
+      errorDiv.textContent = 'Введите ответ на секретный вопрос';
+      errorDiv.style.display = 'block';
+      return;
+    }
     
     // Собираем детей
     const children = [];
@@ -229,7 +247,7 @@
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, parentName, children, promocode, parentPin })
+        body: JSON.stringify({ email, password, parentName, children, promocode, parentPin, secretQuestion, secretAnswer })
       });
       const data = await res.json();
       

@@ -57,7 +57,7 @@ export function avatarImgHtml(role, size = 36, className = 'child-chip-avatar') 
 }
 
 export const CONFIG = {
-  APP_VERSION: '5.0.13',
+  APP_VERSION: '5.0.14',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -182,6 +182,10 @@ export function initAvatarImages() {
   refreshCharacterIcons();
   const fix = (img) => {
     if (!img || img.dataset.avatarReady) return;
+    if (img.id === 'avatar') {
+      img.dataset.avatarReady = '1';
+      return;
+    }
     const role = img.dataset.avatar;
     if (role) {
       img.src = avatarUrl(role, 'svg');

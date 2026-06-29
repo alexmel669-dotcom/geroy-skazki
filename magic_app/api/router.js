@@ -29,6 +29,8 @@ import childToken from './_handlers/child-token.js';
 import weeklyDigest from './_handlers/weekly-digest.js';
 import weeklyStats from './_handlers/weekly-stats.js';
 import feedback from './_handlers/feedback.js';
+import getSecretQuestion from './_handlers/get-secret-question.js';
+import resetPassword from './_handlers/reset-password.js';
 
 
 
@@ -80,7 +82,11 @@ const ROUTES = {
 
   'weekly-stats': weeklyStats,
 
-  feedback
+  feedback,
+
+  'get-secret-question': getSecretQuestion,
+
+  'reset-password': resetPassword
 
 };
 

@@ -19,6 +19,19 @@
       <input type="password" id="loginPassword" placeholder="Пароль" required autocomplete="current-password" minlength="6">
       <button type="submit" class="auth-btn">Войти</button>
     </form>
+    <p class="auth-link"><a href="#" id="forgotPasswordLink" class="forgot-password">Забыли пароль?</a></p>
+    <div id="passwordReset" class="password-reset" style="display:none;">
+      <h3>Восстановление пароля</h3>
+      <input type="email" id="resetEmail" placeholder="Email">
+      <button type="button" class="auth-btn auth-btn-secondary" id="getSecretQuestionBtn">Далее</button>
+      <div id="resetStep2" style="display:none;">
+        <p id="secretQuestionText" class="secret-question-text"></p>
+        <input type="text" id="secretAnswerInput" placeholder="Ваш ответ" autocomplete="off">
+        <input type="password" id="newPassword" placeholder="Новый пароль" minlength="6" autocomplete="new-password">
+        <button type="button" class="auth-btn" id="resetPasswordBtn">Сменить пароль</button>
+      </div>
+      <p class="auth-error" id="resetError"></p>
+    </div>
     <p class="auth-error" id="loginError"></p>
     <p class="auth-link">Нет аккаунта? <a href="register.html">Зарегистрироваться</a></p>
     <p class="auth-link"><a href="app.html" id="guestLink">Продолжить как гость 🐾</a></p>

@@ -9,7 +9,7 @@ let currentUtterance = null;
 let speechQueue = [];
 let isSpeaking = false;
 
-async function browserSpeech(text) {
+function speakBrowser(text) {
   return new Promise((resolve) => {
     if (!window.speechSynthesis) {
       resolve();
@@ -20,7 +20,7 @@ async function browserSpeech(text) {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ru-RU';
-    utterance.rate = 0.95;
+    utterance.rate = 0.9;
     utterance.pitch = 1.1;
     utterance.volume = 1;
 
@@ -35,6 +35,7 @@ async function browserSpeech(text) {
       processQueue();
     };
     utterance.onerror = () => {
+      console.warn('⚠️ Browser TTS failed');
       isSpeaking = false;
       currentUtterance = null;
       resolve();
@@ -82,13 +83,17 @@ export async function synthesizeSpeech(text, character = 'lucik') {
       }
     } else {
       const data = await response.json().catch(() => ({}));
-      console.warn('⚠️ TTS API error:', response.status, data.error || '');
+      console.warn('⚠️ Yandex TTS failed, using browser:', response.status, data.error || data.details || '');
     }
   } catch (err) {
-    console.warn('⚠️ TTS API failed, using browser speech:', err);
+    console.warn('⚠️ Yandex TTS failed, using browser:', err.message);
   }
 
-  await browserSpeech(text);
+  isSpeaking = true;
+  setAvatarState('speaking');
+  await speakBrowser(text);
+  isSpeaking = false;
+  setAvatarState(null);
 }
 
 export function stopSpeech() {

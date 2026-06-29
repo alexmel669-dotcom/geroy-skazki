@@ -306,13 +306,16 @@ function isPremiumUser() {
 function setMicVisualState(state) {
   const micBtn = document.getElementById('micBtn');
   if (!micBtn) return;
-  micBtn.classList.remove('mic-recording', 'mic-processing', 'mic-idle', 'recording', 'processing');
+  micBtn.classList.remove('mic-recording', 'mic-processing', 'mic-idle', 'mic-bedtime-armed', 'recording', 'processing');
   if (state === 'recording') {
     micBtn.classList.add('mic-recording', 'recording');
+    micBtn.disabled = false;
   } else if (state === 'processing') {
     micBtn.classList.add('mic-processing', 'processing');
+    micBtn.disabled = true;
   } else {
     micBtn.classList.add('mic-idle');
+    micBtn.disabled = isMicDisabled();
   }
 }
 
@@ -385,6 +388,7 @@ export function initCore() {
   resetDailyCounters();
   if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
   updateAvatarMoodState();
+  micState = 'idle';
   setMicVisualState('idle');
 
   checkDailyStreak();
@@ -405,7 +409,7 @@ export function initCore() {
     saveChildStats(stats);
     updateStatsDisplay();
     const needMsg = getTamagotchiNeedsMessage(stats);
-    if (needMsg && !isProcessing && !appState.gameActive) {
+    if (needMsg && micState === 'idle' && !appState.gameActive) {
       synthesizeSpeech(needMsg, getCharacter()).catch(() => {});
     }
   }, 60000);
@@ -729,19 +733,18 @@ function initUI() {
 function initEventListeners() {
   const mic = document.getElementById('micBtn');
   if (mic) {
-    let pressTimer = null;
     let activePointer = null;
 
     const onDown = (e) => {
-      if (isMicDisabled() || isProcessing) return;
+      if (micState === 'processing' || isMicDisabled()) {
+        e.preventDefault();
+        return;
+      }
       if (activePointer !== null) return;
       if (e.type === 'mousedown' && e.button !== 0) return;
 
       activePointer = e.type === 'touchstart' ? 'touch' : 'mouse';
-      bedtimeLongPressArmed = false;
-      micPressStartedAt = Date.now();
       e.preventDefault();
-      pressTimer = setTimeout(armBedtimeLongPress, 1500);
       beginRecording();
     };
 
@@ -751,14 +754,13 @@ function initEventListeners() {
       if (activePointer === null) return;
 
       if (e) e.preventDefault();
-      clearTimeout(pressTimer);
-      pressTimer = null;
       activePointer = null;
       finishRecording();
     };
 
     mic.addEventListener('mousedown', onDown);
     mic.addEventListener('mouseup', onUp);
+    mic.addEventListener('mouseleave', onUp);
     mic.addEventListener('touchstart', onDown, { passive: false });
     mic.addEventListener('touchend', onUp, { passive: false });
     mic.addEventListener('touchcancel', onUp, { passive: false });
@@ -966,24 +968,33 @@ async function recognizeSpeech(blob) {
 let micEnding = false;
 let micStarting = false;
 let finishQueued = false;
-let bedtimeLongPressArmed = false;
-let micPressStartedAt = 0;
+let micState = 'idle';
+
+function setMicState(state) {
+  micState = state;
+  setMicVisualState(state);
+}
 
 async function beginRecording() {
   if (planLimitActive || getStoriesRemaining() <= 0) {
     await handlePlanLimitExceeded();
     return;
   }
-  if (isMicDisabled() || isProcessing || isRecording() || micStarting) return;
+  if (micState !== 'idle' || isMicDisabled() || isRecording() || micStarting) {
+    console.warn('🎙️ Mic busy, state:', micState);
+    return;
+  }
   if (!isMicrophoneSupported()) {
     await handleMicFailure('not_supported');
     return;
   }
   micStarting = true;
+  micState = 'recording';
+  setMicVisualState('recording');
   try {
     await startRecording({
       onAutoStop: () => finishRecording(),
-      onStateChange: setMicVisualState
+      onStateChange: (s) => { if (s === 'processing') setMicState('processing'); }
     });
     setAvatarState('listening');
     document.getElementById('avatar')?.classList.add('listening');
@@ -993,7 +1004,7 @@ async function beginRecording() {
     }
   } catch (e) {
     logError('mic', e.message);
-    setMicVisualState('idle');
+    setMicState('idle');
     await handleMicFailure(e.message);
   } finally {
     micStarting = false;
@@ -1001,7 +1012,7 @@ async function beginRecording() {
 }
 
 async function finishRecording() {
-  if (micEnding || isProcessing) return;
+  if (micState === 'processing' || micEnding) return;
   if (micStarting || !isRecording()) {
     finishQueued = true;
     return;
@@ -1010,8 +1021,9 @@ async function finishRecording() {
 }
 
 async function finishRecordingInternal() {
-  if (micEnding || !isRecording() || isProcessing) return;
+  if (micEnding || !isRecording() || micState === 'processing') return;
   micEnding = true;
+  micState = 'processing';
   isProcessing = true;
   setMicVisualState('processing');
   try {
@@ -1027,18 +1039,12 @@ async function finishRecordingInternal() {
     isProcessing = false;
     micEnding = false;
     finishQueued = false;
+    micState = 'idle';
     setMicVisualState('idle');
     setAvatarState(null);
     updateAvatarMoodState();
     document.getElementById('avatar')?.classList.remove('listening', 'talking');
   }
-}
-
-function armBedtimeLongPress() {
-  bedtimeLongPressArmed = true;
-  console.log('🌙 Активирован режим сказки на ночь (удержание микрофона)');
-  const mic = document.getElementById('micBtn');
-  mic?.classList.add('mic-bedtime-armed');
 }
 
 async function runBedtimeStory(promptText) {
@@ -1246,18 +1252,10 @@ async function handleUserMessage(text, options = {}) {
 
 async function processAudio(audioBlob) {
   const avatar = document.getElementById('avatar');
-  const longPressBedtime = bedtimeLongPressArmed;
-  bedtimeLongPressArmed = false;
-  document.getElementById('micBtn')?.classList.remove('mic-bedtime-armed');
 
   try {
     if (audioBlob.size < 500) {
       console.warn('🎙️ Audio blob too small:', audioBlob.size);
-      if (longPressBedtime) {
-        console.log('🌙 Активирован режим сказки на ночь');
-        await runBedtimeStory('Расскажи сказку на ночь');
-        return;
-      }
       await handleMicFailure('empty_blob');
       return;
     }
@@ -1270,24 +1268,13 @@ async function processAudio(audioBlob) {
     console.log('🎤 Распознано:', text || '(пусто)');
 
     if (!text) {
-      if (longPressBedtime) {
-        console.log('🌙 Активирован режим сказки на ночь');
-        await runBedtimeStory('Расскажи сказку на ночь');
-        return;
-      }
       await handleMicFailure('stt_empty');
       return;
     }
 
     resetMicFailCount();
 
-    if (longPressBedtime && !isBedtimeStoryRequest(text)) {
-      console.log('🌙 Long press + речь → обычный диалог:', text);
-      await handleUserMessage(text);
-      return;
-    }
-
-    if (longPressBedtime || isBedtimeStoryRequest(text)) {
+    if (isBedtimeStoryRequest(text)) {
       console.log('🌙 Активирован режим сказки на ночь');
       await handleUserMessage(text, { forceBedtime: true });
       return;

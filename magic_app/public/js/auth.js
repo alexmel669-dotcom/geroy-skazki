@@ -238,6 +238,74 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function showPasswordReset() {
+  const panel = document.getElementById('passwordReset');
+  const form = document.getElementById('loginForm');
+  if (panel) panel.style.display = 'block';
+  if (form) form.style.display = 'none';
+  document.getElementById('forgotPasswordLink')?.style.setProperty('display', 'none');
+}
+
+async function getSecretQuestion() {
+  const email = document.getElementById('resetEmail')?.value.trim();
+  const errorEl = document.getElementById('resetError');
+  hideError(errorEl);
+
+  if (!email || !isValidEmail(email)) {
+    showError(errorEl, 'Введите корректный email');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/get-secret-question`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await response.json();
+    const textEl = document.getElementById('secretQuestionText');
+    const step2 = document.getElementById('resetStep2');
+    if (textEl) textEl.textContent = data.question || 'Кличка вашего первого питомца?';
+    if (step2) step2.style.display = 'block';
+  } catch {
+    showError(errorEl, 'Ошибка сети. Проверьте интернет.');
+  }
+}
+
+async function resetPassword() {
+  const email = document.getElementById('resetEmail')?.value.trim();
+  const secretAnswer = document.getElementById('secretAnswerInput')?.value.trim();
+  const newPassword = document.getElementById('newPassword')?.value;
+  const errorEl = document.getElementById('resetError');
+  hideError(errorEl);
+
+  if (!email || !secretAnswer || !newPassword) {
+    showError(errorEl, 'Заполните все поля');
+    return;
+  }
+  if (newPassword.length < 6) {
+    showError(errorEl, 'Пароль должен быть не менее 6 символов');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, secretAnswer, newPassword })
+    });
+    const data = await response.json();
+    if (response.ok) {
+      alert(data.message || 'Пароль изменён. Теперь можно войти.');
+      window.location.href = '/login.html';
+    } else {
+      showError(errorEl, data.error || 'Не удалось сменить пароль');
+    }
+  } catch {
+    showError(errorEl, 'Ошибка сети. Проверьте интернет.');
+  }
+}
+
 function clearAuthData() {
   const fixedKeys = [
     'isAuth', 'userToken', 'userEmail', 'userRole', 'userPlan', 'planExpiry',
@@ -274,6 +342,17 @@ if (typeof window !== 'undefined') {
       const btn = loginForm.querySelector('button[type="submit"]');
       if (btn) btn.setAttribute('data-original-text', btn.textContent);
     }
+
+    document.getElementById('forgotPasswordLink')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      showPasswordReset();
+    });
+    document.getElementById('getSecretQuestionBtn')?.addEventListener('click', getSecretQuestion);
+    document.getElementById('resetPasswordBtn')?.addEventListener('click', resetPassword);
+
+    window.showPasswordReset = showPasswordReset;
+    window.getSecretQuestion = getSecretQuestion;
+    window.resetPassword = resetPassword;
 
     if (registerForm && !document.getElementById('child1Name')) {
       registerForm.addEventListener('submit', handleRegister);

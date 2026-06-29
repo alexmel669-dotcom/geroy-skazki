@@ -200,6 +200,40 @@ select option {
   text-decoration: none;
 }
 
+.password-reset {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  text-align: left;
+}
+
+.password-reset h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.password-reset input,
+.password-reset select {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.secret-question-text {
+  font-size: 0.95rem;
+  opacity: 0.9;
+  margin: 8px 0 12px;
+}
+
+.auth-btn-secondary {
+  background: rgba(255,255,255,0.12);
+  margin-bottom: 12px;
+}
+
+.forgot-password {
+  font-size: 0.9rem;
+}
+
 @media (max-width: 768px) {
   body {
     padding: 16px;
