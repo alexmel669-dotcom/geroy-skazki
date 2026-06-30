@@ -22,9 +22,12 @@ export async function checkAuth() {
     return true;
   }
 
-  const token = localStorage.getItem('userToken');
-  if (!token && localStorage.getItem('isAuth') !== 'true') {
-    console.log('🔒 Токен не найден');
+  const cookieToken = getCookie('token');
+  const savedToken = localStorage.getItem('userToken');
+  const token = cookieToken || savedToken;
+
+  if (!token) {
+    clearAuthData();
     return false;
   }
 
@@ -34,31 +37,32 @@ export async function checkAuth() {
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
+        Authorization: `Bearer ${token}`
       }
     });
 
-    if (!response.ok) {
-      throw new Error('Token verification failed');
+    if (response.ok) {
+      const data = await response.json();
+      if (data.valid) {
+        console.log('✅ Токен валиден');
+        localStorage.setItem('isAuth', 'true');
+        localStorage.setItem('userToken', token);
+        if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan);
+        if (data.user?.planExpiry) localStorage.setItem('planExpiry', data.user.planExpiry);
+        if (data.user?.promocodeUsed) localStorage.setItem('promocodeUsed', data.user.promocodeUsed);
+        if (data.user?.parentName) localStorage.setItem('parentName', data.user.parentName);
+        return true;
+      }
     }
 
-    const data = await response.json();
-    
-    if (data.valid) {
-      console.log('✅ Токен валиден');
-      if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan);
-      if (data.user?.planExpiry) localStorage.setItem('planExpiry', data.user.planExpiry);
-      if (data.user?.promocodeUsed) localStorage.setItem('promocodeUsed', data.user.promocodeUsed);
-      if (data.user?.parentName) localStorage.setItem('parentName', data.user.parentName);
-      return true;
-    } else {
-      console.log('❌ Токен невалиден');
-      clearAuthData();
-      return false;
-    }
+    console.log('❌ Токен невалиден');
+    clearAuthData();
+    return false;
   } catch (error) {
-    console.error('Auth check error:', error);
-    if (token && localStorage.getItem('isAuth') === 'true') {
+    console.warn('Auth check failed (offline):', error.message);
+    const wasAuth = localStorage.getItem('isAuth') === 'true';
+    if (wasAuth && savedToken) {
+      console.log('Offline mode: using saved session');
       return true;
     }
     return false;
@@ -320,6 +324,8 @@ function clearAuthData() {
       localStorage.removeItem(k);
     }
   });
+  sessionStorage.removeItem('parentPinOk');
+  sessionStorage.removeItem('admin-token');
   document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 }
 

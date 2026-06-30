@@ -525,13 +525,19 @@ async function connectChildDevice() {
     alert(data.error || 'Не удалось создать ссылку');
     return;
   }
+  const qrImg = document.getElementById('child-qr-0');
   const qr = document.getElementById('childQrCode');
   const link = document.getElementById('childLink');
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.url)}`;
+  if (qrImg) {
+    qrImg.src = qrUrl;
+    qrImg.style.display = 'block';
+  }
   if (qr) {
-    qr.innerHTML = `<p style="font-size:0.85rem;opacity:0.8;">Скопируйте ссылку и откройте на телефоне ребёнка:</p>`;
+    qr.innerHTML = `<p style="font-size:0.85rem;opacity:0.8;text-align:center;">Сканируйте QR или откройте ссылку на телефоне ребёнка</p>`;
   }
   if (link) {
-    link.innerHTML = `<a href="${data.url}" style="color:var(--accent);word-break:break-all;" target="_blank">${data.url}</a>
+    link.innerHTML = `<a id="child-link-0" href="${data.url}" style="color:var(--accent);word-break:break-all;display:block;margin:8px 0;" target="_blank">${data.url}</a>
       <button type="button" class="btn-save" style="margin-top:10px;width:100%;" id="copyChildLinkBtn">📋 Скопировать ссылку</button>`;
     document.getElementById('copyChildLinkBtn')?.addEventListener('click', async () => {
       try {
@@ -542,6 +548,43 @@ async function connectChildDevice() {
       }
     });
   }
+}
+
+function mapHistoryMood(moods) {
+  if (!moods.length) return 'neutral';
+  const positive = moods.filter((m) => m === 'positive' || m === 'happy').length;
+  const concerned = moods.filter((m) => m === 'concerned' || m === 'anxious').length;
+  const sad = moods.filter((m) => m === 'sad' || m === 'negative').length;
+  if (concerned > 0) return 'anxious';
+  if (sad > moods.length / 2) return 'sad';
+  if (positive > moods.length / 2) return 'happy';
+  return 'neutral';
+}
+
+function renderMoodChart(history) {
+  const container = document.getElementById('moodChart');
+  if (!container) return;
+
+  const dayLabels = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  const moodEmoji = { happy: '🟢', neutral: '🟡', sad: '🔵', anxious: '🟣' };
+  const today = new Date();
+  const moodData = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toDateString();
+    const dayMoods = history
+      .filter((h) => h.timestamp && new Date(h.timestamp).toDateString() === key)
+      .map((h) => h.mood)
+      .filter(Boolean);
+    const mood = mapHistoryMood(dayMoods);
+    moodData.push({ day: dayLabels[d.getDay()], mood });
+  }
+
+  container.innerHTML = moodData.map(({ day, mood }) =>
+    `<span title="${day}: ${mood}" style="font-size:28px;">${moodEmoji[mood] || '⚪'}</span>`
+  ).join(' ');
 }
 
 let currentChildIndex = parseInt(localStorage.getItem('activeChildIndex') ?? '-1', 10);
@@ -614,6 +657,7 @@ function loadChildStats(index) {
   renderProgress(fearStats, totalStories, totalGames);
   renderGameProgress(child ? child.name : 'guest');
   renderWeekActivity(history);
+  renderMoodChart(history);
   renderFears(fearStats);
   renderDialogs(history);
   renderInsights(fearStats, totalStories, totalGames, history);

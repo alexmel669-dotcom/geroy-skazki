@@ -31,6 +31,8 @@ export function startRiddlesGame(level) {
   let index = 0;
   let score = 0;
   let hints = hintsLeft;
+  let wrongAttempts = 0;
+  let showAnswerBtn = null;
   const order = [...RIDDLES].sort(() => Math.random() - 0.5).slice(0, total);
 
   const { body, close } = createGameScreen({
@@ -60,7 +62,12 @@ export function startRiddlesGame(level) {
   scoreEl.className = 'game-hud-row';
   scoreEl.style.cssText = 'margin:10px 0;font-weight:600;';
 
+  const answerEl = document.createElement('p');
+  answerEl.id = 'riddleAnswer';
+  answerEl.style.cssText = 'display:none;color:var(--green);font-weight:600;margin:8px 0;';
+
   const btnRow = document.createElement('div');
+  btnRow.id = 'riddleControls';
   btnRow.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;';
 
   function finish(won) {
@@ -94,6 +101,13 @@ export function startRiddlesGame(level) {
     }
     question.textContent = order[index].q;
     hintEl.textContent = '';
+    answerEl.style.display = 'none';
+    answerEl.textContent = '';
+    wrongAttempts = 0;
+    if (showAnswerBtn) {
+      showAnswerBtn.remove();
+      showAnswerBtn = null;
+    }
     input.value = '';
     scoreEl.textContent = `✅ ${score} · ${index + 1}/${total} · 💡 ${hints}`;
     input.focus();
@@ -110,9 +124,24 @@ export function startRiddlesGame(level) {
       index++;
       showCurrent();
     } else {
+      wrongAttempts += 1;
       hintEl.textContent = '🔄 Попробуй ещё раз!';
       input.classList.add('shake');
       setTimeout(() => input.classList.remove('shake'), 400);
+      if (wrongAttempts >= 3 && !showAnswerBtn) {
+        showAnswerBtn = document.createElement('button');
+        showAnswerBtn.type = 'button';
+        showAnswerBtn.textContent = '💡 Показать ответ';
+        showAnswerBtn.className = 'modal-btn secondary';
+        showAnswerBtn.onclick = () => {
+          const ans = order[index].a[0];
+          answerEl.textContent = `Ответ: ${ans.charAt(0).toUpperCase() + ans.slice(1)}`;
+          answerEl.style.display = 'block';
+          showAnswerBtn.remove();
+          showAnswerBtn = null;
+        };
+        btnRow.appendChild(showAnswerBtn);
+      }
     }
   }
 
@@ -139,7 +168,7 @@ export function startRiddlesGame(level) {
   });
 
   btnRow.append(submitBtn, hintBtn);
-  panel.append(question, hintEl, input, scoreEl, btnRow);
+  panel.append(question, hintEl, answerEl, input, scoreEl, btnRow);
   body.appendChild(panel);
   showCurrent();
   trackEvent('riddles_started', { level, total });

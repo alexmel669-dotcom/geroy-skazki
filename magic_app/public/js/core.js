@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.0.5 (аудит безопасности и стабильности)
+// v5.1.9
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -1252,32 +1252,39 @@ function onFirstMicSuccess() {
   firstMicUse = false;
 }
 
+function checkStoryLimit() {
+  if (getStoriesRemaining() > 0) return true;
+  synthesizeSpeech(
+    'Мы сегодня уже рассказали все сказки! Но можем просто поболтать. О чём хочешь поговорить?',
+    getCharacter()
+  ).catch(() => {});
+  return false;
+}
+
 async function beginRecording() {
   if (!startMicSession()) {
     console.warn('🎙️ Mic busy, state:', getMicState());
     return;
   }
-  if (planLimitActive || getStoriesRemaining() <= 0) {
-    onMicProcessingDone();
-    await handlePlanLimitExceeded();
-    return;
-  }
   if (isMicDisabled() || isRecording() || micStarting) {
-    onMicProcessingDone();
     console.warn('🎙️ Mic busy, state:', getMicState());
     return;
   }
   if (!isMicrophoneSupported()) {
-    onMicProcessingDone();
     await handleMicFailure('not_supported');
     return;
   }
   micStarting = true;
   try {
-    await startRecording({
+    const started = await startRecording({
       onAutoStop: () => finishRecording(),
       onStateChange: (s) => { if (s === 'processing') finishMicSession(); }
     });
+    if (!started) {
+      onMicProcessingDone();
+      await handleMicFailure('start_failed');
+      return;
+    }
     setAvatarState('listening');
     document.getElementById('avatar')?.classList.add('listening');
     if (finishQueued) {
@@ -1400,17 +1407,14 @@ async function handleUserMessage(text, options = {}) {
   const child = getActiveChild();
   const childName = getActiveChildName();
   const timeContext = getTimeContext(childName);
-  let requestType = options.forceBedtime ? 'bedtime_story' : detectRequestType(text);
+  let requestType = options.forceChat ? 'chat' : (options.forceBedtime ? 'bedtime_story' : detectRequestType(text));
   if (requestType === 'bedtime_story') {
     console.log('🌙 Активирован режим сказки на ночь');
   }
   const isStoryRequest = requestType === 'story' || requestType === 'bedtime_story';
 
-  if (isStoryRequest) {
-    if (getStoriesRemaining() <= 0) {
-      await synthesizeSpeech('Мы сегодня уже рассказали все сказки! Но можем просто поболтать. О чём хочешь поговорить?', getCharacter());
-      return;
-    }
+  if (isStoryRequest && !checkStoryLimit()) {
+    requestType = 'chat';
   }
 
   if (checkBadWords(text)) {
@@ -1531,7 +1535,7 @@ async function handleUserMessage(text, options = {}) {
   if (shouldSuggestFearGame(allFears)) {
     await synthesizeSpeech(getFearGameSuggestion(allFears[0]), getCharacter());
   }
-  if (responseType === 'story' || requestType === 'story' || reply.length > 120) {
+  if (responseType === 'story' || requestType === 'story') {
     incrementStories();
     incrementDailyStories();
   }

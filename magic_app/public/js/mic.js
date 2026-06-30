@@ -109,6 +109,11 @@ export function isRecording() {
 }
 
 export async function startRecording(options = {}) {
+  if (micState !== 'idle' || processingLock) {
+    console.warn('🎙️ Mic busy:', micState);
+    return false;
+  }
+
   onAutoStopCallback = options.onAutoStop || null;
   onStateChangeCallback = options.onStateChange || null;
   try {
@@ -130,6 +135,7 @@ export async function startRecording(options = {}) {
     mediaRecorder.start(CHUNK_MS);
     recordingStartTime = Date.now();
     isCurrentlyRecording = true;
+    setMicState('recording');
     onStateChangeCallback?.('recording');
     console.log('🎙️ Recording started ✓ state:', mediaRecorder.state);
 
@@ -138,13 +144,16 @@ export async function startRecording(options = {}) {
     maxTimeTimer = setTimeout(() => {
       if (isCurrentlyRecording && onAutoStopCallback) onAutoStopCallback('max_time');
     }, CONFIG.MAX_RECORD_TIME ?? 60000);
+    return true;
   } catch (error) {
     cleanupAudioContext();
     cleanupStream();
     mediaRecorder = null;
     isCurrentlyRecording = false;
     console.error('🎙️ Start failed:', error);
-    throw new Error('Не удалось получить доступ к микрофону');
+    releaseMicrophone();
+    setMicState('idle');
+    return false;
   }
 }
 
@@ -538,7 +547,6 @@ export function startMicSession() {
     console.warn('🎙️ Mic busy:', micState);
     return false;
   }
-  setMicState('recording');
   return true;
 }
 

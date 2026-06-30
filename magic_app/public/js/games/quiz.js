@@ -5,19 +5,21 @@ import { setAvatarState } from '../ui.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 
 const QUESTIONS = [
-  { ages: [3, 7], q: 'Какого цвета небо?', options: ['Синее', 'Зелёное', 'Красное', 'Чёрное'], correct: 0 },
-  { ages: [3, 7], q: 'Сколько лап у кошки?', options: ['2', '4', '6', '8'], correct: 1 },
-  { ages: [3, 7], q: 'Что падает с неба зимой?', options: ['Снег', 'Песок', 'Листья', 'Камни'], correct: 0 },
-  { ages: [8, 10], q: 'Сколько планет в Солнечной системе?', options: ['7', '8', '9', '10'], correct: 1 },
-  { ages: [8, 10], q: 'Кто написал «Колобок»?', options: ['Народная сказка', 'Пушкин', 'Толстой', 'Чуковский'], correct: 0 },
-  { ages: [8, 10], q: 'Какое животное мурлыкает?', options: ['Собака', 'Кошка', 'Корова', 'Лошадь'], correct: 1 },
-  { ages: [8, 10], q: 'Из чего растут деревья?', options: ['Из семян', 'Из камней', 'Из песка', 'Из металла'], correct: 0 },
-  { ages: [11, 14], q: 'Столица Франции?', options: ['Лондон', 'Берлин', 'Париж', 'Рим'], correct: 2 },
-  { ages: [11, 14], q: 'H₂O — это...', options: ['Соль', 'Вода', 'Воздух', 'Масло'], correct: 1 },
-  { ages: [11, 14], q: 'Сколько континентов на Земле?', options: ['5', '6', '7', '8'], correct: 1 },
-  { ages: [11, 14], q: 'Кто был первым космонавтом?', options: ['Armstrong', 'Гагарин', 'Титов', 'Леонов'], correct: 1 },
-  { ages: [11, 14], q: '2 + 2 × 2 = ?', options: ['6', '8', '4', '10'], correct: 0 }
+  { id: 'q1', ages: [3, 7], q: 'Какого цвета небо?', options: ['Синее', 'Зелёное', 'Красное', 'Чёрное'], correct: 0 },
+  { id: 'q2', ages: [3, 7], q: 'Сколько лап у кошки?', options: ['2', '4', '6', '8'], correct: 1 },
+  { id: 'q3', ages: [3, 7], q: 'Что падает с неба зимой?', options: ['Снег', 'Песок', 'Листья', 'Камни'], correct: 0 },
+  { id: 'q4', ages: [8, 10], q: 'Сколько планет в Солнечной системе?', options: ['7', '8', '9', '10'], correct: 1 },
+  { id: 'q5', ages: [8, 10], q: 'Кто написал «Колобок»?', options: ['Народная сказка', 'Пушкин', 'Толстой', 'Чуковский'], correct: 0 },
+  { id: 'q6', ages: [8, 10], q: 'Какое животное мурлыкает?', options: ['Собака', 'Кошка', 'Корова', 'Лошадь'], correct: 1 },
+  { id: 'q7', ages: [8, 10], q: 'Из чего растут деревья?', options: ['Из семян', 'Из камней', 'Из песка', 'Из металла'], correct: 0 },
+  { id: 'q8', ages: [11, 14], q: 'Столица Франции?', options: ['Лондон', 'Берлин', 'Париж', 'Рим'], correct: 2 },
+  { id: 'q9', ages: [11, 14], q: 'H₂O — это...', options: ['Соль', 'Вода', 'Воздух', 'Масло'], correct: 1 },
+  { id: 'q10', ages: [11, 14], q: 'Сколько континентов на Земле?', options: ['5', '6', '7', '8'], correct: 1 },
+  { id: 'q11', ages: [11, 14], q: 'Кто был первым космонавтом?', options: ['Armstrong', 'Гагарин', 'Титов', 'Леонов'], correct: 1 },
+  { id: 'q12', ages: [11, 14], q: '2 + 2 × 2 = ?', options: ['6', '8', '4', '10'], correct: 0 }
 ];
+
+let usedQuestionIds = new Set();
 
 function pickQuestions(age, level) {
   const minAge = level >= 4 ? 11 : level >= 2 ? 8 : 3;
@@ -25,11 +27,26 @@ function pickQuestions(age, level) {
   const pool = QUESTIONS.filter((q) => effectiveAge >= q.ages[0] && effectiveAge <= q.ages[1]);
   const src = pool.length >= 3 ? pool : QUESTIONS;
   const count = Math.min(src.length, 2 + level);
-  return src.sort(() => Math.random() - 0.5).slice(0, count);
+  const picked = [];
+  let available = src.filter((q) => !usedQuestionIds.has(q.id));
+
+  if (available.length < count) {
+    usedQuestionIds.clear();
+    available = [...src];
+  }
+
+  while (picked.length < count && available.length) {
+    const idx = Math.floor(Math.random() * available.length);
+    const q = available.splice(idx, 1)[0];
+    usedQuestionIds.add(q.id);
+    picked.push(q);
+  }
+  return picked;
 }
 
 export function startQuizGame(level) {
   if (appState.gameActive) return;
+  usedQuestionIds = new Set();
   level = level || getGameLevel('quiz');
   const age = getActiveChild()?.age || 8;
   const questions = pickQuestions(age, level);
