@@ -3,33 +3,176 @@ import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 import { getChildGender, applyGenderToText } from '../gender.js';
-import { avatarUrl } from '../config.js';
 
-const lucikSprite = new Image();
-lucikSprite.src = avatarUrl('lucik');
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
-const MAZES = [
-  [[1,1,1,1,1],[1,0,0,0,1],[1,0,1,0,1],[1,0,0,0,1],[1,1,1,1,1]],
-  [[1,1,1,1,1,1],[1,0,0,1,0,1],[1,0,1,0,0,1],[1,0,1,1,0,1],[1,0,0,0,0,1],[1,1,1,1,1,1]],
-  [[1,1,1,1,1,1,1],[1,0,0,0,1,0,1],[1,0,1,0,0,0,1],[1,0,1,1,1,0,1],[1,0,0,0,0,0,1],[1,0,1,1,0,1,1],[1,1,1,1,1,1,1]],
-  [[1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,1],[1,0,1,1,0,1,0,1],[1,0,0,0,0,1,0,1],[1,1,1,0,1,0,0,1],[1,0,0,0,0,0,1,1],[1,0,1,1,1,0,0,1],[1,1,1,1,1,1,1,1]],
-  [[1,1,1,1,1,1,1,1,1],[1,0,0,0,1,0,0,0,1],[1,0,1,1,0,1,1,0,1],[1,0,0,0,0,0,1,0,1],[1,1,1,0,1,0,0,0,1],[1,0,0,0,1,1,1,0,1],[1,0,1,1,0,0,0,0,1],[1,0,0,0,0,1,1,0,1],[1,1,1,1,1,1,1,1,1]]
-];
+/** Рекурсивный backtracking — гарантированный путь на любом уровне */
+function generateMaze(size) {
+  const maze = Array(size).fill(null).map(() => Array(size).fill(1));
+  const visited = Array(size).fill(null).map(() => Array(size).fill(false));
+
+  function carve(x, y) {
+    visited[y][x] = true;
+    maze[y][x] = 0;
+
+    for (const [dx, dy] of shuffle([[0, -2], [2, 0], [0, 2], [-2, 0]])) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx >= 0 && nx < size && ny >= 0 && ny < size && !visited[ny][nx]) {
+        maze[y + dy / 2][x + dx / 2] = 0;
+        carve(nx, ny);
+      }
+    }
+  }
+
+  carve(1, 1);
+  maze[1][0] = 0;
+  maze[size - 2][size - 1] = 0;
+  return maze;
+}
+
+function buildVines(maze, cellSize) {
+  const vines = [];
+  for (let y = 0; y < maze.length; y++) {
+    for (let x = 0; x < maze[0].length; x++) {
+      if (maze[y][x] === 1 && ((x * 7 + y * 13) % 5 === 0)) {
+        vines.push({
+          x: x * cellSize,
+          y: y * cellSize,
+          cx: x * cellSize + cellSize * 0.5,
+          cy: y * cellSize + cellSize * 0.5,
+          tipX: x * cellSize + cellSize * ((x + y) % 3) / 3,
+          tipY: y * cellSize
+        });
+      }
+    }
+  }
+  return vines;
+}
+
+function drawMaze(ctx, maze, cellSize, px, py, vines) {
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+
+  const bgGrad = ctx.createRadialGradient(
+    px * cellSize + cellSize / 2,
+    py * cellSize + cellSize / 2,
+    30,
+    cw / 2,
+    ch / 2,
+    Math.max(cw, ch)
+  );
+  bgGrad.addColorStop(0, 'rgba(30,30,50,0.85)');
+  bgGrad.addColorStop(1, 'rgba(10,10,20,0.98)');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, cw, ch);
+
+  for (let y = 0; y < maze.length; y++) {
+    for (let x = 0; x < maze[0].length; x++) {
+      if (maze[y][x] === 1) {
+        const wallGrad = ctx.createLinearGradient(
+          x * cellSize, y * cellSize,
+          (x + 1) * cellSize, (y + 1) * cellSize
+        );
+        wallGrad.addColorStop(0, '#5c4033');
+        wallGrad.addColorStop(1, '#3e2723');
+        ctx.fillStyle = wallGrad;
+        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+      } else {
+        ctx.fillStyle = 'rgba(20,30,20,0.4)';
+        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+
+  ctx.strokeStyle = '#2d5a27';
+  ctx.lineWidth = 1.5;
+  vines.forEach((v) => {
+    ctx.beginPath();
+    ctx.moveTo(v.cx, v.y + cellSize);
+    ctx.quadraticCurveTo(v.cx, v.cy, v.tipX, v.tipY);
+    ctx.stroke();
+  });
+
+  const exitX = maze[0].length - 2;
+  const exitY = maze.length - 1;
+  const exitGlow = ctx.createRadialGradient(
+    exitX * cellSize + cellSize / 2,
+    exitY * cellSize + cellSize / 2,
+    5,
+    exitX * cellSize + cellSize / 2,
+    exitY * cellSize + cellSize / 2,
+    cellSize * 1.2
+  );
+  exitGlow.addColorStop(0, 'rgba(255,255,255,0.95)');
+  exitGlow.addColorStop(0.3, 'rgba(255,255,200,0.5)');
+  exitGlow.addColorStop(1, 'rgba(255,200,100,0)');
+  ctx.fillStyle = exitGlow;
+  ctx.beginPath();
+  ctx.arc(
+    exitX * cellSize + cellSize / 2,
+    exitY * cellSize + cellSize / 2,
+    cellSize * 0.55,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  const glowGrad = ctx.createRadialGradient(
+    px * cellSize + cellSize / 2,
+    py * cellSize + cellSize / 2,
+    4,
+    px * cellSize + cellSize / 2,
+    py * cellSize + cellSize / 2,
+    cellSize * 0.9
+  );
+  glowGrad.addColorStop(0, 'rgba(255,215,0,1)');
+  glowGrad.addColorStop(0.35, 'rgba(255,215,0,0.5)');
+  glowGrad.addColorStop(1, 'rgba(255,215,0,0)');
+  ctx.fillStyle = glowGrad;
+  ctx.beginPath();
+  ctx.arc(px * cellSize + cellSize / 2, py * cellSize + cellSize / 2, cellSize * 0.55, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#FF8C00';
+  ctx.beginPath();
+  ctx.arc(px * cellSize + cellSize / 2, py * cellSize + cellSize / 2, cellSize / 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.font = `${cellSize * 0.5}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('⭐', exitX * cellSize + cellSize / 2, exitY * cellSize + cellSize / 2);
+}
+
+function mazeSizeForLevel(level) {
+  const base = 9 + Math.min(level, 8) * 2;
+  return base % 2 === 0 ? base + 1 : base;
+}
 
 export function startMazeGame(level) {
   if (appState.gameActive) return;
   level = level || getGameLevel('maze');
-  const idx = Math.min(Math.max(level, 1), MAZES.length) - 1;
-  const grid = MAZES[idx];
+
+  const size = mazeSizeForLevel(level);
+  const grid = generateMaze(size);
   const rows = grid.length;
   const cols = grid[0].length;
-  let px = 1;
+
+  let px = 0;
   let py = 1;
-  const exit = { x: cols - 2, y: rows - 2 };
+  const exit = { x: cols - 1, y: rows - 2 };
   let steps = 0;
 
   appState.gameActive = true;
-  const cell = Math.min(42, Math.floor(Math.min(window.innerWidth * 0.88, 360) / cols));
+  const cell = Math.min(36, Math.floor(Math.min(window.innerWidth * 0.9, 380) / cols));
 
   const { body, close } = createGameScreen({
     gameId: 'maze',
@@ -39,76 +182,29 @@ export function startMazeGame(level) {
   });
 
   const hint = document.createElement('p');
-  hint.style.cssText = 'text-align:center;opacity:0.8;font-size:0.85rem;margin:0 0 8px;';
-  hint.textContent = 'Свайпай или стрелки — веди Люцика к ⭐';
+  hint.className = 'maze-hint';
+  hint.textContent = 'Свайпай или стрелки — веди огонёк к ⭐';
 
   const wrap = document.createElement('div');
   wrap.className = 'maze-canvas-wrap';
-  wrap.style.cssText = 'position:relative;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(108,99,255,0.35);';
-
   const canvas = document.createElement('canvas');
   canvas.id = 'mazeCanvas';
   canvas.width = cols * cell;
   canvas.height = rows * cell;
-  canvas.style.cssText = 'display:block;touch-action:none;max-width:100%;';
+  canvas.style.cssText = 'display:block;touch-action:none;max-width:100%;border-radius:12px;';
   wrap.appendChild(canvas);
 
   const stepsEl = document.createElement('p');
-  stepsEl.style.cssText = 'text-align:center;margin-top:10px;font-weight:600;';
+  stepsEl.className = 'maze-steps';
   stepsEl.textContent = 'Шагов: 0';
 
-  body.appendChild(hint);
-  body.appendChild(wrap);
-  body.appendChild(stepsEl);
+  body.append(hint, wrap, stepsEl);
 
   const ctx = canvas.getContext('2d');
-  let startX = 0;
-  let startY = 0;
-  lucikSprite.onload = () => draw();
+  const vines = buildVines(grid, cell);
 
-  function draw() {
-    ctx.fillStyle = '#0d1025';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        if (grid[y][x] === 1) {
-          const grad = ctx.createLinearGradient(x * cell, y * cell, (x + 1) * cell, (y + 1) * cell);
-          grad.addColorStop(0, '#6C63FF');
-          grad.addColorStop(1, '#4a42c4');
-          ctx.fillStyle = grad;
-          ctx.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
-        } else {
-          ctx.fillStyle = 'rgba(255,255,255,0.03)';
-          ctx.fillRect(x * cell, y * cell, cell, cell);
-        }
-      }
-    }
-    ctx.fillStyle = '#ffb800';
-    ctx.shadowColor = '#ffb800';
-    ctx.shadowBlur = 12;
-    ctx.beginPath();
-    ctx.arc(exit.x * cell + cell / 2, exit.y * cell + cell / 2, cell * 0.28, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    const pxX = px * cell + 2;
-    const pyY = py * cell + 2;
-    const size = cell - 4;
-    if (lucikSprite.complete && lucikSprite.naturalWidth) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(pxX + size / 2, pyY + size / 2, size / 2, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(lucikSprite, pxX, pyY, size, size);
-      ctx.restore();
-    } else {
-      ctx.fillStyle = '#ffb347';
-      ctx.beginPath();
-      ctx.arc(pxX + size / 2, pyY + size / 2, size / 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('⭐', exit.x * cell + cell / 2, exit.y * cell + cell / 2 + cell * 0.35);
+  function redraw() {
+    drawMaze(ctx, grid, cell, px, py, vines);
   }
 
   function winGame() {
@@ -124,7 +220,7 @@ export function startMazeGame(level) {
       scoreText: `Выход найден за ${steps} шагов!`,
       onNext: () => startMazeGame(level + 1)
     });
-    trackEvent('maze_won', { level, steps });
+    trackEvent('maze_won', { level, steps, size });
   }
 
   function tryMove(dx, dy) {
@@ -135,13 +231,16 @@ export function startMazeGame(level) {
       py = ny;
       steps++;
       stepsEl.textContent = `Шагов: ${steps}`;
-      draw();
+      redraw();
       if (px === exit.x && py === exit.y) {
         canvas.style.animation = 'pulse 0.4s ease';
-        setTimeout(winGame, 500);
+        setTimeout(winGame, 450);
       }
     }
   }
+
+  let startX = 0;
+  let startY = 0;
 
   canvas.addEventListener('touchstart', (e) => {
     startX = e.touches[0].clientX;
@@ -157,10 +256,6 @@ export function startMazeGame(level) {
   });
 
   const overlay = body.closest('.game-screen');
-  document.addEventListener('keydown', onKey);
-  overlay?.querySelector('.game-close-btn')?.addEventListener('click', () => {
-    document.removeEventListener('keydown', onKey);
-  }, { once: true });
 
   function onKey(e) {
     if (!appState.gameActive) return;
@@ -172,8 +267,13 @@ export function startMazeGame(level) {
     }
   }
 
-  draw();
-  trackEvent('maze_started', { level });
+  document.addEventListener('keydown', onKey);
+  overlay?.querySelector('.game-close-btn')?.addEventListener('click', () => {
+    document.removeEventListener('keydown', onKey);
+  }, { once: true });
+
+  redraw();
+  trackEvent('maze_started', { level, size });
 }
 
 export default { startMazeGame };

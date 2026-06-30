@@ -20,6 +20,26 @@ const GAME_THEMES = {
   popFears: { starfield: true, lucikText: 'Лопай страхи!' }
 };
 
+/** Единые цветовые темы для всех игр */
+const GAME_STYLE_THEMES = {
+  fish: { bg: 'linear-gradient(180deg, #1e3a5f, #0d1b2a)', accent: '#4ECDC4' },
+  puzzle: { bg: 'linear-gradient(180deg, #DEB887, #8B4513)', accent: '#FFD700' },
+  memory: { bg: 'linear-gradient(180deg, #1a0a2e, #0d0618)', accent: '#7B68EE' },
+  riddles: { bg: 'linear-gradient(180deg, #3e2723, #1a1008)', accent: '#FFB347' },
+  quest: { bg: 'linear-gradient(180deg, #2d5a27, #1a3a15)', accent: '#FFD700' },
+  maze: { bg: 'linear-gradient(180deg, #1a1a2e, #0a0a15)', accent: '#FFD700' },
+  quiz: { bg: 'linear-gradient(180deg, #2C003E, #1A0025)', accent: '#FF6B9D' },
+  runner: { bg: 'linear-gradient(180deg, #87CEEB, #2d5a27)', accent: '#FF8C00' },
+  drawAi: { bg: 'linear-gradient(180deg, #FFF8E1, #FFECB3)', accent: '#FF6B6B' },
+  musicCat: { bg: 'linear-gradient(180deg, #2C003E, #0A0015)', accent: '#FFD700' },
+  constellation: { bg: 'radial-gradient(circle, #1a0533, #000008)', accent: '#FFD700' },
+  popFears: { bg: 'linear-gradient(180deg, #1a0533, #2d1b69)', accent: '#7B68EE' }
+};
+
+export function applyGameStyle(gameId) {
+  return GAME_STYLE_THEMES[gameId] || GAME_STYLE_THEMES.memory;
+}
+
 const starfieldControllers = new WeakMap();
 
 export function getGameLevel(gameId) {
@@ -183,6 +203,7 @@ export function createGameScreen({
 } = {}) {
   const level = levelOverride ?? getGameLevel(gameId);
   const theme = GAME_THEMES[gameId] || { starfield: true, lucikText: 'Давай играть!' };
+  const style = applyGameStyle(gameId);
   const useStarfield = starfield !== undefined ? starfield : theme.starfield !== false;
   const bubbleText = lucikText || theme.lucikText || 'Давай играть!';
   const filledDots = ((level - 1) % 5) + 1;
@@ -217,6 +238,13 @@ export function createGameScreen({
   const body = overlay.querySelector('.game-screen-body');
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('game-screen-visible'));
+
+  const bgEl = overlay.querySelector('.game-screen-bg');
+  if (bgEl) {
+    bgEl.style.background = style.bg;
+    overlay.style.setProperty('--game-theme-bg', style.bg);
+    overlay.style.setProperty('--game-theme-accent', style.accent);
+  }
 
   let starfieldCtrl = null;
   if (useStarfield) {
@@ -280,5 +308,6 @@ export function showGameResult({ won, level, scoreText, onNext, onClose }) {
 
 export default {
   getGameLevel, recordGameWin, createGameScreen, createBeautifulGame,
-  showGameResult, createStarfield, createConfetti, spawnMatchHearts, triggerGameWin
+  showGameResult, createStarfield, createConfetti, spawnMatchHearts, triggerGameWin,
+  applyGameStyle
 };
