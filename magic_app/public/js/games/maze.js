@@ -153,8 +153,8 @@ function drawMaze(ctx, maze, cellSize, px, py, vines) {
 }
 
 function mazeSizeForLevel(level) {
-  const base = 9 + Math.min(level, 8) * 2;
-  return base % 2 === 0 ? base + 1 : base;
+  const sizes = [7, 11, 15];
+  return sizes[Math.min(Math.max(level, 1), sizes.length) - 1] || 15;
 }
 
 export function startMazeGame(level) {

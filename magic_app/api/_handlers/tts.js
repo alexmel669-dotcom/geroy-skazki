@@ -12,6 +12,21 @@ const voiceMap = {
   kid2: 'oksana'
 };
 
+function normalizeApiKey(raw) {
+  if (!raw) return '';
+  let key = raw.trim();
+  if (key.startsWith('Api-Key ')) key = key.slice(8).trim();
+  if (key.startsWith('Bearer ')) key = key.slice(7).trim();
+  return key;
+}
+
+function authHeaderForKey(key) {
+  if (key.startsWith('t1.') || key.startsWith('y0_')) {
+    return `Bearer ${key}`;
+  }
+  return `Api-Key ${key}`;
+}
+
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
 
@@ -34,40 +49,51 @@ export default async function handler(req, res) {
     const mappedVoice = voiceMap[voice] || voice || 'zahar';
     const safeVoice = ALLOWED_VOICES.includes(mappedVoice) ? mappedVoice : 'zahar';
 
-    const YANDEX_API_KEY = process.env.YANDEX_API_KEY?.trim();
+    const YANDEX_API_KEY = normalizeApiKey(process.env.YANDEX_API_KEY);
     const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID?.trim();
 
     if (!YANDEX_API_KEY || !YANDEX_FOLDER_ID) {
-      console.error('TTS: Missing Yandex credentials');
+      console.error('TTS: Missing credentials', {
+        hasKey: !!YANDEX_API_KEY,
+        hasFolder: !!YANDEX_FOLDER_ID
+      });
       return res.status(503).json({ error: 'TTS not configured', fallback: true });
     }
+
+    console.log('TTS request:', {
+      keyLen: YANDEX_API_KEY.length,
+      folderId: YANDEX_FOLDER_ID,
+      voice: safeVoice,
+      textLen: text.length
+    });
 
     const params = new URLSearchParams({
       text,
       lang: 'ru-RU',
       voice: safeVoice,
-      speed: speed || '1.0',
+      folderId: YANDEX_FOLDER_ID,
       format: 'mp3',
-      folderId: YANDEX_FOLDER_ID
+      sampleRateHertz: '48000'
     });
+    if (speed) params.set('speed', String(speed));
 
     const response = await fetch('https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize', {
       method: 'POST',
       headers: {
-        Authorization: `Api-Key ${YANDEX_API_KEY}`,
+        Authorization: authHeaderForKey(YANDEX_API_KEY),
         'Content-Type': 'application/x-www-form-urlencoded'
       },
       body: params.toString()
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('TTS Error: Yandex', response.status, errorText);
+      const errText = await response.text();
+      console.error('TTS Error:', response.status, errText);
       return res.status(503).json({
-        error: 'TTS synthesis failed',
-        details: errorText.slice(0, 200),
-        fallback: true,
-        yandexStatus: response.status
+        error: 'TTS failed',
+        status: response.status,
+        detail: errText.slice(0, 200),
+        fallback: true
       });
     }
 
@@ -81,6 +107,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('TTS Error:', error.message);
-    return res.status(503).json({ error: 'TTS error', details: error.message, fallback: true });
+    return res.status(503).json({ error: 'TTS error', detail: error.message, fallback: true });
   }
 }

@@ -249,6 +249,9 @@ export function startRunnerGame(level) {
 
     if (Math.random() < 0.018) spawnObstacle();
     if (Math.random() < 0.028) spawnStar();
+
+    // Плавное ускорение
+    speed = Math.min(4 + Math.min(level, 5) * 0.3 + frame * 0.0008, 12);
   }
 
   function drawLucik() {

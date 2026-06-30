@@ -106,10 +106,10 @@ class TTSEngine {
         }
       } else {
         const data = await response.json().catch(() => ({}));
-        console.warn('⚠️ Yandex TTS failed, using browser:', response.status, data.error || '');
+        console.warn('⚠️ Yandex TTS failed, using browser fallback:', response.status, data.detail || data.error || '');
       }
     } catch (err) {
-      console.warn('⚠️ Yandex TTS failed, using browser:', err.message);
+      console.warn('⚠️ Yandex TTS error:', err.message);
     }
     return false;
   }
@@ -164,7 +164,36 @@ if (typeof window !== 'undefined') {
 }
 
 export async function synthesizeSpeech(text, character = 'lucik') {
-  return ttsEngine.speak(text, character);
+  if (!text || typeof text !== 'string') return;
+
+  try {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('userToken') : null;
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ text, voice: character })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.audioUrl) {
+        setAvatarState('speaking');
+        await playAudioFromUrl(data.audioUrl);
+        setAvatarState(null);
+        return true;
+      }
+    } else {
+      console.warn('⚠️ Yandex TTS failed, using browser fallback');
+    }
+  } catch (e) {
+    console.warn('⚠️ Yandex TTS error:', e.message);
+  }
+
+  await ttsEngine._speakBrowser(text, character);
+  return false;
 }
 
 export function stopSpeech() {
