@@ -15,7 +15,7 @@ import {
   startRecording, stopRecording, cancelRecording, isRecording, getRecordingMimeType,
   isMicrophoneSupported, prepareAudioForStt, getLiveSttText, clearLiveSttText,
   getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
-  isProcessingLocked
+  isProcessingLocked, releaseMicrophone, onMicError
 } from './mic.js';
 import { getAgeWord } from './grammar.js';
 import { synthesizeSpeech } from './audio.js';
@@ -38,7 +38,7 @@ import { getGameLevel } from './games/game-ui.js';
 import { setAvatarState, playPurrSound, switchCharacter, showMicHint, showGamesHint, showSwipeHint } from './ui.js';
 import { getTimeContext } from './context.js';
 import { detectRequestType, getDictionaryFallback, learnFromResponse, isBedtimeStoryRequest } from './dictionary.js';
-import { checkDailyStreak, updateStreakUI, getDailyAdventure } from './retention.js';
+import { checkDailyStreak, updateStreakUI } from './retention.js';
 import { initChildSwipe } from './child-swipe.js';
 import {
   getTamagotchi, applyTamagotchiTick, onChat, onGame, onFeed, onClean, onFearTalk,
@@ -481,6 +481,7 @@ function resetMicFailCount() {
 
 async function handleMicFailure(reason) {
   console.warn('🎙️ Mic failure:', reason);
+  onMicError(reason);
   micFailCount += 1;
   const idx = Math.min(micFailCount - 1, MIC_RETRY_PHRASES.length - 1);
   await synthesizeSpeech(MIC_RETRY_PHRASES[idx], getCharacter());
@@ -519,9 +520,81 @@ function onAppReady() {
     showSwipeHint();
   }, 2000);
 
-  const adventure = getDailyAdventure();
-  if (adventure) {
-    setTimeout(() => synthesizeSpeech(adventure.message, getCharacter()).catch(() => {}), 2500);
+  setTimeout(() => {
+    generateEveningStory().catch((err) => console.warn('Evening story failed:', err));
+  }, 3000);
+}
+
+function getTodayDialogs() {
+  const history = getChildStats().history || [];
+  const today = new Date().toDateString();
+  return history
+    .filter((h) => h.timestamp && new Date(h.timestamp).toDateString() === today)
+    .filter((h) => h.role === 'child' || h.role === 'user')
+    .map((h) => ({ question: h.text || '', mood: h.mood }));
+}
+
+function getAverageMood(dialogs) {
+  if (!dialogs.length) return 'хорошее';
+  const moods = dialogs.map((d) => d.mood).filter(Boolean);
+  if (!moods.length) return 'хорошее';
+  const positive = moods.filter((m) => m === 'positive' || m === 'happy').length;
+  const concerned = moods.filter((m) => m === 'concerned' || m === 'anxious').length;
+  if (concerned > positive) return 'встревоженное';
+  if (positive > moods.length / 2) return 'радостное';
+  return 'спокойное';
+}
+
+async function generateEveningStory() {
+  const user = getCurrentUser();
+  const age = user.childAge || parseInt(localStorage.getItem('profileChildAge') || '7', 10);
+
+  if (age > 8) return;
+
+  const hour = new Date().getHours();
+  if (hour < 18 || hour > 22) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  if (localStorage.getItem('geroy-evening-story') === today) return;
+
+  if (getStoriesRemaining() <= 0) return;
+
+  const todayDialogs = getTodayDialogs();
+  const concerns = safeParseJSON(localStorage.getItem('parentConcerns'), []) || [];
+  const mood = getAverageMood(todayDialogs);
+  const childName = user.childName || 'малыш';
+
+  const prompt = `
+Сегодня ребёнок ${childName} (${age} лет) общался с тобой.
+Настроение за день: ${mood}.
+${concerns.length > 0 ? 'Возможные переживания: ' + concerns.join(', ') + '.' : ''}
+${todayDialogs.length > 0 ? 'Темы разговоров: ' + todayDialogs.slice(-3).map((d) => d.question).join('; ') : ''}
+
+Сочини короткую спокойную сказку на ночь (2-3 минуты), которая:
+- Учитывает настроение ребёнка
+- Мягко помогает справиться с переживаниями (не называя их прямо)
+- Заканчивается спокойно и умиротворяюще
+- Подходит для возраста ${age} лет
+`.trim();
+
+  try {
+    const aiResult = await generateResponse(prompt, {
+      ...getChildContextForAI(),
+      requestType: 'bedtime_story',
+      childName,
+      childAge: age
+    });
+    const story = typeof aiResult === 'string' ? aiResult : aiResult.text;
+    if (!story) return;
+
+    localStorage.setItem('geroy-evening-story', today);
+    const child = getActiveChild();
+    const reply = applyGenderToText(sanitizeAIText(story, age), getChildGender(child));
+    await synthesizeSpeech(reply, getCharacter());
+    incrementStories();
+    incrementDailyStories();
+  } catch (e) {
+    console.warn('Evening story failed:', e);
   }
 }
 
@@ -958,7 +1031,12 @@ function initEventListeners() {
   window.addEventListener('blur', () => {
     if (isRecording() || getMicState() === 'recording') {
       finishRecording();
+      releaseMicrophone();
     }
+  });
+
+  window.addEventListener('beforeunload', () => {
+    releaseMicrophone();
   });
 
   const games = document.getElementById('games-menu');
@@ -1498,6 +1576,7 @@ async function processAudio(audioBlob) {
     logError('process_audio', e.message);
     await handleMicFailure('process_error');
   } finally {
+    releaseMicrophone();
     onMicProcessingDone();
     if (avatar) avatar.classList.remove('talking', 'listening');
   }

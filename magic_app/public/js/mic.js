@@ -317,15 +317,54 @@ export async function prepareAudioForStt(blob) {
 }
 
 export function releaseMicrophone() {
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
+  if (volumeFrame) cancelAnimationFrame(volumeFrame);
+  volumeFrame = null;
+  if (silenceTimer) clearTimeout(silenceTimer);
+  silenceTimer = null;
+  if (maxTimeTimer) clearTimeout(maxTimeTimer);
+  maxTimeTimer = null;
+
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     try {
       if (typeof mediaRecorder.requestData === 'function') mediaRecorder.requestData();
     } catch { /* ignore */ }
     try { mediaRecorder.stop(); } catch { /* ignore */ }
   }
-  cleanupAudioContext();
-  cleanupStream();
+
+  if (stream) {
+    stream.getTracks().forEach((track) => {
+      track.stop();
+      track.enabled = false;
+    });
+    stream = null;
+  }
+
+  if (audioContext && audioContext.state !== 'closed') {
+    audioContext.close().then(() => {
+      audioContext = null;
+    }).catch(() => {
+      audioContext = null;
+    });
+  } else {
+    audioContext = null;
+  }
+  analyser = null;
+
+  if (navigator.mediaDevices?.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: false, video: false })
+      .then((s) => s.getTracks().forEach((t) => t.stop()))
+      .catch(() => {});
+  }
+
   console.log('🎙️ Recording stopped, all tracks released');
+}
+
+export function onMicError(error) {
+  console.error('Mic error:', error);
+  releaseMicrophone();
+  isCurrentlyRecording = false;
+  recordingStartTime = 0;
+  setMicState('idle');
 }
 
 export async function stopRecording() {
@@ -516,7 +555,7 @@ export function onMicProcessingDone() {
 export const onProcessingDone = onMicProcessingDone;
 
 export default {
-  isRecording, startRecording, stopRecording, cancelRecording, releaseMicrophone,
+  isRecording, startRecording, stopRecording, cancelRecording, releaseMicrophone, onMicError,
   getAudioBlob, playAudioFromUrl, getRecordingMimeType, prepareAudioForStt,
   isMicrophoneSupported, requestMicrophonePermission, setMicStateCallback,
   browserSpeechRecognition, getLiveSttText, clearLiveSttText,

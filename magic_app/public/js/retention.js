@@ -1,15 +1,5 @@
 import { showNotification } from './ui.js';
 
-const ADVENTURE_CALENDAR = {
-  monday: 'Сказка про храброго мышонка',
-  tuesday: 'Сказка про волшебную радугу',
-  wednesday: 'Сказка про дружбу с драконом',
-  thursday: 'Сказка про подводное царство',
-  friday: 'Сказка про космическое путешествие',
-  saturday: 'Сказка про лесной оркестр',
-  sunday: 'Сказка про ленивого облачка'
-};
-
 export function checkDailyStreak() {
   const today = new Date().toISOString().split('T')[0];
   const streak = JSON.parse(localStorage.getItem('geroy-streak') || '{}');
@@ -55,21 +45,4 @@ export function showBadge(icon, message) {
   showNotification(`${icon} ${message}`, 'success');
 }
 
-export function getDailyAdventure() {
-  const day = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-  const lastAdventure = localStorage.getItem('geroy-last-adventure');
-  const today = new Date().toISOString().split('T')[0];
-
-  if (lastAdventure === today) return null;
-
-  const story = ADVENTURE_CALENDAR[day];
-  localStorage.setItem('geroy-last-adventure', today);
-
-  return {
-    title: story,
-    badge: '📅',
-    message: `Сегодня особенная сказка: «${story}»!`
-  };
-}
-
-export default { checkDailyStreak, updateStreakUI, getDailyAdventure, showBadge };
+export default { checkDailyStreak, updateStreakUI, showBadge };
