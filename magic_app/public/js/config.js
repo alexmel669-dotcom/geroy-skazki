@@ -78,7 +78,7 @@ export function avatarImgHtml(role, size = 36, className = 'child-chip-avatar') 
 }
 
 export const CONFIG = {
-  APP_VERSION: '5.1.12',
+  APP_VERSION: '5.1.13',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,

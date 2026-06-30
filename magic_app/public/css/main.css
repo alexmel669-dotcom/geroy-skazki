@@ -1198,20 +1198,7 @@ header {
 }
 
 .game-theme-popFears .game-screen-bg {
-  background: linear-gradient(180deg, var(--game-sky-top) 0%, var(--game-grass) 70%, #1a2e1a 100%);
-}
-
-.game-theme-popFears .fear-bubble,
-.game-theme-popFears .pop-fear-bubble {
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.5), rgba(200, 230, 255, 0.15));
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 0 20px rgba(255, 107, 157, 0.3), inset 0 0 15px rgba(255, 255, 255, 0.2);
-  animation: bubbleShimmer 3s ease-in-out infinite;
-}
-
-@keyframes bubbleShimmer {
-  0%, 100% { transform: scale(1); filter: hue-rotate(0deg); }
-  50% { transform: scale(1.03); filter: hue-rotate(20deg); }
+  background: linear-gradient(180deg, #1a0533 0%, #2d1b69 30%, #4a2c8a 60%, #1a0533 100%);
 }
 
 .game-hud-row {
@@ -1219,6 +1206,339 @@ header {
   z-index: 3;
   color: var(--game-gold);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== Pixar-стиль v5.1.13 — 5 игр ===== */
+
+/* 🐱 Люцик-раннер */
+.runner-pixar-canvas {
+  border: 3px solid rgba(255, 255, 255, 0.35);
+}
+
+/* 🎨 Рисовалка */
+.draw-pixar-wrap {
+  text-align: center;
+  position: relative;
+  z-index: 3;
+}
+
+.draw-pixar-easel {
+  background: linear-gradient(180deg, #FFF8E1, #FFECB3);
+  border-radius: 24px;
+  padding: 20px;
+  display: inline-block;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    0 0 0 8px #8B4513,
+    0 0 0 12px #D2691E;
+}
+
+.draw-pixar-canvas {
+  border-radius: 12px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: #FFFEF5;
+  touch-action: none;
+  max-width: 100%;
+  display: block;
+}
+
+.draw-pixar-palette {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.draw-color-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.2s;
+  padding: 0;
+}
+
+.draw-color-swatch:hover,
+.draw-color-swatch.active {
+  transform: scale(1.15);
+  box-shadow: 0 6px 16px rgba(255, 140, 0, 0.5);
+}
+
+.draw-pixar-guess-btn {
+  margin-top: 16px;
+  background: linear-gradient(180deg, #FF8C00, #E67600);
+  border: none;
+  color: #fff;
+  padding: 14px 32px;
+  border-radius: 24px;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(255, 140, 0, 0.4);
+  font-family: Georgia, serif;
+}
+
+.draw-pixar-guess-btn:active {
+  transform: scale(0.97);
+}
+
+.draw-pixar-result {
+  margin-top: 12px;
+  font-size: 18px;
+  color: #333;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 10px 16px;
+  border-radius: 16px;
+  display: inline-block;
+  max-width: 90%;
+}
+
+/* 🎵 Музыкальный кот */
+.music-stage {
+  background: linear-gradient(180deg, #2C003E, #1A0025);
+  position: relative;
+  overflow: hidden;
+  min-height: 380px;
+  border-radius: 20px;
+  padding: 24px 16px;
+  box-shadow: inset 0 0 80px rgba(255, 215, 0, 0.08);
+}
+
+.spotlight {
+  position: absolute;
+  width: 200px;
+  height: 400px;
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.4), transparent);
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  pointer-events: none;
+  top: 0;
+}
+
+.spotlight-left {
+  left: 10%;
+  animation: spotlightSway 3s ease-in-out infinite;
+}
+
+.spotlight-right {
+  right: 10%;
+  animation: spotlightSway 3s ease-in-out infinite reverse;
+}
+
+@keyframes spotlightSway {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+.music-lucik-wrap {
+  position: relative;
+  width: 200px;
+  height: 280px;
+  margin: 0 auto;
+  filter: drop-shadow(0 10px 30px rgba(255, 140, 0, 0.5));
+  animation: stageBounce 1s ease-in-out infinite;
+}
+
+@keyframes stageBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.music-lucik-part {
+  position: absolute;
+  cursor: pointer;
+  background: linear-gradient(145deg, #FFB347, #FF8C00, #E67600);
+  box-shadow:
+    inset 0 -4px 8px rgba(0, 0, 0, 0.15),
+    inset 0 4px 8px rgba(255, 255, 255, 0.25),
+    0 6px 16px rgba(255, 140, 0, 0.4);
+  transition: transform 0.15s, filter 0.15s;
+}
+
+.music-lucik-part:active,
+.music-part-glow {
+  filter: brightness(1.3) drop-shadow(0 0 12px rgba(255, 215, 0, 0.8));
+  transform: scale(1.05);
+}
+
+.music-part-head {
+  top: 0;
+  left: 60px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+}
+
+.music-part-body {
+  top: 90px;
+  left: 40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 40px;
+}
+
+.music-part-paw {
+  top: 180px;
+  width: 40px;
+  height: 60px;
+  border-radius: 20px;
+}
+
+.music-part-paw-left { left: 20px; }
+.music-part-paw-right { right: 20px; }
+
+.music-part-tail {
+  top: 120px;
+  right: -10px;
+  width: 24px;
+  height: 80px;
+  border-radius: 12px;
+  transform: rotate(25deg);
+}
+
+.music-play-btn {
+  position: relative;
+  z-index: 2;
+  margin-top: 20px !important;
+}
+
+.music-note {
+  position: absolute;
+  font-size: 36px;
+  animation: noteFloat 2s ease-out forwards;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes noteFloat {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-200px) scale(1.5); opacity: 0; }
+}
+
+/* 🌟 Созвездия */
+.constellation-pixar-canvas {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(123, 104, 238, 0.35);
+  border: 2px solid rgba(255, 215, 0, 0.2);
+}
+
+.constellation-pixar-label {
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--game-gold);
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+  margin-top: 12px;
+}
+
+/* 🫧 Лопни страхи — Pixar */
+.fear-forest {
+  position: relative;
+  width: 100%;
+  min-height: 50vh;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.fear-pop-counter {
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--game-gold);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  margin-top: 12px;
+}
+
+.fear-bubble {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: #fff;
+  background: radial-gradient(circle at 35% 30%,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(123, 104, 238, 0.4) 40%,
+    rgba(255, 105, 180, 0.3) 70%,
+    rgba(72, 61, 139, 0.5) 100%
+  );
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(3px);
+  box-shadow:
+    0 8px 32px rgba(123, 104, 238, 0.4),
+    inset 0 2px 8px rgba(255, 255, 255, 0.3);
+  animation: fearBubbleFloat 4s ease-in-out infinite, bubbleShine 3s ease-in-out infinite;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.fear-bubble .fear-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.fear-bubble:hover {
+  transform: scale(1.1);
+  box-shadow: 0 12px 40px rgba(255, 215, 0, 0.6);
+}
+
+.fear-bubble.popping {
+  animation: popAnimation 0.3s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes fearBubbleFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-30px) rotate(3deg); }
+  75% { transform: translateY(-15px) rotate(-3deg); }
+}
+
+@keyframes bubbleShine {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+
+@keyframes popAnimation {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.5; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+.pop-particle {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 4000;
+  animation: particleBurst 0.8s ease-out forwards;
+}
+
+@keyframes particleBurst {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+}
+
+.pop-flash {
+  position: fixed;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.9), transparent);
+  z-index: 3999;
+  pointer-events: none;
+  animation: popFlash 0.4s ease-out forwards;
+}
+
+@keyframes popFlash {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
 }
 
 .fish-area-full {

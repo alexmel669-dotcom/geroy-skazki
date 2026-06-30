@@ -1,6 +1,19 @@
 import { appState } from '../core.js';
 import { createGameScreen, getGameLevel } from './game-ui.js';
 
+const NOTE_EMOJI = ['🎵', '🎶', '♪', '♫'];
+
+function spawnMusicNote(container, x, y) {
+  const note = document.createElement('span');
+  note.className = 'music-note';
+  note.textContent = NOTE_EMOJI[Math.floor(Math.random() * NOTE_EMOJI.length)];
+  note.style.left = `${x}px`;
+  note.style.top = `${y}px`;
+  note.style.color = ['#FFD700', '#FF6B9D', '#7B68EE', '#4ECDC4'][Math.floor(Math.random() * 4)];
+  container.appendChild(note);
+  setTimeout(() => note.remove(), 2000);
+}
+
 export function startMusicCatGame(level) {
   if (appState.gameActive) return;
   appState.gameActive = true;
@@ -9,18 +22,21 @@ export function startMusicCatGame(level) {
   const notes = { head: 523, body: 440, leftPaw: 349, rightPaw: 392, tail: 294 };
   const { body, close } = createGameScreen({ gameId: 'musicCat', title: 'Музыкальный кот', emoji: '🎵', level });
 
-  const wrap = document.createElement('div');
-  wrap.style.textAlign = 'center';
-  wrap.innerHTML = `
-    <div id="catParts" style="position:relative;width:200px;height:280px;margin:0 auto;">
-      <div class="cat-part" data-note="head" style="position:absolute;top:0;left:60px;width:80px;height:80px;background:#FF8C00;border-radius:50%;cursor:pointer;"></div>
-      <div class="cat-part" data-note="body" style="position:absolute;top:90px;left:40px;width:120px;height:120px;background:#FF8C00;border-radius:40px;cursor:pointer;"></div>
-      <div class="cat-part" data-note="leftPaw" style="position:absolute;top:180px;left:20px;width:40px;height:60px;background:#FF8C00;border-radius:20px;cursor:pointer;"></div>
-      <div class="cat-part" data-note="rightPaw" style="position:absolute;top:180px;right:20px;width:40px;height:60px;background:#FF8C00;border-radius:20px;cursor:pointer;"></div>
+  const stage = document.createElement('div');
+  stage.className = 'music-stage';
+  stage.innerHTML = `
+    <div class="spotlight spotlight-left" aria-hidden="true"></div>
+    <div class="spotlight spotlight-right" aria-hidden="true"></div>
+    <div id="catParts" class="music-lucik-wrap">
+      <div class="cat-part music-lucik-part music-part-head" data-note="head" title="Голова"></div>
+      <div class="cat-part music-lucik-part music-part-body" data-note="body" title="Тело"></div>
+      <div class="cat-part music-lucik-part music-part-paw music-part-paw-left" data-note="leftPaw" title="Лапа"></div>
+      <div class="cat-part music-lucik-part music-part-paw music-part-paw-right" data-note="rightPaw" title="Лапа"></div>
+      <div class="cat-part music-lucik-part music-part-tail" data-note="tail" title="Хвост"></div>
     </div>
-    <button type="button" class="modal-btn" id="playMelody" style="margin-top:16px;">▶️ Проиграть</button>
+    <button type="button" class="modal-btn music-play-btn" id="playMelody">▶️ Проиграть</button>
   `;
-  body.appendChild(wrap);
+  body.appendChild(stage);
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const melody = [];
@@ -37,15 +53,19 @@ export function startMusicCatGame(level) {
     osc.stop(audioCtx.currentTime + 0.5);
   };
 
-  wrap.querySelectorAll('.cat-part').forEach((part) => {
-    part.addEventListener('click', () => {
+  stage.querySelectorAll('.cat-part').forEach((part) => {
+    part.addEventListener('click', (e) => {
       const note = notes[part.dataset.note];
       playNote(note);
       melody.push({ note, time: Date.now() });
+      part.classList.add('music-part-glow');
+      setTimeout(() => part.classList.remove('music-part-glow'), 300);
+      const rect = stage.getBoundingClientRect();
+      spawnMusicNote(stage, e.clientX - rect.left - 12, e.clientY - rect.top - 24);
     });
   });
 
-  wrap.querySelector('#playMelody').addEventListener('click', () => {
+  stage.querySelector('#playMelody').addEventListener('click', () => {
     melody.forEach((n, i) => {
       setTimeout(() => playNote(n.note), i * 300);
     });
