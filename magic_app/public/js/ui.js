@@ -316,14 +316,14 @@ function onboardingDone() {
     || localStorage.getItem('geroy-onboarding-done') === 'true';
 }
 
-function showMicHint() {
+export function showMicHint() {
   if (!onboardingDone()) return;
   if (localStorage.getItem('mic-hint-played')) return;
   ttsEngine.speak('Нажми на микрофон и расскажи мне что-нибудь! Я тебя внимательно слушаю.').catch(() => {});
   localStorage.setItem('mic-hint-played', 'true');
 }
 
-function showGamesHint() {
+export function showGamesHint() {
   if (!onboardingDone()) return;
   if (localStorage.getItem('games-hint-played')) return;
   setTimeout(() => {
@@ -333,7 +333,7 @@ function showGamesHint() {
   }, 5000);
 }
 
-function showSwipeHint() {
+export function showSwipeHint() {
   if (!onboardingDone()) return;
   if (localStorage.getItem('swipe-hint-played')) return;
   setTimeout(() => {
@@ -374,5 +374,8 @@ export default {
     setLastAiTiming,
     setAvatarState,
     playPurrSound,
-    initVoiceHints
+    initVoiceHints,
+    showMicHint,
+    showGamesHint,
+    showSwipeHint
 };

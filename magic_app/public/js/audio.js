@@ -51,6 +51,11 @@ class TTSEngine {
   async speak(text, characterId = 'lucik') {
     if (!text || typeof text !== 'string') return;
 
+    if (typeof window !== 'undefined' && window.isAppReady && !window.isAppReady()) {
+      setTimeout(() => this.speak(text, characterId), 500);
+      return;
+    }
+
     if (!this.unlocked) {
       this.queue.push({ text, characterId });
       this._ensureUnlockListeners();

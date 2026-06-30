@@ -20,12 +20,29 @@ let recordingStartTime = 0;
 let liveRecognition = null;
 let liveSttParts = [];
 
-const MIN_RECORD_MS = 600;
 const CHUNK_MS = 250;
+
+function setupVolumeMonitor() {
+  if (!stream || !isCurrentlyRecording) return;
+  try {
+    audioContext = new AudioContext();
+    audioContext.resume().catch(() => {});
+    const source = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+    monitorVolume();
+  } catch (vadErr) {
+    console.warn('🎙️ VAD setup failed:', vadErr);
+  }
+}
 
 function cleanupStream() {
   if (stream) {
-    stream.getTracks().forEach((track) => track.stop());
+    stream.getTracks().forEach((track) => {
+      track.stop();
+      track.enabled = false;
+    });
     stream = null;
   }
 }
@@ -50,28 +67,6 @@ function getPreferredMimeType() {
     if (MediaRecorder.isTypeSupported(type)) return type;
   }
   return '';
-}
-
-function waitForRecorderStart(recorder, timeoutMs = 4000) {
-  return new Promise((resolve, reject) => {
-    if (recorder.state === 'recording') {
-      resolve();
-      return;
-    }
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error('MediaRecorder start timeout'));
-    }, timeoutMs);
-    const onStart = () => { cleanup(); resolve(); };
-    const onError = (e) => { cleanup(); reject(e.error || new Error('MediaRecorder error')); };
-    const cleanup = () => {
-      clearTimeout(timeout);
-      recorder.removeEventListener('start', onStart);
-      recorder.removeEventListener('error', onError);
-    };
-    recorder.addEventListener('start', onStart, { once: true });
-    recorder.addEventListener('error', onError, { once: true });
-  });
 }
 
 function rmsToDb(rms) {
@@ -130,20 +125,15 @@ export async function startRecording(options = {}) {
       console.log('🎙️ Chunk:', size, 'bytes');
       if (event.data && size > 0) audioChunks.push(event.data);
     };
-    audioContext = new AudioContext();
-    await audioContext.resume().catch(() => {});
-    const source = audioContext.createMediaStreamSource(stream);
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    source.connect(analyser);
+
     console.log('🎙️ mediaRecorder.start(', CHUNK_MS, 'ms), mime:', recordingMimeType || 'default');
     mediaRecorder.start(CHUNK_MS);
-    await waitForRecorderStart(mediaRecorder);
     recordingStartTime = Date.now();
     isCurrentlyRecording = true;
     onStateChangeCallback?.('recording');
-    monitorVolume();
     console.log('🎙️ Recording started ✓ state:', mediaRecorder.state);
+
+    setupVolumeMonitor();
     startLiveStt();
     maxTimeTimer = setTimeout(() => {
       if (isCurrentlyRecording && onAutoStopCallback) onAutoStopCallback('max_time');
@@ -326,17 +316,26 @@ export async function prepareAudioForStt(blob) {
   }
 }
 
-export async function stopRecording() {
-  const elapsed = Date.now() - recordingStartTime;
-  if (elapsed < MIN_RECORD_MS) {
-    await new Promise((r) => setTimeout(r, MIN_RECORD_MS - elapsed));
+export function releaseMicrophone() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    try {
+      if (typeof mediaRecorder.requestData === 'function') mediaRecorder.requestData();
+    } catch { /* ignore */ }
+    try { mediaRecorder.stop(); } catch { /* ignore */ }
   }
+  cleanupAudioContext();
+  cleanupStream();
+  console.log('🎙️ Recording stopped, all tracks released');
+}
+
+export async function stopRecording() {
   return new Promise((resolve, reject) => {
     if (!mediaRecorder || mediaRecorder.state === 'inactive') {
       reject(new Error('No active recording'));
       return;
     }
     onStateChangeCallback?.('processing');
+
     mediaRecorder.addEventListener('stop', async () => {
       const rawSize = audioChunks.reduce((s, c) => s + c.size, 0);
       console.log('🎙️ Stop: chunks=', audioChunks.length, 'rawSize=', rawSize);
@@ -344,14 +343,13 @@ export async function stopRecording() {
       audioChunks = [];
       isCurrentlyRecording = false;
       recordingStartTime = 0;
-      cleanupAudioContext();
-      cleanupStream();
       onAutoStopCallback = null;
       const liveText = await stopLiveStt();
       if (liveText) console.log('🎙️ Live STT result:', liveText);
       console.log('🎙️ Recording stopped, blob size:', audioBlob.size);
       resolve(audioBlob);
     }, { once: true });
+
     try {
       if (mediaRecorder.state === 'recording' && typeof mediaRecorder.requestData === 'function') {
         console.log('🎙️ requestData()');
@@ -360,7 +358,12 @@ export async function stopRecording() {
     } catch (e) {
       console.warn('🎙️ requestData error:', e);
     }
-    mediaRecorder.stop();
+
+    if (mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+    }
+    cleanupAudioContext();
+    cleanupStream();
   });
 }
 
@@ -369,16 +372,16 @@ export function cancelRecording() {
     mediaRecorder.addEventListener('stop', async () => {
       audioChunks = [];
       isCurrentlyRecording = false;
-      cleanupAudioContext();
-      cleanupStream();
       onAutoStopCallback = null;
       await stopLiveStt();
       clearLiveSttText();
       onStateChangeCallback?.('idle');
     }, { once: true });
-    mediaRecorder.stop();
+    releaseMicrophone();
   } else {
+    releaseMicrophone();
     stopLiveStt().then(() => clearLiveSttText());
+    onStateChangeCallback?.('idle');
   }
 }
 
@@ -513,7 +516,7 @@ export function onMicProcessingDone() {
 export const onProcessingDone = onMicProcessingDone;
 
 export default {
-  isRecording, startRecording, stopRecording, cancelRecording,
+  isRecording, startRecording, stopRecording, cancelRecording, releaseMicrophone,
   getAudioBlob, playAudioFromUrl, getRecordingMimeType, prepareAudioForStt,
   isMicrophoneSupported, requestMicrophonePermission, setMicStateCallback,
   browserSpeechRecognition, getLiveSttText, clearLiveSttText,

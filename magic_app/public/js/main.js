@@ -2,8 +2,7 @@ import './error-monitor.js';
 import { CONFIG, validateConfig, ENV, initAvatarImages } from './config.js';
 import {
   initCore, getActiveChildName, getActiveChild, updateStatsUI, cycleCharacter,
-  selectGuestMode, showChildSelectModal, saveChildData, appState, sendTextMessage,
-  playWelcomeGreeting
+  selectGuestMode, showChildSelectModal, saveChildData, appState, sendTextMessage
 } from './core.js';
 import { getCharacter } from './ai.js';
 import { ttsEngine, synthesizeSpeech } from './audio.js';
@@ -29,10 +28,6 @@ function initializeApp() {
   initNotificationScheduler().catch(() => {});
   checkPlanExpiryNotification();
   setTimeout(() => startOnboarding(), 2000);
-  initVoiceHints();
-  setTimeout(() => {
-    playWelcomeGreeting().catch((err) => console.warn('Welcome failed:', err));
-  }, 3000);
   console.log('✅ App initialized, child:', getActiveChildName());
 }
 

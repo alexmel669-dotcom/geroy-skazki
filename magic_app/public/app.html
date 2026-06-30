@@ -98,15 +98,23 @@
     if (splashHidden) return;
     splashHidden = true;
     const overlay = document.getElementById('splashOverlay');
-    if (!overlay) return;
+    if (!overlay) {
+      window.dispatchEvent(new Event('appReady'));
+      return;
+    }
     overlay.style.opacity = '0';
-    setTimeout(() => overlay.remove(), 500);
+    setTimeout(() => {
+      overlay.remove();
+      window.dispatchEvent(new Event('appReady'));
+    }, 500);
   }
 
   function skipSplash() {
     clearTimeout(splashTimer);
     hideSplash();
   }
+
+  window.skipSplash = skipSplash;
 
   document.getElementById('splashOverlay').addEventListener('click', skipSplash);
 </script>

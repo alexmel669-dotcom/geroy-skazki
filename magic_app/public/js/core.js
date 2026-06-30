@@ -35,7 +35,7 @@ import { startMusicCatGame } from './games/music-cat.js';
 import { startConstellationGame } from './games/constellation.js';
 import { startPopFearsGame } from './games/pop-fears.js';
 import { getGameLevel } from './games/game-ui.js';
-import { setAvatarState, playPurrSound, switchCharacter } from './ui.js';
+import { setAvatarState, playPurrSound, switchCharacter, showMicHint, showGamesHint, showSwipeHint } from './ui.js';
 import { getTimeContext } from './context.js';
 import { detectRequestType, getDictionaryFallback, learnFromResponse, isBedtimeStoryRequest } from './dictionary.js';
 import { checkDailyStreak, updateStreakUI, getDailyAdventure } from './retention.js';
@@ -495,6 +495,62 @@ async function handleMicFailure(reason) {
 }
 
 // ========================================
+// APP READY (после splash)
+// ========================================
+
+let appReady = false;
+
+export function isAppReady() {
+  return appReady;
+}
+
+function onAppReady() {
+  if (appReady) return;
+  appReady = true;
+  console.log('🟢 App ready');
+
+  setTimeout(() => {
+    playWelcomeGreeting().catch((err) => console.warn('Welcome failed:', err));
+  }, 500);
+
+  setTimeout(() => {
+    showMicHint();
+    showGamesHint();
+    showSwipeHint();
+  }, 2000);
+
+  const adventure = getDailyAdventure();
+  if (adventure) {
+    setTimeout(() => synthesizeSpeech(adventure.message, getCharacter()).catch(() => {}), 2500);
+  }
+}
+
+function waitForAppReady() {
+  const splash = document.getElementById('splashOverlay');
+  if (!splash) {
+    onAppReady();
+    return;
+  }
+
+  let scheduled = false;
+  const finish = () => {
+    if (scheduled) return;
+    scheduled = true;
+    clearInterval(checkSplash);
+    setTimeout(onAppReady, 300);
+  };
+
+  window.addEventListener('appReady', finish, { once: true });
+
+  const checkSplash = setInterval(() => {
+    const el = document.getElementById('splashOverlay');
+    if (!el || el.style.opacity === '0') {
+      finish();
+    }
+  }, 200);
+}
+
+// ========================================
 // INIT
 // ========================================
 
@@ -524,12 +580,9 @@ export function initCore() {
   updateStreakUI();
   localStorage.setItem('geroy-last-visit', new Date().toISOString());
 
-  const adventure = getDailyAdventure();
-  if (adventure) {
-    setTimeout(() => synthesizeSpeech(adventure.message, getCharacter()).catch(() => {}), 2000);
-  }
-
   console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION} готов к работе`);
+
+  waitForAppReady();
 
   if (tamagotchiTimer) clearInterval(tamagotchiTimer);
   tamagotchiTimer = setInterval(() => {
@@ -875,6 +928,10 @@ function initEventListeners() {
       if (activePointer !== null) return;
       if (e.type === 'mousedown' && e.button !== 0) return;
 
+      if (document.getElementById('splashOverlay') && typeof window.skipSplash === 'function') {
+        window.skipSplash();
+      }
+
       activePointer = e.type === 'touchstart' ? 'touch' : 'mouse';
       e.preventDefault();
       beginRecording();
@@ -897,6 +954,12 @@ function initEventListeners() {
     mic.addEventListener('touchend', onUp, { passive: false });
     mic.addEventListener('touchcancel', onUp, { passive: false });
   }
+
+  window.addEventListener('blur', () => {
+    if (isRecording() || getMicState() === 'recording') {
+      finishRecording();
+    }
+  });
 
   const games = document.getElementById('games-menu');
   if (games) games.onclick = showGamesMenu;
@@ -1530,6 +1593,7 @@ if (typeof window !== 'undefined') {
   window.showChildSelectModal = showChildSelectModal;
   window.showGamesMenu = showGamesMenu;
   window.launchFishGame = launchFishGame;
+  window.isAppReady = isAppReady;
 }
 
 export default {
