@@ -43,8 +43,7 @@ export function startRiddlesGame(level) {
   });
 
   const panel = document.createElement('div');
-  panel.className = 'game-panel';
-  panel.style.cssText = 'max-width:400px;width:100%;text-align:center;';
+  panel.className = 'game-panel game-panel-riddles';
 
   const question = document.createElement('p');
   question.className = 'game-question-text';

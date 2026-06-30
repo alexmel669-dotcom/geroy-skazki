@@ -7,6 +7,15 @@
   --green: #4caf50;
   --blue: #00d2ff;
   --yellow: #ffd54f;
+  /* Волшебный лес — палитра игр */
+  --game-sky-top: #1a0a2e;
+  --game-sky-bottom: #0d1b2a;
+  --game-magic: #7b68ee;
+  --game-gold: #ffd700;
+  --game-star: #fff8dc;
+  --game-grass: #2d5a27;
+  --game-water: #1e3a5f;
+  --game-particle: #ff6b9d;
 }
 
 * {
@@ -865,6 +874,351 @@ header {
 .game-result-box .modal-btn {
   width: 100%;
   margin-top: 10px;
+}
+
+/* ===== Общий мультяшный визуал игр v5.1.12 ===== */
+
+.game-fullscreen {
+  font-family: Georgia, 'Times New Roman', serif;
+  overflow: hidden;
+}
+
+.game-starfield-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.game-content {
+  flex: 1;
+  position: relative;
+  z-index: 2;
+}
+
+.game-close {
+  transition: all 0.2s;
+  border: 2px solid rgba(255, 255, 255, 0.35) !important;
+}
+
+.game-close:hover {
+  background: rgba(255, 0, 0, 0.45) !important;
+  border-color: #f44 !important;
+}
+
+.game-title {
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.45);
+}
+
+.game-level {
+  background: rgba(255, 215, 0, 0.18) !important;
+  color: var(--game-gold) !important;
+}
+
+.game-footer {
+  position: relative;
+  z-index: 2;
+  padding: 8px 16px max(8px, env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.35), transparent);
+  min-height: 4px;
+}
+
+.game-score {
+  color: var(--game-gold);
+}
+
+/* Конфетти */
+.game-confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4000;
+  overflow: hidden;
+}
+
+.game-confetti-particle {
+  position: absolute;
+  animation: confettiFall ease-out forwards;
+  z-index: 4001;
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(-10vh) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(var(--confetti-rot, 720deg)) scale(0); opacity: 0; }
+}
+
+/* Люцик в углу */
+.game-lucik {
+  position: absolute;
+  bottom: max(72px, calc(16px + env(safe-area-inset-bottom)));
+  right: 16px;
+  z-index: 100;
+  animation: lucikBounce 2s ease-in-out infinite;
+  cursor: pointer;
+}
+
+.game-lucik img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.35);
+  display: block;
+}
+
+.lucik-bubble {
+  position: absolute;
+  bottom: 58px;
+  right: -10px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.game-lucik:active .lucik-bubble,
+.game-lucik:hover .lucik-bubble {
+  opacity: 1;
+}
+
+@keyframes lucikBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Сердечки (мемори) */
+.game-match-heart {
+  position: absolute;
+  font-size: 1.25rem;
+  pointer-events: none;
+  z-index: 50;
+  animation: heartFloat 1s ease-out forwards;
+}
+
+@keyframes heartFloat {
+  0% { transform: translateY(0) scale(0.5); opacity: 1; }
+  100% { transform: translateY(-60px) scale(1.2); opacity: 0; }
+}
+
+/* --- Темы 12 игр --- */
+
+.game-theme-fish .game-screen-bg {
+  background: linear-gradient(180deg, #1e88c0 0%, var(--game-water) 45%, #051525 100%);
+  animation: gameBgPulse 6s ease-in-out infinite alternate;
+}
+
+.game-theme-fish .fish-area-full {
+  background: linear-gradient(180deg, rgba(30, 120, 180, 0.85), rgba(13, 33, 55, 0.95));
+  border-color: rgba(0, 210, 255, 0.4);
+  box-shadow: inset 0 0 80px rgba(0, 180, 255, 0.12), 0 0 30px rgba(108, 99, 255, 0.25);
+}
+
+.game-theme-fish .fish-bubbles {
+  animation: bubbleRise 8s linear infinite;
+}
+
+@keyframes bubbleRise {
+  0% { background-position: 0 100%; opacity: 0.5; }
+  100% { background-position: 0 -20%; opacity: 1; }
+}
+
+.game-theme-puzzle .game-screen-bg {
+  background:
+    repeating-linear-gradient(90deg, rgba(90, 60, 30, 0.08) 0 2px, transparent 2px 24px),
+    repeating-linear-gradient(0deg, rgba(70, 45, 20, 0.06) 0 2px, transparent 2px 24px),
+    linear-gradient(160deg, #3d2817 0%, #5c3d1e 50%, #2a1810 100%);
+}
+
+.game-theme-puzzle .puzzle-cell {
+  border: 2px solid rgba(255, 215, 0, 0.45) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 0 12px rgba(255, 215, 0, 0.08) !important;
+}
+
+.game-theme-puzzle .puzzle-cell.puzzle-solved-flash {
+  animation: puzzleFlash 0.5s ease;
+}
+
+@keyframes puzzleFlash {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 215, 0, 0); }
+  50% { box-shadow: 0 0 24px rgba(255, 215, 0, 0.8); }
+}
+
+.game-theme-memory .game-screen-bg {
+  background: linear-gradient(180deg, var(--game-sky-top), var(--game-sky-bottom));
+}
+
+.game-theme-memory .memory-board > div,
+.game-theme-memory .memory-card {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  cursor: pointer;
+  transition: transform 0.3s, background 0.3s, box-shadow 0.3s;
+  background: linear-gradient(145deg, rgba(123, 104, 238, 0.35), rgba(30, 30, 60, 0.9)) !important;
+  border: 2px solid rgba(255, 215, 0, 0.35);
+  border-radius: 14px !important;
+  box-shadow: 0 4px 16px rgba(123, 104, 238, 0.25);
+}
+
+.game-theme-memory .memory-card.flipped,
+.game-theme-memory .memory-board > div.flipped {
+  background: linear-gradient(145deg, #fff8f0, #ffe8cc) !important;
+  border-color: var(--game-gold);
+}
+
+.game-theme-memory .memory-card.matched,
+.game-theme-memory .memory-board > div.matched {
+  background: linear-gradient(145deg, #4caf50, #2e7d32) !important;
+  border-color: #a5d6a7;
+}
+
+.game-theme-riddles .game-screen-bg {
+  background: linear-gradient(165deg, #2a1810 0%, #4a3020 40%, #1a1008 100%);
+}
+
+.game-theme-riddles .game-panel-riddles {
+  background: linear-gradient(180deg, #f5e6c8, #e8d4a8);
+  color: #3d2817;
+  border-radius: 16px;
+  padding: 20px 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 40px rgba(255, 200, 100, 0.15);
+  border: 2px solid rgba(180, 140, 80, 0.5);
+  position: relative;
+}
+
+.game-theme-riddles .game-panel-riddles::before {
+  content: '🕯️';
+  position: absolute;
+  top: -8px;
+  right: 16px;
+  font-size: 1.5rem;
+  animation: candleFlicker 2s ease-in-out infinite;
+}
+
+@keyframes candleFlicker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(0.95); }
+}
+
+.game-theme-riddles .game-question-text { color: #3d2817; }
+.game-theme-riddles .game-text-input {
+  background: rgba(255, 255, 255, 0.85);
+  color: #333;
+}
+
+.game-theme-quest .game-screen-bg {
+  background:
+    radial-gradient(circle at 30% 70%, rgba(210, 180, 100, 0.15), transparent 50%),
+    linear-gradient(180deg, #3d2b1f 0%, #5c4030 50%, #2a1a10 100%);
+}
+
+.game-theme-quest .game-panel,
+.game-theme-quest .quest-choice-btn {
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: 14px;
+}
+
+.game-theme-maze .game-screen-bg {
+  background: linear-gradient(180deg, #0a1a0a 0%, #1a2e1a 50%, #0d180d 100%);
+}
+
+.game-theme-maze canvas,
+.game-theme-maze .maze-grid {
+  border: 3px solid rgba(45, 90, 39, 0.8);
+  box-shadow: 0 0 30px rgba(76, 175, 80, 0.2);
+  border-radius: 12px;
+}
+
+.game-theme-quiz .game-screen-bg {
+  background: linear-gradient(135deg, #1a0a3e 0%, #4a148c 50%, #1a237e 100%);
+  animation: quizBgShift 10s ease infinite alternate;
+}
+
+@keyframes quizBgShift {
+  from { filter: hue-rotate(0deg); }
+  to { filter: hue-rotate(15deg); }
+}
+
+.game-theme-quiz .game-panel,
+.game-theme-quiz .quiz-opt-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 215, 0, 0.25);
+  border-radius: 14px;
+}
+
+.game-theme-runner .game-screen-bg {
+  background: linear-gradient(180deg, #87ceeb 0%, #2d5a27 60%, #1a3a1a 100%);
+}
+
+.game-theme-runner canvas {
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.game-theme-drawAi .game-screen-bg {
+  background: linear-gradient(180deg, #4a3728 0%, #6d5344 40%, #2a2018 100%);
+}
+
+.game-theme-drawAi canvas {
+  background: #fffef8 !important;
+  border: 4px solid #8b6914;
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.game-theme-musicCat .game-screen-bg {
+  background: radial-gradient(ellipse at 50% 30%, rgba(255, 215, 0, 0.2), transparent 60%),
+    linear-gradient(180deg, #1a0a2e 0%, #2d1b4e 100%);
+}
+
+.game-theme-musicCat .music-cat-body,
+.game-theme-musicCat .music-zone {
+  filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.3));
+}
+
+.game-theme-constellation .game-screen-bg {
+  background: radial-gradient(ellipse at 50% 40%, rgba(123, 104, 238, 0.25), transparent 55%),
+    linear-gradient(180deg, #050510 0%, #0d1b2a 50%, #1a0a2e 100%);
+}
+
+.game-theme-constellation canvas {
+  border-radius: 16px;
+  box-shadow: inset 0 0 60px rgba(123, 104, 238, 0.15);
+}
+
+.game-theme-popFears .game-screen-bg {
+  background: linear-gradient(180deg, var(--game-sky-top) 0%, var(--game-grass) 70%, #1a2e1a 100%);
+}
+
+.game-theme-popFears .fear-bubble,
+.game-theme-popFears .pop-fear-bubble {
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.5), rgba(200, 230, 255, 0.15));
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 20px rgba(255, 107, 157, 0.3), inset 0 0 15px rgba(255, 255, 255, 0.2);
+  animation: bubbleShimmer 3s ease-in-out infinite;
+}
+
+@keyframes bubbleShimmer {
+  0%, 100% { transform: scale(1); filter: hue-rotate(0deg); }
+  50% { transform: scale(1.03); filter: hue-rotate(20deg); }
+}
+
+.game-hud-row {
+  position: relative;
+  z-index: 3;
+  color: var(--game-gold);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 .fish-area-full {

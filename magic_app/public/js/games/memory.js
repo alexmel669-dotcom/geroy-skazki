@@ -2,7 +2,7 @@ import { appState, getActiveChildName } from '../core.js';
 import { updateAchievement } from '../achievements.js';
 import { trackEvent } from '../analytics.js';
 import { recordMemoryWin } from '../game-progress.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel, spawnMatchHearts } from './game-ui.js';
 import { getMemoryPairs } from './game-difficulty.js';
 import { createGame } from '../game-engine.js';
 
@@ -55,17 +55,7 @@ export function startMemoryGame(level) {
 
   for (let i = 0; i < cardCount; i++) {
     const card = document.createElement('div');
-    card.style.cssText = `
-      aspect-ratio: 1;
-      background: linear-gradient(135deg, #4a4a6a, #6c6caa);
-      border-radius: 15px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.5rem;
-      cursor: pointer;
-      transition: transform 0.3s, background 0.3s;
-    `;
+    card.className = 'memory-card';
     card.textContent = '?';
     card.dataset.index = i;
 
@@ -84,10 +74,12 @@ export function startMemoryGame(level) {
         if (appState.memoryCards[firstCardIndex] === appState.memoryCards[i]) {
           appState.memoryMatches++;
           engine.addScore(10);
+          const rect = card.getBoundingClientRect();
+          spawnMatchHearts(body, rect.left + rect.width / 2, rect.top);
 
           setTimeout(() => {
-            card.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
-            firstCardElement.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+            card.classList.add('matched', 'flipped');
+            firstCardElement.classList.add('matched', 'flipped');
             firstCardIndex = null;
             firstCardElement = null;
             appState.memoryLocked = false;
@@ -127,13 +119,13 @@ export function startMemoryGame(level) {
   function flipCard(card, index) {
     appState.memoryFlipped[index] = true;
     card.textContent = appState.memoryCards[index];
-    card.style.background = 'linear-gradient(135deg, #fff, #f0f0f0)';
+    card.classList.add('flipped');
   }
 
   function unflipCard(card, index) {
     appState.memoryFlipped[index] = false;
     card.textContent = '?';
-    card.style.background = 'linear-gradient(135deg, #4a4a6a, #6c6caa)';
+    card.classList.remove('flipped');
   }
 
   trackEvent('memory_game_started', { level });
