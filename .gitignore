@@ -1,0 +1,15 @@
+# Секреты и переменные окружения — НИКОГДА не коммитить
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.staging
+*.env
+
+# Зависимости и артефакты
+node_modules/
+.vercel
+.data/
+.DS_Store
+*.log
