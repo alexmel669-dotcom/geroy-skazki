@@ -19,6 +19,31 @@ let onStateChangeCallback = null;
 let recordingStartTime = 0;
 let liveRecognition = null;
 let liveSttParts = [];
+let liveSttActive = false;
+
+/** Микрофон только по нажатию кнопки — без автоперезапуска */
+let manualMicOnly = true;
+let userInitiatedRecording = false;
+
+export function armRecordingFromUser() {
+  userInitiatedRecording = true;
+}
+
+export function disarmRecordingFromUser() {
+  userInitiatedRecording = false;
+}
+
+function clearAutoStopTimers() {
+  if (silenceTimer) {
+    clearTimeout(silenceTimer);
+    silenceTimer = null;
+  }
+  if (maxTimeTimer) {
+    clearTimeout(maxTimeTimer);
+    maxTimeTimer = null;
+  }
+  onAutoStopCallback = null;
+}
 
 const CHUNK_MS = 250;
 
@@ -90,7 +115,7 @@ function monitorVolume() {
   const db = rmsToDb(Math.sqrt(sum / data.length));
   const threshold = CONFIG.SILENCE_THRESHOLD ?? -45;
   const silenceTimeout = CONFIG.SILENCE_TIMEOUT ?? 5000;
-  if (db < threshold) {
+  if (!manualMicOnly && db < threshold) {
     if (!silenceTimer) {
       silenceTimer = setTimeout(() => {
         silenceTimer = null;
@@ -109,10 +134,16 @@ export function isRecording() {
 }
 
 export async function startRecording(options = {}) {
+  if (manualMicOnly && !userInitiatedRecording) {
+    console.warn('🎙️ Blocked: recording not user-initiated');
+    return false;
+  }
   if (micState !== 'idle' || processingLock) {
     console.warn('🎙️ Mic busy:', micState);
     return false;
   }
+
+  userInitiatedRecording = false;
 
   onAutoStopCallback = options.onAutoStop || null;
   onStateChangeCallback = options.onStateChange || null;
@@ -217,6 +248,7 @@ function startLiveStt() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return;
   liveSttParts = [];
+  liveSttActive = true;
   liveRecognition = new SR();
   liveRecognition.lang = 'ru-RU';
   liveRecognition.continuous = true;
@@ -240,7 +272,7 @@ function startLiveStt() {
     }
   };
   liveRecognition.onend = () => {
-    if (isCurrentlyRecording && liveRecognition) {
+    if (liveSttActive && isCurrentlyRecording && liveRecognition) {
       try { liveRecognition.start(); } catch { /* ignore */ }
     }
   };
@@ -255,6 +287,7 @@ function startLiveStt() {
 
 function stopLiveStt() {
   return new Promise((resolve) => {
+    liveSttActive = false;
     const text = getLiveSttText();
     if (!liveRecognition) {
       resolve(text);
@@ -328,10 +361,8 @@ export async function prepareAudioForStt(blob) {
 export function releaseMicrophone() {
   if (volumeFrame) cancelAnimationFrame(volumeFrame);
   volumeFrame = null;
-  if (silenceTimer) clearTimeout(silenceTimer);
-  silenceTimer = null;
-  if (maxTimeTimer) clearTimeout(maxTimeTimer);
-  maxTimeTimer = null;
+  liveSttActive = false;
+  clearAutoStopTimers();
 
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     try {
@@ -556,6 +587,8 @@ export function finishMicSession() {
 }
 
 export function onMicProcessingDone() {
+  disarmRecordingFromUser();
+  clearAutoStopTimers();
   processingLock = false;
   setMicState('idle');
 }
@@ -568,5 +601,5 @@ export default {
   isMicrophoneSupported, requestMicrophonePermission, setMicStateCallback,
   browserSpeechRecognition, getLiveSttText, clearLiveSttText,
   getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
-  onProcessingDone, isProcessingLocked
+  onProcessingDone, isProcessingLocked, armRecordingFromUser, disarmRecordingFromUser
 };

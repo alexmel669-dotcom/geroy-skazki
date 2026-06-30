@@ -15,7 +15,7 @@ import {
   startRecording, stopRecording, cancelRecording, isRecording, getRecordingMimeType,
   isMicrophoneSupported, prepareAudioForStt, getLiveSttText, clearLiveSttText,
   getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
-  isProcessingLocked, releaseMicrophone, onMicError
+  isProcessingLocked, releaseMicrophone, onMicError, armRecordingFromUser, disarmRecordingFromUser
 } from './mic.js';
 import { getAgeWord } from './grammar.js';
 import { synthesizeSpeech } from './audio.js';
@@ -987,13 +987,17 @@ function initUI() {
   }
 }
 
+function isAssistantSpeaking() {
+  return window.ttsEngine?.isSpeaking === true;
+}
+
 function initEventListeners() {
   const mic = document.getElementById('micButton') || document.getElementById('mic-button');
   if (mic) {
     let activePointer = null;
 
     const onDown = (e) => {
-      if (getMicState() === 'processing' || isProcessingLocked() || isMicDisabled()) {
+      if (getMicState() === 'processing' || isProcessingLocked() || isMicDisabled() || isAssistantSpeaking()) {
         e.preventDefault();
         e.stopPropagation();
         return false;
@@ -1262,6 +1266,10 @@ function checkStoryLimit() {
 }
 
 async function beginRecording() {
+  if (isAssistantSpeaking()) {
+    console.warn('🎙️ Mic blocked: assistant is speaking');
+    return;
+  }
   if (!startMicSession()) {
     console.warn('🎙️ Mic busy, state:', getMicState());
     return;
@@ -1276,11 +1284,14 @@ async function beginRecording() {
   }
   micStarting = true;
   try {
+    armRecordingFromUser();
     const started = await startRecording({
-      onAutoStop: () => finishRecording(),
-      onStateChange: (s) => { if (s === 'processing') finishMicSession(); }
+      onAutoStop: (reason) => {
+        if (reason === 'max_time') finishRecording();
+      }
     });
     if (!started) {
+      disarmRecordingFromUser();
       onMicProcessingDone();
       await handleMicFailure('start_failed');
       return;
@@ -1293,6 +1304,7 @@ async function beginRecording() {
     }
   } catch (e) {
     logError('mic', e.message);
+    disarmRecordingFromUser();
     onMicProcessingDone();
     await handleMicFailure(e.message);
   } finally {
@@ -1554,11 +1566,7 @@ async function processAudio(audioBlob) {
       return;
     }
     const stt = await recognizeSpeech(audioBlob);
-    let text = stt.text?.trim();
-    if (!text && typeof window.browserSpeechRecognition === 'function') {
-      console.log('🎙️ Trying browser STT fallback...');
-      text = (await window.browserSpeechRecognition()).trim();
-    }
+    const text = stt.text?.trim();
     console.log('🎤 Распознано:', text || '(пусто)');
 
     if (!text) {
