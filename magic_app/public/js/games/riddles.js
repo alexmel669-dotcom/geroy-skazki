@@ -5,20 +5,38 @@ import { trackEvent } from '../analytics.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 import { getRiddlesConfig } from './game-difficulty.js';
 
-const RIDDLES = [
-  { q: 'Зимой и летом одним цветом.', a: ['ёлка', 'елка', 'ёлочка', 'елочка'], hint: 'Растёт в лесу, зелёная' },
-  { q: 'Сидит дед, в шубе одет, нос в руке, а дышит на всех.', a: ['мороз', 'морозец', 'зима'], hint: 'Приходит зимой' },
-  { q: 'Не лает, не кусает, а в дом не пускает.', a: ['замок', 'замочек'], hint: 'На двери' },
-  { q: 'Без окон, без дверей — полна горница людей.', a: ['огурец', 'огурчик'], hint: 'Зелёный овощ' },
-  { q: 'Кто утром на работу всходит раньше всех?', a: ['петух', 'петушок'], hint: 'Кричит ку-ка-ре-ку' },
-  { q: 'Висит груша — нельзя скушать.', a: ['лампочка', 'лампа', 'свет'], hint: 'Светится вечером' },
-  { q: 'Что можно сломать, не трогая руками?', a: ['молчание', 'тишина', 'обещание', 'слово'], hint: 'Это не предмет' },
-  { q: 'Чем больше берёшь, тем больше становится?', a: ['яма', 'яму', 'ямы'], hint: 'Копают лопатой' },
-  { q: 'Бежит без ног, а догнать нельзя.', a: ['время', 'река', 'вода'], hint: 'Тикает на часах' },
-  { q: 'Два кольца, два конца, посередине — связь.', a: ['ножницы', 'ножниц'], hint: 'Режут бумагу' },
-  { q: 'Круглое, румяное, растёт на ветке.', a: ['яблоко', 'яблочко'], hint: 'Фрукт' },
-  { q: 'Сам не ест, а людей кормит.', a: ['хлеб', 'хлебушек', 'пекарь'], hint: 'Из печи' }
+const HINTS = [
+  'Первая буква: {first}',
+  'Последняя буква: {last}',
+  'Это {length} букв',
+  'Связано с: {category}'
 ];
+
+const RIDDLES = [
+  { q: 'Зимой и летом одним цветом.', a: ['ёлка', 'елка', 'ёлочка', 'елочка'], category: 'лесом' },
+  { q: 'Сидит дед, в шубе одет, нос в руке, а дышит на всех.', a: ['мороз', 'морозец', 'зима'], category: 'зимой' },
+  { q: 'Не лает, не кусает, а в дом не пускает.', a: ['замок', 'замочек'], category: 'дверью' },
+  { q: 'Без окон, без дверей — полна горница людей.', a: ['огурец', 'огурчик'], category: 'огородом' },
+  { q: 'Кто утром на работу всходит раньше всех?', a: ['петух', 'петушок'], category: 'фермой' },
+  { q: 'Висит груша — нельзя скушать.', a: ['лампочка', 'лампа', 'свет'], category: 'домом' },
+  { q: 'Что можно сломать, не трогая руками?', a: ['молчание', 'тишина', 'обещание', 'слово'], category: 'абстракцией' },
+  { q: 'Чем больше берёшь, тем больше становится?', a: ['яма', 'яму', 'ямы'], category: 'землёй' },
+  { q: 'Бежит без ног, а догнать нельзя.', a: ['время', 'река', 'вода'], category: 'природой' },
+  { q: 'Два кольца, два конца, посередине — связь.', a: ['ножницы', 'ножниц'], category: 'школой' },
+  { q: 'Круглое, румяное, растёт на ветке.', a: ['яблоко', 'яблочко'], category: 'садом' },
+  { q: 'Сам не ест, а людей кормит.', a: ['хлеб', 'хлебушек', 'пекарь'], category: 'еда' }
+];
+
+function getHint(riddle, attempt) {
+  const answer = riddle.a[0];
+  const hintIndex = (attempt - 1) % HINTS.length;
+  let hint = HINTS[hintIndex];
+  hint = hint.replace('{first}', answer[0].toUpperCase());
+  hint = hint.replace('{last}', answer[answer.length - 1].toUpperCase());
+  hint = hint.replace('{length}', String(answer.length));
+  hint = hint.replace('{category}', riddle.category || 'природой');
+  return hint;
+}
 
 export function startRiddlesGame(level) {
   if (appState.gameActive) return;
@@ -31,7 +49,7 @@ export function startRiddlesGame(level) {
   let index = 0;
   let score = 0;
   let hints = hintsLeft;
-  let wrongAttempts = 0;
+  let attempts = 0;
   let showAnswerBtn = null;
   const order = [...RIDDLES].sort(() => Math.random() - 0.5).slice(0, total);
 
@@ -50,7 +68,8 @@ export function startRiddlesGame(level) {
   question.style.cssText = 'font-size:1.15rem;line-height:1.5;margin:12px 0;min-height:3em;';
 
   const hintEl = document.createElement('p');
-  hintEl.style.cssText = 'opacity:0.75;font-size:0.9rem;min-height:1.4em;color:var(--yellow);';
+  hintEl.id = 'riddleHint';
+  hintEl.style.cssText = 'opacity:0.85;font-size:0.9rem;min-height:1.4em;color:var(--yellow);';
 
   const input = document.createElement('input');
   input.type = 'text';
@@ -68,6 +87,22 @@ export function startRiddlesGame(level) {
   const btnRow = document.createElement('div');
   btnRow.id = 'riddleControls';
   btnRow.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;';
+
+  function showAnswerButton() {
+    if (showAnswerBtn) return;
+    showAnswerBtn = document.createElement('button');
+    showAnswerBtn.type = 'button';
+    showAnswerBtn.textContent = '💡 Показать ответ';
+    showAnswerBtn.className = 'modal-btn secondary';
+    showAnswerBtn.onclick = () => {
+      const ans = order[index].a[0];
+      answerEl.textContent = `Ответ: ${ans.charAt(0).toUpperCase() + ans.slice(1)}`;
+      answerEl.style.display = 'block';
+      showAnswerBtn.remove();
+      showAnswerBtn = null;
+    };
+    btnRow.appendChild(showAnswerBtn);
+  }
 
   function finish(won) {
     appState.gameActive = false;
@@ -102,7 +137,7 @@ export function startRiddlesGame(level) {
     hintEl.textContent = '';
     answerEl.style.display = 'none';
     answerEl.textContent = '';
-    wrongAttempts = 0;
+    attempts = 0;
     if (showAnswerBtn) {
       showAnswerBtn.remove();
       showAnswerBtn = null;
@@ -110,6 +145,19 @@ export function startRiddlesGame(level) {
     input.value = '';
     scoreEl.textContent = `✅ ${score} · ${index + 1}/${total} · 💡 ${hints}`;
     input.focus();
+  }
+
+  function showHint() {
+    if (hints <= 0) {
+      hintEl.textContent = 'Подсказки закончились';
+      return;
+    }
+    hints--;
+    attempts++;
+    const hint = getHint(order[index], attempts);
+    hintEl.textContent = `💡 Подсказка: ${hint}`;
+    scoreEl.textContent = `✅ ${score} · ${index + 1}/${total} · 💡 ${hints}`;
+    if (attempts >= 3) showAnswerButton();
   }
 
   function checkAnswer() {
@@ -123,24 +171,12 @@ export function startRiddlesGame(level) {
       index++;
       showCurrent();
     } else {
-      wrongAttempts += 1;
-      hintEl.textContent = '🔄 Попробуй ещё раз!';
+      attempts++;
+      const hint = getHint(order[index], attempts);
+      hintEl.textContent = `💡 Подсказка: ${hint}`;
       input.classList.add('shake');
       setTimeout(() => input.classList.remove('shake'), 400);
-      if (wrongAttempts >= 3 && !showAnswerBtn) {
-        showAnswerBtn = document.createElement('button');
-        showAnswerBtn.type = 'button';
-        showAnswerBtn.textContent = '💡 Показать ответ';
-        showAnswerBtn.className = 'modal-btn secondary';
-        showAnswerBtn.onclick = () => {
-          const ans = order[index].a[0];
-          answerEl.textContent = `Ответ: ${ans.charAt(0).toUpperCase() + ans.slice(1)}`;
-          answerEl.style.display = 'block';
-          showAnswerBtn.remove();
-          showAnswerBtn = null;
-        };
-        btnRow.appendChild(showAnswerBtn);
-      }
+      if (attempts >= 3) showAnswerButton();
     }
   }
 
@@ -152,15 +188,7 @@ export function startRiddlesGame(level) {
   const hintBtn = document.createElement('button');
   hintBtn.className = 'modal-btn secondary';
   hintBtn.textContent = 'Подсказка';
-  hintBtn.onclick = () => {
-    if (hints <= 0) {
-      hintEl.textContent = 'Подсказки закончились';
-      return;
-    }
-    hints--;
-    hintEl.textContent = '💡 ' + order[index].hint;
-    scoreEl.textContent = `✅ ${score} · ${index + 1}/${total} · 💡 ${hints}`;
-  };
+  hintBtn.onclick = showHint;
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') checkAnswer();

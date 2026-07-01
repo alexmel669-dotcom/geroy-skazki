@@ -157,7 +157,9 @@ export function startRunnerGame(level) {
   resize();
   window.addEventListener('resize', resize);
 
-  const lucik = { x: 60, y: 0, vy: 0, jumping: false, frame: 0 };
+  const lucik = { x: 60, y: 0, vy: 0, jumping: false, spinning: false, spinAngle: 0, frame: 0, height: 44 };
+  let jumpCount = 0;
+  const MAX_JUMPS = 2;
   let obstacles = [];
   let stars = [];
   let particles = [];
@@ -168,7 +170,44 @@ export function startRunnerGame(level) {
   let loopId = null;
   let frame = 0;
 
+  const runnerAudio = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playCollectSound() {
+    if (runnerAudio.state === 'suspended') runnerAudio.resume().catch(() => {});
+    const osc = runnerAudio.createOscillator();
+    const gain = runnerAudio.createGain();
+    osc.connect(gain);
+    gain.connect(runnerAudio.destination);
+    osc.frequency.value = 880;
+    gain.gain.value = 0.1;
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, runnerAudio.currentTime + 0.2);
+    osc.stop(runnerAudio.currentTime + 0.2);
+  }
+
+  function playJumpSound() {
+    if (runnerAudio.state === 'suspended') runnerAudio.resume().catch(() => {});
+    const osc = runnerAudio.createOscillator();
+    const gain = runnerAudio.createGain();
+    osc.connect(gain);
+    gain.connect(runnerAudio.destination);
+    osc.frequency.value = 440 + jumpCount * 220;
+    gain.gain.value = 0.08;
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, runnerAudio.currentTime + 0.1);
+    osc.stop(runnerAudio.currentTime + 0.1);
+  }
+
   function groundY() { return canvas.height - 80; }
+
+  function land() {
+    lucik.y = groundY();
+    lucik.vy = 0;
+    lucik.jumping = false;
+    jumpCount = 0;
+    lucik.spinning = false;
+    lucik.spinAngle = 0;
+  }
 
   function spawnObstacle() {
     const type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
@@ -185,10 +224,12 @@ export function startRunnerGame(level) {
   }
 
   function jump() {
-    if (!lucik.jumping && !gameOver) {
-      lucik.vy = -11;
-      lucik.jumping = true;
-    }
+    if (gameOver || jumpCount >= MAX_JUMPS) return;
+    lucik.vy = jumpCount === 0 ? -12 : -9;
+    lucik.jumping = true;
+    jumpCount++;
+    if (jumpCount === 2) lucik.spinning = true;
+    playJumpSound();
   }
 
   function update() {
@@ -208,10 +249,9 @@ export function startRunnerGame(level) {
     lucik.vy += 0.52;
     lucik.y += lucik.vy;
     if (lucik.y >= groundY()) {
-      lucik.y = groundY();
-      lucik.vy = 0;
-      lucik.jumping = false;
+      land();
     }
+    if (lucik.spinning) lucik.spinAngle += 0.35;
 
     obstacles.forEach((o) => {
       o.x -= speed;
@@ -243,6 +283,7 @@ export function startRunnerGame(level) {
     for (const s of [...stars]) {
       if (Math.abs(lucik.x - s.x) < 28 && Math.abs(lucik.y - 40 - s.y) < 28) {
         score += 10;
+        playCollectSound();
         stars = stars.filter((x) => x !== s);
       }
     }
@@ -255,8 +296,6 @@ export function startRunnerGame(level) {
   }
 
   function drawLucik() {
-    const drawX = lucik.x - 22;
-    const drawY = lucik.y - 44;
     const bounce = lucik.jumping ? 0 : Math.sin(lucik.frame * 0.25) * 3;
 
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
@@ -266,8 +305,9 @@ export function startRunnerGame(level) {
 
     if (lucikReady) {
       ctx.save();
-      ctx.translate(0, bounce);
-      ctx.drawImage(lucikImg, drawX, drawY, 44, 44);
+      ctx.translate(lucik.x, lucik.y - 22 + bounce);
+      if (lucik.spinning) ctx.rotate(lucik.spinAngle);
+      ctx.drawImage(lucikImg, -22, -22, 44, 44);
       ctx.restore();
     } else {
       ctx.fillStyle = '#FF8C00';

@@ -6,6 +6,40 @@ import { recordFishResult } from '../game-progress.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 import { getFishConfig } from './game-difficulty.js';
 
+const CATCH_ITEMS = [
+  { name: '🐟 Рыбка', points: 10, probability: 0.5 },
+  { name: '🐠 Золотая рыбка', points: 25, probability: 0.15 },
+  { name: '🦀 Краб', points: 15, probability: 0.1 },
+  { name: '👢 Сапог', points: -5, probability: 0.1 },
+  { name: '🪣 Ведро', points: -3, probability: 0.08 },
+  { name: '🌿 Водоросль', points: 0, probability: 0.07 }
+];
+
+function getRandomItem() {
+  const rand = Math.random();
+  let cumulative = 0;
+  for (const item of CATCH_ITEMS) {
+    cumulative += item.probability;
+    if (rand <= cumulative) return item;
+  }
+  return CATCH_ITEMS[0];
+}
+
+function showCatchAnimation(fishArea, item) {
+  const pop = document.createElement('div');
+  pop.className = 'fish-catch-pop';
+  pop.textContent = item.name;
+  pop.style.cssText = `
+    position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);
+    font-size:1.4rem;font-weight:bold;color:#FFD700;text-shadow:0 2px 8px rgba(0,0,0,0.5);
+    pointer-events:none;animation:fishCatchPop 1s ease forwards;z-index:10;
+  `;
+  if (item.points < 0) pop.style.color = '#FF6B6B';
+  else if (item.points === 0) pop.style.color = '#aaa';
+  fishArea.appendChild(pop);
+  setTimeout(() => pop.remove(), 1000);
+}
+
 export function startFishGame(level) {
   if (appState.gameActive) return;
   level = level || getGameLevel('fish');
@@ -14,6 +48,7 @@ export function startFishGame(level) {
 
   appState.gameActive = true;
   let score = 0;
+  let catches = 0;
   let timeLeft = time;
   let combo = 0;
 
@@ -22,10 +57,11 @@ export function startFishGame(level) {
   const hud = document.createElement('div');
   hud.className = 'game-hud-row';
   hud.style.cssText = 'display:flex;justify-content:space-between;width:100%;max-width:520px;padding:8px 4px;font-size:1rem;';
-  hud.innerHTML = `<span id="fishScore">🐟 0/${fishCount}</span><span>⏱️ ${timeLeft}с</span>`;
+  hud.innerHTML = `<span id="fishScore">⭐ 0</span><span id="fishCatches">🎣 0/${fishCount}</span><span>⏱️ ${timeLeft}с</span>`;
 
   const fishArea = document.createElement('div');
   fishArea.className = 'fish-area-full';
+  fishArea.style.position = 'relative';
   fishArea.innerHTML = '<div class="fish-waves" aria-hidden="true"></div><div class="fish-bubbles" aria-hidden="true"></div>';
 
   const fishElements = [];
@@ -41,6 +77,7 @@ export function startFishGame(level) {
   body.appendChild(fishArea);
 
   const scoreEl = hud.querySelector('#fishScore');
+  const catchesEl = hud.querySelector('#fishCatches');
   const timerEl = hud.querySelector('span:last-child');
 
   fishArea.addEventListener('click', (e) => {
@@ -48,16 +85,28 @@ export function startFishGame(level) {
     if (!fish || !appState.gameActive || fish.dataset.clicked === 'true') return;
 
     fish.dataset.clicked = 'true';
-    score++;
+    const item = getRandomItem();
+    score += item.points;
+    if (score < 0) score = 0;
+    catches++;
     combo++;
+    if (combo >= 3 && item.points > 0) score += Math.floor(combo / 3);
+
     fish.style.transform = 'scale(1.4) rotate(15deg)';
     fish.style.opacity = '0';
-    if (combo >= 3) score += Math.floor(combo / 3);
-    scoreEl.textContent = `🐟 ${score}/${fishCount}`;
-    appState.fishScore++;
+    scoreEl.textContent = `⭐ ${score}`;
+    catchesEl.textContent = `🎣 ${catches}/${fishCount}`;
+    showCatchAnimation(fishArea, item);
+    appState.fishScore = (appState.fishScore || 0) + Math.max(0, item.points);
     updateStatsUI();
 
-    if (score >= fishCount) {
+    if (item.points < 0) {
+      window.ttsEngine?.speak(`Ой, это ${item.name}! Минус ${Math.abs(item.points)} очков.`);
+    } else if (item.points > 0) {
+      window.ttsEngine?.speak(`Поймал ${item.name}! Плюс ${item.points} очков!`);
+    }
+
+    if (catches >= fishCount) {
       endGame(true);
       return;
     }
@@ -73,7 +122,7 @@ export function startFishGame(level) {
       }
     }, 280);
 
-    trackEvent('fish_caught', { level, score, combo });
+    trackEvent('fish_caught', { level, score, item: item.name, combo });
   });
 
   const timerInterval = setInterval(() => {
@@ -114,19 +163,19 @@ export function startFishGame(level) {
       showGameResult({
         won: true,
         level,
-        scoreText: `Поймано ${score} из ${fishCount}!`,
+        scoreText: `Поймано ${catches} предметов, ⭐ ${score} очков!`,
         onNext: () => startFishGame(level + 1),
-        onClose: () => speak(`Отличная рыбалка! ${score} рыбок!`)
+        onClose: () => speak(`Отличная рыбалка! ${score} очков!`)
       });
-      trackEvent('fish_game_won', { level, score });
+      trackEvent('fish_game_won', { level, score, catches });
     } else {
       showGameResult({
         won: false,
         level,
-        scoreText: `Поймано ${score} из ${fishCount}. Попробуй ещё!`,
-        onClose: () => speak(`Неплохо! ${score} рыбок из ${fishCount}.`)
+        scoreText: `Поймано ${catches} из ${fishCount}. ⭐ ${score} очков.`,
+        onClose: () => speak(`Неплохо! ${catches} улова и ${score} очков.`)
       });
-      trackEvent('fish_game_lost', { level, score });
+      trackEvent('fish_game_lost', { level, score, catches });
     }
   }
 
@@ -146,3 +195,5 @@ function createFish(fishTypes, size, area) {
   fish.dataset.clicked = 'false';
   return fish;
 }
+
+export default { startFishGame };

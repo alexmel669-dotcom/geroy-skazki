@@ -35,6 +35,11 @@ function generateMaze(size) {
   carve(1, 1);
   maze[1][0] = 0;
   maze[size - 2][size - 1] = 0;
+
+  if (maze[size - 2][size - 2] === 1 && maze[size - 3]?.[size - 1] === 1) {
+    maze[size - 2][size - 2] = 0;
+  }
+
   return maze;
 }
 

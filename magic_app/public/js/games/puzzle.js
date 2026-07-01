@@ -7,7 +7,6 @@ import {
   createGameScreen, showGameResult, recordGameWin, getGameLevel,
   createConfetti, triggerGameWin
 } from './game-ui.js';
-import { getPuzzleGrid } from './game-difficulty.js';
 import { avatarUrl } from '../config.js';
 
 class PuzzleGame {
@@ -213,7 +212,7 @@ export function startPuzzleGame(level) {
 }
 
 function runPuzzle(level) {
-  const size = getPuzzleGrid(level);
+  const size = [3, 4, 6][Math.min(level, 3) - 1] || 3;
   appState.gameActive = true;
 
   const { body, close, overlay } = createGameScreen({

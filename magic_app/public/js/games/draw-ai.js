@@ -47,14 +47,25 @@ function setupPixarCanvas(body) {
   guessBtn.className = 'draw-pixar-guess-btn';
   guessBtn.textContent = '🤔 Угадай!';
 
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.id = 'clearBtn';
+  clearBtn.className = 'modal-btn secondary draw-pixar-clear-btn';
+  clearBtn.textContent = '🧹 Очистить';
+
+  const btnRow = document.createElement('div');
+  btnRow.className = 'draw-pixar-btns';
+  btnRow.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px;';
+  btnRow.append(clearBtn, guessBtn);
+
   const resultEl = document.createElement('p');
   resultEl.id = 'guessResult';
   resultEl.className = 'draw-pixar-result';
 
-  wrap.append(easel, palette, guessBtn, resultEl);
+  wrap.append(easel, palette, btnRow, resultEl);
   body.appendChild(wrap);
 
-  return { wrap, canvas, guessBtn, resultEl, palette };
+  return { wrap, canvas, guessBtn, clearBtn, resultEl, palette };
 }
 
 export function startDrawAIGame(level) {
@@ -63,11 +74,17 @@ export function startDrawAIGame(level) {
   level = level || getGameLevel('drawAi');
 
   const { body, close } = createGameScreen({ gameId: 'drawAi', title: 'Рисовалка', emoji: '🎨', level });
-  const { canvas, guessBtn, resultEl, palette } = setupPixarCanvas(body);
+  const { canvas, guessBtn, clearBtn, resultEl, palette } = setupPixarCanvas(body);
 
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#FFFEF5';
-  ctx.fillRect(0, 0, 300, 300);
+
+  function clearCanvas() {
+    ctx.fillStyle = '#FFFEF5';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    resultEl.textContent = '';
+  }
+
+  clearCanvas();
 
   let drawing = false;
   let currentColor = '#333333';
@@ -113,21 +130,25 @@ export function startDrawAIGame(level) {
     drawAt(t.clientX, t.clientY);
   }, { passive: true });
 
+  clearBtn.addEventListener('click', clearCanvas);
+
   guessBtn.addEventListener('click', async () => {
     resultEl.textContent = '🤔 Думаю...';
     try {
+      const dataUrl = canvas.toDataURL('image/png');
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: 'Ребёнок нарисовал картинку. Угадай одним-двумя словами, что это может быть (животное, предмет, персонаж). Ответь дружелюбно.',
-          requestType: 'chat'
+          message: 'Ребёнок нарисовал картинку на белом холсте. Угадай что нарисовано. Ответь ОДНИМ словом на русском. Если не можешь определить — скажи «не знаю». Не угадывай «солнышко» или «кот», если нет оснований.',
+          requestType: 'chat',
+          imageHint: dataUrl.slice(0, 80)
         })
       });
       const data = await res.json();
-      const text = data.reply || data.message || 'Красивый рисунок!';
-      resultEl.textContent = text;
-      ttsEngine.speak(text).catch(() => {});
+      const guess = (data.reply || data.message || 'не знаю').trim().split(/[\s,.!]+/)[0];
+      resultEl.textContent = `🤔 Это ${guess}?`;
+      ttsEngine.speak(`Мне кажется, это ${guess}. Правильно?`).catch(() => {});
     } catch {
       resultEl.textContent = 'Не удалось угадать. Попробуй ещё раз!';
     }

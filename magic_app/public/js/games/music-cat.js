@@ -1,6 +1,8 @@
 import { appState } from '../core.js';
 import { createGameScreen, getGameLevel } from './game-ui.js';
+import { avatarUrl } from '../config.js';
 
+const NOTE_FREQ = { C5: 523, E5: 659, G5: 784, A5: 880 };
 const NOTE_EMOJI = ['🎵', '🎶', '♪', '♫'];
 
 function spawnMusicNote(container, x, y) {
@@ -19,29 +21,48 @@ export function startMusicCatGame(level) {
   appState.gameActive = true;
   level = level || getGameLevel('musicCat');
 
-  const notes = { head: 523, body: 440, leftPaw: 349, rightPaw: 392, tail: 294 };
-  const { body, close } = createGameScreen({ gameId: 'musicCat', title: 'Музыкальный кот', emoji: '🎵', level });
+  const { body } = createGameScreen({ gameId: 'musicCat', title: 'Музыкальный кот', emoji: '🎵', level });
 
   const stage = document.createElement('div');
   stage.className = 'music-stage';
+  stage.style.cssText = 'position:relative;text-align:center;min-height:320px;';
   stage.innerHTML = `
     <div class="spotlight spotlight-left" aria-hidden="true"></div>
     <div class="spotlight spotlight-right" aria-hidden="true"></div>
-    <div id="catParts" class="music-lucik-wrap">
-      <div class="cat-part music-lucik-part music-part-head" data-note="head" title="Голова"></div>
-      <div class="cat-part music-lucik-part music-part-body" data-note="body" title="Тело"></div>
-      <div class="cat-part music-lucik-part music-part-paw music-part-paw-left" data-note="leftPaw" title="Лапа"></div>
-      <div class="cat-part music-lucik-part music-part-paw music-part-paw-right" data-note="rightPaw" title="Лапа"></div>
-      <div class="cat-part music-lucik-part music-part-tail" data-note="tail" title="Хвост"></div>
+    <div class="music-avatar-wrap" style="position:relative;display:inline-block;margin:20px auto;">
+      <img src="${avatarUrl('lucik', 'png')}" id="musicAvatar" alt="Люцик"
+           style="width:200px;height:200px;border-radius:50%;cursor:pointer;
+                  box-shadow:0 0 30px rgba(255,215,0,0.5);transition:transform 0.2s,box-shadow 0.2s;">
+      <div class="music-parts" style="position:absolute;inset:0;pointer-events:none;">
+        <button type="button" class="music-part modal-btn secondary" data-note="C5"
+          style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);pointer-events:auto;font-size:0.75rem;">🎵 Лоб</button>
+        <button type="button" class="music-part modal-btn secondary" data-note="E5"
+          style="position:absolute;top:90px;left:-20px;pointer-events:auto;font-size:0.75rem;">🎵 Левое ухо</button>
+        <button type="button" class="music-part modal-btn secondary" data-note="G5"
+          style="position:absolute;top:90px;right:-20px;pointer-events:auto;font-size:0.75rem;">🎵 Правое ухо</button>
+        <button type="button" class="music-part modal-btn secondary" data-note="A5"
+          style="position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);pointer-events:auto;font-size:0.75rem;">🎵 Нос</button>
+      </div>
     </div>
     <button type="button" class="modal-btn music-play-btn" id="playMelody">▶️ Проиграть</button>
   `;
   body.appendChild(stage);
 
+  const avatar = stage.querySelector('#musicAvatar');
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const melody = [];
 
+  const pulseAvatar = () => {
+    avatar.style.transform = 'scale(1.1)';
+    avatar.style.boxShadow = '0 0 50px rgba(255,215,0,0.8)';
+    setTimeout(() => {
+      avatar.style.transform = 'scale(1)';
+      avatar.style.boxShadow = '0 0 30px rgba(255,215,0,0.5)';
+    }, 300);
+  };
+
   const playNote = (freq) => {
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
@@ -53,13 +74,20 @@ export function startMusicCatGame(level) {
     osc.stop(audioCtx.currentTime + 0.5);
   };
 
-  stage.querySelectorAll('.cat-part').forEach((part) => {
+  avatar.addEventListener('click', () => {
+    playNote(NOTE_FREQ.C5);
+    pulseAvatar();
+    melody.push({ note: NOTE_FREQ.C5, time: Date.now() });
+  });
+
+  stage.querySelectorAll('.music-part').forEach((part) => {
     part.addEventListener('click', (e) => {
-      const note = notes[part.dataset.note];
-      playNote(note);
-      melody.push({ note, time: Date.now() });
-      part.classList.add('music-part-glow');
-      setTimeout(() => part.classList.remove('music-part-glow'), 300);
+      e.stopPropagation();
+      const noteKey = part.dataset.note;
+      const freq = NOTE_FREQ[noteKey];
+      playNote(freq);
+      melody.push({ note: freq, time: Date.now() });
+      pulseAvatar();
       const rect = stage.getBoundingClientRect();
       spawnMusicNote(stage, e.clientX - rect.left - 12, e.clientY - rect.top - 24);
     });
@@ -70,10 +98,6 @@ export function startMusicCatGame(level) {
       setTimeout(() => playNote(n.note), i * 300);
     });
   });
-
-  body.querySelector('.game-close-btn')?.addEventListener('click', () => {
-    appState.gameActive = false;
-  }, { once: true });
 }
 
 export default { startMusicCatGame };

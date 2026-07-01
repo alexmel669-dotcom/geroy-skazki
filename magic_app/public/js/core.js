@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.2.0
+// v5.2.1
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -183,8 +183,19 @@ function getChildAgeForGames() {
 function isGameAgeAppropriate(gameId) {
   const game = GAMES[gameId];
   if (!game?.ages) return true;
+  if (localStorage.getItem('guestMode') === 'true') return true;
+  const child = getActiveChild();
+  if (!child?.age) {
+    const stored = parseInt(localStorage.getItem('profileChildAge') || '0', 10);
+    if (!stored) return true;
+  }
   const age = getChildAgeForGames();
   return age >= game.ages[0] && age <= game.ages[1];
+}
+
+export function onGameClose() {
+  document.body.classList.remove('game-active');
+  appState.gameActive = false;
 }
 
 async function syncProfileToServer(data) {
@@ -1044,7 +1055,13 @@ function initEventListeners() {
   });
 
   const games = document.getElementById('games-menu');
-  if (games) games.onclick = showGamesMenu;
+  if (games) {
+    games.onclick = () => {
+      if (!document.body.classList.contains('game-active') && !appState.gameActive) {
+        showGamesMenu();
+      }
+    };
+  }
 
   const feed = document.getElementById('feedBtn');
   if (feed) {
@@ -1599,7 +1616,7 @@ async function processAudio(audioBlob) {
 // ========================================
 
 export function showGamesMenu() {
-  if (appState.gameActive || document.getElementById('gamesMenuOverlay')) return;
+  if (appState.gameActive || document.body.classList.contains('game-active') || document.getElementById('gamesMenuOverlay')) return;
 
   const overlay = document.createElement('div');
   overlay.id = 'gamesMenuOverlay';
@@ -1683,6 +1700,7 @@ if (typeof window !== 'undefined') {
   window.updateStatsUI = updateStatsDisplay;
   window.showChildSelectModal = showChildSelectModal;
   window.showGamesMenu = showGamesMenu;
+  window.onGameClose = onGameClose;
   window.launchFishGame = launchFishGame;
   window.isAppReady = isAppReady;
 }

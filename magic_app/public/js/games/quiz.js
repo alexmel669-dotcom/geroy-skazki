@@ -4,52 +4,93 @@ import { trackEvent } from '../analytics.js';
 import { setAvatarState } from '../ui.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 
-const QUESTIONS = [
-  { id: 'q1', ages: [3, 7], q: 'Какого цвета небо?', options: ['Синее', 'Зелёное', 'Красное', 'Чёрное'], correct: 0 },
-  { id: 'q2', ages: [3, 7], q: 'Сколько лап у кошки?', options: ['2', '4', '6', '8'], correct: 1 },
-  { id: 'q3', ages: [3, 7], q: 'Что падает с неба зимой?', options: ['Снег', 'Песок', 'Листья', 'Камни'], correct: 0 },
-  { id: 'q4', ages: [8, 10], q: 'Сколько планет в Солнечной системе?', options: ['7', '8', '9', '10'], correct: 1 },
-  { id: 'q5', ages: [8, 10], q: 'Кто написал «Колобок»?', options: ['Народная сказка', 'Пушкин', 'Толстой', 'Чуковский'], correct: 0 },
-  { id: 'q6', ages: [8, 10], q: 'Какое животное мурлыкает?', options: ['Собака', 'Кошка', 'Корова', 'Лошадь'], correct: 1 },
-  { id: 'q7', ages: [8, 10], q: 'Из чего растут деревья?', options: ['Из семян', 'Из камней', 'Из песка', 'Из металла'], correct: 0 },
-  { id: 'q8', ages: [11, 14], q: 'Столица Франции?', options: ['Лондон', 'Берлин', 'Париж', 'Рим'], correct: 2 },
-  { id: 'q9', ages: [11, 14], q: 'H₂O — это...', options: ['Соль', 'Вода', 'Воздух', 'Масло'], correct: 1 },
-  { id: 'q10', ages: [11, 14], q: 'Сколько континентов на Земле?', options: ['5', '6', '7', '8'], correct: 1 },
-  { id: 'q11', ages: [11, 14], q: 'Кто был первым космонавтом?', options: ['Armstrong', 'Гагарин', 'Титов', 'Леонов'], correct: 1 },
-  { id: 'q12', ages: [11, 14], q: '2 + 2 × 2 = ?', options: ['6', '8', '4', '10'], correct: 0 }
+const ALL_QUESTIONS = [
+  { id: 'q_anim1', q: 'Какое животное самое высокое?', a: ['Жираф', 'Слон', 'Кит', 'Медведь'], correct: 0, level: 1 },
+  { id: 'q_anim2', q: 'Кто спит вниз головой?', a: ['Сова', 'Летучая мышь', 'Пингвин', 'Попугай'], correct: 1, level: 1 },
+  { id: 'q_anim3', q: 'Какая птица не летает?', a: ['Орёл', 'Воробей', 'Пингвин', 'Сокол'], correct: 2, level: 1 },
+  { id: 'q_anim4', q: 'У какого животного есть хобот?', a: ['Носорог', 'Слон', 'Бегемот', 'Крокодил'], correct: 1, level: 1 },
+  { id: 'q_anim5', q: 'Кто быстрее всех бегает?', a: ['Волк', 'Гепард', 'Лев', 'Заяц'], correct: 1, level: 2 },
+  { id: 'q_anim6', q: 'Сколько ног у паука?', a: ['4', '6', '8', '10'], correct: 2, level: 1 },
+  { id: 'q_nat1', q: 'Сколько планет в Солнечной системе?', a: ['7', '8', '9', '10'], correct: 1, level: 2 },
+  { id: 'q_nat2', q: 'Какая планета самая большая?', a: ['Марс', 'Юпитер', 'Сатурн', 'Земля'], correct: 1, level: 2 },
+  { id: 'q_nat3', q: 'Что падает с неба во время грозы?', a: ['Снег', 'Град', 'Молния', 'Дождь и молния'], correct: 3, level: 1 },
+  { id: 'q_nat4', q: 'Какого цвета небо?', a: ['Красное', 'Синее', 'Зелёное', 'Жёлтое'], correct: 1, level: 1 },
+  { id: 'q_nat5', q: 'Из чего состоит облако?', a: ['Из ваты', 'Из капель воды', 'Из песка', 'Из воздуха'], correct: 1, level: 2 },
+  { id: 'q_nat6', q: 'Что такое радуга?', a: ['Отражение', 'Преломление света', 'Облако', 'Ветер'], correct: 1, level: 2 },
+  { id: 'q_tale1', q: 'Кто съел Колобка?', a: ['Волк', 'Лиса', 'Медведь', 'Заяц'], correct: 1, level: 1 },
+  { id: 'q_tale2', q: 'Из чего сделана карета Золушки?', a: ['Из дерева', 'Из тыквы', 'Из арбуза', 'Из камня'], correct: 1, level: 1 },
+  { id: 'q_tale3', q: 'Кто нёс бабушке пирожки?', a: ['Красная Шапочка', 'Колобок', 'Буратино', 'Незнайка'], correct: 0, level: 1 },
+  { id: 'q_tale4', q: 'Что потеряла Золушка?', a: ['Туфельку', 'Кольцо', 'Шляпу', 'Платье'], correct: 0, level: 1 },
+  { id: 'q_sci1', q: 'Сколько будет 7 + 8?', a: ['13', '14', '15', '16'], correct: 2, level: 2 },
+  { id: 'q_sci2', q: 'Что измеряют термометром?', a: ['Вес', 'Длину', 'Температуру', 'Время'], correct: 2, level: 2 },
+  { id: 'q_sci3', q: 'Из чего делают бумагу?', a: ['Из камня', 'Из дерева', 'Из металла', 'Из пластика'], correct: 1, level: 2 },
+  { id: 'q_sci4', q: 'Сколько минут в часе?', a: ['30', '60', '100', '120'], correct: 1, level: 1 },
+  { id: 'q_adv1', q: 'Столица России?', a: ['Москва', 'Санкт-Петербург', 'Казань', 'Новосибирск'], correct: 0, level: 3 },
+  { id: 'q_adv2', q: 'Кто написал «Войну и мир»?', a: ['Пушкин', 'Толстой', 'Достоевский', 'Чехов'], correct: 1, level: 3 },
+  { id: 'q_adv3', q: 'Формула воды?', a: ['CO2', 'H2O', 'O2', 'NaCl'], correct: 1, level: 3 },
+  { id: 'q_adv4', q: 'Какая планета красная?', a: ['Венера', 'Марс', 'Юпитер', 'Меркурий'], correct: 1, level: 3 },
+  { id: 'q_adv5', q: 'Что такое фотосинтез?', a: ['Дыхание', 'Питание растений светом', 'Размножение', 'Рост'], correct: 1, level: 3 }
 ];
 
-let usedQuestionIds = new Set();
+const LEVEL_CONFIG = {
+  1: { name: 'Лёгкий', questionsPerRound: 5 },
+  2: { name: 'Средний', questionsPerRound: 7 },
+  3: { name: 'Сложный', questionsPerRound: 10 }
+};
 
-function pickQuestions(age, level) {
-  const minAge = level >= 4 ? 11 : level >= 2 ? 8 : 3;
-  const effectiveAge = Math.max(age, minAge);
-  const pool = QUESTIONS.filter((q) => effectiveAge >= q.ages[0] && effectiveAge <= q.ages[1]);
-  const src = pool.length >= 3 ? pool : QUESTIONS;
-  const count = Math.min(src.length, 2 + level);
-  const picked = [];
-  let available = src.filter((q) => !usedQuestionIds.has(q.id));
-
-  if (available.length < count) {
-    usedQuestionIds.clear();
-    available = [...src];
+class QuizGame {
+  constructor(level) {
+    this.level = Math.min(3, Math.max(1, level <= 3 ? level : level <= 6 ? 2 : 3));
+    this.usedQuestions = new Set();
+    this.score = 0;
+    this.currentIndex = 0;
+    this.questions = [];
   }
 
-  while (picked.length < count && available.length) {
-    const idx = Math.floor(Math.random() * available.length);
-    const q = available.splice(idx, 1)[0];
-    usedQuestionIds.add(q.id);
-    picked.push(q);
+  getQuestionsForLevel() {
+    return ALL_QUESTIONS.filter((q) => q.level <= this.level);
   }
-  return picked;
+
+  pickQuestion() {
+    const available = this.getQuestionsForLevel().filter((q) => !this.usedQuestions.has(q.q));
+    if (available.length === 0) {
+      this.usedQuestions.clear();
+      return this.pickQuestion();
+    }
+    const q = available[Math.floor(Math.random() * available.length)];
+    this.usedQuestions.add(q.q);
+    return q;
+  }
+
+  buildRound() {
+    const count = LEVEL_CONFIG[this.level].questionsPerRound;
+    this.questions = [];
+    for (let i = 0; i < count; i++) {
+      this.questions.push(this.pickQuestion());
+    }
+    this.currentIndex = 0;
+    this.score = 0;
+  }
+
+  nextLevel() {
+    if (this.level < 3) {
+      this.level++;
+      this.usedQuestions.clear();
+      window.ttsEngine?.speak(`Переходим на ${LEVEL_CONFIG[this.level].name} уровень!`);
+      this.buildRound();
+      return true;
+    }
+    return false;
+  }
 }
 
 export function startQuizGame(level) {
   if (appState.gameActive) return;
-  usedQuestionIds = new Set();
   level = level || getGameLevel('quiz');
-  const age = getActiveChild()?.age || 8;
-  const questions = pickQuestions(age, level);
+
+  const quiz = new QuizGame(level);
+  quiz.buildRound();
+  const questions = quiz.questions;
   const passScore = Math.ceil(questions.length * 0.6);
   let qi = 0;
   let score = 0;
@@ -64,6 +105,10 @@ export function startQuizGame(level) {
     emoji: '❓',
     level
   });
+
+  const levelLabel = document.createElement('p');
+  levelLabel.style.cssText = 'margin:0 0 8px;opacity:0.85;font-size:0.9rem;';
+  levelLabel.textContent = `Уровень: ${LEVEL_CONFIG[quiz.level].name}`;
 
   const panel = document.createElement('div');
   panel.className = 'game-panel';
@@ -84,7 +129,7 @@ export function startQuizGame(level) {
         scoreText: `${score} из ${questions.length} правильных!`,
         onNext: () => startQuizGame(level + 1)
       });
-      trackEvent('quiz_won', { level, score });
+      trackEvent('quiz_won', { level, score, quizLevel: quiz.level });
     } else {
       speak('В следующий раз получится!');
       showGameResult({
@@ -93,7 +138,7 @@ export function startQuizGame(level) {
         scoreText: `${score} из ${passScore} нужно было.`,
         onClose: () => {}
       });
-      trackEvent('quiz_lost', { level, score });
+      trackEvent('quiz_lost', { level, score, quizLevel: quiz.level });
     }
     incrementGames();
   }
@@ -141,7 +186,7 @@ export function startQuizGame(level) {
       }
     }, 1000);
 
-    item.options.forEach((opt, i) => {
+    item.a.forEach((opt, i) => {
       const btn = document.createElement('button');
       btn.className = 'modal-btn quiz-opt-btn';
       btn.textContent = opt;
@@ -152,7 +197,7 @@ export function startQuizGame(level) {
           btn.classList.add('correct-flash');
         } else {
           btn.classList.add('wrong-flash');
-          item.options.forEach((_, j) => {
+          item.a.forEach((_, j) => {
             if (j === item.correct) opts.children[j].classList.add('correct-flash');
           });
         }
@@ -162,11 +207,13 @@ export function startQuizGame(level) {
     });
 
     panel.append(title, timerEl, q, opts);
-    if (!panel.parentElement) body.appendChild(panel);
+    if (!panel.parentElement) {
+      body.append(levelLabel, panel);
+    }
   }
 
   render();
-  trackEvent('quiz_started', { level });
+  trackEvent('quiz_started', { level, quizLevel: quiz.level });
 }
 
 export default { startQuizGame };

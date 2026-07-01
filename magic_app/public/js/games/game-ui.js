@@ -3,7 +3,7 @@
 // ========================================
 
 import { loadGameProgress, saveGameProgress } from '../game-progress.js';
-import { getActiveChildName } from '../core.js';
+import { getActiveChildName, appState } from '../core.js';
 
 const GAME_STYLE_THEMES = {
   fish: { bg: 'linear-gradient(180deg, #1e3a5f, #0d1b2a)', accent: '#4ECDC4', icon: '🎣', starfield: true, lucikText: 'Лови рыбку!' },
@@ -228,6 +228,7 @@ export function createGameScreen({
 
   const body = overlay.querySelector('.game-screen-body');
   document.body.appendChild(overlay);
+  document.body.classList.add('game-active');
   requestAnimationFrame(() => overlay.classList.add('game-screen-visible'));
 
   const bgEl = overlay.querySelector('.game-screen-bg');
@@ -261,8 +262,11 @@ export function createGameScreen({
 
   const close = () => {
     starfieldCtrl?.stop();
+    appState.gameActive = false;
+    document.body.classList.remove('game-active');
     overlay.classList.remove('game-screen-visible');
     setTimeout(() => overlay.remove(), 280);
+    if (typeof window.onGameClose === 'function') window.onGameClose();
   };
   overlay.querySelector('.game-close-btn').onclick = close;
 

@@ -78,7 +78,7 @@ export function avatarImgHtml(role, size = 36, className = 'child-chip-avatar') 
 }
 
 export const CONFIG = {
-  APP_VERSION: '5.2.0',
+  APP_VERSION: '5.2.1',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,
@@ -137,7 +137,7 @@ export const GAMES = {
   drawAi: { name: 'Рисовалка с ИИ', ages: [5, 14], icon: '🎨', file: 'draw-ai' },
   musicCat: { name: 'Музыкальный кот', ages: [3, 14], icon: '🎵', file: 'music-cat' },
   constellation: { name: 'Созвездия', ages: [6, 14], icon: '🌟', file: 'constellation' },
-  popFears: { name: 'Лопни страхи', ages: [4, 10], icon: '🫧', file: 'pop-fears' }
+  popFears: { name: 'Лопни страхи', ages: [3, 14], icon: '🫧', file: 'pop-fears' }
 };
 
 export const CHARACTERS = {
