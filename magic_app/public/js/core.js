@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.2.1
+// v5.3.0
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -34,7 +34,7 @@ import { startDrawAIGame } from './games/draw-ai.js';
 import { startMusicCatGame } from './games/music-cat.js';
 import { startConstellationGame } from './games/constellation.js';
 import { startPopFearsGame } from './games/pop-fears.js';
-import { getGameLevel } from './games/game-ui.js';
+import { getGameLevel, createConfetti } from './games/game-ui.js';
 import { setAvatarState, playPurrSound, switchCharacter, showMicHint, showGamesHint, showSwipeHint } from './ui.js';
 import { getTimeContext } from './context.js';
 import { detectRequestType, getDictionaryFallback, learnFromResponse, isBedtimeStoryRequest } from './dictionary.js';
@@ -516,10 +516,110 @@ export function isAppReady() {
   return appReady;
 }
 
+function syncGeroyUser() {
+  const child = getActiveChild();
+  const existing = JSON.parse(localStorage.getItem('geroy-user') || '{}');
+  if (child?.name) {
+    localStorage.setItem('geroy-user', JSON.stringify({
+      ...existing,
+      childName: child.name,
+      childAge: child.age,
+      birthday: child.birthday || existing.birthday || null
+    }));
+  }
+}
+
+export function checkBirthday() {
+  const user = JSON.parse(localStorage.getItem('geroy-user') || '{}');
+  if (!user?.birthday) return;
+
+  const todayKey = new Date().toISOString().split('T')[0];
+  if (localStorage.getItem('geroy-birthday-shown') === todayKey) return;
+
+  const today = new Date();
+  const bday = new Date(user.birthday);
+  if (today.getMonth() !== bday.getMonth() || today.getDate() !== bday.getDate()) return;
+
+  localStorage.setItem('geroy-birthday-shown', todayKey);
+  const age = today.getFullYear() - bday.getFullYear();
+  window.ttsEngine?.speak(`С днём рождения, ${user.childName}! Тебе ${age} ${getAgeWord(age)}!`);
+
+  createConfetti(document.body);
+
+  const streak = JSON.parse(localStorage.getItem('geroy-streak') || '{}');
+  streak.stars = (streak.stars || 0) + 50;
+  localStorage.setItem('geroy-streak', JSON.stringify(streak));
+  updateStreakUI();
+}
+
+export function claimDailyGift() {
+  const today = new Date().toISOString().split('T')[0];
+  if (localStorage.getItem('geroy-gift-date') === today) {
+    window.ttsEngine?.speak('Ты уже получил подарок сегодня!');
+    return;
+  }
+
+  const gifts = ['⭐ +5', '🌟 +10', '💎 +1', '🎁 сюрприз'];
+  const gift = gifts[Math.floor(Math.random() * gifts.length)];
+  localStorage.setItem('geroy-gift-date', today);
+
+  const streak = JSON.parse(localStorage.getItem('geroy-streak') || '{}');
+  streak.stars = (streak.stars || 0) + parseInt(gift.match(/\d+/)?.[0] || '5', 10);
+  localStorage.setItem('geroy-streak', JSON.stringify(streak));
+  updateStreakUI();
+
+  window.ttsEngine?.speak(`Твой подарок: ${gift}!`);
+}
+
+export function playLullaby() {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) {
+    window.ttsEngine?.speak('Сладких снов...');
+    return;
+  }
+
+  const ctx = new AudioCtx();
+  const notes = [523, 494, 440, 494, 523, 440];
+  let t = ctx.currentTime;
+
+  notes.forEach((freq) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.15, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    osc.start(t);
+    osc.stop(t + 0.5);
+    t += 0.5;
+  });
+
+  setTimeout(() => {
+    const purr = new Audio('assets/audio/purr.mp3');
+    purr.loop = true;
+    purr.volume = 0.3;
+    purr.play().catch(() => playPurrSound());
+    setTimeout(() => {
+      purr.pause();
+      window.ttsEngine?.speak('Сладких снов...');
+    }, 8000);
+  }, t * 1000);
+}
+
+function updateBedtimeButton() {
+  const btn = document.getElementById('bedtimeBtn');
+  if (btn) btn.style.display = new Date().getHours() >= 20 ? 'block' : 'none';
+}
+
 function onAppReady() {
   if (appReady) return;
   appReady = true;
   console.log('🟢 App ready');
+
+  syncGeroyUser();
+  checkBirthday();
+  updateBedtimeButton();
 
   setTimeout(() => {
     playWelcomeGreeting().catch((err) => console.warn('Welcome failed:', err));
@@ -662,6 +762,7 @@ export function initCore() {
 
   checkDailyStreak();
   updateStreakUI();
+  syncGeroyUser();
   localStorage.setItem('geroy-last-visit', new Date().toISOString());
 
   console.log(`🟢 Герой Сказок v${CONFIG.APP_VERSION} готов к работе`);
@@ -732,6 +833,7 @@ export function setActiveChild(index, options = {}) {
   trackEvent('child_select', child?.name || 'guest');
   setChatChild(child?.name || 'guest');
   loadChatHistory(child?.name || 'guest');
+  syncGeroyUser();
 
   if (options.greet && child?.name) {
     const gender = getChildGender(child);
@@ -1410,6 +1512,7 @@ async function runBedtimeStory(promptText) {
     saveChildStats(stats);
     incrementStories();
     incrementDailyStories();
+    window.storybook?.add(promptText.slice(0, 40) || 'Сказка на ночь', reply);
     checkAchievements();
   } catch (e) {
     logError('bedtime_story', e.message);
@@ -1555,6 +1658,7 @@ async function handleUserMessage(text, options = {}) {
     await synthesizeSpeech(goodnight, getCharacter());
     incrementStories();
     incrementDailyStories();
+    window.storybook?.add(text.slice(0, 40) || 'Сказка на ночь', reply);
     if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
     checkAchievements();
     updateStatsDisplay();
@@ -1567,6 +1671,7 @@ async function handleUserMessage(text, options = {}) {
   if (responseType === 'story' || requestType === 'story') {
     incrementStories();
     incrementDailyStories();
+    window.storybook?.add(text.slice(0, 40) || 'Сказка', reply);
   }
   if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
   checkAchievements();
@@ -1703,6 +1808,8 @@ if (typeof window !== 'undefined') {
   window.onGameClose = onGameClose;
   window.launchFishGame = launchFishGame;
   window.isAppReady = isAppReady;
+  window.claimDailyGift = claimDailyGift;
+  window.playLullaby = playLullaby;
 }
 
 export default {

@@ -1,4 +1,6 @@
 import './error-monitor.js';
+import './storybook.js';
+import './leaderboard.js';
 import { CONFIG, validateConfig, ENV, initAvatarImages } from './config.js';
 import {
   initCore, getActiveChildName, getActiveChild, updateStatsUI, cycleCharacter,

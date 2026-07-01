@@ -58,11 +58,28 @@ function roleIntro(character) {
   return CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
 }
 
+function getAgePrompt(childAge) {
+  const age = parseInt(childAge, 10);
+  if (age >= 11) {
+    return `Ты общаешься с подростком ${age} лет. Используй современный язык. Не сюсюкай. Будь как старший друг.`;
+  }
+  return '';
+}
+
+function getCharacterPrompt(character, childAge) {
+  const age = parseInt(childAge, 10);
+  if (age >= 11) {
+    return 'Ты — крутой старший друг. Говори современно: "огонь", "топ". Не сюсюкай.';
+  }
+  return CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
+}
+
 function getChatPrompt(childName, childAge, timeContext, childGender, character = 'lucik') {
   const ctx = timeContext || { time: '', day: '', greeting: '' };
   const genderLine = buildGenderPrompt(childGender, childName);
   const ageStr = formatChildAge(childAge);
-  const role = roleIntro(character);
+  const role = getCharacterPrompt(character, childAge);
+  const agePrompt = getAgePrompt(childAge);
   const postupil = childGender === 'female' ? 'поступила' : 'поступил';
   return `${role} ${ctx.time}, ${ctx.day}.
 
@@ -85,6 +102,7 @@ ${childGender === 'female' ? 'Обращайся в женском роде: "т
 
 Ребёнок: ${childName || 'малыш'}${ageStr}.
 Контекст: ${ctx.greeting || ''}
+${agePrompt ? `\n${agePrompt}` : ''}
 
 ${JSON_FORMAT_CHAT}`;
 }
@@ -179,8 +197,9 @@ function buildSystemPrompt({ childName, childAge, childGender, character, system
     return getChatPrompt(childName, childAge, timeContext, childGender, charId);
   }
   const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : null;
-  const role = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
+  const role = getCharacterPrompt(character, childAge);
   const tone = age ? getAgeBasedTone(age) : '';
+  const agePrompt = age ? getAgePrompt(age) : '';
   const genderLine = buildGenderPrompt(childGender, childName);
   const nameLine = childName
     ? `${nameFormsBlock(childName, childGender)}${age ? `, ${age} ${getAgeWord(age)}` : ''}.`
@@ -188,7 +207,7 @@ function buildSystemPrompt({ childName, childAge, childGender, character, system
   const topicLine = topic ? `\nТекущая тема: ${topic}` : '';
   const firstLine = isFirstMessage ? '\nЭто первое сообщение в диалоге.' : '';
   const continueHint = 'Если ребёнок говорит «давай», «расскажи ещё», «продолжай» — продолжай предыдущую тему.';
-  const toneLine = tone ? `\n\nСтиль общения:\n${tone}` : '';
+  const toneLine = tone ? `\n\nСтиль общения:\n${tone}${agePrompt ? `\n${agePrompt}` : ''}` : (agePrompt ? `\n\n${agePrompt}` : '');
   const genderHint = childGender === 'female'
     ? 'Обращайся в женском роде: "ты сказала", "ты сделала", "как прошла твой день".'
     : childGender === 'male'

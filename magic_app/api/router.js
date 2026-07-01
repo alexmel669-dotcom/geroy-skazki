@@ -31,6 +31,7 @@ import weeklyStats from './_handlers/weekly-stats.js';
 import feedback from './_handlers/feedback.js';
 import getSecretQuestion from './_handlers/get-secret-question.js';
 import resetPassword from './_handlers/reset-password.js';
+import leaderboard from './_handlers/leaderboard.js';
 
 
 
@@ -88,7 +89,9 @@ const ROUTES = {
 
   'get-secret-question': getSecretQuestion,
 
-  'reset-password': resetPassword
+  'reset-password': resetPassword,
+
+  leaderboard
 
 };
 

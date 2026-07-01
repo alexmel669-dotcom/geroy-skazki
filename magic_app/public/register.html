@@ -59,6 +59,7 @@
           <label><input type="radio" name="child1Gender" value="female" checked> <img src="assets/images/kid1.svg" data-avatar="kid1" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Девочка</label>
           <label><input type="radio" name="child1Gender" value="male"> <img src="assets/images/kid2.svg" data-avatar="kid2" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Мальчик</label>
         </div>
+        <input type="date" id="birthday" style="margin-top:8px;width:100%;">
       </div>
       
       <!-- Ребёнок 2 (опционально) -->
@@ -264,7 +265,14 @@
         if (data.user?.role) localStorage.setItem('userRole', data.user.role);
         if (data.user?.parentName) localStorage.setItem('parentName', data.user.parentName);
         const savedChildren = data.user?.children?.length ? data.user.children : children;
+        const birthday = document.getElementById('birthday')?.value || null;
+        if (birthday && savedChildren[0]) savedChildren[0].birthday = birthday;
         saveChildrenToLocal(savedChildren);
+        localStorage.setItem('geroy-user', JSON.stringify({
+          childName: savedChildren[0]?.name,
+          childAge: savedChildren[0]?.age,
+          birthday
+        }));
         window.location.href = '/app.html';
       } else {
         const errMap = {

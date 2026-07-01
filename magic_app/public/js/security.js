@@ -181,6 +181,19 @@ export function validateChildName(name) {
     return name && typeof name === 'string' && name.length >= 2 && name.length <= 20;
 }
 
+export const TEEN_SLANG = {
+  allowed: ['круто', 'классно', 'огонь', 'топ', 'залипательно', 'краш', 'вайб', 'чилить', 'рофл', 'пушка', 'бомба', 'кайф', 'имба', 'скилл', 'френд', 'го'],
+  forbidden: []
+};
+
+export function getAgeBasedTone(age) {
+  const a = parseInt(age, 10) || 5;
+  if (a <= 7) return 'Говори как с малышом. Простые слова, ласково.';
+  if (a <= 10) return 'Говори как с другом. Можно: круто, классно, здорово.';
+  if (a <= 14) return `Говори на современном языке. Можно: ${TEEN_SLANG.allowed.slice(0, 10).join(', ')}. Нельзя: мат, агрессия.`;
+  return '';
+}
+
 // Экспорт всех основных функций
 export default {
     initSecurity,
@@ -194,5 +207,7 @@ export default {
     detectAlertWords,
     detectPersonalData,
     validateChildAge,
-    validateChildName
+    validateChildName,
+    TEEN_SLANG,
+    getAgeBasedTone
 };

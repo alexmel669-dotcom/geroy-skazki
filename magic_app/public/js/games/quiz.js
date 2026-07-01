@@ -32,15 +32,48 @@ const ALL_QUESTIONS = [
   { id: 'q_adv5', q: 'Что такое фотосинтез?', a: ['Дыхание', 'Питание растений светом', 'Размножение', 'Рост'], correct: 1, level: 3 }
 ];
 
+const EXPERT_QUESTIONS = [
+  { id: 'q_exp1', q: 'Кто написал «Войну и мир»?', a: ['Пушкин', 'Толстой', 'Достоевский', 'Чехов'], correct: 1, level: 4 },
+  { id: 'q_exp2', q: 'Формула воды?', a: ['CO2', 'H2O', 'O2', 'NaCl'], correct: 1, level: 4 },
+  { id: 'q_exp3', q: 'Столица Японии?', a: ['Пекин', 'Сеул', 'Токио', 'Ханой'], correct: 2, level: 4 },
+  { id: 'q_exp4', q: 'Кто открыл закон всемирного тяготения?', a: ['Эйнштейн', 'Ньютон', 'Галилей', 'Коперник'], correct: 1, level: 4 },
+  { id: 'q_exp5', q: 'Сколько хромосом у человека?', a: ['23', '46', '48', '64'], correct: 1, level: 4 },
+  { id: 'q_exp6', q: 'Самый большой океан?', a: ['Атлантический', 'Тихий', 'Индийский', 'Северный Ледовитый'], correct: 1, level: 4 },
+  { id: 'q_exp7', q: 'Химический символ золота?', a: ['Ag', 'Au', 'Fe', 'Cu'], correct: 1, level: 4 },
+  { id: 'q_exp8', q: 'Какая планета ближе к Солнцу?', a: ['Венера', 'Меркурий', 'Марс', 'Земля'], correct: 1, level: 4 },
+  { id: 'q_exp9', q: 'Кто написал «Евгения Онегина»?', a: ['Лермонтов', 'Пушкин', 'Гоголь', 'Тургенев'], correct: 1, level: 4 },
+  { id: 'q_exp10', q: 'Столица Франции?', a: ['Лондон', 'Берлин', 'Париж', 'Рим'], correct: 2, level: 4 },
+  { id: 'q_exp11', q: 'Скорость света примерно?', a: ['300 км/с', '3000 км/с', '300 000 км/с', '3 млн км/с'], correct: 2, level: 4 },
+  { id: 'q_exp12', q: 'Какой газ нужен для фотосинтеза?', a: ['Кислород', 'Азот', 'CO2', 'Водород'], correct: 2, level: 4 },
+  { id: 'q_exp13', q: 'Сколько континентов на Земле?', a: ['5', '6', '7', '8'], correct: 1, level: 4 },
+  { id: 'q_exp14', q: 'Как называется наука о звёздах?', a: ['Биология', 'Астрономия', 'Геология', 'Химия'], correct: 1, level: 4 },
+  { id: 'q_exp15', q: 'Самая длинная река в России?', a: ['Обь', 'Лена', 'Волга', 'Енисей'], correct: 2, level: 4 }
+];
+
+const ALL_QUESTIONS_POOL = [...ALL_QUESTIONS, ...EXPERT_QUESTIONS];
+
 const LEVEL_CONFIG = {
-  1: { name: 'Лёгкий', questionsPerRound: 5 },
-  2: { name: 'Средний', questionsPerRound: 7 },
-  3: { name: 'Сложный', questionsPerRound: 10 }
+  1: { name: 'Лёгкий', timePerQuestion: 15, questionsPerRound: 5 },
+  2: { name: 'Средний', timePerQuestion: 10, questionsPerRound: 7 },
+  3: { name: 'Сложный', timePerQuestion: 8, questionsPerRound: 10 },
+  4: { name: 'Эксперт', timePerQuestion: 6, questionsPerRound: 15 }
 };
 
+let timerInterval = null;
+let timeLeft = 0;
+
+function pickQuizLevel(level, age) {
+  let byAge = 1;
+  if (age <= 7) byAge = 1;
+  else if (age <= 10) byAge = 2;
+  else if (age <= 12) byAge = 3;
+  else byAge = 4;
+  return Math.min(4, Math.max(byAge, Math.min(4, level || 1)));
+}
+
 class QuizGame {
-  constructor(level) {
-    this.level = Math.min(3, Math.max(1, level <= 3 ? level : level <= 6 ? 2 : 3));
+  constructor(level, age) {
+    this.level = pickQuizLevel(level, age || 7);
     this.usedQuestions = new Set();
     this.score = 0;
     this.currentIndex = 0;
@@ -48,7 +81,8 @@ class QuizGame {
   }
 
   getQuestionsForLevel() {
-    return ALL_QUESTIONS.filter((q) => q.level <= this.level);
+    if (this.level >= 4) return ALL_QUESTIONS_POOL.filter((q) => q.level >= 3);
+    return ALL_QUESTIONS_POOL.filter((q) => q.level <= this.level);
   }
 
   pickQuestion() {
@@ -73,7 +107,7 @@ class QuizGame {
   }
 
   nextLevel() {
-    if (this.level < 3) {
+    if (this.level < 4) {
       this.level++;
       this.usedQuestions.clear();
       window.ttsEngine?.speak(`Переходим на ${LEVEL_CONFIG[this.level].name} уровень!`);
@@ -87,15 +121,36 @@ class QuizGame {
 export function startQuizGame(level) {
   if (appState.gameActive) return;
   level = level || getGameLevel('quiz');
+  const child = getActiveChild();
 
-  const quiz = new QuizGame(level);
+  const quiz = new QuizGame(level, child?.age);
   quiz.buildRound();
   const questions = quiz.questions;
   const passScore = Math.ceil(questions.length * 0.6);
   let qi = 0;
   let score = 0;
   let questionTimer = null;
-  let timeLeft = 15;
+  let timeLeft = LEVEL_CONFIG[quiz.level].timePerQuestion;
+  let onTimeUpFn = null;
+
+  function startTimer(seconds) {
+    if (timerInterval) clearInterval(timerInterval);
+    timeLeft = seconds;
+    const timerEl = document.getElementById('quizTimer');
+    if (timerEl) timerEl.textContent = `⏱ ${timeLeft}с`;
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      if (timerEl) {
+        timerEl.textContent = `⏱ ${timeLeft}с`;
+        timerEl.style.color = timeLeft <= 5 ? '#F44336' : '#FFD700';
+      }
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        if (onTimeUpFn) onTimeUpFn();
+      }
+    }, 1000);
+  }
 
   appState.gameActive = true;
 
@@ -122,6 +177,7 @@ export function startQuizGame(level) {
       setAvatarState('happy');
       setTimeout(() => setAvatarState(null), 1200);
       recordGameWin('quiz', level);
+      if (window.leaderboard) window.leaderboard.submitScore('quiz', score);
       speak('Отличный результат!');
       showGameResult({
         won: true,
@@ -145,22 +201,24 @@ export function startQuizGame(level) {
 
   function render() {
     panel.innerHTML = '';
+    if (timerInterval) clearInterval(timerInterval);
     if (questionTimer) clearInterval(questionTimer);
     if (qi >= questions.length) {
       finish(score >= passScore);
       return;
     }
 
-    timeLeft = Math.max(10, 20 - level);
+    const cfg = LEVEL_CONFIG[quiz.level];
     const item = questions[qi];
     const title = document.createElement('h3');
     title.style.cssText = 'margin:0 0 12px;font-size:1rem;opacity:0.85;';
-    title.textContent = `Вопрос ${qi + 1} / ${questions.length}`;
+    title.textContent = `Вопрос ${qi + 1} / ${questions.length} · ${cfg.name}`;
 
     const timerEl = document.createElement('div');
+    timerEl.id = 'quizTimer';
     timerEl.className = 'game-hud-row';
     timerEl.style.cssText = 'margin-bottom:12px;font-size:1.1rem;';
-    timerEl.textContent = `⏱️ ${timeLeft}с`;
+    timerEl.textContent = `⏱ ${cfg.timePerQuestion}с`;
 
     const q = document.createElement('p');
     q.className = 'game-question-text';
@@ -171,27 +229,24 @@ export function startQuizGame(level) {
     opts.style.cssText = 'display:flex;flex-direction:column;gap:10px;width:100%;';
 
     const lockOpts = (correct) => {
+      if (timerInterval) clearInterval(timerInterval);
       if (questionTimer) clearInterval(questionTimer);
+      timerInterval = null;
+      questionTimer = null;
       opts.querySelectorAll('button').forEach((b) => { b.disabled = true; });
       setTimeout(() => { qi++; render(); }, correct ? 400 : 900);
     };
 
-    questionTimer = setInterval(() => {
-      timeLeft--;
-      timerEl.textContent = `⏱️ ${timeLeft}с`;
-      if (timeLeft <= 0) {
-        clearInterval(questionTimer);
-        questionTimer = null;
-        lockOpts(false);
-      }
-    }, 1000);
+    onTimeUpFn = () => lockOpts(false);
+    startTimer(cfg.timePerQuestion);
 
     item.a.forEach((opt, i) => {
       const btn = document.createElement('button');
       btn.className = 'modal-btn quiz-opt-btn';
       btn.textContent = opt;
       btn.onclick = () => {
-        if (questionTimer) clearInterval(questionTimer);
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = null;
         if (i === item.correct) {
           score++;
           btn.classList.add('correct-flash');
