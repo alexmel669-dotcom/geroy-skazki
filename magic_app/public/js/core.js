@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.3.0
+// v5.3.1
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -607,9 +607,24 @@ export function playLullaby() {
   }, t * 1000);
 }
 
-function updateBedtimeButton() {
-  const btn = document.getElementById('bedtimeBtn');
-  if (btn) btn.style.display = new Date().getHours() >= 20 ? 'block' : 'none';
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then((perm) => {
+      if (perm === 'granted') console.log('🔔 Notifications allowed');
+    });
+  }
+}
+
+export function sendTestNotification() {
+  if (Notification.permission === 'granted') {
+    navigator.serviceWorker.ready.then((reg) => {
+      reg.showNotification('Герой Сказок', {
+        body: 'Люцик ждёт тебя!',
+        icon: 'assets/images/icon-192.png',
+        vibrate: [200, 100, 200]
+      });
+    }).catch(() => {});
+  }
 }
 
 function onAppReady() {
@@ -619,21 +634,28 @@ function onAppReady() {
 
   syncGeroyUser();
   checkBirthday();
-  updateBedtimeButton();
 
   setTimeout(() => {
     playWelcomeGreeting().catch((err) => console.warn('Welcome failed:', err));
   }, 500);
 
   setTimeout(() => {
-    showMicHint();
-    showGamesHint();
-    showSwipeHint();
-  }, 2000);
+    const checkVoice = setInterval(() => {
+      if (!window.ttsEngine?.isSpeaking) {
+        clearInterval(checkVoice);
+        checkEveningMode();
+      }
+    }, 500);
+  }, 3000);
+
+  setTimeout(requestNotificationPermission, 3000);
 
   setTimeout(() => {
-    generateEveningStory().catch((err) => console.warn('Evening story failed:', err));
-  }, 3000);
+    if (!window.ttsEngine?.isSpeaking) {
+      showMicHint();
+      showGamesHint();
+    }
+  }, 5000);
 }
 
 function getTodayDialogs() {
@@ -656,56 +678,57 @@ function getAverageMood(dialogs) {
   return 'спокойное';
 }
 
-async function generateEveningStory() {
-  const user = getCurrentUser();
-  const age = user.childAge || parseInt(localStorage.getItem('profileChildAge') || '7', 10);
-
-  if (age > 8) return;
-
+async function checkEveningMode() {
   const hour = new Date().getHours();
-  if (hour < 18 || hour > 22) return;
+  if (hour < 20 || hour > 23) return;
+  if (localStorage.getItem('geroy-evening-shown') === new Date().toISOString().split('T')[0]) return;
 
-  const today = new Date().toISOString().split('T')[0];
-  if (localStorage.getItem('geroy-evening-story') === today) return;
+  const user = getCurrentUser();
+  const age = user.childAge || 7;
 
-  if (getStoriesRemaining() <= 0) return;
+  if (age <= 8) {
+    await synthesizeSpeech('Уже поздно, пора готовиться ко сну. Хочешь, я расскажу тебе сказку на ночь?', getCharacter());
+  } else {
+    await synthesizeSpeech('Давай подведём итоги дня! О чём мы сегодня говорили? Хочешь послушать весёлую историю о себе?', getCharacter());
+    await generateDaySummary();
+  }
 
+  localStorage.setItem('geroy-evening-shown', new Date().toISOString().split('T')[0]);
+}
+
+async function generateDaySummary() {
+  const user = getCurrentUser();
   const todayDialogs = getTodayDialogs();
-  const concerns = safeParseJSON(localStorage.getItem('parentConcerns'), []) || [];
+
+  if (!todayDialogs.length) return;
+
+  const topics = todayDialogs.map((d) => d.question).join('; ');
   const mood = getAverageMood(todayDialogs);
-  const childName = user.childName || 'малыш';
-
-  const prompt = `
-Сегодня ребёнок ${childName} (${age} лет) общался с тобой.
-Настроение за день: ${mood}.
-${concerns.length > 0 ? 'Возможные переживания: ' + concerns.join(', ') + '.' : ''}
-${todayDialogs.length > 0 ? 'Темы разговоров: ' + todayDialogs.slice(-3).map((d) => d.question).join('; ') : ''}
-
-Сочини короткую спокойную сказку на ночь (2-3 минуты), которая:
-- Учитывает настроение ребёнка
-- Мягко помогает справиться с переживаниями (не называя их прямо)
-- Заканчивается спокойно и умиротворяюще
-- Подходит для возраста ${age} лет
-`.trim();
 
   try {
-    const aiResult = await generateResponse(prompt, {
-      ...getChildContextForAI(),
-      requestType: 'bedtime_story',
-      childName,
-      childAge: age
+    const token = localStorage.getItem('userToken');
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        message: `Ребёнок ${user.childName || 'герой'} (${user.childAge || 7} лет) сегодня говорил о: ${topics}.
+Настроение: ${mood}.
+Сочини короткую весёлую историю о сегодняшнем дне от лица ребёнка.
+Как будто это он сам рассказывает другу. Весело, но без насмешек.`,
+        requestType: 'chat',
+        childName: user.childName,
+        childAge: user.childAge
+      })
     });
-    const story = typeof aiResult === 'string' ? aiResult : aiResult.text;
-    if (!story) return;
 
-    localStorage.setItem('geroy-evening-story', today);
-    const child = getActiveChild();
-    const reply = applyGenderToText(sanitizeAIText(story, age), getChildGender(child));
-    await synthesizeSpeech(reply, getCharacter());
-    incrementStories();
-    incrementDailyStories();
+    const data = await res.json();
+    const text = data.message || data.text;
+    if (text) await synthesizeSpeech(text, getCharacter());
   } catch (e) {
-    console.warn('Evening story failed:', e);
+    console.warn('Day summary failed:', e);
   }
 }
 
@@ -1104,6 +1127,23 @@ function isAssistantSpeaking() {
   return window.ttsEngine?.isSpeaking === true;
 }
 
+export function performFeedLucik() {
+  const stats = getChildStats();
+  onFeed(stats);
+  saveChildStats(stats);
+  animateStat('hungerFill', getTamagotchi(stats).hunger);
+  animateStat('moodFill', getTamagotchi(stats).mood);
+  trackEvent('feed', getActiveChildName());
+}
+
+export function performCleanLucikRoom() {
+  const stats = getChildStats();
+  onClean(stats);
+  saveChildStats(stats);
+  animateStat('energyFill', getTamagotchi(stats).energy);
+  trackEvent('clean', getActiveChildName());
+}
+
 function initEventListeners() {
   const mic = document.getElementById('micButton') || document.getElementById('mic-button');
   if (mic) {
@@ -1155,40 +1195,6 @@ function initEventListeners() {
   window.addEventListener('beforeunload', () => {
     releaseMicrophone();
   });
-
-  const games = document.getElementById('games-menu');
-  if (games) {
-    games.onclick = () => {
-      if (!document.body.classList.contains('game-active') && !appState.gameActive) {
-        showGamesMenu();
-      }
-    };
-  }
-
-  const feed = document.getElementById('feedBtn');
-  if (feed) {
-    feed.onclick = () => {
-      const stats = getChildStats();
-      onFeed(stats);
-      saveChildStats(stats);
-      animateStat('hungerFill', getTamagotchi(stats).hunger);
-      animateStat('moodFill', getTamagotchi(stats).mood);
-      trackEvent('feed', getActiveChildName());
-      showFeedingAnimation();
-    };
-  }
-
-  const room = document.getElementById('roomBtn');
-  if (room) {
-    room.onclick = () => {
-      const stats = getChildStats();
-      onClean(stats);
-      saveChildStats(stats);
-      animateStat('energyFill', getTamagotchi(stats).energy);
-      trackEvent('clean', getActiveChildName());
-      showCleaningAnimation();
-    };
-  }
 
   const avatarSection = document.querySelector('.avatar-section');
   if (avatarSection && getChildren().length < 2) {
@@ -1808,8 +1814,7 @@ if (typeof window !== 'undefined') {
   window.onGameClose = onGameClose;
   window.launchFishGame = launchFishGame;
   window.isAppReady = isAppReady;
-  window.claimDailyGift = claimDailyGift;
-  window.playLullaby = playLullaby;
+  window.sendTestNotification = sendTestNotification;
 }
 
 export default {

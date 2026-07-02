@@ -462,13 +462,38 @@ header {
 }
 
 .avatar-eating {
-  animation: eatSprite 0.8s steps(2) infinite;
-  filter: brightness(1.08);
+  animation: eatNod 0.5s ease-in-out 4;
 }
 
-@keyframes eatSprite {
-  0%, 49% { transform: scale(1); }
-  50%, 100% { transform: scale(1.03); }
+.avatar-cleaning {
+  animation: cleanSweep 0.8s ease-in-out 3;
+}
+
+@keyframes eatNod {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+@keyframes cleanSweep {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.lucik-house-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  padding: 20px 32px;
+  border-radius: 20px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  z-index: 9000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 .avatar.talking {

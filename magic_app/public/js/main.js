@@ -4,12 +4,13 @@ import './leaderboard.js';
 import { CONFIG, validateConfig, ENV, initAvatarImages } from './config.js';
 import {
   initCore, getActiveChildName, getActiveChild, updateStatsUI, cycleCharacter,
-  selectGuestMode, showChildSelectModal, saveChildData, appState, sendTextMessage
+  selectGuestMode, showChildSelectModal, saveChildData, appState, sendTextMessage,
+  showGamesMenu, performFeedLucik, performCleanLucikRoom
 } from './core.js';
 import { getCharacter } from './ai.js';
 import { ttsEngine, synthesizeSpeech } from './audio.js';
 import { startRecording, stopRecording, isRecording, browserSpeechRecognition } from './mic.js';
-import { updateUI, showNotification, initDevPanel, initVoiceHints } from './ui.js';
+import { updateUI, showNotification, initDevPanel, initVoiceHints, feedLucik, showLucikHouse } from './ui.js';
 import { initNotificationScheduler, checkPlanExpiryNotification } from './notifications.js';
 import { startOnboarding } from './onboarding.js';
 
@@ -78,6 +79,19 @@ if (typeof window !== 'undefined') {
   window.appState = appState;
   window.browserSpeechRecognition = browserSpeechRecognition;
   window.sendTextMessage = sendTextMessage;
+  window.showGamesMenu = () => {
+    if (!document.body.classList.contains('game-active') && !appState.gameActive) {
+      showGamesMenu();
+    }
+  };
+  window.feedLucik = () => {
+    performFeedLucik();
+    feedLucik();
+  };
+  window.showLucikHouse = () => {
+    performCleanLucikRoom();
+    showLucikHouse();
+  };
 }
 
 export {

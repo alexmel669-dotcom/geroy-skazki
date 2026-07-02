@@ -183,7 +183,8 @@ export function startQuizGame(level) {
         won: true,
         level,
         scoreText: `${score} из ${questions.length} правильных!`,
-        onNext: () => startQuizGame(level + 1)
+        onNext: () => startQuizGame(level + 1),
+        onRestart: () => startQuizGame(level)
       });
       trackEvent('quiz_won', { level, score, quizLevel: quiz.level });
     } else {
@@ -192,6 +193,7 @@ export function startQuizGame(level) {
         won: false,
         level,
         scoreText: `${score} из ${passScore} нужно было.`,
+        onRestart: () => startQuizGame(level),
         onClose: () => {}
       });
       trackEvent('quiz_lost', { level, score, quizLevel: quiz.level });

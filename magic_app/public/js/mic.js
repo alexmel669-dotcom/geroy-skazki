@@ -603,3 +603,28 @@ export default {
   getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
   onProcessingDone, isProcessingLocked, armRecordingFromUser, disarmRecordingFromUser
 };
+
+function initMicPermissionPrompt() {
+  const micButton = document.getElementById('micButton') || document.getElementById('mic-button');
+  if (!micButton || !navigator.mediaDevices?.getUserMedia) return;
+
+  micButton.setAttribute('autoplay', '');
+  micButton.addEventListener('click', async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      console.log('✅ Microphone permission granted');
+    } catch (e) {
+      console.error('Microphone denied:', e);
+      window.ttsEngine?.speak('Нужно разрешить доступ к микрофону в настройках телефона.');
+    }
+  }, { once: true });
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMicPermissionPrompt);
+  } else {
+    initMicPermissionPrompt();
+  }
+}

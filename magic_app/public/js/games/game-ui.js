@@ -273,18 +273,21 @@ export function createGameScreen({
   return { overlay, body, level, close, gameId, triggerWin: () => triggerGameWin(overlay) };
 }
 
-export function showGameResult({ won, level, scoreText, onNext, onClose }) {
+export function showGameResult({ won, level, scoreText, score, onNext, onRestart, onClose }) {
   if (won) createConfetti(document.body);
 
+  const restartFn = onRestart || onNext;
+  const displayScore = scoreText || (score != null ? `⭐ ${score}` : '');
+
   const modal = document.createElement('div');
-  modal.className = 'game-result-modal';
+  modal.className = 'game-result-modal game-overlay';
   modal.innerHTML = `
     <div class="game-result-box ${won ? 'won' : 'lost'}">
-      <div class="game-result-icon">${won ? '🎉' : '💪'}</div>
-      <h3>${won ? 'Уровень пройден!' : 'Почти получилось!'}</h3>
-      <p class="game-score">${scoreText}</p>
-      ${won ? '<button type="button" class="modal-btn game-result-next">Следующий уровень →</button>' : ''}
-      <button type="button" class="modal-btn secondary game-result-close">Закрыть</button>
+      <div class="game-result-icon">${won ? '🎉' : '😅'}</div>
+      <h3>${won ? 'Победа!' : 'Не получилось!'}</h3>
+      <p class="game-score">${displayScore}</p>
+      ${restartFn ? '<button type="button" class="modal-btn game-result-restart" id="gameRestartBtn">🔄 Ещё раз</button>' : ''}
+      <button type="button" class="modal-btn secondary game-result-exit" id="gameExitBtn">🚪 Выйти</button>
     </div>
   `;
   document.body.appendChild(modal);
@@ -295,10 +298,19 @@ export function showGameResult({ won, level, scoreText, onNext, onClose }) {
     setTimeout(() => modal.remove(), 250);
   };
 
-  modal.querySelector('.game-result-close').onclick = () => { dismiss(); onClose?.(); };
-  modal.querySelector('.game-result-next')?.addEventListener('click', () => {
+  const exitGame = () => {
     dismiss();
-    onNext?.();
+    document.querySelector('.game-fullscreen')?.remove();
+    appState.gameActive = false;
+    document.body.classList.remove('game-active');
+    onClose?.();
+    if (typeof window.onGameClose === 'function') window.onGameClose();
+  };
+
+  modal.querySelector('#gameExitBtn')?.addEventListener('click', exitGame);
+  modal.querySelector('#gameRestartBtn')?.addEventListener('click', () => {
+    dismiss();
+    restartFn?.();
   });
 }
 

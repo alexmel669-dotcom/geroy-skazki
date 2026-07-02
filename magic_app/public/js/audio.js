@@ -99,11 +99,12 @@ class TTSEngine {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.audioUrl) {
-          setAvatarState('speaking');
-          await playAudioFromUrl(data.audioUrl);
-          return true;
-        }
+      if (data.audioUrl) {
+        setAvatarState('speaking');
+        console.log('🔊 Yandex TTS');
+        await playAudioFromUrl(data.audioUrl);
+        return true;
+      }
       } else {
         const data = await response.json().catch(() => ({}));
         console.warn('⚠️ Yandex TTS failed, using browser fallback:', response.status, data.detail || data.error || '');
@@ -180,18 +181,19 @@ export async function synthesizeSpeech(text, character = 'lucik') {
     if (res.ok) {
       const data = await res.json();
       if (data.audioUrl) {
+        console.log('🔊 Yandex TTS');
         setAvatarState('speaking');
         await playAudioFromUrl(data.audioUrl);
         setAvatarState(null);
         return true;
       }
-    } else {
-      console.warn('⚠️ Yandex TTS failed, using browser fallback');
     }
+    console.warn('⚠️ Yandex TTS failed, using browser');
   } catch (e) {
     console.warn('⚠️ Yandex TTS error:', e.message);
   }
 
+  console.log('🔊 Browser TTS fallback');
   await ttsEngine._speakBrowser(text, character);
   return false;
 }
