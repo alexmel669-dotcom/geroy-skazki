@@ -17,7 +17,7 @@ import {
   getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
   isProcessingLocked, releaseMicrophone, onMicError, armRecordingFromUser, disarmRecordingFromUser,
   incrementMicFailCount, resetMicFailCount as resetMicSttFailCount, checkMicFailFallback,
-  disableBrowserSttOnly, isBrowserSttEnabled
+  disableBrowserSttOnly, isBrowserSttEnabled, isAndroid
 } from './mic.js';
 import { getAgeWord } from './grammar.js';
 import { synthesizeSpeech } from './audio.js';
@@ -1280,19 +1280,11 @@ function saveAlertForParent(text, words, source) {
 // ========================================
 
 async function recognizeSpeech(blob) {
-  if (!blob?.size) {
-    const liveOnly = isBrowserSttEnabled() ? getLiveSttText() : '';
-    if (liveOnly) {
-      clearLiveSttText();
-      return { text: liveOnly, fallback: true };
-    }
-    return { text: '', fallback: true };
-  }
-
-  const tryServerStt = async () => {
+  const tryServerStt = async (audioBlob = blob) => {
+    if (!audioBlob?.size) return null;
     let prepared;
     try {
-      prepared = await prepareAudioForStt(blob);
+      prepared = await prepareAudioForStt(audioBlob);
     } catch (e) {
       console.warn('Audio prepare for STT failed:', e.message);
       return null;
@@ -1310,7 +1302,8 @@ async function recognizeSpeech(blob) {
         audio: prepared.base64,
         contentType: prepared.contentType,
         format: prepared.format,
-        sampleRateHz: prepared.sampleRateHz
+        sampleRateHz: prepared.sampleRateHz,
+        platform: isAndroid ? 'android' : 'web'
       }),
       signal: controller.signal
     });
@@ -1322,6 +1315,31 @@ async function recognizeSpeech(blob) {
     console.warn('STT API empty/fail:', data.error || response.status, data.audioBytes ? `${data.audioBytes} bytes` : '');
     return null;
   };
+
+  if (!blob?.size) {
+    if (isAndroid) return { text: '', fallback: true };
+    const liveOnly = isBrowserSttEnabled() ? getLiveSttText() : '';
+    if (liveOnly) {
+      clearLiveSttText();
+      return { text: liveOnly, fallback: true };
+    }
+    return { text: '', fallback: true };
+  }
+
+  if (isAndroid) {
+    console.log('🎙️ Android: sending to Yandex STT');
+    try {
+      const server = await tryServerStt(blob);
+      if (server?.text?.trim()) {
+        console.log('🎤 Распознано:', server.text);
+        return server;
+      }
+    } catch (e) {
+      console.warn('Android Yandex STT fail:', e.message);
+    }
+    window.ttsEngine?.speak('Я не расслышал. Скажи громче, пожалуйста.');
+    return { text: '', fallback: true };
+  }
 
   try {
     const server = await tryServerStt();

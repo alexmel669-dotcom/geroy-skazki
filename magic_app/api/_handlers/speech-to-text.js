@@ -34,6 +34,7 @@ export default async function handler(req, res) {
 
     const contentType = req.body.contentType || 'audio/ogg;codecs=opus';
     const format = req.body.format || (contentType.includes('ogg') ? 'oggopus' : 'lpcm');
+    const isAndroidClient = req.body.platform === 'android' || contentType.includes('ogg');
     const params = new URLSearchParams({
       lang: 'ru-RU',
       folderId: YANDEX_FOLDER_ID,
@@ -47,11 +48,15 @@ export default async function handler(req, res) {
 
     const sttUrl = `https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?${params}`;
 
+    const yandexContentType = format === 'lpcm'
+      ? 'application/octet-stream'
+      : (isAndroidClient || format === 'oggopus' ? 'audio/ogg' : contentType);
+
     const response = await fetch(sttUrl, {
       method: 'POST',
       headers: {
         Authorization: `Api-Key ${YANDEX_API_KEY}`,
-        'Content-Type': format === 'lpcm' ? 'application/octet-stream' : contentType
+        'Content-Type': yandexContentType
       },
       body: audioBytes
     });

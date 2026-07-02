@@ -16,6 +16,8 @@ const AUDIO_CONSTRAINTS = {
 
 const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
 
+export { isAndroid };
+
 let micSttFailCount = 0;
 let lastInterimText = '';
 let browserSttDisabled = false;
@@ -34,7 +36,7 @@ if (typeof window !== 'undefined') {
 }
 
 export function isBrowserSttEnabled() {
-  return !browserSttDisabled && !!SpeechRecognitionAPI;
+  return !isAndroid && !browserSttDisabled && !!SpeechRecognitionAPI;
 }
 
 export function disableBrowserSttOnly() {
@@ -386,6 +388,10 @@ function applySttResult(event) {
 }
 
 function startLiveStt() {
+  if (isAndroid) {
+    console.log('🎙️ Android: skipping browser STT, using Yandex only');
+    return;
+  }
   if (!SpeechRecognitionAPI || browserSttDisabled) {
     if (browserSttDisabled) console.log('🎙️ Browser STT disabled — using server STT only');
     return;
@@ -734,7 +740,7 @@ export default {
   getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
   onProcessingDone, isProcessingLocked, armRecordingFromUser, disarmRecordingFromUser,
   showTextInput, incrementMicFailCount, resetMicFailCount, checkMicFailFallback,
-  isBrowserSttEnabled, disableBrowserSttOnly, abortLiveBrowserStt
+  isBrowserSttEnabled, disableBrowserSttOnly, abortLiveBrowserStt, isAndroid
 };
 
 function initMicPermissionPrompt() {
