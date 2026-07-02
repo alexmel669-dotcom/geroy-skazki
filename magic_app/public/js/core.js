@@ -15,7 +15,8 @@ import {
   startRecording, stopRecording, cancelRecording, isRecording, getRecordingMimeType,
   isMicrophoneSupported, prepareAudioForStt, getLiveSttText, clearLiveSttText,
   getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
-  isProcessingLocked, releaseMicrophone, onMicError, armRecordingFromUser, disarmRecordingFromUser
+  isProcessingLocked, releaseMicrophone, onMicError, armRecordingFromUser, disarmRecordingFromUser,
+  incrementMicFailCount, resetMicFailCount as resetMicSttFailCount, checkMicFailFallback
 } from './mic.js';
 import { getAgeWord } from './grammar.js';
 import { synthesizeSpeech } from './audio.js';
@@ -488,22 +489,19 @@ function setMicDisabled(disabled) {
 
 function resetMicFailCount() {
   micFailCount = 0;
+  resetMicSttFailCount();
 }
 
 async function handleMicFailure(reason) {
   console.warn('🎙️ Mic failure:', reason);
   onMicError(reason);
-  micFailCount += 1;
-  const idx = Math.min(micFailCount - 1, MIC_RETRY_PHRASES.length - 1);
-  await synthesizeSpeech(MIC_RETRY_PHRASES[idx], getCharacter());
-  if (micFailCount >= 3) {
-    micDisabledUntil = Date.now() + 30000;
-    setMicDisabled(true);
-    setTimeout(() => {
-      micFailCount = 0;
-      setMicDisabled(false);
-    }, 30000);
+  const count = incrementMicFailCount();
+  if (count >= 3) {
+    checkMicFailFallback();
+    return;
   }
+  const idx = Math.min(count - 1, MIC_RETRY_PHRASES.length - 1);
+  await synthesizeSpeech(MIC_RETRY_PHRASES[idx], getCharacter());
 }
 
 // ========================================

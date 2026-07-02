@@ -4,6 +4,72 @@
 
 import { CONFIG } from './config.js';
 
+const SpeechRecognitionAPI = typeof window !== 'undefined'
+  ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+  : null;
+
+const AUDIO_CONSTRAINTS = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: true,
+  volume: 1.0
+};
+
+let micSttFailCount = 0;
+
+if (typeof window !== 'undefined') {
+  console.log('🎙️ STT supported langs:', SpeechRecognitionAPI ? 'OK' : 'NO');
+}
+
+export function showTextInput() {
+  const row = document.querySelector('.text-chat-row');
+  if (row) {
+    row.style.display = 'flex';
+    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('textChatInput')?.focus();
+  }
+}
+
+export function incrementMicFailCount() {
+  micSttFailCount += 1;
+  return micSttFailCount;
+}
+
+export function resetMicFailCount() {
+  micSttFailCount = 0;
+}
+
+export function checkMicFailFallback() {
+  if (micSttFailCount >= 3) {
+    window.ttsEngine?.speak('Кажется микрофон меня не слышит. Можешь написать мне текстом?');
+    showTextInput();
+    return true;
+  }
+  return false;
+}
+
+function configureRussianRecognition(recognition, options = {}) {
+  recognition.lang = 'ru-RU';
+  recognition.continuous = options.continuous ?? false;
+  recognition.interimResults = options.interimResults ?? true;
+  recognition.onerror = (event) => {
+    console.error('🎙️ STT error:', event.error);
+    if (event.error === 'language-not-supported') {
+      window.ttsEngine?.speak('Твой телефон не поддерживает русский язык для голоса. Попробуй другую программу для записи.');
+      showTextInput();
+      return;
+    }
+    if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      incrementMicFailCount();
+      checkMicFailFallback();
+    }
+  };
+}
+
+async function requestMicStream() {
+  return navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
+}
+
 let mediaRecorder = null;
 let audioChunks = [];
 let isCurrentlyRecording = false;
@@ -149,9 +215,7 @@ export async function startRecording(options = {}) {
   onStateChangeCallback = options.onStateChange || null;
   try {
     console.log('🎙️ Requesting microphone...');
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-    });
+    stream = await requestMicStream();
     recordingMimeType = getPreferredMimeType();
     const recorderOptions = recordingMimeType ? { mimeType: recordingMimeType } : {};
     mediaRecorder = new MediaRecorder(stream, recorderOptions);
@@ -219,7 +283,7 @@ function resampleFloat32(input, fromRate, toRate) {
   return out;
 }
 
-function normalizePeak(samples, target = 0.9) {
+function normalizePeak(samples, target = 0.95) {
   let peak = 0;
   for (let i = 0; i < samples.length; i++) {
     peak = Math.max(peak, Math.abs(samples[i]));
@@ -245,14 +309,11 @@ function floatTo16BitPCM(float32) {
 let liveSttInterim = '';
 
 function startLiveStt() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return;
+  if (!SpeechRecognitionAPI) return;
   liveSttParts = [];
   liveSttActive = true;
-  liveRecognition = new SR();
-  liveRecognition.lang = 'ru-RU';
-  liveRecognition.continuous = true;
-  liveRecognition.interimResults = true;
+  liveRecognition = new SpeechRecognitionAPI();
+  configureRussianRecognition(liveRecognition, { continuous: true, interimResults: true });
   liveRecognition.onresult = (event) => {
     liveSttInterim = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -266,11 +327,6 @@ function startLiveStt() {
       }
     }
   };
-  liveRecognition.onerror = (e) => {
-    if (e.error !== 'no-speech' && e.error !== 'aborted') {
-      console.warn('🎙️ Live STT error:', e.error);
-    }
-  };
   liveRecognition.onend = () => {
     if (liveSttActive && isCurrentlyRecording && liveRecognition) {
       try { liveRecognition.start(); } catch { /* ignore */ }
@@ -278,7 +334,7 @@ function startLiveStt() {
   };
   try {
     liveRecognition.start();
-    console.log('🎙️ Live browser STT started');
+    console.log('🎙️ Live browser STT started (ru-RU)');
   } catch (e) {
     console.warn('🎙️ Live STT start failed:', e.message);
     liveRecognition = null;
@@ -485,14 +541,12 @@ export function isMicrophoneSupported() {
 /** Fallback STT через Web Speech API (экспортируется также из main.js) */
 export function browserSpeechRecognition(timeoutMs = 12000) {
   return new Promise((resolve, reject) => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
+    if (!SpeechRecognitionAPI) {
       reject(new Error('Browser STT not supported'));
       return;
     }
-    const rec = new SR();
-    rec.lang = 'ru-RU';
-    rec.interimResults = false;
+    const rec = new SpeechRecognitionAPI();
+    configureRussianRecognition(rec, { continuous: false, interimResults: true });
     rec.maxAlternatives = 1;
     let done = false;
     const timer = setTimeout(() => {
@@ -509,7 +563,9 @@ export function browserSpeechRecognition(timeoutMs = 12000) {
       console.log('🎙️ Browser STT:', text);
       resolve(text.trim());
     };
+    const prevOnError = rec.onerror;
     rec.onerror = (e) => {
+      prevOnError?.(e);
       if (done) return;
       done = true;
       clearTimeout(timer);
@@ -522,14 +578,14 @@ export function browserSpeechRecognition(timeoutMs = 12000) {
         reject(new Error('Browser STT empty'));
       }
     };
-    console.log('🎙️ Starting browser SpeechRecognition...');
+    console.log('🎙️ Starting browser SpeechRecognition (ru-RU)...');
     try { rec.start(); } catch (err) { clearTimeout(timer); reject(err); }
   });
 }
 
 export async function requestMicrophonePermission() {
   try {
-    const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const testStream = await requestMicStream();
     testStream.getTracks().forEach((track) => track.stop());
     return true;
   } catch (error) {
@@ -601,7 +657,8 @@ export default {
   isMicrophoneSupported, requestMicrophonePermission, setMicStateCallback,
   browserSpeechRecognition, getLiveSttText, clearLiveSttText,
   getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
-  onProcessingDone, isProcessingLocked, armRecordingFromUser, disarmRecordingFromUser
+  onProcessingDone, isProcessingLocked, armRecordingFromUser, disarmRecordingFromUser,
+  showTextInput, incrementMicFailCount, resetMicFailCount, checkMicFailFallback
 };
 
 function initMicPermissionPrompt() {
@@ -611,8 +668,8 @@ function initMicPermissionPrompt() {
   micButton.setAttribute('autoplay', '');
   micButton.addEventListener('click', async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach((t) => t.stop());
+      const permStream = await requestMicStream();
+      permStream.getTracks().forEach((t) => t.stop());
       console.log('✅ Microphone permission granted');
     } catch (e) {
       console.error('Microphone denied:', e);
