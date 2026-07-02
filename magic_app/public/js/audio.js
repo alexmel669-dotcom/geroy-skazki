@@ -23,7 +23,7 @@ class TTSEngine {
     document.removeEventListener('touchstart', this._boundUnlock, true);
     document.removeEventListener('keydown', this._boundUnlock, true);
     this._hideHint();
-    this._flushQueue();
+    this.processQueue();
   }
 
   _ensureUnlockListeners() {
@@ -48,41 +48,47 @@ class TTSEngine {
     setTimeout(() => { this.hintEl?.remove(); this.hintEl = null; }, 300);
   }
 
+  async processQueue() {
+    if (this.isSpeaking || !this.queue.length || !this.unlocked) return;
+
+    this.isSpeaking = true;
+    const item = this.queue.shift();
+    const text = item.text;
+    const character = item.character || item.characterId || 'lucik';
+    const resolve = item.resolve;
+
+    try {
+      const yandexOk = await this._speakYandex(text, character);
+      if (!yandexOk) await this._speakBrowser(text, character);
+    } finally {
+      this.isSpeaking = false;
+      setAvatarState(null);
+      if (resolve) resolve();
+      this.processQueue();
+    }
+  }
+
+  enqueue(text, character = 'lucik') {
+    return new Promise((resolve) => {
+      this.queue.push({ text, character, resolve });
+      if (this.unlocked) {
+        this.processQueue();
+      } else {
+        this._ensureUnlockListeners();
+        this._showHint();
+      }
+    });
+  }
+
   async speak(text, characterId = 'lucik') {
     if (!text || typeof text !== 'string') return;
 
     if (typeof window !== 'undefined' && window.isAppReady && !window.isAppReady()) {
-      setTimeout(() => this.speak(text, characterId), 500);
-      return;
+      await new Promise((r) => setTimeout(r, 500));
+      return this.speak(text, characterId);
     }
 
-    if (!this.unlocked) {
-      this.queue.push({ text, characterId });
-      this._ensureUnlockListeners();
-      this._showHint();
-      return;
-    }
-
-    if (this.isSpeaking) {
-      this.queue.push({ text, characterId });
-      return;
-    }
-
-    this.isSpeaking = true;
-    try {
-      const yandexOk = await this._speakYandex(text, characterId);
-      if (!yandexOk) await this._speakBrowser(text, characterId);
-    } finally {
-      this.isSpeaking = false;
-      setAvatarState(null);
-      this._flushQueue();
-    }
-  }
-
-  async _flushQueue() {
-    if (!this.unlocked || this.isSpeaking || !this.queue.length) return;
-    const next = this.queue.shift();
-    await this.speak(next.text, next.characterId);
+    return this.enqueue(text, characterId);
   }
 
   async _speakYandex(text, characterId) {
@@ -99,12 +105,12 @@ class TTSEngine {
 
       if (response.ok) {
         const data = await response.json();
-      if (data.audioUrl) {
-        setAvatarState('speaking');
-        console.log('🔊 Yandex TTS');
-        await playAudioFromUrl(data.audioUrl);
-        return true;
-      }
+        if (data.audioUrl) {
+          setAvatarState('speaking');
+          console.log('🔊 Yandex TTS');
+          await playAudioFromUrl(data.audioUrl);
+          return true;
+        }
       } else {
         const data = await response.json().catch(() => ({}));
         console.warn('⚠️ Yandex TTS failed, using browser fallback:', response.status, data.detail || data.error || '');
@@ -131,7 +137,7 @@ class TTSEngine {
 
       utterance.onstart = () => {
         setAvatarState('speaking');
-        console.log('🔊 Speaking (browser):', text.slice(0, 50));
+        console.log('🔊 Browser TTS fallback');
       };
       utterance.onend = () => resolve();
       utterance.onerror = () => {
@@ -166,36 +172,7 @@ if (typeof window !== 'undefined') {
 
 export async function synthesizeSpeech(text, character = 'lucik') {
   if (!text || typeof text !== 'string') return;
-
-  try {
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('userToken') : null;
-    const res = await fetch('/api/tts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({ text, voice: character })
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data.audioUrl) {
-        console.log('🔊 Yandex TTS');
-        setAvatarState('speaking');
-        await playAudioFromUrl(data.audioUrl);
-        setAvatarState(null);
-        return true;
-      }
-    }
-    console.warn('⚠️ Yandex TTS failed, using browser');
-  } catch (e) {
-    console.warn('⚠️ Yandex TTS error:', e.message);
-  }
-
-  console.log('🔊 Browser TTS fallback');
-  await ttsEngine._speakBrowser(text, character);
-  return false;
+  return ttsEngine.enqueue(text, character);
 }
 
 export function stopSpeech() {
@@ -204,7 +181,7 @@ export function stopSpeech() {
 
 export function queueSpeech(text, character = 'lucik') {
   ttsEngine.queue.push({ text, character });
-  if (!ttsEngine.isSpeaking) ttsEngine.speak(text, character).catch(() => {});
+  if (ttsEngine.unlocked) ttsEngine.processQueue();
 }
 
 export function isSpeechSupported() {

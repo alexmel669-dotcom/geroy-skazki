@@ -305,6 +305,7 @@ export function showGameResult({ won, level, scoreText, score, onNext, onRestart
     document.body.classList.remove('game-active');
     onClose?.();
     if (typeof window.onGameClose === 'function') window.onGameClose();
+    if (typeof window.showGamesMenu === 'function') window.showGamesMenu();
   };
 
   modal.querySelector('#gameExitBtn')?.addEventListener('click', exitGame);

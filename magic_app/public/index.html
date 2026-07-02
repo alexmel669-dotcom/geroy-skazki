@@ -164,6 +164,20 @@
     <p>© 2026 Люцик — Герой Сказок</p>
   </footer>
 </div>
+
+<div id="feedbackModal" class="feedback-modal" style="display:none;">
+  <div class="feedback-box feedback-content">
+    <span class="feedback-close" onclick="document.getElementById('feedbackModal').style.display='none'">✕</span>
+    <h3>💬 Оставьте отзыв</h3>
+    <input id="feedbackName" placeholder="Ваше имя">
+    <select id="feedbackRole"><option value="parent">Родитель</option><option value="psychologist">Психолог</option></select>
+    <div id="feedbackStars"><span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span></div>
+    <textarea id="feedbackText" rows="4" placeholder="Ваш отзыв..."></textarea>
+    <button id="submitFeedbackBtn" class="modal-btn">📨 Отправить</button>
+    <p id="feedbackSuccess" style="display:none;color:green;">✅ Отправлено!</p>
+  </div>
+</div>
+
 <script>
   document.getElementById('playGuestLink')?.addEventListener('click', () => {
     localStorage.setItem('guestMode', 'true');

@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.3.1
+// v5.3.2
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -473,22 +473,13 @@ const MIC_RETRY_PHRASES = [
   'Давай попробуем чуть позже, я буду ждать тебя!'
 ];
 
-let micFailCount = 0;
 let micDisabledUntil = 0;
 
 function isMicDisabled() {
   return Date.now() < micDisabledUntil;
 }
 
-function setMicDisabled(disabled) {
-  const micBtn = document.getElementById('micButton') || document.getElementById('mic-button');
-  if (!micBtn) return;
-  micBtn.classList.toggle('mic-disabled', disabled);
-  micBtn.disabled = disabled;
-}
-
 function resetMicFailCount() {
-  micFailCount = 0;
   resetMicSttFailCount();
 }
 
@@ -685,13 +676,52 @@ async function checkEveningMode() {
   const age = user.childAge || 7;
 
   if (age <= 8) {
-    await synthesizeSpeech('Уже поздно, пора готовиться ко сну. Хочешь, я расскажу тебе сказку на ночь?', getCharacter());
+    await synthesizeSpeech('Уже поздно. Я расскажу тебе сказку на ночь.', getCharacter());
+    setTimeout(() => {
+      generateEveningStory().catch((err) => console.warn('Evening story failed:', err));
+    }, 2000);
   } else {
     await synthesizeSpeech('Давай подведём итоги дня! О чём мы сегодня говорили? Хочешь послушать весёлую историю о себе?', getCharacter());
     await generateDaySummary();
   }
 
   localStorage.setItem('geroy-evening-shown', new Date().toISOString().split('T')[0]);
+}
+
+async function generateEveningStory() {
+  const user = getCurrentUser();
+  const age = user.childAge || 7;
+  if (getStoriesRemaining() <= 0) return;
+
+  const todayDialogs = getTodayDialogs();
+  const mood = getAverageMood(todayDialogs);
+  const childName = user.childName || 'малыш';
+
+  const prompt = `
+Сочини короткую спокойную сказку на ночь (2-3 минуты) для ${childName} (${age} лет).
+Настроение за день: ${mood}.
+${todayDialogs.length ? 'Темы дня: ' + todayDialogs.slice(-3).map((d) => d.question).join('; ') : ''}
+Заканчивается спокойно и умиротворяюще.`.trim();
+
+  try {
+    const aiResult = await generateResponse(prompt, {
+      ...getChildContextForAI(),
+      requestType: 'bedtime_story',
+      childName,
+      childAge: age
+    });
+    const story = typeof aiResult === 'string' ? aiResult : aiResult.text;
+    if (!story) return;
+
+    const child = getActiveChild();
+    const reply = applyGenderToText(sanitizeAIText(story, age), getChildGender(child));
+    await synthesizeSpeech(reply, getCharacter());
+    incrementStories();
+    incrementDailyStories();
+    window.storybook?.add('Сказка на ночь', reply);
+  } catch (e) {
+    console.warn('Evening story failed:', e);
+  }
 }
 
 async function generateDaySummary() {
@@ -759,6 +789,16 @@ function waitForAppReady() {
 // INIT
 // ========================================
 
+function initAvatar() {
+  const avatar = document.getElementById('avatar');
+  const emoji = document.getElementById('avatarEmoji');
+  if (emoji) emoji.style.display = 'none';
+  if (avatar) {
+    avatar.style.display = 'block';
+    avatar.onerror = null;
+  }
+}
+
 export function initCore() {
   console.log('🔵 initCore started');
   initSecurity();
@@ -768,6 +808,7 @@ export function initCore() {
   initUI();
   initEventListeners();
   loadState();
+  initAvatar();
   checkChildSelection();
   setChatChild(getActiveChildName());
   loadChatHistory(getActiveChildName());
@@ -1041,60 +1082,6 @@ function animateStat(elementId, target) {
     if (progress < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
-}
-
-function showFeedingAnimation() {
-  const avatar = document.getElementById('avatar');
-  const feedBtn = document.getElementById('feedBtn');
-  const items = ['🍎', '🍪', '🧃'];
-  const origin = feedBtn?.getBoundingClientRect() || { left: window.innerWidth / 2, top: window.innerHeight * 0.7 };
-  const target = avatar?.getBoundingClientRect() || { left: window.innerWidth / 2, top: window.innerHeight * 0.35 };
-
-  items.forEach((item, i) => {
-    setTimeout(() => {
-      const span = document.createElement('span');
-      span.textContent = item;
-      span.className = 'feed-fly-emoji';
-      span.style.cssText = `position:fixed;font-size:28px;pointer-events:none;z-index:9999;left:${origin.left}px;top:${origin.top}px;transition:all 1.2s ease-in;`;
-      document.body.appendChild(span);
-      requestAnimationFrame(() => {
-        span.style.left = `${target.left + (target.width || 0) / 2}px`;
-        span.style.top = `${target.top}px`;
-        span.style.transform = 'scale(0.4)';
-        span.style.opacity = '0';
-      });
-      setTimeout(() => span.remove(), 1300);
-    }, i * 180);
-  });
-
-  if (avatar) {
-    avatar.style.transition = 'transform 0.3s ease';
-    avatar.style.transform = 'scale(1.2)';
-    setTimeout(() => { avatar.style.transform = 'scale(1)'; }, 400);
-    setTimeout(() => { avatar.style.transform = 'scale(1.15)'; }, 700);
-    setTimeout(() => { avatar.style.transform = 'scale(1)'; avatar.style.transition = ''; }, 1100);
-  }
-}
-
-function showCleaningAnimation() {
-  const avatar = document.getElementById('avatar');
-  if (!avatar) return;
-  avatar.style.transition = 'transform 0.25s ease';
-  [-5, 5, -4, 4, 0].forEach((deg, i) => {
-    setTimeout(() => { avatar.style.transform = `rotate(${deg}deg)`; }, i * 200);
-  });
-  setTimeout(() => { avatar.style.transition = ''; avatar.style.transform = ''; }, 1200);
-
-  for (let i = 0; i < 6; i++) {
-    setTimeout(() => {
-      const spark = document.createElement('span');
-      spark.textContent = '✨';
-      spark.style.cssText = `position:fixed;font-size:20px;pointer-events:none;z-index:9999;left:${50 + (Math.random() - 0.5) * 30}%;top:${30 + (Math.random() - 0.5) * 20}%;opacity:1;transition:opacity 1s;`;
-      document.body.appendChild(spark);
-      setTimeout(() => { spark.style.opacity = '0'; }, 400);
-      setTimeout(() => spark.remove(), 1400);
-    }, i * 120);
-  }
 }
 
 // ========================================

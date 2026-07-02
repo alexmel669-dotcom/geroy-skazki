@@ -11,13 +11,16 @@ const SpeechRecognitionAPI = typeof window !== 'undefined'
 const AUDIO_CONSTRAINTS = {
   echoCancellation: false,
   noiseSuppression: false,
-  autoGainControl: true,
-  volume: 1.0
+  autoGainControl: true
 };
 
+const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+
 let micSttFailCount = 0;
+let lastInterimText = '';
 
 if (typeof window !== 'undefined') {
+  window.lastRecognizedText = null;
   console.log('🎙️ STT supported langs:', SpeechRecognitionAPI ? 'OK' : 'NO');
 }
 
@@ -57,11 +60,6 @@ function configureRussianRecognition(recognition, options = {}) {
     if (event.error === 'language-not-supported') {
       window.ttsEngine?.speak('Твой телефон не поддерживает русский язык для голоса. Попробуй другую программу для записи.');
       showTextInput();
-      return;
-    }
-    if (event.error !== 'no-speech' && event.error !== 'aborted') {
-      incrementMicFailCount();
-      checkMicFailFallback();
     }
   };
 }
@@ -153,10 +151,14 @@ function cleanupAudioContext() {
 }
 
 function getPreferredMimeType() {
-  const types = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/mp4'];
-  for (const type of types) {
-    if (MediaRecorder.isTypeSupported(type)) return type;
+  if (isAndroid) {
+    if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) return 'audio/ogg;codecs=opus';
+    if (MediaRecorder.isTypeSupported('audio/ogg')) return 'audio/ogg';
   }
+  if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
+  if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) return 'audio/ogg;codecs=opus';
+  if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
+  if (MediaRecorder.isTypeSupported('audio/mp4')) return 'audio/mp4';
   return '';
 }
 
@@ -308,25 +310,39 @@ function floatTo16BitPCM(float32) {
 
 let liveSttInterim = '';
 
+function applySttResult(event) {
+  let interim = '';
+  let finalText = '';
+  for (let i = event.resultIndex; i < event.results.length; i++) {
+    const result = event.results[i];
+    const part = (result[0]?.transcript || '').trim();
+    if (!part) continue;
+    if (result.isFinal) {
+      finalText += part;
+      liveSttParts.push(part);
+    } else {
+      interim += part;
+    }
+  }
+  if (interim.trim()) {
+    lastInterimText = interim.trim();
+    liveSttInterim = lastInterimText;
+  }
+  if (finalText.trim()) {
+    window.lastRecognizedText = finalText.trim();
+    lastInterimText = '';
+    liveSttInterim = '';
+  }
+}
+
 function startLiveStt() {
   if (!SpeechRecognitionAPI) return;
   liveSttParts = [];
   liveSttActive = true;
+  lastInterimText = '';
   liveRecognition = new SpeechRecognitionAPI();
   configureRussianRecognition(liveRecognition, { continuous: true, interimResults: true });
-  liveRecognition.onresult = (event) => {
-    liveSttInterim = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const result = event.results[i];
-      const part = (result[0]?.transcript || '').trim();
-      if (!part) continue;
-      if (result.isFinal) {
-        liveSttParts.push(part);
-      } else {
-        liveSttInterim = part;
-      }
-    }
-  };
+  liveRecognition.onresult = applySttResult;
   liveRecognition.onend = () => {
     if (liveSttActive && isCurrentlyRecording && liveRecognition) {
       try { liveRecognition.start(); } catch { /* ignore */ }
@@ -365,12 +381,14 @@ function stopLiveStt() {
 
 export function getLiveSttText() {
   const finalText = liveSttParts.filter(Boolean).join(' ').trim();
-  return finalText || liveSttInterim.trim();
+  return window.lastRecognizedText || finalText || lastInterimText || liveSttInterim.trim();
 }
 
 export function clearLiveSttText() {
   liveSttParts = [];
   liveSttInterim = '';
+  lastInterimText = '';
+  if (typeof window !== 'undefined') window.lastRecognizedText = null;
 }
 
 function bytesToBase64(bytes) {
@@ -559,9 +577,14 @@ export function browserSpeechRecognition(timeoutMs = 12000) {
       if (done) return;
       done = true;
       clearTimeout(timer);
-      const text = e.results?.[0]?.[0]?.transcript || '';
+      let text = '';
+      for (let i = 0; i < e.results.length; i++) {
+        text += e.results[i][0]?.transcript || '';
+      }
+      text = text.trim();
+      if (text) window.lastRecognizedText = text;
       console.log('🎙️ Browser STT:', text);
-      resolve(text.trim());
+      resolve(text);
     };
     const prevOnError = rec.onerror;
     rec.onerror = (e) => {
