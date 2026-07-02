@@ -18,10 +18,40 @@ const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.
 
 let micSttFailCount = 0;
 let lastInterimText = '';
+let browserSttDisabled = false;
 
 if (typeof window !== 'undefined') {
   window.lastRecognizedText = null;
   console.log('🎙️ STT supported langs:', SpeechRecognitionAPI ? 'OK' : 'NO');
+  if (SpeechRecognitionAPI) {
+    try {
+      const testRecognition = new SpeechRecognitionAPI();
+      console.log('🎙️ Available languages:', testRecognition.recognitionLanguages || 'unknown');
+    } catch (e) {
+      console.warn('🎙️ STT lang probe failed:', e.message);
+    }
+  }
+}
+
+export function isBrowserSttEnabled() {
+  return !browserSttDisabled && !!SpeechRecognitionAPI;
+}
+
+export function disableBrowserSttOnly() {
+  browserSttDisabled = true;
+  abortLiveBrowserStt();
+  console.log('🎙️ Falling back to server STT only');
+}
+
+export function abortLiveBrowserStt() {
+  liveSttActive = false;
+  if (!liveRecognition) return;
+  try {
+    liveRecognition.abort();
+  } catch {
+    try { liveRecognition.stop(); } catch { /* ignore */ }
+  }
+  liveRecognition = null;
 }
 
 export function showTextInput() {
@@ -51,17 +81,37 @@ export function checkMicFailFallback() {
   return false;
 }
 
-function configureRussianRecognition(recognition, options = {}) {
-  recognition.lang = 'ru-RU';
-  recognition.continuous = options.continuous ?? false;
-  recognition.interimResults = options.interimResults ?? true;
+function attachSttLifecycleHandlers(recognition) {
+  recognition.onstart = () => {
+    console.log('🎙️ STT recognition STARTED ✓');
+  };
   recognition.onerror = (event) => {
-    console.error('🎙️ STT error:', event.error);
+    console.error('🎙️ STT error:', event.error, event.message || '');
     if (event.error === 'language-not-supported') {
       window.ttsEngine?.speak('Твой телефон не поддерживает русский язык для голоса. Попробуй другую программу для записи.');
       showTextInput();
     }
   };
+  recognition.onnomatch = () => {
+    console.warn('🎙️ STT: no match');
+  };
+  recognition.onspeechend = () => {
+    console.log('🎙️ STT: speech ended');
+  };
+}
+
+function configureRussianRecognition(recognition, options = {}) {
+  if (isAndroid) {
+    recognition.lang = navigator.language || 'ru-RU';
+    console.log('🎙️ Android STT lang:', recognition.lang);
+  } else {
+    recognition.lang = 'ru-RU';
+  }
+
+  recognition.continuous = options.continuous ?? false;
+  recognition.interimResults = options.interimResults ?? true;
+  recognition.maxAlternatives = 1;
+  attachSttLifecycleHandlers(recognition);
 }
 
 async function requestMicStream() {
@@ -336,7 +386,10 @@ function applySttResult(event) {
 }
 
 function startLiveStt() {
-  if (!SpeechRecognitionAPI) return;
+  if (!SpeechRecognitionAPI || browserSttDisabled) {
+    if (browserSttDisabled) console.log('🎙️ Browser STT disabled — using server STT only');
+    return;
+  }
   liveSttParts = [];
   liveSttActive = true;
   lastInterimText = '';
@@ -350,7 +403,7 @@ function startLiveStt() {
   };
   try {
     liveRecognition.start();
-    console.log('🎙️ Live browser STT started (ru-RU)');
+    console.log('🎙️ Live browser STT started, lang:', liveRecognition.lang);
   } catch (e) {
     console.warn('🎙️ Live STT start failed:', e.message);
     liveRecognition = null;
@@ -559,13 +612,12 @@ export function isMicrophoneSupported() {
 /** Fallback STT через Web Speech API (экспортируется также из main.js) */
 export function browserSpeechRecognition(timeoutMs = 12000) {
   return new Promise((resolve, reject) => {
-    if (!SpeechRecognitionAPI) {
-      reject(new Error('Browser STT not supported'));
+    if (!SpeechRecognitionAPI || browserSttDisabled) {
+      reject(new Error('Browser STT not supported or disabled'));
       return;
     }
     const rec = new SpeechRecognitionAPI();
     configureRussianRecognition(rec, { continuous: false, interimResults: true });
-    rec.maxAlternatives = 1;
     let done = false;
     const timer = setTimeout(() => {
       if (done) return;
@@ -586,9 +638,9 @@ export function browserSpeechRecognition(timeoutMs = 12000) {
       console.log('🎙️ Browser STT:', text);
       resolve(text);
     };
-    const prevOnError = rec.onerror;
+    const baseOnError = rec.onerror;
     rec.onerror = (e) => {
-      prevOnError?.(e);
+      baseOnError?.(e);
       if (done) return;
       done = true;
       clearTimeout(timer);
@@ -601,7 +653,7 @@ export function browserSpeechRecognition(timeoutMs = 12000) {
         reject(new Error('Browser STT empty'));
       }
     };
-    console.log('🎙️ Starting browser SpeechRecognition (ru-RU)...');
+    console.log('🎙️ Starting browser SpeechRecognition, lang:', rec.lang);
     try { rec.start(); } catch (err) { clearTimeout(timer); reject(err); }
   });
 }
@@ -681,7 +733,8 @@ export default {
   browserSpeechRecognition, getLiveSttText, clearLiveSttText,
   getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
   onProcessingDone, isProcessingLocked, armRecordingFromUser, disarmRecordingFromUser,
-  showTextInput, incrementMicFailCount, resetMicFailCount, checkMicFailFallback
+  showTextInput, incrementMicFailCount, resetMicFailCount, checkMicFailFallback,
+  isBrowserSttEnabled, disableBrowserSttOnly, abortLiveBrowserStt
 };
 
 function initMicPermissionPrompt() {

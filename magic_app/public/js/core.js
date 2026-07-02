@@ -16,7 +16,8 @@ import {
   isMicrophoneSupported, prepareAudioForStt, getLiveSttText, clearLiveSttText,
   getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
   isProcessingLocked, releaseMicrophone, onMicError, armRecordingFromUser, disarmRecordingFromUser,
-  incrementMicFailCount, resetMicFailCount as resetMicSttFailCount, checkMicFailFallback
+  incrementMicFailCount, resetMicFailCount as resetMicSttFailCount, checkMicFailFallback,
+  disableBrowserSttOnly, isBrowserSttEnabled
 } from './mic.js';
 import { getAgeWord } from './grammar.js';
 import { synthesizeSpeech } from './audio.js';
@@ -487,6 +488,9 @@ async function handleMicFailure(reason) {
   console.warn('🎙️ Mic failure:', reason);
   onMicError(reason);
   const count = incrementMicFailCount();
+  if (count >= 2) {
+    disableBrowserSttOnly();
+  }
   if (count >= 3) {
     checkMicFailFallback();
     return;
@@ -1277,7 +1281,7 @@ function saveAlertForParent(text, words, source) {
 
 async function recognizeSpeech(blob) {
   if (!blob?.size) {
-    const liveOnly = getLiveSttText();
+    const liveOnly = isBrowserSttEnabled() ? getLiveSttText() : '';
     if (liveOnly) {
       clearLiveSttText();
       return { text: liveOnly, fallback: true };
@@ -1322,7 +1326,7 @@ async function recognizeSpeech(blob) {
   try {
     const server = await tryServerStt();
     const serverText = server?.text?.trim() || '';
-    const liveText = getLiveSttText().trim();
+    const liveText = isBrowserSttEnabled() ? getLiveSttText().trim() : '';
     clearLiveSttText();
 
     const pickBest = (a, b) => {
@@ -1338,7 +1342,7 @@ async function recognizeSpeech(blob) {
     if (serverText) return { text: serverText, fallback: false };
   } catch (e) {
     console.warn('STT API fail:', e.message);
-    const liveText = getLiveSttText().trim();
+    const liveText = isBrowserSttEnabled() ? getLiveSttText().trim() : '';
     clearLiveSttText();
     if (liveText.length >= 2) {
       return { text: liveText, fallback: true };
