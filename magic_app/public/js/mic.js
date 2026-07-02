@@ -459,36 +459,31 @@ function bytesToBase64(bytes) {
   return btoa(binary);
 }
 
-/** Подготовка аудио для Yandex STT: OGG как есть, WebM/MP4 → LPCM 16 kHz mono */
-export async function prepareAudioForStt(blob) {
-  const mime = (blob.type || getRecordingMimeType() || '').toLowerCase();
-  if (mime.includes('ogg')) {
-    const buf = await blob.arrayBuffer();
-    return {
-      base64: bytesToBase64(new Uint8Array(buf)),
-      contentType: mime.includes('codecs') ? mime : 'audio/ogg;codecs=opus',
-      format: 'oggopus'
-    };
-  }
-
-  const ctx = new AudioContext();
+/** Конвертация WebM/OGG/MP4 → PCM 16-bit signed, 16 kHz, mono */
+async function convertToPCM(audioBlob) {
+  const ctx = new AudioContext({ sampleRate: 16000 });
   try {
-    const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
+    const decoded = await ctx.decodeAudioData(await audioBlob.arrayBuffer());
     const mono = decoded.numberOfChannels > 1 ? mixToMono(decoded) : decoded.getChannelData(0);
     const resampled = resampleFloat32(mono, decoded.sampleRate, 16000);
     const normalized = normalizePeak(resampled);
-    const pcm = floatTo16BitPCM(normalized);
-    const bytes = new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength);
-    console.log('🎙️ PCM for STT:', bytes.length, 'bytes,', Math.round(bytes.length / 32), 'ms');
-    return {
-      base64: bytesToBase64(bytes),
-      contentType: 'audio/x-pcm;bit=16;rate=16000',
-      format: 'lpcm',
-      sampleRateHz: 16000
-    };
+    return floatTo16BitPCM(normalized).buffer;
   } finally {
     await ctx.close().catch(() => {});
   }
+}
+
+/** Подготовка аудио для Yandex STT: всегда LPCM 16 kHz mono */
+export async function prepareAudioForStt(blob) {
+  const pcmBuffer = await convertToPCM(blob);
+  const bytes = new Uint8Array(pcmBuffer);
+  console.log('🎙️ PCM for STT:', bytes.length, 'bytes,', Math.round(bytes.length / 32), 'ms');
+  return {
+    base64: bytesToBase64(bytes),
+    contentType: 'application/octet-stream',
+    format: 'lpcm',
+    sampleRateHertz: 16000
+  };
 }
 
 export function releaseMicrophone() {

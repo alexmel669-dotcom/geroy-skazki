@@ -1302,7 +1302,7 @@ async function recognizeSpeech(blob) {
         audio: prepared.base64,
         contentType: prepared.contentType,
         format: prepared.format,
-        sampleRateHz: prepared.sampleRateHz,
+        sampleRateHertz: prepared.sampleRateHertz,
         platform: isAndroid ? 'android' : 'web'
       }),
       signal: controller.signal

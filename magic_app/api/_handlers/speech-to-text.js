@@ -32,31 +32,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ text: '', error: 'Audio too short', fallback: true });
     }
 
-    const contentType = req.body.contentType || 'audio/ogg;codecs=opus';
-    const format = req.body.format || (contentType.includes('ogg') ? 'oggopus' : 'lpcm');
-    const isAndroidClient = req.body.platform === 'android' || contentType.includes('ogg');
-    const params = new URLSearchParams({
+    const sampleRateHertz = req.body.sampleRateHertz || req.body.sampleRateHz || 16000;
+    const sttUrl = `https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?${new URLSearchParams({
       lang: 'ru-RU',
       folderId: YANDEX_FOLDER_ID,
-      format,
+      format: 'lpcm',
+      sampleRateHertz: String(sampleRateHertz),
       topic: 'general',
       profanityFilter: 'false'
-    });
-    if (format === 'lpcm') {
-      params.set('sampleRateHz', String(req.body.sampleRateHz || 16000));
-    }
-
-    const sttUrl = `https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?${params}`;
-
-    const yandexContentType = format === 'lpcm'
-      ? 'application/octet-stream'
-      : (isAndroidClient || format === 'oggopus' ? 'audio/ogg' : contentType);
+    })}`;
 
     const response = await fetch(sttUrl, {
       method: 'POST',
       headers: {
         Authorization: `Api-Key ${YANDEX_API_KEY}`,
-        'Content-Type': yandexContentType
+        'Content-Type': 'application/octet-stream'
       },
       body: audioBytes
     });
@@ -72,8 +62,8 @@ export default async function handler(req, res) {
     if (!text) {
       console.warn('Yandex STT empty result', {
         audioBytes: audioBytes.length,
-        format,
-        sampleRateHz: params.get('sampleRateHz') || 'n/a'
+        format: 'lpcm',
+        sampleRateHertz
       });
     }
     return res.status(200).json({ text, audioBytes: audioBytes.length, empty: !text });
