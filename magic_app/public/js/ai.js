@@ -167,7 +167,7 @@ export async function generateResponse(prompt, childInfo = {}) {
         childName: profile.name,
         childAge: profile.age,
         childGender: profile.gender,
-        character: currentCharacter,
+        character: getCharacter(),
         characterName: CHARACTERS[currentCharacter]?.name || 'Люцик',
         isGuest: childInfo.isGuest ?? profile.isGuest ?? false,
         requestType: childInfo.requestType || 'chat',

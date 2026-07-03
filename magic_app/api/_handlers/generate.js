@@ -5,12 +5,47 @@ import { buildGenderPrompt, applyGenderToText, normalizeGender } from '../_lib/g
 import { GRAMMAR_RULES, getAgeWord, applyGrammarFixes, getCorrectNameForm } from '../_lib/grammar-ru.js';
 
 const CHARACTER_PROMPTS = {
-  lucik: 'Ты — Люцик, сказочный кот-волшебник, друг и помощник ребёнка. Тёплый, с мурчанием (мурр, мяу). Помогаешь через сказки и игры.',
-  mom: 'Ты — мама ребёнка. Ласковая: солнышко. К мальчику: родной, мой хороший, сынок. К девочке: родная, моя хорошая, доченька. Успокаивай, обнимай словами.',
-  dad: 'Ты — папа ребёнка. Уверенный, спокойный: давай разберёмся, я рядом, ты справишься. Хвали за смелость с учётом пола ребёнка.',
-  kid1: 'Ты — подруга-сверстница (девочка). Простые, короткие фразы. Делитесь секретами на равных.',
-  kid2: 'Ты — друг-сверстник (мальчик). Простые, короткие фразы. Делитесь секретами на равных.'
+  lucik: `Ты — Люцик, волшебный кот-помощник.
+Ты тёплый, игривый, сказочный.
+Говоришь: "Мяу!", "Мур-р-р", "Давай играть!".
+Общаешься с ребёнком как лучший друг-кот.
+Никогда не спрашиваешь прямо о страхах.`,
+
+  mom: `Ты — заботливая мама.
+Обращаешься к ребёнку: "сынок" (если мальчик), "доченька" (если девочка), "родной", "родная", "мой хороший", "моя хорошая".
+Говоришь тепло, по-матерински, обнимаешь словами.
+Поддерживаешь: "Я горжусь тобой!", "Ты мой самый любимый!".
+Никогда не спрашиваешь прямо о страхах.`,
+
+  dad: `Ты — уверенный, добрый папа.
+Обращаешься: "сын", "дочка", "молодец", "я горжусь тобой".
+Говоришь по-отцовски: поддерживающе, с юмором, но серьёзно когда нужно.
+Любишь говорить: "Ты справишься!", "Я в тебя верю!".
+Никогда не спрашиваешь прямо о страхах.`,
+
+  kid1: `Ты — Мия, весёлая девочка-сверстница.
+Общаешься как подруга: "Привет!", "Давай играть!", "Ой, расскажи!".
+Говоришь эмоционально, по-детски, но не сюсюкаешь.
+Любишь секреты, игры и смешные истории.
+Никогда не спрашиваешь прямо о страхах.`,
+
+  kid2: `Ты — Макс, дружелюбный мальчик-сверстник.
+Общаешься как приятель: "Здорово!", "Круто!", "Го играть!".
+Говоришь энергично, поддерживающе.
+Любишь приключения, спорт и видеоигры.
+Никогда не спрашиваешь прямо о страхах.`
 };
+
+function getCharacterPrompt(characterId, childAge, childGender) {
+  const base = CHARACTER_PROMPTS[characterId] || CHARACTER_PROMPTS.lucik;
+  const age = parseInt(childAge, 10);
+
+  if (age >= 11 && (characterId === 'kid1' || characterId === 'kid2')) {
+    return `${base}\n\nГовори современно: "топ", "вайб", "краш". Но не перебарщивай.`;
+  }
+
+  return base;
+}
 
 const SOFT_FEAR_PROMPT = `Ты — мягкий и добрый собеседник для ребёнка.
 НЕ спрашивай прямо про страхи, тревоги или проблемы.
@@ -74,34 +109,16 @@ function nameFormsBlock(childName, childGender) {
   return `Ребёнок: ${childName} (именительный: ${forms.nom}, дательный: ${forms.dat}, родительный: ${forms.gen})`;
 }
 
-function roleIntro(character) {
-  return CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
-}
-
-function getAgePrompt(childAge) {
-  const age = parseInt(childAge, 10);
-  if (age >= 11) {
-    return `Ты общаешься с подростком ${age} лет. Используй современный язык. Не сюсюкай. Будь как старший друг.`;
-  }
-  return '';
-}
-
-function getCharacterPrompt(character, childAge) {
-  const age = parseInt(childAge, 10);
-  if (age >= 11) {
-    return 'Ты — крутой старший друг. Говори современно: "огонь", "топ". Не сюсюкай.';
-  }
-  return CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.lucik;
-}
-
 function getChatPrompt(childName, childAge, timeContext, childGender, character = 'lucik') {
   const ctx = timeContext || { time: '', day: '', greeting: '' };
   const genderLine = buildGenderPrompt(childGender, childName);
   const ageStr = formatChildAge(childAge);
-  const role = getCharacterPrompt(character, childAge);
+  const charPrompt = getCharacterPrompt(character, childAge, childGender);
   const agePrompt = getAgePrompt(childAge);
   const postupil = childGender === 'female' ? 'поступила' : 'поступил';
-  return `${role} ${ctx.time}, ${ctx.day}.
+  return `${charPrompt}
+
+${ctx.time}, ${ctx.day}.
 
 ${genderLine}
 
@@ -126,21 +143,37 @@ ${agePrompt ? `\n${agePrompt}` : ''}
 
 ${CONVERSATION_GUIDE}
 
+${GRAMMAR_RULES}
+
 ${JSON_FORMAT_CHAT}`;
+}
+
+function getAgePrompt(childAge) {
+  const age = parseInt(childAge, 10);
+  if (age >= 11) {
+    return `Ты общаешься с подростком ${age} лет. Используй современный язык. Не сюсюкай. Будь как старший друг.`;
+  }
+  return '';
 }
 
 function getStoryPrompt(childName, childAge, timeContext, topic, childGender, character = 'lucik') {
   const ctx = timeContext || { time: '', day: '' };
   const genderLine = buildGenderPrompt(childGender, childName);
   const ageStr = formatChildAge(childAge);
-  const role = roleIntro(character);
-  return `${role} ${ctx.time}, ${ctx.day}.
+  const charPrompt = getCharacterPrompt(character, childAge, childGender);
+  return `${charPrompt}
+
+${ctx.time}, ${ctx.day}.
 
 ${genderLine}
 
 ${grammarBlock(childName)}
 
 ${nameFormsBlock(childName, childGender)}
+
+${CONVERSATION_GUIDE}
+
+${GRAMMAR_RULES}
 
 Твоя задача — РАССКАЗАТЬ СКАЗКУ для ребёнка.
 - Длина: 3-5 минут чтения
@@ -158,14 +191,20 @@ function getBedtimeStoryPrompt(childName, childAge, timeContext, childGender, ch
   const ctx = timeContext || { time: '', day: '' };
   const genderLine = buildGenderPrompt(childGender, childName);
   const ageStr = formatChildAge(childAge);
-  const role = roleIntro(character);
-  return `${role} ${ctx.time}, ${ctx.day}. Сейчас время сна.
+  const charPrompt = getCharacterPrompt(character, childAge, childGender);
+  return `${charPrompt}
+
+${ctx.time}, ${ctx.day}. Сейчас время сна.
 
 ${genderLine}
 
 ${grammarBlock(childName)}
 
 ${nameFormsBlock(childName, childGender)}
+
+${CONVERSATION_GUIDE}
+
+${GRAMMAR_RULES}
 
 Твоя задача — РАССКАЗАТЬ СКАЗКУ НА НОЧЬ для засыпания.
 - Длина: минимум 400 символов, 5-8 абзацев, спокойный ритм
@@ -215,11 +254,11 @@ function buildSystemPrompt({ childName, childAge, childGender, character, system
   if (requestType === 'story') {
     return getStoryPrompt(childName, childAge, timeContext, topic, childGender, charId);
   }
-  if (requestType === 'chat' && charId === 'lucik') {
+  if (requestType === 'chat') {
     return getChatPrompt(childName, childAge, timeContext, childGender, charId);
   }
   const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : null;
-  const role = getCharacterPrompt(character, childAge);
+  const role = getCharacterPrompt(charId, childAge, childGender);
   const tone = age ? getAgeBasedTone(age) : '';
   const agePrompt = age ? getAgePrompt(age) : '';
   const genderLine = buildGenderPrompt(childGender, childName);
