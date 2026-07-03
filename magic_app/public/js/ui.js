@@ -51,9 +51,9 @@ export function switchCharacter(charId) {
   const emoji = document.getElementById('avatarEmoji');
   if (!avatar) return;
 
+  if (emoji) emoji.style.display = 'none';
   avatar.src = char.avatar;
   avatar.style.display = 'block';
-  if (emoji) emoji.style.display = 'none';
 
   avatar.onerror = function onPngErr() {
     const svgPath = char.avatar.replace('.png', '.svg');
@@ -68,6 +68,9 @@ export function switchCharacter(charId) {
     avatar.src = svgPath;
     avatar.removeEventListener('error', onPngErr);
   };
+
+  localStorage.setItem('currentCharacter', charId);
+  console.log('🔄 Персонаж:', charId, char.name);
 }
 
 function updateAvatar() {
