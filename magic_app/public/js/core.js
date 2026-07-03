@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.3.10
+// v5.3.13
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -821,6 +821,7 @@ export function initCore() {
   loadState();
   initUI();
   initEventListeners();
+  setupCharacterSwipe();
   initAvatar();
   checkChildSelection();
   setChatChild(getActiveChildName());
@@ -1235,30 +1236,49 @@ function initEventListeners() {
   window.addEventListener('beforeunload', () => {
     releaseMicrophone();
   });
+}
 
-  const avatarSection = document.querySelector('.avatar-section');
-  if (avatarSection && getChildren().length < 2) {
-    let touchStartX = 0;
+function setupCharacterSwipe() {
+  const avatar = document.getElementById('avatar');
+  if (!avatar || avatar.dataset.characterSwipe === '1') return;
 
-    avatarSection.onmousedown = (e) => {
-      touchStartX = e.clientX;
-      e.preventDefault();
-    };
+  let startX = 0;
+  let isSwiping = false;
 
-    avatarSection.onmouseup = (e) => {
-      const diff = e.clientX - touchStartX;
-      if (Math.abs(diff) > 50) cycleCharacter(diff > 0 ? -1 : 1);
-    };
-
-    avatarSection.ontouchstart = (e) => {
-      touchStartX = e.touches[0].clientX;
-    };
-
-    avatarSection.ontouchend = (e) => {
-      const diff = e.changedTouches[0].clientX - touchStartX;
-      if (Math.abs(diff) > 50) cycleCharacter(diff > 0 ? -1 : 1);
-    };
+  function onStart(x) {
+    startX = x;
+    isSwiping = true;
   }
+
+  function onEnd(x) {
+    if (!isSwiping) return;
+    isSwiping = false;
+
+    const diff = x - startX;
+    if (Math.abs(diff) > 50) {
+      cycleCharacter(diff > 0 ? -1 : 1);
+    }
+  }
+
+  avatar.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    onStart(e.clientX);
+  });
+
+  document.addEventListener('mouseup', (e) => {
+    onEnd(e.clientX);
+  });
+
+  avatar.addEventListener('touchstart', (e) => {
+    onStart(e.touches[0].clientX);
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    if (e.changedTouches?.[0]) onEnd(e.changedTouches[0].clientX);
+  });
+
+  avatar.dataset.characterSwipe = '1';
+  console.log('🔄 Character swipe ready');
 }
 
 function loadState() {
@@ -1287,6 +1307,8 @@ export function cycleCharacter(direction = 1) {
     localStorage.setItem('currentCharacter', id);
     clearContext();
     switchCharacter(id);
+
+    console.log('🔄 Switched to:', id, char.name);
 
     const avatar = document.getElementById('avatar');
     if (avatar) {
@@ -1918,6 +1940,15 @@ if (typeof window !== 'undefined') {
   window.selectGuestMode = selectGuestMode;
   window.setActiveChild = setActiveChild;
   window.cycleCharacter = cycleCharacter;
+  window.swipeCharacter = (id) => {
+    if (!CHARACTERS[id]) return;
+    setCharacter(id);
+    characterCycleIndex = characterIds.indexOf(id);
+    if (characterCycleIndex < 0) characterCycleIndex = 0;
+    localStorage.setItem('currentCharacter', id);
+    switchCharacter(id);
+    console.log('🔄 Manual switch to:', id);
+  };
   window.getActiveChildName = getActiveChildName;
   window.saveToChildHistory = saveToChildHistory;
   window.saveChildData = saveChildData;

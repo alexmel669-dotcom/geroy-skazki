@@ -262,6 +262,11 @@ export function setCharacter(characterId) {
 }
 
 export function getCharacter() {
+  const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('currentCharacter') : null;
+  if (saved && CHARACTERS[saved]) {
+    currentCharacter = saved;
+    return saved;
+  }
   return currentCharacter;
 }
 
