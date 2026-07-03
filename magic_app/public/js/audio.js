@@ -7,6 +7,14 @@ import { setAvatarState } from './ui.js';
 
 const VOICE_PITCH = { lucik: 1.2, mom: 1.4, dad: 0.8, kid1: 1.6, kid2: 1.5 };
 
+const CHARACTER_VOICES = {
+  lucik: 'zahar',
+  mom: 'jane',
+  dad: 'ermil',
+  kid1: 'oksana',
+  kid2: 'filipp'
+};
+
 class TTSEngine {
   constructor() {
     this.unlocked = false;
@@ -100,7 +108,7 @@ class TTSEngine {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ text, voice: characterId })
+        body: JSON.stringify({ text, voice: CHARACTER_VOICES[characterId] || 'zahar' })
       });
 
       if (response.ok) {
