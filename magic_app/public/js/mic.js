@@ -56,15 +56,6 @@ export function abortLiveBrowserStt() {
   liveRecognition = null;
 }
 
-export function showTextInput() {
-  const row = document.querySelector('.text-chat-row');
-  if (row) {
-    row.style.display = 'flex';
-    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    document.getElementById('textChatInput')?.focus();
-  }
-}
-
 export function incrementMicFailCount() {
   micSttFailCount += 1;
   return micSttFailCount;
@@ -75,12 +66,8 @@ export function resetMicFailCount() {
 }
 
 export function checkMicFailFallback() {
-  if (micSttFailCount >= 3) {
-    window.ttsEngine?.speak('Кажется микрофон меня не слышит. Можешь написать мне текстом?');
-    showTextInput();
-    return true;
-  }
-  return false;
+  window.ttsEngine?.speak('Я не расслышал. Попробуй сказать громче и чётче.');
+  return true;
 }
 
 function attachSttLifecycleHandlers(recognition) {
@@ -90,8 +77,7 @@ function attachSttLifecycleHandlers(recognition) {
   recognition.onerror = (event) => {
     console.error('🎙️ STT error:', event.error, event.message || '');
     if (event.error === 'language-not-supported') {
-      window.ttsEngine?.speak('Твой телефон не поддерживает русский язык для голоса. Попробуй другую программу для записи.');
-      showTextInput();
+      window.ttsEngine?.speak('Твой телефон не поддерживает русский язык для голоса. Попробуй сказать громче и чётче.');
     }
   };
   recognition.onnomatch = () => {
@@ -734,7 +720,7 @@ export default {
   browserSpeechRecognition, getLiveSttText, clearLiveSttText,
   getMicState, setMicState, startMicSession, finishMicSession, onMicProcessingDone,
   onProcessingDone, isProcessingLocked, armRecordingFromUser, disarmRecordingFromUser,
-  showTextInput, incrementMicFailCount, resetMicFailCount, checkMicFailFallback,
+  incrementMicFailCount, resetMicFailCount, checkMicFailFallback,
   isBrowserSttEnabled, disableBrowserSttOnly, abortLiveBrowserStt, isAndroid
 };
 

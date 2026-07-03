@@ -125,6 +125,8 @@ ${agePrompt ? `\n${agePrompt}` : ''}
 
 ${CONVERSATION_GUIDE}
 
+${SOFT_FEAR_PROMPT}
+
 ${GRAMMAR_RULES}
 
 ${JSON_FORMAT_CHAT}`;
@@ -154,6 +156,8 @@ ${grammarBlock(childName)}
 ${nameFormsBlock(childName, childGender)}
 
 ${CONVERSATION_GUIDE}
+
+${SOFT_FEAR_PROMPT}
 
 ${GRAMMAR_RULES}
 
@@ -185,6 +189,8 @@ ${grammarBlock(childName)}
 ${nameFormsBlock(childName, childGender)}
 
 ${CONVERSATION_GUIDE}
+
+${SOFT_FEAR_PROMPT}
 
 ${GRAMMAR_RULES}
 

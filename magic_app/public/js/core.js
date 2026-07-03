@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.3.16
+// v5.3.17
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
