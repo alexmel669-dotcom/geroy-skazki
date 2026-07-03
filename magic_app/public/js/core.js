@@ -419,9 +419,9 @@ function childAvatarImg(role, gender) {
 }
 
 function applyChildAvatar(child) {
-  if (!child) return;
-  const role = child.avatarRole || (String(child.avatar || '').includes('kid2') ? 'kid2' : 'kid1');
-  switchCharacter(CHARACTERS[role] ? role : 'lucik');
+  const saved = localStorage.getItem('currentCharacter') || 'lucik';
+  setCharacter(saved);
+  switchCharacter(saved);
 }
 
 function showPlanLimitUI(show) {
@@ -818,9 +818,9 @@ export function initCore() {
   migrateAllStoredStats();
   activeChildIndex = getActiveChildIndex();
   appState.currentChildIndex = activeChildIndex;
+  loadState();
   initUI();
   initEventListeners();
-  loadState();
   initAvatar();
   checkChildSelection();
   setChatChild(getActiveChildName());
@@ -901,9 +901,6 @@ export function setActiveChild(index, options = {}) {
   }
 
   applyChildAvatar(child);
-  if (!child) {
-    switchCharacter(localStorage.getItem('currentCharacter') || 'lucik');
-  }
 
   trackEvent('child_select', child?.name || 'guest');
   setChatChild(child?.name || 'guest');

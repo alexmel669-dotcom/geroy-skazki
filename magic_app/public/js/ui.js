@@ -73,16 +73,6 @@ export function switchCharacter(charId) {
 function updateAvatar() {
     const avatar = document.getElementById('avatar');
     if (!avatar) return;
-
-    const child = getActiveChild();
-    if (child) {
-        const role = child.avatarRole || (String(child.avatar || '').includes('kid2') ? 'kid2' : 'kid1');
-        if (CHARACTERS[role]) {
-          switchCharacter(role);
-        }
-        return;
-    }
-
     switchCharacter(localStorage.getItem('currentCharacter') || 'lucik');
 }
 

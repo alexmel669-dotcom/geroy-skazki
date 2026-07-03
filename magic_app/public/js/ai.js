@@ -256,6 +256,9 @@ export function detectPersonalData(text) {
 
 export function setCharacter(characterId) {
   currentCharacter = characterId;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('currentCharacter', characterId);
+  }
 }
 
 export function getCharacter() {
