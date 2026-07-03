@@ -2,7 +2,7 @@
   "name": "Герой Сказок",
   "short_name": "Герой Сказок",
   "description": "Люцик — ИИ-помощник для детей 3-14 лет",
-  "version": "5.3.6",
+  "version": "5.3.7",
   "start_url": "/app.html",
   "display": "standalone",
   "orientation": "portrait",

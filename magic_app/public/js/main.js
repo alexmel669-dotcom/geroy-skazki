@@ -5,12 +5,12 @@ import { CONFIG, validateConfig, ENV, initAvatarImages } from './config.js';
 import {
   initCore, getActiveChildName, getActiveChild, updateStatsUI, cycleCharacter,
   selectGuestMode, showChildSelectModal, saveChildData, appState, sendTextMessage,
-  showGamesMenu, performFeedLucik, performCleanLucikRoom
+  showGamesMenu, performFeedLucik, performCleanLucikRoom, feedLucik
 } from './core.js';
 import { getCharacter } from './ai.js';
 import { ttsEngine, synthesizeSpeech } from './audio.js';
 import { startRecording, stopRecording, isRecording, browserSpeechRecognition } from './mic.js';
-import { updateUI, showNotification, initDevPanel, initVoiceHints, feedLucik, showLucikHouse } from './ui.js';
+import { updateUI, showNotification, initDevPanel, initVoiceHints, showLucikHouse } from './ui.js';
 import { initNotificationScheduler, checkPlanExpiryNotification } from './notifications.js';
 import { startOnboarding } from './onboarding.js';
 

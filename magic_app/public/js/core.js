@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.3.6
+// v5.3.7
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -47,6 +47,7 @@ import {
   getTamagotchi, applyTamagotchiTick, onChat, onGame, onFeed, onClean, onFearTalk,
   getTamagotchiNeedsMessage
 } from './tamagotchi.js';
+import { updateHouseButton } from './lucik-house.js';
 
 // ========================================
 // STATE
@@ -650,6 +651,13 @@ function onAppReady() {
       showGamesHint();
     }
   }, 5000);
+
+  updateFeedButton();
+  updateHouseButton();
+  setInterval(() => {
+    updateFeedButton();
+    updateHouseButton();
+  }, 60000);
 }
 
 function getTodayDialogs() {
@@ -1115,6 +1123,51 @@ function initUI() {
 
 function isAssistantSpeaking() {
   return window.ttsEngine?.isSpeaking === true;
+}
+
+export function getHungerLevel() {
+  const lastFed = localStorage.getItem('geroy-last-fed');
+  if (!lastFed) return 99;
+  return Math.floor((Date.now() - new Date(lastFed)) / 3600000);
+}
+
+export function updateFeedButton() {
+  const btn = document.getElementById('feedBtn');
+  if (!btn) return;
+
+  const hours = getHungerLevel();
+
+  if (hours > 8) {
+    btn.textContent = '🍎😿';
+    btn.style.animation = 'hungerShake 0.5s infinite';
+    const warnKey = 'geroy-hunger-warned-' + new Date().toISOString().split('T')[0];
+    if (!localStorage.getItem(warnKey)) {
+      window.ttsEngine?.speak('Я проголодался! Покорми меня, пожалуйста!');
+      localStorage.setItem(warnKey, '1');
+    }
+  } else if (hours > 4) {
+    btn.textContent = '🍎😐';
+    btn.style.animation = '';
+  } else {
+    btn.textContent = '🍎😊';
+    btn.style.animation = '';
+  }
+}
+
+export function feedLucik() {
+  const avatar = document.getElementById('avatar');
+  avatar?.classList.add('avatar-eating');
+
+  localStorage.setItem('geroy-last-fed', new Date().toISOString());
+  updateFeedButton();
+
+  window.ttsEngine?.speak('Ням-ням! Спасибо, очень вкусно!');
+
+  setTimeout(() => {
+    avatar?.classList.remove('avatar-eating');
+    avatar?.classList.add('avatar-happy');
+    setTimeout(() => avatar?.classList.remove('avatar-happy'), 2000);
+  }, 2000);
 }
 
 export function performFeedLucik() {

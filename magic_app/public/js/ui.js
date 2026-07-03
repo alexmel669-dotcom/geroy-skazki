@@ -2,6 +2,7 @@ import { CONFIG, ENV, CHARACTERS } from './config.js';
 import { ttsEngine } from './audio.js';
 
 import { getActiveChildName, getActiveChild, updateStatsUI } from './core.js';
+import { applyHouseDirtVisual, cleanHouse, getHouseDirtLevel } from './lucik-house.js';
 
 // ========================================
 // ОБНОВЛЕНИЕ UI
@@ -343,13 +344,6 @@ export function showSwipeHint() {
   }, 8000);
 }
 
-export function feedLucik() {
-  const avatar = document.getElementById('avatar');
-  if (avatar) avatar.classList.add('avatar-eating');
-  window.ttsEngine?.speak('Ням-ням! Вкусно!');
-  setTimeout(() => avatar?.classList.remove('avatar-eating'), 2000);
-}
-
 export function showLucikHouse() {
   const avatar = document.getElementById('avatar');
   if (avatar) avatar.classList.add('avatar-cleaning');
@@ -359,14 +353,21 @@ export function showLucikHouse() {
     popup = document.createElement('div');
     popup.id = 'lucikHousePopup';
     popup.className = 'lucik-house-popup';
-    popup.textContent = '🏠 Домик Люцика';
     document.body.appendChild(popup);
   }
-  popup.style.display = 'block';
 
-  window.ttsEngine?.speak('Убираюсь в домике!');
+  const dirtLevel = getHouseDirtLevel();
+  popup.innerHTML = `<div id="houseRoom" class="house-room">🏠 Домик Люцика${dirtLevel >= 2 ? ' — нужно прибраться!' : ''}</div>`;
+  popup.style.display = 'block';
+  applyHouseDirtVisual(document.getElementById('houseRoom'), dirtLevel);
+
+  if (dirtLevel < 3) {
+    window.ttsEngine?.speak('Убираюсь в домике!');
+  }
+
   setTimeout(() => {
     avatar?.classList.remove('avatar-cleaning');
+    cleanHouse();
     if (popup) popup.style.display = 'none';
   }, 2000);
 }
@@ -406,6 +407,5 @@ export default {
     showMicHint,
     showGamesHint,
     showSwipeHint,
-    feedLucik,
     showLucikHouse
 };

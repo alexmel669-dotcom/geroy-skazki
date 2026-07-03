@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geroy-skazki-v5.3.6';
+const CACHE_NAME = 'geroy-skazki-v5.3.7';
 const ASSETS = [
   '/',
   '/app.html',
