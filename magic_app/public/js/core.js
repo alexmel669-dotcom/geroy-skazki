@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.3.14
+// v5.3.16
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -42,7 +42,6 @@ import { setAvatarState, playPurrSound, switchCharacter, showMicHint, showGamesH
 import { getTimeContext } from './context.js';
 import { detectRequestType, getDictionaryFallback, learnFromResponse, isBedtimeStoryRequest } from './dictionary.js';
 import { checkDailyStreak, updateStreakUI } from './retention.js';
-import { initChildSwipe } from './child-swipe.js';
 import {
   getTamagotchi, applyTamagotchiTick, onChat, onGame, onFeed, onClean, onFearTalk,
   getTamagotchiNeedsMessage
@@ -55,8 +54,6 @@ import { updateHouseButton } from './lucik-house.js';
 
 let activeChildIndex = -1;
 let isProcessing = false;
-let characterCycleIndex = 0;
-const characterIds = Object.keys(CHARACTERS);
 
 export const appState = {
   gameActive: false,
@@ -307,16 +304,56 @@ export function getCurrentUser() {
   const isGuest = isGuestUser();
   let childName = null;
   let childAge = null;
+  let childGender = 'unknown';
 
   if (child?.name && child.name !== 'Гость') {
     childName = child.name;
     childAge = child.age ?? null;
+    childGender = getChildGender(child);
   } else if (profileName) {
     childName = profileName;
     childAge = profileAgeRaw ? parseInt(profileAgeRaw, 10) : null;
+    childGender = guessGenderFromName(profileName);
   }
 
-  return { isGuest, childName, childAge, profileComplete: localStorage.getItem('profileComplete') === 'true' };
+  const storedParentGender = normalizeGender(localStorage.getItem('parentGender'));
+  const parentGender = storedParentGender !== 'unknown'
+    ? storedParentGender
+    : guessGenderFromName(localStorage.getItem('parentName') || '');
+
+  let role = 'guest';
+  if (!isGuest && child) role = 'child';
+  else if (localStorage.getItem('userRole') === 'parent') role = 'parent';
+
+  return {
+    isGuest,
+    role,
+    gender: parentGender,
+    childName,
+    childAge,
+    childGender,
+    profileComplete: localStorage.getItem('profileComplete') === 'true'
+  };
+}
+
+export function getAvatarForUser(user) {
+  if (!user) return 'lucik';
+  if (user.isGuest || user.role === 'guest') return 'lucik';
+  if (user.role === 'parent') {
+    return user.gender === 'female' ? 'mom' : 'dad';
+  }
+  if (user.childGender === 'female') return 'kid1';
+  if (user.childGender === 'male') return 'kid2';
+  return 'lucik';
+}
+
+export function getUserCharacter(user) {
+  const id = getAvatarForUser(user);
+  setCharacter(id);
+  localStorage.setItem('currentCharacter', id);
+  switchCharacter(id);
+  console.log('👤 Персонаж по пользователю:', id);
+  return id;
 }
 
 function extractGuestName(text) {
@@ -928,13 +965,16 @@ export function getActiveChild() {
 }
 
 export function setActiveChild(index, options = {}) {
+  const prevIndex = activeChildIndex >= 0 ? activeChildIndex : getActiveChildIndex();
   activeChildIndex = index;
   appState.currentChildIndex = index;
   localStorage.setItem('activeChildIndex', String(index));
 
   const child = getChildren()[index];
 
-  // Не меняем персонажа (switchCharacter) — только метку ребёнка и чат
+  if (prevIndex !== index) clearContext();
+  getUserCharacter(getCurrentUser());
+
   if (child) {
     updateGuestLabel(child);
   } else {
@@ -1140,11 +1180,7 @@ function animateStat(elementId, target) {
 function initUI() {
   const avatar = document.getElementById('avatar');
   if (avatar) {
-    avatar.onclick = () => {
-      playPurrSound();
-      cycleCharacter(1);
-    };
-    initChildSwipe(avatar);
+    avatar.onclick = () => playPurrSound();
   }
 
   const parent = document.getElementById('parentBtn');
@@ -1291,10 +1327,8 @@ function setupCharacterSwipe() {
   function onEnd(x) {
     if (!isSwiping) return;
     isSwiping = false;
-
-    const diff = x - startX;
-    if (Math.abs(diff) > 50) {
-      cycleCharacter(diff > 0 ? -1 : 1);
+    if (Math.abs(x - startX) > 50) {
+      cycleActiveChild(x - startX > 0 ? -1 : 1);
     }
   }
 
@@ -1303,9 +1337,7 @@ function setupCharacterSwipe() {
     onStart(e.clientX);
   });
 
-  document.addEventListener('mouseup', (e) => {
-    onEnd(e.clientX);
-  });
+  document.addEventListener('mouseup', (e) => onEnd(e.clientX));
 
   avatar.addEventListener('touchstart', (e) => {
     onStart(e.touches[0].clientX);
@@ -1316,46 +1348,23 @@ function setupCharacterSwipe() {
   });
 
   avatar.dataset.characterSwipe = '1';
-  console.log('🔄 Character swipe ready');
+  console.log('🔄 Child swipe ready');
+}
+
+function cycleActiveChild(direction) {
+  const children = getChildren();
+  if (children.length < 2) return;
+
+  let idx = getActiveChildIndex();
+  if (idx < 0) idx = 0;
+
+  idx = (idx + direction + children.length) % children.length;
+  setActiveChild(idx, { greet: true });
+  playPurrSound();
 }
 
 function loadState() {
-  const saved = localStorage.getItem('currentCharacter') || 'lucik';
-  setCharacter(saved);
-  characterCycleIndex = characterIds.indexOf(saved);
-  if (characterCycleIndex < 0) characterCycleIndex = 0;
-  switchCharacter(saved);
-}
-
-// ========================================
-// CHARACTER
-// ========================================
-
-export function cycleCharacter(direction = 1) {
-  let count = 0;
-  while (count < characterIds.length) {
-    characterCycleIndex = (characterCycleIndex + direction + characterIds.length) % characterIds.length;
-    const id = characterIds[characterCycleIndex];
-    const char = CHARACTERS[id];
-    if (!char) { count++; continue; }
-    if (char.premium && !isPremiumUser()) { count++; continue; }
-    if (!canAccessCharacter(id)) { count++; continue; }
-
-    setCharacter(id);
-    localStorage.setItem('currentCharacter', id);
-    clearContext();
-    switchCharacter(id);
-
-    console.log('🔄 Switched to:', id, char.name);
-
-    const avatar = document.getElementById('avatar');
-    if (avatar) {
-      avatar.style.transform = 'scale(0.85)';
-      setTimeout(() => { avatar.style.transform = 'scale(1)'; }, 150);
-    }
-    trackEvent('character_change', id);
-    return;
-  }
+  getUserCharacter(getCurrentUser());
 }
 
 function applyAiTiming() {
@@ -1977,16 +1986,6 @@ export function launchFishGame() {
 if (typeof window !== 'undefined') {
   window.selectGuestMode = selectGuestMode;
   window.setActiveChild = setActiveChild;
-  window.cycleCharacter = cycleCharacter;
-  window.swipeCharacter = (id) => {
-    if (!CHARACTERS[id]) return;
-    setCharacter(id);
-    characterCycleIndex = characterIds.indexOf(id);
-    if (characterCycleIndex < 0) characterCycleIndex = 0;
-    localStorage.setItem('currentCharacter', id);
-    switchCharacter(id);
-    console.log('🔄 Manual switch to:', id);
-  };
   window.getActiveChildName = getActiveChildName;
   window.saveToChildHistory = saveToChildHistory;
   window.saveChildData = saveChildData;
@@ -2006,6 +2005,6 @@ export default {
   setActiveChild, selectGuestMode, showChildSelectModal,
   getChildStats, saveChildStats, saveToChildHistory, updateFearStats,
   incrementStories, incrementGames, updateStatsDisplay, saveChildData,
-  loadState: loadState, cycleCharacter, showGamesMenu, launchFishGame,
+  loadState: loadState, showGamesMenu, launchFishGame,
   getUserPlan, getStoriesRemaining, canAccessCharacter, canAccessGame, resetDailyCounters
 };

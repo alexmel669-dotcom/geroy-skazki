@@ -344,7 +344,7 @@ export function showSwipeHint() {
   if (localStorage.getItem('swipe-hint-played')) return;
   setTimeout(() => {
     if (localStorage.getItem('swipe-hint-played')) return;
-    ttsEngine.speak('Свайпни по мне влево или вправо, чтобы увидеть других друзей!').catch(() => {});
+    ttsEngine.speak('Свайпни по мне влево или вправо, чтобы переключиться между детьми!').catch(() => {});
     localStorage.setItem('swipe-hint-played', 'true');
   }, 8000);
 }

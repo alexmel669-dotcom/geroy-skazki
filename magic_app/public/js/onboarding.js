@@ -20,8 +20,8 @@ export class OnboardingGuide {
       },
       {
         target: '#avatar, .character-avatar',
-        voice: 'Свайпни по мне, чтобы увидеть маму, папу и друзей!',
-        text: '🐱 Сменяй персонажей'
+        voice: 'Свайпни по мне влево или вправо, чтобы переключиться между детьми!',
+        text: '👧👦 Переключай детей'
       },
       {
         target: '#games-menu, .game-menu',

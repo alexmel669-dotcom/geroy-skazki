@@ -3,7 +3,7 @@ import './storybook.js';
 import './leaderboard.js';
 import { CONFIG, validateConfig, ENV, initAvatarImages } from './config.js';
 import {
-  initCore, getActiveChildName, getActiveChild, updateStatsUI, cycleCharacter,
+  initCore, getActiveChildName, getActiveChild, updateStatsUI,
   selectGuestMode, showChildSelectModal, saveChildData, appState, sendTextMessage,
   showGamesMenu, performFeedLucik, performCleanLucikRoom, feedLucik
 } from './core.js';
@@ -96,7 +96,6 @@ try {
 
   if (typeof window !== 'undefined') {
     window.selectGuestMode = selectGuestMode;
-    window.cycleCharacter = () => cycleCharacter(1);
     window.showChildSelectModal = showChildSelectModal;
     window.getActiveChildName = getActiveChildName;
     window.updateStatsUI = updateStatsUI;
