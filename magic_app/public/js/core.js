@@ -4,7 +4,7 @@
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
-import { getChildGender, guessGenderFromName, applyGenderToText, gladToSeePhrase } from './gender.js';
+import { getChildGender, guessGenderFromName, normalizeGender, applyGenderToText, gladToSeePhrase } from './gender.js';
 import {
   generateResponse, detectFear, detectPersonalData,
   setCharacter, getCharacter, addToContext, clearContext,
@@ -232,8 +232,8 @@ function saveDetectedProfile({ childName, childAge }) {
   if (childName && childAge != null && (children.length === 0 || getActiveChildName() === 'Гость')) {
     const ageNum = parseInt(childAge, 10) || 5;
     gender = guessGenderFromName(childName);
-    const avatarRole = gender === 'male' ? 'kid2' : 'kid1';
-    const avatar = gender === 'male' ? 'kid2.svg' : 'kid1.svg';
+    const avatarRole = getAvatarRoleForChild({ gender, name: childName });
+    const avatar = `${avatarRole}.svg`;
     const newChild = { name: childName, age: ageNum, gender, avatar, avatarRole, index: 0 };
     localStorage.setItem('children', JSON.stringify([newChild]));
     localStorage.setItem('childrenNames', childName);
@@ -247,8 +247,8 @@ function saveDetectedProfile({ childName, childAge }) {
         const g = guessGenderFromName(childName);
         if (g !== 'unknown') {
           children[idx].gender = g;
-          children[idx].avatarRole = g === 'male' ? 'kid2' : 'kid1';
-          children[idx].avatar = g === 'male' ? 'kid2.svg' : 'kid1.svg';
+          children[idx].avatarRole = getAvatarRoleForChild({ ...children[idx], gender: g });
+          children[idx].avatar = `${children[idx].avatarRole}.svg`;
         }
       }
       gender = children[idx].gender;
@@ -413,7 +413,7 @@ export async function playWelcomeGreeting() {
 }
 
 function childAvatarImg(role, gender) {
-  const resolved = role || (gender === 'male' ? 'kid2' : 'kid1');
+  const resolved = role || getAvatarRoleForChild({ gender });
   const map = { kid1: 'kid1', kid2: 'kid2', lucik: 'lucik' };
   return avatarImgHtml(map[resolved] || 'lucik', 36);
 }
@@ -868,8 +868,43 @@ export function initCore() {
 // CHILDREN
 // ========================================
 
+function resolveChildGenderExplicit(child) {
+  if (!child) return 'unknown';
+  const g = normalizeGender(child.gender);
+  if (g !== 'unknown') return g;
+  return guessGenderFromName(child.name);
+}
+
+/** Аватар ребёнка: мальчик → kid2, девочка → kid1, неизвестно → lucik */
+export function getAvatarRoleForChild(child) {
+  if (!child) return 'lucik';
+  const gender = resolveChildGenderExplicit(child);
+  if (gender === 'male') return 'kid2';
+  if (gender === 'female') return 'kid1';
+  return 'lucik';
+}
+
+/** Персонаж по умолчанию для ребёнка (не переключает автоматически при выборе) */
+export function getDefaultCharacterForChild(child) {
+  return getAvatarRoleForChild(child);
+}
+
+function normalizeChildRecord(child) {
+  if (!child || typeof child !== 'object') return child;
+  const gender = resolveChildGenderExplicit(child);
+  const avatarRole = gender === 'male' ? 'kid2' : gender === 'female' ? 'kid1' : (child.avatarRole || 'lucik');
+  const out = { ...child, avatarRole, avatar: `${avatarRole}.svg` };
+  if (gender !== 'unknown') out.gender = gender;
+  return out;
+}
+
 export function getChildren() {
-  return safeParseJSON(localStorage.getItem('children') || '[]', []);
+  const raw = safeParseJSON(localStorage.getItem('children') || '[]', []);
+  const normalized = raw.map(normalizeChildRecord);
+  if (JSON.stringify(raw) !== JSON.stringify(normalized)) {
+    localStorage.setItem('children', JSON.stringify(normalized));
+  }
+  return normalized;
 }
 
 export function getActiveChildIndex() {
@@ -899,6 +934,7 @@ export function setActiveChild(index, options = {}) {
 
   const child = getChildren()[index];
 
+  // Не меняем персонажа (switchCharacter) — только метку ребёнка и чат
   if (child) {
     updateGuestLabel(child);
   } else {

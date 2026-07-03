@@ -101,6 +101,7 @@ class TTSEngine {
 
   async _speakYandex(text, characterId) {
     try {
+      const voice = CHARACTER_VOICES[characterId] || CHARACTER_VOICES.lucik;
       const token = typeof localStorage !== 'undefined' ? localStorage.getItem('userToken') : null;
       const response = await fetch('/api/tts', {
         method: 'POST',
@@ -108,14 +109,14 @@ class TTSEngine {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ text, voice: CHARACTER_VOICES[characterId] || 'zahar' })
+        body: JSON.stringify({ text, voice })
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.audioUrl) {
           setAvatarState('speaking');
-          console.log('🔊 Yandex TTS');
+          console.log('🔊 Yandex TTS:', characterId, '→', voice);
           await playAudioFromUrl(data.audioUrl);
           return true;
         }

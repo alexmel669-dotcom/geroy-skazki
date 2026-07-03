@@ -9,7 +9,7 @@ const voiceMap = {
   mom: 'jane',
   dad: 'ermil',
   kid1: 'oksana',
-  kid2: 'oksana'
+  kid2: 'filipp'
 };
 
 function normalizeApiKey(raw) {
