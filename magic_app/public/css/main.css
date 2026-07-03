@@ -2947,3 +2947,22 @@ body.has-dev-panel {
   background: var(--accent);
   font-weight: 600;
 }
+
+.thanks-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid #FFD700;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: 0 8px 8px 0;
+}
+
+.thanks-message {
+  font-style: italic;
+  color: #FFD700;
+  margin-bottom: 4px;
+}
+
+.thanks-meta {
+  font-size: 12px;
+  color: #888;
+}

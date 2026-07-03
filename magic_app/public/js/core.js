@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.3.2
+// v5.3.5
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -23,6 +23,7 @@ import { getAgeWord } from './grammar.js';
 import { synthesizeSpeech } from './audio.js';
 import { checkAchievements, showAchievement } from './achievements.js';
 import { trackEvent, logError } from './analytics.js';
+import { getEasterEggReply } from './easter-eggs.js';
 import { initSecurity, checkBadWords, sanitizeInput, sanitizeAIText, detectAlertWords } from './security.js';
 import { startFishGame } from './games/fish.js';
 import { startMemoryGame } from './games/memory.js';
@@ -1564,6 +1565,27 @@ async function handleUserMessage(text, options = {}) {
 
   if (checkBadWords(text)) {
     await synthesizeSpeech('Давай говорить добрые слова', getCharacter());
+    return;
+  }
+
+  const easterEgg = getEasterEggReply(text);
+  if (easterEgg) {
+    window.ttsEngine?.speak(easterEgg.reply);
+
+    if (easterEgg.notifyCreator) {
+      const user = getCurrentUser();
+      fetch('/api/notify-creator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'thanks',
+          userName: user.childName || 'Гость',
+          userAge: user.childAge || null,
+          message: text
+        })
+      }).catch(() => {});
+    }
+
     return;
   }
 

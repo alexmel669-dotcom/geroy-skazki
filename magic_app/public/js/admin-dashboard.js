@@ -181,6 +181,29 @@ function renderFeedbacks(feedbacks) {
   `).join('');
 }
 
+async function loadThanks() {
+  try {
+    const res = await fetch('/api/admin-thanks', {
+      headers: { Authorization: getAdminToken() }
+    });
+    if (!res.ok) return;
+    const thanks = await res.json();
+
+    document.getElementById('thanksList').innerHTML = thanks.length > 0
+      ? thanks.map((t) => `
+        <div class="thanks-item">
+          <div class="thanks-message">💬 "${escapeHtml(t.message)}"</div>
+          <div class="thanks-meta">
+            👤 ${escapeHtml(t.userName)}, ${escapeHtml(String(t.userAge || '?'))} лет · ${escapeHtml(new Date(t.date).toLocaleString('ru-RU'))}
+          </div>
+        </div>
+      `).join('')
+      : '<p>Пока никто не сказал спасибо 😿</p>';
+  } catch (e) {
+    console.error('Thanks load error:', e);
+  }
+}
+
 async function loadAdminStats() {
   const errEl = document.getElementById('adminLoadError');
   const token = getAdminToken();
@@ -230,6 +253,7 @@ async function loadAdminStats() {
     renderGameUsage(stats.gameUsage);
     renderTimeOfDay(stats.timeOfDay);
     renderFeedbacks(stats.feedbacks);
+    loadThanks();
   } catch (error) {
     console.error('Admin stats error:', error);
     errEl.textContent = 'Ошибка сети при загрузке статистики';

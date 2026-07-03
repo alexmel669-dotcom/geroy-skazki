@@ -32,6 +32,8 @@ import feedback from './_handlers/feedback.js';
 import getSecretQuestion from './_handlers/get-secret-question.js';
 import resetPassword from './_handlers/reset-password.js';
 import leaderboard from './_handlers/leaderboard.js';
+import notifyCreator from './_handlers/notify-creator.js';
+import adminThanks from './_handlers/admin-thanks.js';
 
 
 
@@ -91,7 +93,11 @@ const ROUTES = {
 
   'reset-password': resetPassword,
 
-  leaderboard
+  leaderboard,
+
+  'notify-creator': notifyCreator,
+
+  'admin-thanks': adminThanks
 
 };
 
