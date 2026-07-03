@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.3.13
+// v5.3.14
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -418,10 +418,16 @@ function childAvatarImg(role, gender) {
   return avatarImgHtml(map[resolved] || 'lucik', 36);
 }
 
-function applyChildAvatar(child) {
-  const saved = localStorage.getItem('currentCharacter') || 'lucik';
-  setCharacter(saved);
-  switchCharacter(saved);
+function updateGuestLabel(child) {
+  const label = document.getElementById('childNameLabel') || document.getElementById('guestLabel');
+  if (!label) return;
+  if (!child) {
+    label.textContent = 'Гость';
+    return;
+  }
+  const age = child.age || child.childAge || '';
+  const ageWord = getAgeWord(age || 7);
+  label.textContent = `${child.name || child.childName || 'Гость'}${age ? `, ${age} ${ageWord}` : ''}`;
 }
 
 function showPlanLimitUI(show) {
@@ -892,16 +898,12 @@ export function setActiveChild(index, options = {}) {
   localStorage.setItem('activeChildIndex', String(index));
 
   const child = getChildren()[index];
-  const label = document.getElementById('childNameLabel');
-  if (label) {
-    if (child) {
-      label.textContent = `${child.name}, ${child.age} лет`;
-    } else {
-      label.textContent = 'Гость';
-    }
-  }
 
-  applyChildAvatar(child);
+  if (child) {
+    updateGuestLabel(child);
+  } else {
+    updateGuestLabel(null);
+  }
 
   trackEvent('child_select', child?.name || 'guest');
   setChatChild(child?.name || 'guest');

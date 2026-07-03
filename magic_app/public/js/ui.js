@@ -1,5 +1,6 @@
 import { CONFIG, ENV, CHARACTERS } from './config.js';
 import { ttsEngine } from './audio.js';
+import { getAgeWord } from './grammar.js';
 
 import { getActiveChildName, getActiveChild, updateStatsUI } from './core.js';
 import { applyHouseDirtVisual, cleanHouse, getHouseDirtLevel } from './lucik-house.js';
@@ -41,6 +42,17 @@ export function setAvatarState(state) {
     eating: 'avatar-eating'
   };
   if (map[state]) avatar.classList.add(map[state]);
+}
+
+export function applyChildAvatar(child) {
+  if (!child) return;
+
+  const label = document.getElementById('childNameLabel') || document.getElementById('guestLabel');
+  if (!label) return;
+
+  const age = child.age || child.childAge || '';
+  const ageWord = getAgeWord(age || 7);
+  label.textContent = `${child.name || child.childName || 'Гость'}${age ? `, ${age} ${ageWord}` : ''}`;
 }
 
 export function switchCharacter(charId) {
