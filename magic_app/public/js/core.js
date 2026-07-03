@@ -1239,7 +1239,21 @@ function initEventListeners() {
   const avatarSection = document.querySelector('.avatar-section');
   if (avatarSection && getChildren().length < 2) {
     let touchStartX = 0;
-    avatarSection.ontouchstart = (e) => { touchStartX = e.touches[0].clientX; };
+
+    avatarSection.onmousedown = (e) => {
+      touchStartX = e.clientX;
+      e.preventDefault();
+    };
+
+    avatarSection.onmouseup = (e) => {
+      const diff = e.clientX - touchStartX;
+      if (Math.abs(diff) > 50) cycleCharacter(diff > 0 ? -1 : 1);
+    };
+
+    avatarSection.ontouchstart = (e) => {
+      touchStartX = e.touches[0].clientX;
+    };
+
     avatarSection.ontouchend = (e) => {
       const diff = e.changedTouches[0].clientX - touchStartX;
       if (Math.abs(diff) > 50) cycleCharacter(diff > 0 ? -1 : 1);
