@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.3.5
+// v5.3.6
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -1548,6 +1548,26 @@ export async function sendTextMessage(text) {
   await handleUserMessage(String(text).trim());
 }
 
+function suggestFollowUp(aiResult, childAge) {
+  const followUps = {
+    happy: ['Здорово! А что ещё весёлого случилось?', 'Ты так интересно рассказываешь!'],
+    neutral: ['А что бы ты хотел сейчас сделать?', 'Расскажи мне ещё что-нибудь.'],
+    sad: ['Я тебя понимаю. Давай вместе подышим.', 'Знаешь, когда мне грустно, я представляю волшебный лес...']
+  };
+
+  const replyLen = aiResult?.length || 0;
+  if (replyLen < 100 && Math.random() < 0.3) {
+    const moodKey = aiResult.mood === 'positive' || aiResult.mood === 'happy'
+      ? 'happy'
+      : aiResult.mood === 'concerned' || aiResult.mood === 'sad'
+        ? 'sad'
+        : 'neutral';
+    const options = followUps[moodKey] || followUps.neutral;
+    const msg = options[Math.floor(Math.random() * options.length)];
+    if (msg) setTimeout(() => window.ttsEngine?.speak(msg), 2000);
+  }
+}
+
 async function handleUserMessage(text, options = {}) {
   const avatar = document.getElementById('avatar');
   const child = getActiveChild();
@@ -1687,6 +1707,7 @@ async function handleUserMessage(text, options = {}) {
   await synthesizeSpeech(reply, getCharacter());
   setAvatarState(null);
   updateAvatarMoodState();
+  suggestFollowUp({ mood: aiMood, length: reply?.length || 0 }, child?.age || 7);
 
   if (requestType === 'bedtime_story') {
     const goodnight = childName !== 'Гость' ? `Сладких снов, ${childName}!` : 'Сладких снов!';

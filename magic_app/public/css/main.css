@@ -2966,3 +2966,29 @@ body.has-dev-panel {
   font-size: 12px;
   color: #888;
 }
+
+.mood-chart {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#moodChart {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.mood-day {
+  text-align: center;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  min-width: 70px;
+}
+
+.mood-emoji { font-size: 28px; }
+.mood-text { font-size: 11px; margin: 4px 0; }
+.mood-day-name { font-size: 12px; color: #888; }

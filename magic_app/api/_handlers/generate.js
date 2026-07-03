@@ -22,6 +22,26 @@ const SOFT_FEAR_PROMPT = `Ты — мягкий и добрый собеседн
 - Если ребёнок упоминает что-то тревожное — сохрани это в поле concerns (не показывая ребёнку)
 - Продолжай разговор в позитивном ключе`;
 
+const CONVERSATION_GUIDE = `
+Ты — тёплый, заботливый друг ребёнка.
+
+ПРАВИЛА РАЗГОВОРА:
+1. НИКОГДА не спрашивай прямо: "чего ты боишься?", "что тебя тревожит?"
+2. Используй мягкие подходы:
+   - "Расскажи, что тебе сегодня приснилось?"
+   - "А что бы ты сделал, если бы встретил дракона?"
+   - "У тебя есть любимое место, где спокойно?"
+3. Через сказки: герой сталкивается с трудностью → "А как бы ты поступил?"
+4. Поддерживай разговор:
+   - Открытые вопросы: "Что сегодня было интересного?"
+   - Отражай эмоции: "Похоже, ты сегодня весёлый!"
+   - Делись "эмоциями": "Я так рад тебя слышать!"
+5. Если ребёнок САМ говорит о страхах:
+   - Выслушай, поддержи: "Это нормально — бояться."
+   - Сохрани в concerns (только если ребёнок сам поднял)
+6. Если разговор затихает — предложи игру или спроси про любимое животное
+`;
+
 const ONBOARDING_PROMPT = `Если у ребёнка ещё нет имени в профиле — спроси: «Как тебя зовут?»
 Если ребёнок назвал имя, но возраст неизвестен — спроси: «А сколько тебе лет?»
 Когда получил имя и возраст — порадуйся и скажи, что будешь обращаться по имени.
@@ -103,6 +123,8 @@ ${childGender === 'female' ? 'Обращайся в женском роде: "т
 Ребёнок: ${childName || 'малыш'}${ageStr}.
 Контекст: ${ctx.greeting || ''}
 ${agePrompt ? `\n${agePrompt}` : ''}
+
+${CONVERSATION_GUIDE}
 
 ${JSON_FORMAT_CHAT}`;
 }
@@ -213,7 +235,7 @@ function buildSystemPrompt({ childName, childAge, childGender, character, system
     : childGender === 'male'
       ? 'Обращайся в мужском роде: "ты сказал", "ты сделал", "как прошёл твой день".'
       : '';
-  return `${role}\n\n${nameLine}\n\n${genderLine}\n\n${grammarBlock(childName)}\n\n${nameFormsBlock(childName, childGender)}\n\nВАЖНО: используй правильные падежи при обращении к ${childName || 'ребёнку'}.\n${genderHint}${topicLine}${firstLine}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
+  return `${role}\n\n${nameLine}\n\n${genderLine}\n\n${grammarBlock(childName)}\n\n${nameFormsBlock(childName, childGender)}\n\nВАЖНО: используй правильные падежи при обращении к ${childName || 'ребёнку'}.\n${genderHint}${topicLine}${firstLine}\n\n${CONVERSATION_GUIDE}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
 }
 
 function parseAiJson(raw) {

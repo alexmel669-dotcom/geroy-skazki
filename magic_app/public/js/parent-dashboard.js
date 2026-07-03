@@ -4,6 +4,7 @@ import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName,
 import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDaysRemaining, resetDailyCounters } from './core.js';
 import { getGameProgressSummary, loadGameProgress } from './game-progress.js';
 import { getChildGender, guessGenderFromName, chattedPast, pickByGender } from './gender.js';
+import { getCorrectNameForm } from './grammar.js';
 
 let pinAttempts = 0;
 let pinLockedUntil = 0;
@@ -224,6 +225,85 @@ function generateGameReportLines(childName, gender) {
   return lines;
 }
 
+function getWeekDialogs(childName) {
+  const key = childName ? `stats_${childName}` : 'stats_guest';
+  const stats = safeParseJSON(localStorage.getItem(key), {}) || {};
+  const history = stats.history || [];
+  const weekAgo = Date.now() - 7 * 86400000;
+  return history
+    .filter((h) => new Date(h.timestamp || 0).getTime() > weekAgo)
+    .filter((h) => h.role === 'child' || h.role === 'user')
+    .map((h) => ({ question: h.text || '', mood: h.mood }));
+}
+
+function getAverageMood(dialogs) {
+  if (!dialogs.length) return 'спокойное';
+  const moods = dialogs.map((d) => d.mood).filter(Boolean);
+  if (!moods.length) return 'спокойное';
+  const positive = moods.filter((m) => m === 'positive' || m === 'happy').length;
+  const concerned = moods.filter((m) => m === 'concerned' || m === 'anxious').length;
+  const sad = moods.filter((m) => m === 'sad' || m === 'negative').length;
+  if (concerned > 0) return 'тревожное';
+  if (sad > moods.length / 2) return 'грустное';
+  if (positive > moods.length / 2) return 'радостное';
+  return 'спокойное';
+}
+
+async function getWeekConcerns(childName) {
+  const concerns = [...(await loadConcernsFromServer())];
+  const key = childName ? `stats_${childName}` : 'stats_guest';
+  const stats = safeParseJSON(localStorage.getItem(key), {}) || {};
+  const history = stats.history || [];
+  const weekAgo = Date.now() - 7 * 86400000;
+  history
+    .filter((h) => new Date(h.timestamp || 0).getTime() > weekAgo)
+    .flatMap((h) => h.alertWords || [])
+    .filter(Boolean)
+    .forEach((w) => concerns.push(w));
+  return [...new Set(concerns)].slice(0, 10);
+}
+
+async function generateDetailedReport(childIndex = activeChild) {
+  const children = getChildren();
+  const child = children[childIndex] || children[0];
+  if (!child) return null;
+
+  const childName = child.name || child.childName;
+  const childGender = child.gender || child.childGender || 'male';
+  const nameForms = getCorrectNameForm(childName, childGender);
+
+  const dialogs = getWeekDialogs(childName);
+  const topics = dialogs.map((d) => d.question).join('; ');
+  const moodSummary = getAverageMood(dialogs);
+  const concerns = await getWeekConcerns(childName);
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        message: `Составь короткий голосовой отчёт для родителя.
+Ребёнок: ${childName} (дательный: ${nameForms.dat}).
+За неделю говорил(а) о: ${topics || 'разных вещах'}.
+Настроение: ${moodSummary}.
+${concerns.length > 0 ? 'Переживания: ' + concerns.join(', ') + '.' : ''}
+
+Формат: 3-4 предложения. Тёплый тон. Начни с обращения к родителю.`,
+        requestType: 'chat',
+        childName,
+        childAge: child.age,
+        childGender
+      })
+    });
+
+    const data = await res.json();
+    return data.reply || data.message || null;
+  } catch (e) {
+    console.warn('generateDetailedReport failed:', e);
+    return null;
+  }
+}
+
 function generateChildReportText(stats, childName, gender, multiChild) {
   const parts = [];
   if (multiChild) {
@@ -361,7 +441,24 @@ async function speakReport() {
       if (btn && multiChild) {
         btn.textContent = `🎤 ${i + 1}/${childrenStats.length}: ${childName}...`;
       }
-      const text = generateChildReportText(stats, childName, gender, multiChild);
+
+      const dialogs = getWeekDialogs(childName);
+      let text = null;
+      if (dialogs.length > 0) {
+        const childIdx = getChildren().findIndex((c) => c.name === childName);
+        text = await generateDetailedReport(childIdx >= 0 ? childIdx : activeChild);
+      }
+      if (!text) {
+        text = generateChildReportText(stats, childName, gender, multiChild);
+      } else if (multiChild) {
+        text = `Сейчас расскажу про ${childName}. ${text}`;
+      }
+
+      const gameLines = generateGameReportLines(childName, gender);
+      if (gameLines.length) {
+        text = `${text} ${gameLines.join(' ')}`;
+      }
+
       const ok = await playTextAsSpeech(text);
       if (!ok) throw new Error('tts_failed');
       if (i < childrenStats.length - 1) {
@@ -565,8 +662,16 @@ function renderMoodChart(history) {
   const container = document.getElementById('moodChart');
   if (!container) return;
 
+  const moodMap = {
+    happy: { text: 'Радостное', emoji: '😊', color: '#4CAF50' },
+    neutral: { text: 'Спокойное', emoji: '😐', color: '#FFC107' },
+    sad: { text: 'Грустное', emoji: '😢', color: '#2196F3' },
+    anxious: { text: 'Тревожное', emoji: '😟', color: '#9C27B0' },
+    excited: { text: 'Весёлое', emoji: '🤩', color: '#FF9800' },
+    tired: { text: 'Уставшее', emoji: '😴', color: '#607D8B' }
+  };
+
   const dayLabels = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-  const moodEmoji = { happy: '🟢', neutral: '🟡', sad: '🔵', anxious: '🟣' };
   const today = new Date();
   const moodData = [];
 
@@ -578,13 +683,19 @@ function renderMoodChart(history) {
       .filter((h) => h.timestamp && new Date(h.timestamp).toDateString() === key)
       .map((h) => h.mood)
       .filter(Boolean);
-    const mood = mapHistoryMood(dayMoods);
-    moodData.push({ day: dayLabels[d.getDay()], mood });
+    moodData.push({ day: dayLabels[d.getDay()], mood: mapHistoryMood(dayMoods) });
   }
 
-  container.innerHTML = moodData.map(({ day, mood }) =>
-    `<span title="${day}: ${mood}" style="font-size:28px;">${moodEmoji[mood] || '⚪'}</span>`
-  ).join(' ');
+  container.innerHTML = moodData.map(({ day, mood }) => {
+    const m = moodMap[mood] || moodMap.neutral;
+    return `
+      <div class="mood-day" style="color: ${m.color}">
+        <div class="mood-emoji">${m.emoji}</div>
+        <div class="mood-text">${m.text}</div>
+        <div class="mood-day-name">${day}</div>
+      </div>
+    `;
+  }).join('');
 }
 
 let currentChildIndex = parseInt(localStorage.getItem('activeChildIndex') ?? '-1', 10);
