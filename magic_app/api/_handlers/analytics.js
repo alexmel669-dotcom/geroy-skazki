@@ -24,7 +24,7 @@ async function sendAdminAlert(errors) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Люцик <lucik@geroy-skazki.ru>',
+        from: 'Люцик <lucik.geroy.skazki@gmail.com>',
         to: [adminEmail],
         subject: `[Герой Сказок] Критическая ошибка клиента`,
         html: `<p>Зафиксировано ${errors.length} критических ошибок:</p><ul>${summary}</ul>`

@@ -13,7 +13,7 @@ async function sendViaResend({ to, subject, html }) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'Люцик <lucik@geroy-skazki.ru>',
+      from: 'Люцик <lucik.geroy.skazki@gmail.com>',
       to: [to],
       subject,
       html
