@@ -59,7 +59,7 @@
           <label><input type="radio" name="child1Gender" value="female" checked> <img src="assets/images/kid1.svg" data-avatar="kid1" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Девочка</label>
           <label><input type="radio" name="child1Gender" value="male"> <img src="assets/images/kid2.svg" data-avatar="kid2" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Мальчик</label>
         </div>
-        <input type="date" id="birthday" style="margin-top:8px;width:100%;">
+        <input type="date" id="child1Birthday" style="margin-top:8px;width:100%;" placeholder="День рождения">
       </div>
       
       <!-- Ребёнок 2 (опционально) -->
@@ -73,6 +73,7 @@
           <label><input type="radio" name="child2Gender" value="female" checked> <img src="assets/images/kid1.svg" data-avatar="kid1" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Девочка</label>
           <label><input type="radio" name="child2Gender" value="male"> <img src="assets/images/kid2.svg" data-avatar="kid2" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Мальчик</label>
         </div>
+        <input type="date" id="child2Birthday" style="margin-top:8px;width:100%;">
       </div>
       
       <!-- Ребёнок 3 (опционально) -->
@@ -86,7 +87,7 @@
           <label><input type="radio" name="child3Gender" value="female" checked> <img src="assets/images/kid1.svg" data-avatar="kid1" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Девочка</label>
           <label><input type="radio" name="child3Gender" value="male"> <img src="assets/images/kid2.svg" data-avatar="kid2" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Мальчик</label>
         </div>
-      </div>
+        <input type="date" id="child3Birthday" style="margin-top:8px;width:100%;">
       
       <button type="submit" class="auth-btn">Зарегистрироваться</button>
     </form>
@@ -131,7 +132,18 @@
     }
   });
   function getChildGender(index) {
-    return document.querySelector(`input[name="child${index}Gender"]:checked`)?.value || 'male';
+    return document.querySelector(`input[name="child${index}Gender"]:checked`)?.value || 'female';
+  }
+
+  function getAgeFromBirthday(birthday) {
+    if (!birthday) return null;
+    const today = new Date();
+    const birth = new Date(birthday);
+    if (Number.isNaN(birth.getTime())) return null;
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
   }
 
   function saveChildrenToLocal(children) {
@@ -199,8 +211,14 @@
     for (let i = 1; i <= 3; i++) {
       const nameInput = document.getElementById(`child${i}Name`);
       const ageInput = document.getElementById(`child${i}Age`);
+      const birthdayInput = document.getElementById(`child${i}Birthday`);
       const name = nameInput ? nameInput.value.trim() : '';
-      const age = ageInput ? parseInt(ageInput.value) || 0 : 0;
+      const birthday = birthdayInput?.value || null;
+      let age = ageInput ? parseInt(ageInput.value) || 0 : 0;
+      if (birthday) {
+        const fromBday = getAgeFromBirthday(birthday);
+        if (fromBday != null) age = fromBday;
+      }
       
       if (i === 1 && !name) {
         errorDiv.textContent = 'Укажите имя первого ребёнка';
@@ -215,7 +233,7 @@
         if (age && (age < 3 || age > 14)) {
           invalidAge = true;
         }
-        children.push({ name, age: age || 5, gender, avatar, avatarRole, index: i - 1 });
+        children.push({ name, age: age || 5, gender, avatar, avatarRole, birthday, index: i - 1 });
       }
     }
 
@@ -265,13 +283,12 @@
         if (data.user?.role) localStorage.setItem('userRole', data.user.role);
         if (data.user?.parentName) localStorage.setItem('parentName', data.user.parentName);
         const savedChildren = data.user?.children?.length ? data.user.children : children;
-        const birthday = document.getElementById('birthday')?.value || null;
-        if (birthday && savedChildren[0]) savedChildren[0].birthday = birthday;
         saveChildrenToLocal(savedChildren);
+        const first = savedChildren[0];
         localStorage.setItem('geroy-user', JSON.stringify({
-          childName: savedChildren[0]?.name,
-          childAge: savedChildren[0]?.age,
-          birthday
+          childName: first?.name,
+          childAge: first?.age,
+          birthday: first?.birthday || null
         }));
         window.location.href = '/app.html';
       } else {

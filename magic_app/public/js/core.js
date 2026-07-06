@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.3.17
+// v5.4.0
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -931,6 +931,7 @@ function normalizeChildRecord(child) {
   const gender = resolveChildGenderExplicit(child);
   const avatarRole = gender === 'male' ? 'kid2' : gender === 'female' ? 'kid1' : (child.avatarRole || 'lucik');
   const out = { ...child, avatarRole, avatar: `${avatarRole}.svg` };
+  if (child.birthday) out.birthday = child.birthday;
   if (gender !== 'unknown') out.gender = gender;
   return out;
 }
@@ -1227,12 +1228,38 @@ export function updateFeedButton() {
 }
 
 export function feedLucik() {
+  performFeedLucik();
+}
+
+function spawnCrumbs(element) {
+  if (!element) return;
+  const rect = element.getBoundingClientRect();
+  for (let i = 0; i < 8; i++) {
+    const crumb = document.createElement('div');
+    crumb.textContent = '🍪';
+    const dx = Math.random() * 60 - 30;
+    const rot = Math.random() * 360;
+    const dur = 0.5 + Math.random();
+    crumb.style.cssText = `position:fixed;left:${rect.left + rect.width / 2}px;top:${rect.top + rect.height / 2}px;font-size:12px;z-index:2000;pointer-events:none;animation:crumbFall ${dur}s ease-out forwards;--crumb-dx:${dx}px;--crumb-rot:${rot}deg;`;
+    document.body.appendChild(crumb);
+    setTimeout(() => crumb.remove(), 1500);
+  }
+}
+
+export function performFeedLucik() {
   const avatar = document.getElementById('avatar');
   avatar?.classList.add('avatar-eating');
+  spawnCrumbs(avatar);
+
+  const stats = getChildStats();
+  onFeed(stats);
+  saveChildStats(stats);
+  animateStat('hungerFill', getTamagotchi(stats).hunger);
+  animateStat('moodFill', getTamagotchi(stats).mood);
+  trackEvent('feed', getActiveChildName());
 
   localStorage.setItem('geroy-last-fed', new Date().toISOString());
   updateFeedButton();
-
   window.ttsEngine?.speak('Ням-ням! Спасибо, очень вкусно!');
 
   setTimeout(() => {
@@ -1240,15 +1267,6 @@ export function feedLucik() {
     avatar?.classList.add('avatar-happy');
     setTimeout(() => avatar?.classList.remove('avatar-happy'), 2000);
   }, 2000);
-}
-
-export function performFeedLucik() {
-  const stats = getChildStats();
-  onFeed(stats);
-  saveChildStats(stats);
-  animateStat('hungerFill', getTamagotchi(stats).hunger);
-  animateStat('moodFill', getTamagotchi(stats).mood);
-  trackEvent('feed', getActiveChildName());
 }
 
 export function performCleanLucikRoom() {

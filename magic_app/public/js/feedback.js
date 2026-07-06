@@ -37,10 +37,10 @@ async function submitFeedback() {
   }
   
   try {
-    const res = await fetch('/api/feedback', {
+    const res = await fetch('/api/feedbacks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, role, rating: feedbackRating, text })
+      body: JSON.stringify({ name, role, rating: feedbackRating || 5, text })
     });
     
     if (res.ok) {

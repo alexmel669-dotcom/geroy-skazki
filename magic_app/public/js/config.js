@@ -6,7 +6,8 @@ export const PROMOCODES = {
   TESTER2026: { plan: 'basic', days: 30 },
   FAMILYTEST: { plan: 'family', days: 14 },
   PSYCHOLOGIST: { plan: 'basic', days: 90 },
-  FRIENDLYCAT: { plan: 'basic', days: 7 }
+  FRIENDLYCAT: { plan: 'basic', days: 7 },
+  FOUNDERS: { plan: 'basic', days: 30 }
 };
 
 const AVATAR_FILES = { lucik: 'avatar', mom: 'mom', dad: 'dad', kid1: 'kid1', kid2: 'kid2' };
@@ -78,7 +79,7 @@ export function avatarImgHtml(role, size = 36, className = 'child-chip-avatar') 
 }
 
 export const CONFIG = {
-  APP_VERSION: '5.3.17',
+  APP_VERSION: '5.4.0',
   MAX_HISTORY: 50,
   MAX_LOCAL_STORAGE_SIZE: 5 * 1024 * 1024,
   AUDIO_TIMEOUT: 10000,

@@ -167,19 +167,40 @@ function renderFeedbacks(feedbacks) {
   const tbody = document.querySelector('#feedbacksTable tbody');
   if (!tbody) return;
   if (!feedbacks?.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">Отзывов пока нет</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Отзывов пока нет</td></tr>';
     return;
   }
-  tbody.innerHTML = feedbacks.map((f) => `
+  tbody.innerHTML = feedbacks.map((f, i) => `
     <tr>
-      <td>${escapeHtml(new Date(f.timestamp || f.createdAt || Date.now()).toLocaleString('ru-RU'))}</td>
+      <td>${escapeHtml(new Date(f.timestamp || f.date || f.createdAt || Date.now()).toLocaleString('ru-RU'))}</td>
       <td>${'⭐'.repeat(Math.min(5, Math.max(1, f.rating || 5)))}</td>
-      <td>${escapeHtml((f.text || '—').slice(0, 120))}</td>
+      <td>${escapeHtml((f.text || '—').slice(0, 120))}${f.adminReply ? `<br><small>💬 ${escapeHtml(f.adminReply)}</small>` : ''}</td>
       <td>${escapeHtml(f.page || '—')}</td>
-      <td>${escapeHtml(f.email || 'guest')}</td>
+      <td>${escapeHtml(f.name || f.email || 'guest')}</td>
+      <td><button type="button" class="modal-btn" style="padding:4px 8px;font-size:0.75rem;" onclick="replyToFeedback(${i})">Ответить</button></td>
     </tr>
   `).join('');
 }
+
+async function replyToFeedback(index) {
+  const reply = prompt('Ваш ответ:');
+  if (!reply) return;
+  try {
+    await fetch('/api/admin/feedback-reply', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: getAdminToken()
+      },
+      body: JSON.stringify({ index, reply })
+    });
+    loadAdminStats();
+  } catch (e) {
+    console.error('Reply error:', e);
+  }
+}
+
+window.replyToFeedback = replyToFeedback;
 
 async function loadThanks() {
   try {

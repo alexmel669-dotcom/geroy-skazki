@@ -108,10 +108,7 @@ try {
         showGamesMenu();
       }
     };
-    window.feedLucik = () => {
-      performFeedLucik();
-      feedLucik();
-    };
+    window.feedLucik = () => performFeedLucik();
     window.showLucikHouse = () => {
       performCleanLucikRoom();
       showLucikHouse();

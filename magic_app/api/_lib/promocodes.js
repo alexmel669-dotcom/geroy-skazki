@@ -3,7 +3,8 @@ export const PROMOCODES = {
   TESTER2026: { plan: 'basic', days: 30 },
   FAMILYTEST: { plan: 'family', days: 14 },
   PSYCHOLOGIST: { plan: 'basic', days: 90 },
-  FRIENDLYCAT: { plan: 'basic', days: 7 }
+  FRIENDLYCAT: { plan: 'basic', days: 7 },
+  FOUNDERS: { plan: 'basic', days: 30 }
 };
 
 export function validatePromocode(code) {

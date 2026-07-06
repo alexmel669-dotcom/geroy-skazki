@@ -17,7 +17,8 @@ export default async function handler(req, res) {
   try {
     const profile = await findUser(user.email);
     const concerns = req.body?.concerns || profile?.concerns || [];
-    const childAge = req.body?.childAge ?? profile?.childAge ?? 7;
+    const childName = req.body?.childName || profile?.children?.[0]?.name || profile?.childName || 'ребёнок';
+    const childAge = req.body?.childAge ?? profile?.children?.[0]?.age ?? profile?.childAge ?? 7;
 
     if (!concerns.length) {
       return res.status(400).json({ error: 'No concerns to analyze' });
@@ -34,6 +35,7 @@ export default async function handler(req, res) {
 
     const systemPrompt = `Ты — деликатный детский психолог-консультант для родителей.
 Родитель получил от ИИ-помощника информацию о возможных беспокойствах ребёнка.
+Ребёнок: ${childName}
 Темы: ${topics}
 Возраст ребёнка: ${childAge} лет.
 

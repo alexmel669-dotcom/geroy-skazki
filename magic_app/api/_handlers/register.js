@@ -17,17 +17,31 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@geroy-skazki.local')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
+function getAgeFromBirthday(birthday) {
+  if (!birthday) return null;
+  const today = new Date();
+  const birth = new Date(birthday);
+  if (Number.isNaN(birth.getTime())) return null;
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
 function normalizeChildren(children) {
   if (!Array.isArray(children)) return [];
   return children.slice(0, 3).map((child, index) => {
     const gender = child.gender === 'female' ? 'female' : 'male';
     const avatarRole = gender === 'male' ? 'kid2' : 'kid1';
     const avatar = gender === 'male' ? 'kid2.svg' : 'kid1.svg';
-    const age = Math.min(MAX_AGE, Math.max(MIN_AGE, parseInt(child.age, 10) || 5));
+    const birthday = child.birthday || null;
+    const ageFromBirthday = getAgeFromBirthday(birthday);
+    const age = Math.min(MAX_AGE, Math.max(MIN_AGE, ageFromBirthday ?? parseInt(child.age, 10) || 5));
     return {
       name: String(child.name || '').trim(),
       age,
       gender,
+      birthday,
       avatar,
       avatarRole,
       index

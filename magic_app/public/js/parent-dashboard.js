@@ -4,7 +4,34 @@ import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName,
 import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDaysRemaining, resetDailyCounters } from './core.js';
 import { getGameProgressSummary, loadGameProgress } from './game-progress.js';
 import { getChildGender, guessGenderFromName, chattedPast, pickByGender } from './gender.js';
-import { getCorrectNameForm } from './grammar.js';
+import { getCorrectNameForm, getAgeWord } from './grammar.js';
+
+function getAgeFromBirthday(birthday) {
+  if (!birthday) return null;
+  const today = new Date();
+  const birth = new Date(birthday);
+  if (Number.isNaN(birth.getTime())) return null;
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
+function updateChildInfo(child) {
+  const birthdayEl = document.getElementById('childBirthday');
+  const ageEl = document.getElementById('childAge');
+  if (!birthdayEl || !ageEl) return;
+  if (!child) {
+    birthdayEl.textContent = '-';
+    ageEl.textContent = '-';
+    return;
+  }
+  const birthday = child.birthday || '-';
+  const ageNum = child.birthday ? getAgeFromBirthday(child.birthday) : (child.age ?? null);
+  const ageWord = ageNum ? getAgeWord(ageNum) : '';
+  birthdayEl.textContent = birthday !== '-' ? birthday : '-';
+  ageEl.textContent = ageNum ? `${ageNum} ${ageWord}` : (child.age ? `${child.age} ${getAgeWord(child.age)}` : '-');
+}
 
 let pinAttempts = 0;
 let pinLockedUntil = 0;
@@ -753,6 +780,8 @@ function loadChildStats(index) {
       ? `${child.name}, ${child.age} лет`
       : 'Гость — общая статистика';
   }
+  updateChildInfo(child);
+  checkConcerns(child);
 
   const statsContainer = document.getElementById('statsContainer');
   if (statsContainer) {
@@ -1074,6 +1103,7 @@ async function loadConcernsFromServer() {
 
 async function renderPsychologistBlock() {
   const concerns = await loadConcernsFromServer();
+  checkConcerns(null, concerns);
   const block = document.getElementById('psychologistBlock');
   if (!block) return;
   if (!concerns.length) {
@@ -1087,32 +1117,59 @@ async function renderPsychologistBlock() {
   if (!btn || btn.dataset.bound) return;
   btn.dataset.bound = '1';
 
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
-    btn.textContent = 'Готовим рекомендации...';
-    try {
-      const childAge = parseInt(localStorage.getItem('profileChildAge') || '7', 10);
-      const res = await fetch('/api/psychologist-help', {
-        method: 'POST',
-        credentials: 'include',
-        headers: authHeaders(),
-        body: JSON.stringify({ concerns, childAge })
-      });
-      const data = await res.json();
-      if (adviceEl && data.advice) {
-        adviceEl.textContent = data.advice;
-        adviceEl.style.display = 'block';
-      }
-    } catch {
-      if (adviceEl) {
-        adviceEl.textContent = 'Не удалось загрузить рекомендации. Попробуйте позже.';
-        adviceEl.style.display = 'block';
-      }
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Получить рекомендации';
+  btn.addEventListener('click', () => getPsychologistHelp());
+}
+
+function checkConcerns(child, concernsOverride) {
+  const block = document.getElementById('psychologistBlock');
+  if (!block) return;
+  const concerns = concernsOverride || safeParseJSON(localStorage.getItem('parentConcerns'), []) || [];
+  if (concerns.length > 0 || child?.concerns?.length > 0) {
+    block.style.display = 'block';
+  }
+}
+
+async function getPsychologistHelp() {
+  const children = getChildren();
+  const child = children[activeChild] || children[0] || null;
+  const concerns = await loadConcernsFromServer();
+  const adviceEl = document.getElementById('psychologistAdvice');
+  const block = document.getElementById('psychologistBlock');
+
+  if (!concerns.length) {
+    if (adviceEl) {
+      adviceEl.innerHTML = '<p>Пока нет данных. Продолжайте общение с Люциком.</p>';
+      adviceEl.style.display = 'block';
     }
-  });
+    return;
+  }
+
+  if (adviceEl) {
+    adviceEl.innerHTML = '<p>⏳ Готовлю рекомендации...</p>';
+    adviceEl.style.display = 'block';
+  }
+  if (block) block.style.display = 'block';
+
+  try {
+    const res = await fetch('/api/psychologist-help', {
+      method: 'POST',
+      credentials: 'include',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        childName: child?.name || child?.childName,
+        childAge: child?.age || child?.childAge || 7,
+        concerns
+      })
+    });
+    const data = await res.json();
+    if (adviceEl && data.advice) {
+      adviceEl.innerHTML = `<p>${data.advice.replace(/\n/g, '<br>')}</p>`;
+    }
+  } catch {
+    if (adviceEl) {
+      adviceEl.innerHTML = '<p>Не удалось загрузить рекомендации. Попробуйте позже.</p>';
+    }
+  }
 }
 
 function loadAllData() {

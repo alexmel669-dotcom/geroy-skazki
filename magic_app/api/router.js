@@ -34,6 +34,8 @@ import resetPassword from './_handlers/reset-password.js';
 import leaderboard from './_handlers/leaderboard.js';
 import notifyCreator from './_handlers/notify-creator.js';
 import adminThanks from './_handlers/admin-thanks.js';
+import feedbacks from './_handlers/feedbacks.js';
+import adminFeedbackReply from './_handlers/admin-feedback-reply.js';
 
 
 
@@ -62,6 +64,8 @@ const ROUTES = {
   health: analytics,
 
   'admin/stats': adminStats,
+
+  'admin-stats': adminStats,
 
   'admin/full-stats': adminFullStats,
 
@@ -97,7 +101,11 @@ const ROUTES = {
 
   'notify-creator': notifyCreator,
 
-  'admin-thanks': adminThanks
+  'admin-thanks': adminThanks,
+
+  feedbacks,
+
+  'admin/feedback-reply': adminFeedbackReply
 
 };
 

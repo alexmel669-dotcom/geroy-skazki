@@ -16,9 +16,21 @@
 <body>
 <div class="container landing">
   <div class="landing-hero">
-    <img src="assets/images/avatar.svg" data-avatar="lucik" alt="Люцик" class="landing-hero-img" width="110" height="110" style="border-radius:50%; border:4px solid rgba(255,255,255,0.25); box-shadow:0 10px 35px rgba(0,0,0,0.5);">
-    <h1>Герой Сказок — твой волшебный друг</h1>
-    <p class="landing-subtitle">Люцик говорит с ребёнком голосом, помогает справляться со страхами и играет в игры</p>
+    <img src="assets/images/avatar.svg" data-avatar="lucik" alt="Люцик" class="landing-hero-img" width="110" height="110">
+    <h1>Герой Сказок</h1>
+    <p class="hero-subtitle">Первый в мире ИИ-кот, который помогает детям справляться со страхами</p>
+
+    <div class="hero-badge">
+      <span class="badge-new">🚀 Новый стартап</span>
+      <span class="badge-launch">Старт: июнь 2026</span>
+    </div>
+
+    <div class="counter-box">
+      <div class="counter" id="userCount">...</div>
+      <div class="counter-label">детей уже общаются с Люциком</div>
+    </div>
+
+    <p class="hero-cta-text">🎁 Бонус для первых 1000: <strong>Premium 30 дней</strong> по коду <code>FOUNDERS</code></p>
   </div>
 
   <div class="landing-btns">
@@ -26,6 +38,16 @@
     <a href="register.html" class="btn btn-secondary">✨ Попробовать бесплатно</a>
     <a href="pricing.html" class="btn btn-accent">💎 Тарифы</a>
     <a href="#" class="btn btn-secondary" id="feedbackLandingBtn">💬 Оставить отзыв</a>
+  </div>
+
+  <div class="about-startup">
+    <h3>💡 Что такое «Герой Сказок»</h3>
+    <div class="startup-stats">
+      <div><span class="stat-number">12</span><span class="stat-label">игр</span></div>
+      <div><span class="stat-number">5</span><span class="stat-label">персонажей</span></div>
+      <div><span class="stat-number">24/7</span><span class="stat-label">доступен</span></div>
+      <div><span class="stat-number">0₽</span><span class="stat-label">бесплатный</span></div>
+    </div>
   </div>
 
   <section class="features">
@@ -156,39 +178,8 @@
   </section>
 
   <section class="testimonials">
-    <h2>Что говорят родители и дети</h2>
-    <div class="testimonials-grid">
-      <div class="testimonial-card">
-        <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
-        <p class="testimonial-text">«Сыну 6 лет, боялся темноты. Через две недели с Люциком стал спокойнее засыпать. Теперь сам просит "поговорить с котиком" перед сном. Спасибо разработчикам!»</p>
-        <div class="testimonial-author"><strong>Анна</strong>, мама Миши (6 лет)</div>
-      </div>
-      <div class="testimonial-card">
-        <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
-        <p class="testimonial-text">«Как детский психолог — рекомендую. Приложение не спрашивает "чего ты боишься?", а мягко выявляет тревоги через сказки. Бережный подход, который не навредит.»</p>
-        <div class="testimonial-author"><strong>Елена</strong>, детский психолог, стаж 12 лет</div>
-      </div>
-      <div class="testimonial-card">
-        <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
-        <p class="testimonial-text">«Дочке 4 года, плохо говорила. С Люциком стала больше разговаривать! Игры простые и понятные, а главное — никакой рекламы и опасного контента.»</p>
-        <div class="testimonial-author"><strong>Дмитрий</strong>, папа Алисы (4 года)</div>
-      </div>
-      <div class="testimonial-card">
-        <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
-        <p class="testimonial-text">«Люцик смешной! Я с ним играю в рыбалку и он знает, как меня зовут. А ещё он рассказывает сказки про драконов!»</p>
-        <div class="testimonial-author"><strong>Саша</strong>, 7 лет</div>
-      </div>
-      <div class="testimonial-card">
-        <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
-        <p class="testimonial-text">«У сына СДВГ, обычные приложения не удерживают внимание. А тут — голосовое общение, игры, смена персонажей. Занимается по 20 минут сам!»</p>
-        <div class="testimonial-author"><strong>Марина</strong>, мама Артёма (9 лет)</div>
-      </div>
-      <div class="testimonial-card">
-        <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
-        <p class="testimonial-text">«Бабушка я. Внуки 5 и 8 лет — оба в восторге. Старший в квесты играет, младшая с Люциком болтает. Удобно, что можно переключать возраст.»</p>
-        <div class="testimonial-author"><strong>Татьяна Петровна</strong>, бабушка</div>
-      </div>
-    </div>
+    <h2>💬 Что говорят родители</h2>
+    <div id="testimonialsList" class="testimonials-grid"></div>
   </section>
 
   <section class="for-whom">
@@ -251,6 +242,31 @@
     </div>
   </div>
 
+  <section class="faq">
+    <h2>📋 Частые вопросы</h2>
+
+    <div class="faq-item">
+      <h3>С какого возраста?</h3>
+      <p>От 3 до 14 лет. Для маленьких — сказки и простые игры. Для подростков — свой сленг и персонажи.</p>
+    </div>
+    <div class="faq-item">
+      <h3>Безопасно ли?</h3>
+      <p>Да. Аудио не хранятся. Данные шифруются. Нет рекламы. Кабинет родителя под PIN-кодом.</p>
+    </div>
+    <div class="faq-item">
+      <h3>Сколько стоит?</h3>
+      <p>Бесплатный тариф: безлимитное общение + 3 сказки/день. Premium: 299₽/мес, Семейный: 499₽/мес.</p>
+    </div>
+    <div class="faq-item">
+      <h3>Как установить на телефон?</h3>
+      <p>Откройте сайт в браузере, нажмите «Установить» или «Добавить на экран». Работает как приложение.</p>
+    </div>
+    <div class="faq-item">
+      <h3>Чем отличается?</h3>
+      <p>Люцик — это друг, который мягко помогает справляться со страхами через сказки. Родители видят статистику настроения.</p>
+    </div>
+  </section>
+
   <footer class="landing-footer">
     <a href="privacy.html">Конфиденциальность</a>
     <a href="terms.html">Пользовательское соглашение</a>
@@ -291,6 +307,37 @@
     e.preventDefault();
     openFeedbackModal();
   });
+
+  fetch('/api/admin-stats?public=1')
+    .then((r) => r.json())
+    .then((d) => {
+      const count = d.total || 0;
+      const el = document.getElementById('userCount');
+      if (el) el.textContent = count > 0 ? count : 'Мы только запустились!';
+    })
+    .catch(() => {
+      const el = document.getElementById('userCount');
+      if (el) el.textContent = 'Мы только запустились!';
+    });
+
+  fetch('/api/feedbacks?public=1')
+    .then((r) => r.json())
+    .then((feedbacks) => {
+      const list = document.getElementById('testimonialsList');
+      if (!list) return;
+      const items = Array.isArray(feedbacks) ? feedbacks : [];
+      list.innerHTML = items.length
+        ? items.map((f) => `
+          <div class="testimonial-card">
+            <div class="testimonial-stars">${'⭐'.repeat(f.rating || 5)}</div>
+            <p class="testimonial-text">«${(f.text || '').replace(/</g, '&lt;')}»</p>
+            <div class="testimonial-author">— ${(f.name || 'Аноним').replace(/</g, '&lt;')}</div>
+            ${f.adminReply ? `<div class="admin-reply">💬 ${f.adminReply.replace(/</g, '&lt;')}</div>` : ''}
+          </div>
+        `).join('')
+        : '<p class="empty-state">Станьте первым, кто оставит отзыв!</p>';
+    })
+    .catch(() => {});
 </script>
 </body>
 </html>

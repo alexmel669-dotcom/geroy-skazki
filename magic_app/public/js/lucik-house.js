@@ -10,23 +10,64 @@ export function getDirtEmoji(level) {
   return emojis[level] || '👾';
 }
 
+function clearDirtDecor(roomEl) {
+  roomEl?.querySelectorAll('.spider-web, .dust-particles').forEach((el) => el.remove());
+}
+
+function addSpiderWeb(container) {
+  if (!container || container.querySelector('.spider-web')) return;
+  const web = document.createElement('div');
+  web.className = 'spider-web';
+  web.innerHTML = '🕸️';
+  web.style.cssText = 'position:absolute;top:5px;right:5px;font-size:28px;opacity:0.5;z-index:10;pointer-events:none;';
+  container.appendChild(web);
+}
+
+function addDust(container) {
+  if (!container || container.querySelector('.dust-particles')) return;
+  const dust = document.createElement('div');
+  dust.className = 'dust-particles';
+  dust.innerHTML = '💨';
+  dust.style.cssText = 'position:absolute;bottom:15px;left:15px;font-size:22px;opacity:0.4;z-index:10;animation:float 3s ease-in-out infinite;pointer-events:none;';
+  container.appendChild(dust);
+}
+
+function applyDirtToRoom(room, level) {
+  if (!room) return;
+  room.style.position = 'relative';
+  clearDirtDecor(room);
+
+  switch (level) {
+    case 0:
+      room.style.filter = 'none';
+      room.style.opacity = '1';
+      break;
+    case 1:
+      room.style.filter = 'brightness(0.95) saturate(0.9)';
+      room.style.opacity = '1';
+      break;
+    case 2:
+      room.style.filter = 'brightness(0.85) saturate(0.7) sepia(0.2)';
+      room.style.opacity = '1';
+      addSpiderWeb(room);
+      break;
+    case 3:
+      room.style.filter = 'brightness(0.75) saturate(0.5) sepia(0.4)';
+      room.style.opacity = '1';
+      addSpiderWeb(room);
+      addDust(room);
+      break;
+    default:
+      room.style.filter = 'brightness(0.65) saturate(0.4) sepia(0.5)';
+      room.style.opacity = '1';
+      addSpiderWeb(room);
+      addDust(room);
+  }
+}
+
 export function applyHouseDirtVisual(roomEl, level = getHouseDirtLevel()) {
-  if (!roomEl) return;
-  if (level <= 0) {
-    roomEl.style.filter = 'none';
-    roomEl.style.opacity = '1';
-    return;
-  }
-  if (level >= 4) {
-    roomEl.style.filter = 'sepia(0.5) blur(1px)';
-    roomEl.style.opacity = '0.7';
-  } else if (level >= 2) {
-    roomEl.style.filter = 'sepia(0.35)';
-    roomEl.style.opacity = '0.85';
-  } else {
-    roomEl.style.filter = 'sepia(0.15)';
-    roomEl.style.opacity = '1';
-  }
+  const room = roomEl || document.getElementById('houseRoom');
+  applyDirtToRoom(room, level);
 }
 
 export function updateHouseButton() {
@@ -55,10 +96,7 @@ export function cleanHouse() {
   updateHouseButton();
 
   const room = document.getElementById('houseRoom');
-  if (room) {
-    room.style.filter = 'none';
-    room.style.opacity = '1';
-  }
+  if (room) applyDirtToRoom(room, 0);
 
   window.ttsEngine?.speak('Как чисто! Какой порядок! Молодец!');
 }

@@ -230,6 +230,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Метод не разрешён' });
   }
 
+  const query = new URL(req.url || '', 'http://localhost').searchParams;
+  if (query.get('public') === '1') {
+    try {
+      const users = await getAllUsers();
+      return res.status(200).json({ total: Object.keys(users).length });
+    } catch (error) {
+      console.error('Public stats error:', error);
+      return res.status(200).json({ total: 0 });
+    }
+  }
+
   const admin = verifyAdmin(req);
   if (!admin) {
     return res.status(403).json({ error: 'Admin access required' });

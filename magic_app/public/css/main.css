@@ -1867,6 +1867,152 @@ header {
   line-height: 1.25;
 }
 
+.landing-subtitle,
+.hero-subtitle {
+  opacity: 0.85;
+  font-size: 1rem;
+  line-height: 1.55;
+  margin: 0 auto 16px;
+  max-width: 520px;
+}
+
+.hero-badge {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+
+.badge-new,
+.badge-launch {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.counter-box {
+  margin: 20px auto;
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  max-width: 320px;
+}
+
+.counter {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #FFD700;
+}
+
+.counter-label {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  margin-top: 4px;
+}
+
+.hero-cta-text {
+  font-size: 0.95rem;
+  margin: 16px auto 0;
+  max-width: 480px;
+  opacity: 0.9;
+}
+
+.hero-cta-text code {
+  background: rgba(255, 215, 0, 0.25);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.about-startup {
+  margin: 32px auto;
+  padding: 24px;
+  max-width: 520px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+}
+
+.about-startup h3 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+}
+
+.startup-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.startup-stats .stat-number {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #FFD700;
+}
+
+.startup-stats .stat-label {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.faq {
+  padding: 60px 16px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.faq h2 {
+  text-align: center;
+  margin-bottom: 40px;
+  color: #fff;
+}
+
+.faq-item {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 12px;
+}
+
+.faq-item h3 {
+  color: #6C63FF;
+  margin-bottom: 8px;
+}
+
+.faq-item p {
+  color: #555;
+  line-height: 1.5;
+}
+
+.admin-reply {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(108, 99, 255, 0.15);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.child-birthday-line {
+  opacity: 0.8;
+  font-size: 0.9rem;
+  margin: 4px 0 16px;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes crumbFall {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--crumb-dx, 0), 60px) rotate(var(--crumb-rot, 180deg)); opacity: 0; }
+}
+
 .landing-subtitle {
   opacity: 0.85;
   font-size: 1rem;
