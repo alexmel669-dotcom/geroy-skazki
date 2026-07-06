@@ -1353,6 +1353,25 @@ header {
   min-width: 52px;
 }
 
+.dj-fx-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.dj-filter-slider {
+  margin-top: 12px;
+  text-align: center;
+  color: var(--game-gold);
+}
+
+.dj-filter-slider input[type="range"] {
+  width: 100%;
+  margin-bottom: 6px;
+  accent-color: #ffd700;
+}
+
 .game-theme-constellation .game-screen-bg {
   background: radial-gradient(ellipse at 50% 40%, rgba(123, 104, 238, 0.25), transparent 55%),
     linear-gradient(180deg, #050510 0%, #0d1b2a 50%, #1a0a2e 100%);

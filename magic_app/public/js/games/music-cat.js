@@ -31,6 +31,7 @@ class DJEngine {
     this.recording = [];
     this.isRecording = false;
     this.recordStart = 0;
+    this.filterOn = false;
   }
 
   _buildMasterBus() {
@@ -46,6 +47,17 @@ class DJEngine {
     reverbOut.gain.value = 0.4;
     this.reverb.connect(reverbOut);
 
+    this.delay = ctx.createDelay(1.0);
+    this.delay.delayTime.value = 0.3;
+    this.delayFeedback = ctx.createGain();
+    this.delayFeedback.gain.value = 0.4;
+    this.delaySend = ctx.createGain();
+    this.delaySend.gain.value = 0.32;
+    this.dryBus.connect(this.delaySend);
+    this.delaySend.connect(this.delay);
+    this.delay.connect(this.delayFeedback);
+    this.delayFeedback.connect(this.delay);
+
     this.compressor = ctx.createDynamicsCompressor();
     this.compressor.threshold.value = -30;
     this.compressor.knee.value = 40;
@@ -58,13 +70,19 @@ class DJEngine {
     this.distortion.oversample = '4x';
     this.distortion.connect(this.dryBus);
 
+    this.masterFilter = ctx.createBiquadFilter();
+    this.masterFilter.type = 'lowpass';
+    this.masterFilter.frequency.value = 20000;
+
     this.masterGain = ctx.createGain();
     this.masterGain.gain.value = 0.88;
 
     this.dryBus.connect(this.compressor);
     this.reverbSend.connect(this.reverb);
     reverbOut.connect(this.compressor);
-    this.compressor.connect(this.masterGain);
+    this.delay.connect(this.compressor);
+    this.compressor.connect(this.masterFilter);
+    this.masterFilter.connect(this.masterGain);
     this.masterGain.connect(ctx.destination);
   }
 
@@ -95,6 +113,93 @@ class DJEngine {
   _routeOutput(node) {
     node.connect(this.dryBus);
     node.connect(this.reverbSend);
+    node.connect(this.delaySend);
+  }
+
+  _recordFx(kind, extra = {}) {
+    if (!this.isRecording) return;
+    this.recording.push({
+      kind,
+      at: this.audioCtx.currentTime - this.recordStart,
+      ...extra
+    });
+  }
+
+  playScratch(atTime) {
+    this._resume();
+    const ctx = this.audioCtx;
+    const t = atTime ?? ctx.currentTime;
+    const len = Math.floor(ctx.sampleRate * 0.5);
+    const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
+
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = buffer;
+    source.playbackRate.setValueAtTime(1.5, t);
+    source.playbackRate.linearRampToValueAtTime(0.3, t + 0.3);
+    gain.gain.setValueAtTime(0.5, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    source.connect(gain);
+    this._routeOutput(gain);
+    source.start(t);
+    source.stop(t + 0.42);
+
+    if (atTime == null) this._recordFx('scratch');
+  }
+
+  playVocal(phrase) {
+    window.ttsEngine?.speak(phrase);
+    this._recordFx('vocal', { phrase });
+  }
+
+  playNoiseSweep(atTime) {
+    this._resume();
+    const ctx = this.audioCtx;
+    const t = atTime ?? ctx.currentTime;
+    const len = Math.floor(ctx.sampleRate * 2);
+    const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * 0.15;
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const hpFilter = ctx.createBiquadFilter();
+    hpFilter.type = 'highpass';
+    hpFilter.frequency.setValueAtTime(100, t);
+    hpFilter.frequency.linearRampToValueAtTime(8000, t + 2);
+    const lpFilter = ctx.createBiquadFilter();
+    lpFilter.type = 'lowpass';
+    lpFilter.frequency.setValueAtTime(8000, t);
+    lpFilter.frequency.linearRampToValueAtTime(200, t + 2);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 2);
+
+    source.connect(hpFilter);
+    hpFilter.connect(lpFilter);
+    lpFilter.connect(gain);
+    this._routeOutput(gain);
+    source.start(t);
+    source.stop(t + 2.05);
+
+    if (atTime == null) this._recordFx('noise');
+  }
+
+  setFilterFrequency(value) {
+    const freq = Math.max(100, Math.min(20000, Number(value) || 1000));
+    this.masterFilter.frequency.value = freq;
+  }
+
+  toggleFilter() {
+    this.filterOn = !this.filterOn;
+    if (this.filterOn) {
+      this.setFilterFrequency(1000);
+    } else {
+      this.masterFilter.frequency.value = 20000;
+    }
+    return this.filterOn;
   }
 
   async _resume() {
@@ -334,6 +439,9 @@ class DJEngine {
       if (ev.kind === 'note') this._scheduleNote(when, ev.freq, ev.duration);
       else if (ev.kind === 'bass') this.playBassAt(when, ev.index);
       else if (ev.kind === 'drum') this.playDrumAt(when, ev.type);
+      else if (ev.kind === 'scratch') this.playScratch(when);
+      else if (ev.kind === 'noise') this.playNoiseSweep(when);
+      else if (ev.kind === 'vocal' && ev.phrase) window.ttsEngine?.speak(ev.phrase);
     });
   }
 
@@ -466,6 +574,25 @@ export function startMusicCatGame(level) {
   });
   stage.appendChild(drumPanel);
 
+  const fxPanel = document.createElement('div');
+  fxPanel.className = 'dj-panel';
+  fxPanel.innerHTML = `
+    <h4>🎚️ Эффекты</h4>
+    <div class="dj-fx-grid">
+      <button type="button" class="dj-btn fx-btn" id="btnScratch">🎚️ Скрэтч</button>
+      <button type="button" class="dj-btn fx-btn" id="btnNoise">🌊 Разгон</button>
+      <button type="button" class="dj-btn fx-btn" id="btnYeah">🗣️ Yeah!</button>
+      <button type="button" class="dj-btn fx-btn" id="btnLetsGo">🗣️ Погнали!</button>
+      <button type="button" class="dj-btn fx-btn" id="btnDrop">🗣️ Дроп!</button>
+      <button type="button" class="dj-btn fx-btn" id="btnFilter">🎛️ Фильтр</button>
+    </div>
+    <div class="dj-filter-slider" style="display:none;">
+      <input type="range" id="filterFreq" min="100" max="20000" value="1000" step="100">
+      <span id="filterLabel">1000 Hz</span>
+    </div>
+  `;
+  stage.appendChild(fxPanel);
+
   const ctrl = document.createElement('div');
   ctrl.className = 'dj-panel dj-controls';
   ctrl.innerHTML = '<button type="button" class="dj-btn" id="btnRecord">🔴 Запись</button><button type="button" class="dj-btn" id="btnStop">⏹️ Стоп</button><button type="button" class="dj-btn" id="btnPlay">▶️ Играть</button><button type="button" class="dj-btn" id="btnDownload">💾 Скачать</button>';
@@ -480,6 +607,32 @@ export function startMusicCatGame(level) {
   };
   stage.querySelector('#btnPlay').onclick = () => dj.playRecording();
   stage.querySelector('#btnDownload').onclick = () => dj.downloadRecording();
+
+  stage.querySelector('#btnScratch').onclick = () => dj.playScratch();
+  stage.querySelector('#btnNoise').onclick = () => dj.playNoiseSweep();
+  stage.querySelector('#btnYeah').onclick = () => dj.playVocal('Йеа!');
+  stage.querySelector('#btnLetsGo').onclick = () => dj.playVocal('Погнали!');
+  stage.querySelector('#btnDrop').onclick = () => dj.playVocal('Дроп!');
+
+  const filterBtn = stage.querySelector('#btnFilter');
+  const filterSlider = stage.querySelector('.dj-filter-slider');
+  const filterFreq = stage.querySelector('#filterFreq');
+  const filterLabel = stage.querySelector('#filterLabel');
+
+  filterBtn.onclick = () => {
+    const active = dj.toggleFilter();
+    filterBtn.classList.toggle('active', active);
+    filterSlider.style.display = active ? 'block' : 'none';
+    if (active) {
+      dj.setFilterFrequency(filterFreq.value);
+      filterLabel.textContent = `${filterFreq.value} Hz`;
+    }
+  };
+
+  filterFreq.oninput = (e) => {
+    dj.setFilterFrequency(e.target.value);
+    filterLabel.textContent = `${e.target.value} Hz`;
+  };
 
   body.querySelector('.game-close-btn')?.addEventListener('click', () => {
     dj.dispose();
