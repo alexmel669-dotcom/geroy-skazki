@@ -36,7 +36,7 @@ function normalizeChildren(children) {
     const avatar = gender === 'male' ? 'kid2.svg' : 'kid1.svg';
     const birthday = child.birthday || null;
     const ageFromBirthday = getAgeFromBirthday(birthday);
-    const age = Math.min(MAX_AGE, Math.max(MIN_AGE, ageFromBirthday ?? parseInt(child.age, 10) || 5));
+    const age = Math.min(MAX_AGE, Math.max(MIN_AGE, ageFromBirthday ?? (parseInt(child.age, 10) || 5)));
     return {
       name: String(child.name || '').trim(),
       age,

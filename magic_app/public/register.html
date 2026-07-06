@@ -53,7 +53,6 @@
         <label>👶 Ребёнок 1 *</label>
         <div class="child-row">
           <input type="text" id="child1Name" placeholder="Имя" required>
-          <input type="number" id="child1Age" class="age-input" placeholder="Возраст" min="3" max="14" required>
         </div>
         <div class="gender-row">
           <label><input type="radio" name="child1Gender" value="female" checked> <img src="assets/images/kid1.svg" data-avatar="kid1" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Девочка</label>
@@ -67,7 +66,6 @@
         <label>👶 Ребёнок 2 (необязательно)</label>
         <div class="child-row">
           <input type="text" id="child2Name" placeholder="Имя">
-          <input type="number" id="child2Age" class="age-input" placeholder="Возраст" min="3" max="14">
         </div>
         <div class="gender-row">
           <label><input type="radio" name="child2Gender" value="female" checked> <img src="assets/images/kid1.svg" data-avatar="kid1" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Девочка</label>
@@ -81,13 +79,13 @@
         <label>👶 Ребёнок 3 (необязательно)</label>
         <div class="child-row">
           <input type="text" id="child3Name" placeholder="Имя">
-          <input type="number" id="child3Age" class="age-input" placeholder="Возраст" min="3" max="14">
         </div>
         <div class="gender-row">
           <label><input type="radio" name="child3Gender" value="female" checked> <img src="assets/images/kid1.svg" data-avatar="kid1" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Девочка</label>
           <label><input type="radio" name="child3Gender" value="male"> <img src="assets/images/kid2.svg" data-avatar="kid2" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Мальчик</label>
         </div>
         <input type="date" id="child3Birthday" style="margin-top:8px;width:100%;">
+      </div>
       
       <button type="submit" class="auth-btn">Зарегистрироваться</button>
     </form>
@@ -210,27 +208,33 @@
     let invalidAge = false;
     for (let i = 1; i <= 3; i++) {
       const nameInput = document.getElementById(`child${i}Name`);
-      const ageInput = document.getElementById(`child${i}Age`);
       const birthdayInput = document.getElementById(`child${i}Birthday`);
       const name = nameInput ? nameInput.value.trim() : '';
       const birthday = birthdayInput?.value || null;
-      let age = ageInput ? parseInt(ageInput.value) || 0 : 0;
-      if (birthday) {
-        const fromBday = getAgeFromBirthday(birthday);
-        if (fromBday != null) age = fromBday;
-      }
+      const age = birthday ? getAgeFromBirthday(birthday) : null;
       
       if (i === 1 && !name) {
         errorDiv.textContent = 'Укажите имя первого ребёнка';
         errorDiv.style.display = 'block';
         return;
       }
+
+      if (i === 1 && !birthday) {
+        errorDiv.textContent = 'Укажите день рождения первого ребёнка';
+        errorDiv.style.display = 'block';
+        return;
+      }
       
       if (name) {
+        if (!birthday) {
+          errorDiv.textContent = `Укажите день рождения ребёнка ${i}`;
+          errorDiv.style.display = 'block';
+          return;
+        }
         const gender = getChildGender(i);
         const avatarRole = gender === 'male' ? 'kid2' : 'kid1';
         const avatar = gender === 'male' ? 'kid2.svg' : 'kid1.svg';
-        if (age && (age < 3 || age > 14)) {
+        if (age == null || age < 3 || age > 14) {
           invalidAge = true;
         }
         children.push({ name, age: age || 5, gender, avatar, avatarRole, birthday, index: i - 1 });
