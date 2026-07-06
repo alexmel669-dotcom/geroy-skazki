@@ -133,8 +133,14 @@ export function startConstellationGame(level) {
     };
     redrawCanvas(ctx, canvas, currentConstellation, drawnStars);
   };
+  const onResize = () => resize();
   resize();
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', onResize);
+
+  body.querySelector('.game-close-btn')?.addEventListener('click', () => {
+    window.removeEventListener('resize', onResize);
+    appState.gameActive = false;
+  }, { once: true });
 
   function onComplete() {
     if (completed) return;
@@ -144,6 +150,7 @@ export function startConstellationGame(level) {
     ttsEngine.speak('Какое красивое созвездие! Ты настоящий звездочёт!').catch(() => {});
     appState.gameActive = false;
     setTimeout(() => {
+      window.removeEventListener('resize', onResize);
       close();
       recordGameWin('constellation', level);
       showGameResult({

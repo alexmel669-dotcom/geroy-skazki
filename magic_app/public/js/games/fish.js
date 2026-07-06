@@ -107,7 +107,7 @@ export function startFishGame(level) {
     }
 
     if (catches >= fishCount) {
-      endGame(true);
+      endGame(score >= fishCount * 5);
       return;
     }
 
@@ -128,7 +128,7 @@ export function startFishGame(level) {
   const timerInterval = setInterval(() => {
     timeLeft--;
     if (timerEl) timerEl.textContent = `⏱️ ${timeLeft}с`;
-    if (timeLeft <= 0) endGame(false);
+    if (timeLeft <= 0) endGame(score >= fishCount * 5);
     combo = 0;
   }, 1000);
 
@@ -160,6 +160,7 @@ export function startFishGame(level) {
     if (won) {
       recordGameWin('fish', level);
       updateAchievement('fish_master');
+      if (window.leaderboard) window.leaderboard.submitScore('fish', score);
       showGameResult({
         won: true,
         level,

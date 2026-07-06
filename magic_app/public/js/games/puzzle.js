@@ -1,4 +1,4 @@
-import { appState, getActiveChildName } from '../core.js';
+import { appState, getActiveChild, getActiveChildName } from '../core.js';
 import { updateAchievement } from '../achievements.js';
 import { recordPuzzleWin } from '../game-progress.js';
 import { setAvatarState } from '../ui.js';
@@ -7,6 +7,7 @@ import {
   createGameScreen, showGameResult, recordGameWin, getGameLevel,
   createConfetti, triggerGameWin
 } from './game-ui.js';
+import { getPuzzleGrid } from './game-difficulty.js';
 import { avatarUrl } from '../config.js';
 
 class PuzzleGame {
@@ -212,7 +213,8 @@ export function startPuzzleGame(level) {
 }
 
 function runPuzzle(level) {
-  const size = [3, 4, 6][Math.min(level, 3) - 1] || 3;
+  const age = getActiveChild()?.age || 7;
+  const size = getPuzzleGrid(age, level);
   appState.gameActive = true;
 
   const { body, close, overlay } = createGameScreen({

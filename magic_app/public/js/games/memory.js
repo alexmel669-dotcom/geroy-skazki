@@ -4,7 +4,6 @@ import { trackEvent } from '../analytics.js';
 import { recordMemoryWin } from '../game-progress.js';
 import { createGameScreen, showGameResult, recordGameWin, getGameLevel, spawnMatchHearts } from './game-ui.js';
 import { getMemoryPairs } from './game-difficulty.js';
-import { createGame } from '../game-engine.js';
 
 export function startMemoryGame(level) {
   if (appState.gameActive) return;
@@ -29,19 +28,6 @@ export function startMemoryGame(level) {
 
   const { body, close } = createGameScreen({ gameId: 'memory', title: 'Мемори', emoji: '🧠', level });
 
-  const engine = createGame({
-    name: 'Мемори',
-    gameId: 'memory',
-    emoji: '🧠',
-    maxScore: pairCount * 1000
-  });
-  const gameBody = engine.mount(body);
-  engine.start();
-  engine.on('exit', () => {
-    appState.gameActive = false;
-    close();
-  });
-
   const info = document.createElement('div');
   info.style.cssText = 'margin:8px 0;font-size:1rem;color:white;text-align:center;';
   info.textContent = `Найдено пар: 0 / ${pairCount} | Попытки: 0`;
@@ -50,8 +36,12 @@ export function startMemoryGame(level) {
   board.className = 'memory-board';
   board.style.cssText = `display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;max-width:min(420px,92vw);margin:0 auto;width:100%;`;
 
-  gameBody.appendChild(info);
-  gameBody.appendChild(board);
+  body.appendChild(info);
+  body.appendChild(board);
+
+  body.querySelector('.game-close-btn')?.addEventListener('click', () => {
+    appState.gameActive = false;
+  }, { once: true });
 
   for (let i = 0; i < cardCount; i++) {
     const card = document.createElement('div');
@@ -73,7 +63,6 @@ export function startMemoryGame(level) {
 
         if (appState.memoryCards[firstCardIndex] === appState.memoryCards[i]) {
           appState.memoryMatches++;
-          engine.addScore(10);
           const rect = card.getBoundingClientRect();
           spawnMatchHearts(body, rect.left + rect.width / 2, rect.top);
 
@@ -89,9 +78,9 @@ export function startMemoryGame(level) {
               updateAchievement('memory_champion');
               recordMemoryWin(pairCount, getActiveChildName());
               recordGameWin('memory', level);
+              if (window.leaderboard) window.leaderboard.submitScore('memory', Math.max(1, pairCount * 20 - attempts));
               trackEvent('memory_game_won', { attempts, level });
               appState.gameActive = false;
-              engine.exit();
               close();
               showGameResult({
                 won: true,
@@ -130,3 +119,5 @@ export function startMemoryGame(level) {
 
   trackEvent('memory_game_started', { level });
 }
+
+export default { startMemoryGame };

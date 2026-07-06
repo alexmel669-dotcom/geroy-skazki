@@ -1,5 +1,5 @@
 import { appState } from '../core.js';
-import { createGameScreen, getGameLevel } from './game-ui.js';
+import { createGameScreen, getGameLevel, showGameResult } from './game-ui.js';
 import { avatarUrl } from '../config.js';
 
 const OBSTACLE_TYPES = [
@@ -154,8 +154,25 @@ export function startRunnerGame(level) {
     canvas.width = Math.min(window.innerWidth - 32, 520);
     canvas.height = Math.min(window.innerHeight - 180, 420);
   };
+  const onResize = () => resize();
   resize();
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', onResize);
+
+  function handleGameOver() {
+    if (gameOverHandled) return;
+    gameOverHandled = true;
+    clearInterval(loopId);
+    window.removeEventListener('resize', onResize);
+    appState.gameActive = false;
+    close();
+    if (window.leaderboard) window.leaderboard.submitScore('runner', score);
+    showGameResult({
+      won: false,
+      level,
+      scoreText: `Счёт: ${score}`,
+      onRestart: () => startRunnerGame(level)
+    });
+  }
 
   const lucik = { x: 60, y: 0, vy: 0, jumping: false, spinning: false, spinAngle: 0, frame: 0, height: 44 };
   let jumpCount = 0;
@@ -167,6 +184,7 @@ export function startRunnerGame(level) {
   let speed = 4 + Math.min(level, 5) * 0.3;
   let gameOver = false;
   let gameOverAt = 0;
+  let gameOverHandled = false;
   let loopId = null;
   let frame = 0;
 
@@ -365,15 +383,15 @@ export function startRunnerGame(level) {
   loopId = setInterval(() => {
     update();
     draw();
-    if (gameOverAt && Date.now() - gameOverAt > 2500) {
-      clearInterval(loopId);
-      appState.gameActive = false;
-      close();
+    if (gameOver && !gameOverHandled) {
+      if (!gameOverAt) gameOverAt = Date.now();
+      if (Date.now() - gameOverAt > 1500) handleGameOver();
     }
   }, 20);
 
   body.querySelector('.game-close-btn')?.addEventListener('click', () => {
     clearInterval(loopId);
+    window.removeEventListener('resize', onResize);
     appState.gameActive = false;
   }, { once: true });
 }

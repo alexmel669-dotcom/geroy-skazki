@@ -62,7 +62,7 @@ function buildVines(maze, cellSize) {
   return vines;
 }
 
-function drawMaze(ctx, maze, cellSize, px, py, vines) {
+function drawMaze(ctx, maze, cellSize, px, py, vines, exit) {
   const cw = ctx.canvas.width;
   const ch = ctx.canvas.height;
 
@@ -106,8 +106,8 @@ function drawMaze(ctx, maze, cellSize, px, py, vines) {
     ctx.stroke();
   });
 
-  const exitX = maze[0].length - 2;
-  const exitY = maze.length - 1;
+  const exitX = exit.x;
+  const exitY = exit.y;
   const exitGlow = ctx.createRadialGradient(
     exitX * cellSize + cellSize / 2,
     exitY * cellSize + cellSize / 2,
@@ -209,7 +209,7 @@ export function startMazeGame(level) {
   const vines = buildVines(grid, cell);
 
   function redraw() {
-    drawMaze(ctx, grid, cell, px, py, vines);
+    drawMaze(ctx, grid, cell, px, py, vines, exit);
   }
 
   function winGame() {

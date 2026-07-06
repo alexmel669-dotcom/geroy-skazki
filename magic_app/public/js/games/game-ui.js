@@ -277,6 +277,7 @@ export function showGameResult({ won, level, scoreText, score, onNext, onRestart
   if (won) createConfetti(document.body);
 
   const restartFn = onRestart || onNext;
+  const restartLabel = (won && onNext && !onRestart) ? 'Дальше' : 'Ещё раз';
   const displayScore = scoreText || (score != null ? `⭐ ${score}` : '');
 
   const modal = document.createElement('div');
@@ -286,7 +287,7 @@ export function showGameResult({ won, level, scoreText, score, onNext, onRestart
       <div class="game-result-icon">${won ? '🎉' : '😅'}</div>
       <h3>${won ? 'Победа!' : 'Не получилось!'}</h3>
       <p class="game-score">${displayScore}</p>
-      ${restartFn ? '<button type="button" class="modal-btn game-result-restart" id="gameRestartBtn">🔄 Ещё раз</button>' : ''}
+      ${restartFn ? `<button type="button" class="modal-btn game-result-restart" id="gameRestartBtn">🔄 ${restartLabel}</button>` : ''}
       <button type="button" class="modal-btn secondary game-result-exit" id="gameExitBtn">🚪 Выйти</button>
     </div>
   `;

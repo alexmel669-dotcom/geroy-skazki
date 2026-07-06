@@ -135,7 +135,7 @@ export function startQuestGame(level) {
         won: false,
         level,
         scoreText: formatChildText(node.text, getChildGender(getActiveChild())),
-        onClose: () => startQuestGame(level)
+        onRestart: () => startQuestGame(level)
       });
       trackEvent('quest_lost', { level });
     }

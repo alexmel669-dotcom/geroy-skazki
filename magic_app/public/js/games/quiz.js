@@ -105,17 +105,6 @@ class QuizGame {
     this.currentIndex = 0;
     this.score = 0;
   }
-
-  nextLevel() {
-    if (this.level < 4) {
-      this.level++;
-      this.usedQuestions.clear();
-      window.ttsEngine?.speak(`Переходим на ${LEVEL_CONFIG[this.level].name} уровень!`);
-      this.buildRound();
-      return true;
-    }
-    return false;
-  }
 }
 
 export function startQuizGame(level) {
@@ -170,6 +159,8 @@ export function startQuizGame(level) {
   panel.style.cssText = 'max-width:420px;width:100%;text-align:center;';
 
   function finish(won) {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
     appState.gameActive = false;
     close();
     setAvatarState(null);
@@ -182,9 +173,8 @@ export function startQuizGame(level) {
       showGameResult({
         won: true,
         level,
-        scoreText: `${score} из ${questions.length} правильных!`,
-        onNext: () => startQuizGame(level + 1),
-        onRestart: () => startQuizGame(level)
+        scoreText: `Правильно ${score} из ${questions.length}!`,
+        onNext: () => startQuizGame(level + 1)
       });
       trackEvent('quiz_won', { level, score, quizLevel: quiz.level });
     } else {
@@ -271,6 +261,16 @@ export function startQuizGame(level) {
 
   render();
   trackEvent('quiz_started', { level, quizLevel: quiz.level });
+
+  function closeQuiz() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
+    appState.gameActive = false;
+    close();
+  }
+
+  const closeBtn = body.closest('.game-screen')?.querySelector('.game-close-btn');
+  if (closeBtn) closeBtn.onclick = closeQuiz;
 }
 
 export default { startQuizGame };

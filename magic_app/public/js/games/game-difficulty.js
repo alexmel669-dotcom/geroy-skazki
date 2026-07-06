@@ -42,11 +42,11 @@ export function getMemoryPairs(level) {
   return Math.min(16, Math.max(3, pairs));
 }
 
-export function getPuzzleGrid(level) {
-  const age = getChildAgeForGames();
+export function getPuzzleGrid(age, level) {
+  const childAge = age ?? getChildAgeForGames();
   let size = level <= 2 ? 3 : level <= 5 ? 4 : 5;
-  if (age <= 4) size = Math.min(size, 3);
-  if (age <= 6 && size > 4) size = 4;
+  if (childAge <= 4) size = Math.min(size, 3);
+  if (childAge <= 6 && size > 4) size = 4;
   return size;
 }
 
@@ -57,15 +57,11 @@ export function getRiddlesConfig(level) {
   return { total, hintsLeft, needToWin };
 }
 
-export function getMazeIndex(level) {
-  return Math.min(Math.max(0, level - 1), 4) + Math.floor((level - 1) / 5);
-}
-
 export function getQuestMaxMoves(level) {
   return Math.max(6, 14 - Math.floor(level / 2));
 }
 
 export default {
   getChildAgeForGames, ageBand, getFishConfig, getMemoryPairs,
-  getPuzzleGrid, getRiddlesConfig, getMazeIndex, getQuestMaxMoves
+  getPuzzleGrid, getRiddlesConfig, getQuestMaxMoves
 };

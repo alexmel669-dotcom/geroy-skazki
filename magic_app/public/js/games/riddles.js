@@ -163,8 +163,8 @@ export function startRiddlesGame(level) {
 
   function checkAnswer() {
     const val = input.value.trim().toLowerCase();
-    if (!val) return;
-    const ok = order[index].a.some((a) => val.includes(a) || a.includes(val));
+    if (!val || val.length < 2) return;
+    const ok = order[index].a.some((a) => val === a || (val.length > 2 && val.includes(a)));
     if (ok) {
       score++;
       setAvatarState('happy');
