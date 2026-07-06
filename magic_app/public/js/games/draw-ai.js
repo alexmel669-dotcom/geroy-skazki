@@ -4,31 +4,6 @@ import { createGameScreen, getGameLevel } from './game-ui.js';
 
 const PALETTE = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#6C5CE7', '#FF8C00', '#A8E6CF', '#FF6B9D', '#333333'];
 
-function analyzePixels(canvas) {
-  const ctx = canvas.getContext('2d');
-  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-  let r = 0, g = 0, b = 0, count = 0;
-
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i] + data[i + 1] + data[i + 2] < 700) {
-      r += data[i];
-      g += data[i + 1];
-      b += data[i + 2];
-      count++;
-    }
-  }
-
-  if (count === 0) return 'пустой холст';
-  const avgR = Math.round(r / count);
-  const avgG = Math.round(g / count);
-  const avgB = Math.round(b / count);
-  const color = avgR > avgG && avgR > avgB ? 'красный'
-    : avgG > avgR && avgG > avgB ? 'зелёный'
-      : avgB > avgR && avgB > avgG ? 'синий' : 'смешанный';
-  const fill = Math.round((count / (canvas.width * canvas.height)) * 100);
-  return `закрашено ${fill}%, цвет ${color}`;
-}
-
 function drawWithSparkle(ctx, x, y, color) {
   ctx.fillStyle = color;
   ctx.beginPath();
@@ -160,17 +135,19 @@ export function startDrawAIGame(level) {
   guessBtn.addEventListener('click', async () => {
     resultEl.textContent = '🤔 Думаю...';
     try {
-      const desc = analyzePixels(canvas);
+      const dataUrl = canvas.toDataURL('image/png');
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Ребёнок нарисовал: ${desc}. Угадай ОДНИМ словом на русском.`,
-          requestType: 'chat'
+          message: 'Посмотри на картинку и угадай что нарисовано. Ответь ОДНИМ словом по-русски. Если не можешь — скажи "не знаю".',
+          requestType: 'draw_guess',
+          image: dataUrl
         })
       });
       const data = await res.json();
-      const guess = (data.reply || data.message || 'не знаю').trim().split(/[\s,.!]+/)[0];
+      const raw = (data.reply || data.message || 'не знаю').trim();
+      const guess = raw.split(/[\s,.!?«»"]+/)[0] || 'не знаю';
       resultEl.textContent = `🤔 Это ${guess}?`;
       ttsEngine.speak(`Мне кажется, это ${guess}. Правильно?`).catch(() => {});
     } catch {

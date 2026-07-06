@@ -37,30 +37,46 @@ class DJEngine {
     const ctx = this.audioCtx;
     this.dryBus = ctx.createGain();
     this.reverbSend = ctx.createGain();
-    this.reverbSend.gain.value = 0.2;
+    this.reverbSend.gain.value = 0.28;
 
     this.reverb = ctx.createConvolver();
-    this.reverb.buffer = this._makeImpulse(1.6, 2.2);
+    this.reverb.buffer = this._makeImpulse(2, 0.5);
 
     const reverbOut = ctx.createGain();
-    reverbOut.gain.value = 0.35;
+    reverbOut.gain.value = 0.4;
     this.reverb.connect(reverbOut);
 
     this.compressor = ctx.createDynamicsCompressor();
-    this.compressor.threshold.value = -20;
-    this.compressor.knee.value = 14;
-    this.compressor.ratio.value = 2.8;
-    this.compressor.attack.value = 0.004;
-    this.compressor.release.value = 0.18;
+    this.compressor.threshold.value = -30;
+    this.compressor.knee.value = 40;
+    this.compressor.ratio.value = 12;
+    this.compressor.attack.value = 0.003;
+    this.compressor.release.value = 0.25;
+
+    this.distortion = ctx.createWaveShaper();
+    this.distortion.curve = this._makeDistortionCurve(100);
+    this.distortion.oversample = '4x';
+    this.distortion.connect(this.dryBus);
 
     this.masterGain = ctx.createGain();
-    this.masterGain.gain.value = 0.82;
+    this.masterGain.gain.value = 0.88;
 
     this.dryBus.connect(this.compressor);
     this.reverbSend.connect(this.reverb);
     reverbOut.connect(this.compressor);
     this.compressor.connect(this.masterGain);
     this.masterGain.connect(ctx.destination);
+  }
+
+  _makeDistortionCurve(amount) {
+    const samples = 44100;
+    const curve = new Float32Array(samples);
+    const deg = Math.PI / 180;
+    for (let i = 0; i < samples; i++) {
+      const x = (i * 2) / samples - 1;
+      curve[i] = ((3 + amount) * x * 20 * deg) / (Math.PI + amount * Math.abs(x));
+    }
+    return curve;
   }
 
   _makeImpulse(duration, decay) {
@@ -109,10 +125,11 @@ class DJEngine {
     filter.connect(gain);
     this._routeOutput(gain);
 
-    gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.linearRampToValueAtTime(0.32, at + 0.018);
-    gain.gain.exponentialRampToValueAtTime(0.14, at + duration * 0.4);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(0.35, at + 0.01);
+    gain.gain.linearRampToValueAtTime(0.25, at + 0.05);
+    gain.gain.setValueAtTime(0.25, at + Math.max(0.06, duration - 0.1));
+    gain.gain.exponentialRampToValueAtTime(0.001, at + duration);
 
     osc.start(at);
     harm.start(at);
@@ -158,7 +175,7 @@ class DJEngine {
     this._routeOutput(gain);
 
     gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.linearRampToValueAtTime(0.18, t + 0.06);
+    gain.gain.linearRampToValueAtTime(0.22, t + 0.06);
 
     osc.start(t);
     harm.start(t);
@@ -201,22 +218,20 @@ class DJEngine {
     const osc = ctx.createOscillator();
     const sub = ctx.createOscillator();
     const subGain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
     const gain = ctx.createGain();
 
-    osc.type = 'triangle';
+    osc.type = 'sawtooth';
     osc.frequency.value = freq;
     sub.type = 'sine';
     sub.frequency.value = freq * 0.5;
-    subGain.gain.value = 0.35;
-    filter.type = 'lowpass';
-    filter.frequency.value = 420;
+    subGain.gain.value = 0.3;
+    gain.gain.value = 0.25;
 
-    osc.connect(filter);
+    osc.connect(gain);
     sub.connect(subGain);
-    subGain.connect(filter);
-    filter.connect(gain);
-    this._routeOutput(gain);
+    subGain.connect(gain);
+    gain.connect(this.distortion);
+    gain.connect(this.reverbSend);
 
     gain.gain.setValueAtTime(0.0001, t);
     gain.gain.linearRampToValueAtTime(0.28, t + 0.04);
@@ -327,17 +342,15 @@ class DJEngine {
     const freq = BASS_NOTES[index].freq;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-    osc.type = 'triangle';
+    osc.type = 'sawtooth';
     osc.frequency.value = freq;
-    filter.type = 'lowpass';
-    filter.frequency.value = 420;
-    osc.connect(filter);
-    filter.connect(gain);
-    this._routeOutput(gain);
+    gain.gain.value = 0.22;
+    osc.connect(gain);
+    gain.connect(this.distortion);
+    gain.connect(this.reverbSend);
     gain.gain.setValueAtTime(0.0001, at);
     gain.gain.linearRampToValueAtTime(0.22, at + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.001, at + 0.5);
     osc.start(at);
     osc.stop(at + 0.55);
   }

@@ -266,4 +266,4 @@ function runPuzzle(level) {
   }, { once: true });
 }
 
-export default startPuzzleGame;
+export default { startPuzzleGame };

@@ -287,14 +287,22 @@ export default async function handler(req, res) {
 
   const started = Date.now();
   try {
-    const { message, childName, childAge, childGender, character, systemPrompt, history, topic, isFirstMessage, requestType, timeContext, isGuest } = req.body;
-    if (!message) return res.status(400).json({ error: 'Message is required' });
+    const { message: msgField, text, childName, childAge, childGender, character, systemPrompt, history, topic, isFirstMessage, requestType, type, timeContext, isGuest, image } = req.body;
+    const message = msgField || text;
+    const reqType = requestType || type || 'chat';
+    if (!message && !image) return res.status(400).json({ error: 'Message is required' });
 
     const gender = normalizeGender(childGender);
-    const sys = buildSystemPrompt({ childName, childAge, childGender: gender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext, isGuest });
+    let sys = buildSystemPrompt({ childName, childAge, childGender: gender, character, systemPrompt, topic, isFirstMessage, requestType: reqType, timeContext, isGuest });
+
+    if (reqType === 'draw_guess') {
+      sys = `Ты помогаешь ребёнку угадать рисунок. Посмотри на картинку и ответь ОДНИМ словом на русском — что нарисовано. Если не уверен — напиши "не знаю". Ответь ТОЛЬКО JSON: {"message":"слово"}`;
+    }
 
     if (!process.env.DEEPSEEK_API_KEY) {
-      const devReply = childName
+      const devReply = reqType === 'draw_guess'
+        ? 'котик'
+        : childName
         ? (gender === 'female'
           ? `Мурр! Рада тебя слышать, ${childName}! 🐱`
           : gender === 'male'
@@ -322,9 +330,17 @@ export default async function handler(req, res) {
         });
       });
     }
-    messages.push({ role: 'user', content: message });
+    messages.push(image
+      ? {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: image } },
+            { type: 'text', text: message || 'Что нарисовано на картинке?' }
+          ]
+        }
+      : { role: 'user', content: message });
 
-    const maxTokens = requestType === 'bedtime_story' ? 550 : requestType === 'story' ? 400 : 100;
+    const maxTokens = reqType === 'draw_guess' ? 40 : reqType === 'bedtime_story' ? 550 : reqType === 'story' ? 400 : 100;
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
