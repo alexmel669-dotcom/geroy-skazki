@@ -120,6 +120,10 @@
     .pin-box input { width: 100%; padding: 14px; font-size: 1.4rem; text-align: center; letter-spacing: 8px; border-radius: 12px; border: none; margin: 16px 0; }
     #childQrCode img { max-width: 220px; border-radius: 12px; margin: 12px 0; }
     #childLink { word-break: break-all; font-size: 0.8rem; opacity: 0.8; margin-top: 8px; }
+    .story-item { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .story-item:last-child { border-bottom: none; }
+    .story-item p { opacity: 0.8; font-size: 0.85rem; margin: 6px 0; }
+    .story-item small { opacity: 0.5; font-size: 0.75rem; }
   </style>
 </head>
 <body>
@@ -147,6 +151,11 @@
     <p>Люцик заметил темы, которые волнуют вашего ребёнка. Мы подготовили мягкие рекомендации для разговора.</p>
     <button id="getPsychologistHelp" class="btn-soft" type="button">Получить рекомендации</button>
     <div id="psychologistAdvice" class="advice-box" style="display:none;"></div>
+  </div>
+
+  <div class="card storybook-section">
+    <h2>📖 Книга сказок</h2>
+    <div id="parentStorybook"></div>
   </div>
 
   <div class="card plan-info-card">

@@ -1,6 +1,6 @@
 // ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
-// v5.4.0
+// v5.4.2
 // ========================================
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
@@ -1952,6 +1952,7 @@ export function showGamesMenu() {
       <div class="games-menu-grid">
         ${buttonsHtml}
       </div>
+      <button type="button" class="modal-btn" id="gamesLeaderboardBtn">🏆 Таблица лидеров</button>
       <button class="modal-btn secondary games-menu-close" data-game="close">✕ Закрыть</button>
     </div>`;
 
@@ -1969,6 +1970,11 @@ export function showGamesMenu() {
     constellation: startConstellationGame,
     popFears: startPopFearsGame
   };
+
+  overlay.querySelector('#gamesLeaderboardBtn')?.addEventListener('click', () => {
+    overlay.remove();
+    if (typeof window.showLeaderboard === 'function') window.showLeaderboard();
+  });
 
   overlay.querySelectorAll('[data-game]').forEach((btn) => {
     btn.onclick = () => {

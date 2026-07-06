@@ -122,6 +122,7 @@ export function startRiddlesGame(level) {
         won: false,
         level,
         scoreText: `Отгадано ${score} из ${needToWin} нужных.`,
+        onRestart: () => startRiddlesGame(level),
         onClose: () => {}
       });
       trackEvent('riddles_lost', { level, score });

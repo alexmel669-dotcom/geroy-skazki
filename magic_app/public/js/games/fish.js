@@ -173,6 +173,7 @@ export function startFishGame(level) {
         won: false,
         level,
         scoreText: `Поймано ${catches} из ${fishCount}. ⭐ ${score} очков.`,
+        onRestart: () => startFishGame(level),
         onClose: () => speak(`Неплохо! ${catches} улова и ${score} очков.`)
       });
       trackEvent('fish_game_lost', { level, score, catches });

@@ -1172,10 +1172,20 @@ async function getPsychologistHelp() {
   }
 }
 
+function loadStorybook() {
+  const el = document.getElementById('parentStorybook');
+  if (!el) return;
+  const stories = JSON.parse(localStorage.getItem('geroy-storybook') || '[]');
+  el.innerHTML = stories.length > 0
+    ? stories.map((s) => `<div class="story-item"><strong>${(s.title || 'Сказка').replace(/</g, '&lt;')}</strong><p>${String(s.text || '').slice(0, 100).replace(/</g, '&lt;')}...</p><small>${new Date(s.date).toLocaleDateString('ru-RU')}</small></div>`).join('')
+    : '<p>Здесь будут сказки которые Люцик рассказывает вашему ребёнку.</p>';
+}
+
 function loadAllData() {
   updateParentGreeting();
   renderPlanInfo();
   renderPsychologistBlock();
+  loadStorybook();
   bindNotificationSettingsUI();
   initNotificationScheduler().catch(() => {});
   const children = getChildren();

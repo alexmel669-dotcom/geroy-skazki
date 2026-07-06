@@ -51,40 +51,34 @@
       <!-- Ребёнок 1 (обязательно) -->
       <div class="child-block">
         <label>👶 Ребёнок 1 *</label>
-        <div class="child-row">
-          <input type="text" id="child1Name" placeholder="Имя" required>
-        </div>
-        <div class="gender-row">
-          <label><input type="radio" name="child1Gender" value="female" checked> <img src="assets/images/kid1.svg" data-avatar="kid1" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Девочка</label>
-          <label><input type="radio" name="child1Gender" value="male"> <img src="assets/images/kid2.svg" data-avatar="kid2" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Мальчик</label>
-        </div>
-        <input type="date" id="child1Birthday" style="margin-top:8px;width:100%;" placeholder="День рождения">
+        <input type="text" id="child1Name" placeholder="Имя ребёнка" required>
+        <input type="date" id="child1Birthday" style="margin-top:8px;width:100%;" required>
+        <select id="child1Gender" style="margin-top:8px;width:100%;">
+          <option value="female">Девочка</option>
+          <option value="male">Мальчик</option>
+        </select>
       </div>
       
       <!-- Ребёнок 2 (опционально) -->
       <div class="child-block">
         <label>👶 Ребёнок 2 (необязательно)</label>
-        <div class="child-row">
-          <input type="text" id="child2Name" placeholder="Имя">
-        </div>
-        <div class="gender-row">
-          <label><input type="radio" name="child2Gender" value="female" checked> <img src="assets/images/kid1.svg" data-avatar="kid1" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Девочка</label>
-          <label><input type="radio" name="child2Gender" value="male"> <img src="assets/images/kid2.svg" data-avatar="kid2" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Мальчик</label>
-        </div>
+        <input type="text" id="child2Name" placeholder="Имя ребёнка">
         <input type="date" id="child2Birthday" style="margin-top:8px;width:100%;">
+        <select id="child2Gender" style="margin-top:8px;width:100%;">
+          <option value="female">Девочка</option>
+          <option value="male">Мальчик</option>
+        </select>
       </div>
       
       <!-- Ребёнок 3 (опционально) -->
       <div class="child-block">
         <label>👶 Ребёнок 3 (необязательно)</label>
-        <div class="child-row">
-          <input type="text" id="child3Name" placeholder="Имя">
-        </div>
-        <div class="gender-row">
-          <label><input type="radio" name="child3Gender" value="female" checked> <img src="assets/images/kid1.svg" data-avatar="kid1" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Девочка</label>
-          <label><input type="radio" name="child3Gender" value="male"> <img src="assets/images/kid2.svg" data-avatar="kid2" width="20" height="20" alt="" style="border-radius:50%;vertical-align:middle;"> Мальчик</label>
-        </div>
+        <input type="text" id="child3Name" placeholder="Имя ребёнка">
         <input type="date" id="child3Birthday" style="margin-top:8px;width:100%;">
+        <select id="child3Gender" style="margin-top:8px;width:100%;">
+          <option value="female">Девочка</option>
+          <option value="male">Мальчик</option>
+        </select>
       </div>
       
       <button type="submit" class="auth-btn">Зарегистрироваться</button>
@@ -130,7 +124,7 @@
     }
   });
   function getChildGender(index) {
-    return document.querySelector(`input[name="child${index}Gender"]:checked`)?.value || 'female';
+    return document.getElementById(`child${index}Gender`)?.value || 'female';
   }
 
   function getAgeFromBirthday(birthday) {

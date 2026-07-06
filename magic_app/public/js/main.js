@@ -1,6 +1,6 @@
 import './error-monitor.js';
 import './storybook.js';
-import './leaderboard.js';
+import { showLeaderboard } from './leaderboard.js';
 import { CONFIG, validateConfig, ENV, initAvatarImages } from './config.js';
 import {
   initCore, getActiveChildName, getActiveChild, updateStatsUI,
@@ -113,6 +113,7 @@ try {
       performCleanLucikRoom();
       showLucikHouse();
     };
+    window.showLeaderboard = showLeaderboard;
   }
 } catch (e) {
   console.error('FATAL:', e);
