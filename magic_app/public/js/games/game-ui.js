@@ -4,6 +4,7 @@
 
 import { loadGameProgress, saveGameProgress } from '../game-progress.js';
 import { getActiveChildName, appState } from '../core.js';
+import { avatarImgHtml } from '../config.js';
 
 const GAME_STYLE_THEMES = {
   fish: { bg: 'linear-gradient(180deg, #1e3a5f, #0d1b2a)', accent: '#4ECDC4', icon: '🎣', starfield: true, lucikText: 'Лови рыбку!' },
@@ -252,7 +253,7 @@ export function createGameScreen({
     const lucikEl = document.createElement('div');
     lucikEl.className = 'game-lucik';
     lucikEl.innerHTML = `
-      <img src="assets/images/avatar.png" alt="Люцик" width="50" height="50">
+      ${avatarImgHtml('lucik', 50, 'game-lucik-avatar')}
       <span class="lucik-bubble">${bubbleText}</span>
     `;
     overlay.appendChild(lucikEl);

@@ -39,24 +39,37 @@ function scaleStars(stars, w, h) {
   }));
 }
 
-function drawSpaceBg(ctx, w, h) {
+function makeBgStars(w, h, count = 48) {
+  const stars = [];
+  for (let i = 0; i < count; i++) {
+    stars.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: Math.random() * 1.5 + 0.5,
+      alpha: 0.2 + Math.random() * 0.5
+    });
+  }
+  return stars;
+}
+
+function drawSpaceBg(ctx, w, h, bgStars) {
   const grad = ctx.createRadialGradient(w / 2, h / 2, 20, w / 2, h / 2, Math.max(w, h));
   grad.addColorStop(0, '#1a0533');
   grad.addColorStop(1, '#000008');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
-  for (let i = 0; i < 40; i++) {
-    ctx.fillStyle = `rgba(255,255,255,${0.2 + Math.random() * 0.5})`;
+  bgStars.forEach((s) => {
+    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
     ctx.beginPath();
-    ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 1.5 + 0.5, 0, Math.PI * 2);
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
     ctx.fill();
-  }
+  });
 }
 
-function redrawCanvas(ctx, canvas, constellation, drawnStars) {
+function redrawCanvas(ctx, canvas, constellation, drawnStars, bgStars) {
   const w = canvas.width;
   const h = canvas.height;
-  drawSpaceBg(ctx, w, h);
+  drawSpaceBg(ctx, w, h, bgStars);
 
   ctx.strokeStyle = '#FFD700';
   ctx.lineWidth = 2;
@@ -123,15 +136,17 @@ export function startConstellationGame(level) {
 
   const ctx = canvas.getContext('2d');
   let currentConstellation = null;
+  let bgStars = [];
 
   const resize = () => {
     canvas.width = Math.min(window.innerWidth - 32, 520);
     canvas.height = Math.min(window.innerHeight - 220, 360);
+    bgStars = makeBgStars(canvas.width, canvas.height);
     currentConstellation = {
       ...template,
       stars: scaleStars(template.stars, canvas.width, canvas.height)
     };
-    redrawCanvas(ctx, canvas, currentConstellation, drawnStars);
+    redrawCanvas(ctx, canvas, currentConstellation, drawnStars, bgStars);
   };
   const onResize = () => resize();
   resize();
@@ -181,7 +196,7 @@ export function startConstellationGame(level) {
 
     if (closest !== null && !drawnStars.includes(closest)) {
       drawnStars.push(closest);
-      redrawCanvas(ctx, canvas, currentConstellation, drawnStars);
+      redrawCanvas(ctx, canvas, currentConstellation, drawnStars, bgStars);
       if (drawnStars.length === currentConstellation.stars.length) {
         onComplete();
       }

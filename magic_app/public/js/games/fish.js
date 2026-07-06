@@ -48,7 +48,7 @@ export function startFishGame(level) {
 
   appState.gameActive = true;
   let score = 0;
-  let catches = 0;
+  let goodCatches = 0;
   let timeLeft = time;
   let combo = 0;
 
@@ -88,14 +88,18 @@ export function startFishGame(level) {
     const item = getRandomItem();
     score += item.points;
     if (score < 0) score = 0;
-    catches++;
-    combo++;
-    if (combo >= 3 && item.points > 0) score += Math.floor(combo / 3);
+    if (item.points > 0) {
+      goodCatches++;
+      combo++;
+      if (combo >= 3) score += Math.floor(combo / 3);
+    } else {
+      combo = 0;
+    }
 
     fish.style.transform = 'scale(1.4) rotate(15deg)';
     fish.style.opacity = '0';
     scoreEl.textContent = `⭐ ${score}`;
-    catchesEl.textContent = `🎣 ${catches}/${fishCount}`;
+    catchesEl.textContent = `🎣 ${goodCatches}/${fishCount}`;
     showCatchAnimation(fishArea, item);
     appState.fishScore = (appState.fishScore || 0) + Math.max(0, item.points);
     updateStatsUI();
@@ -106,7 +110,7 @@ export function startFishGame(level) {
       window.ttsEngine?.speak(`Поймал ${item.name}! Плюс ${item.points} очков!`);
     }
 
-    if (catches >= fishCount) {
+    if (goodCatches >= fishCount) {
       endGame(score >= fishCount * 5);
       return;
     }
@@ -164,20 +168,20 @@ export function startFishGame(level) {
       showGameResult({
         won: true,
         level,
-        scoreText: `Поймано ${catches} предметов, ⭐ ${score} очков!`,
+        scoreText: `Поймано ${goodCatches} рыбок, ⭐ ${score} очков!`,
         onNext: () => startFishGame(level + 1),
         onClose: () => speak(`Отличная рыбалка! ${score} очков!`)
       });
-      trackEvent('fish_game_won', { level, score, catches });
+      trackEvent('fish_game_won', { level, score, catches: goodCatches });
     } else {
       showGameResult({
         won: false,
         level,
-        scoreText: `Поймано ${catches} из ${fishCount}. ⭐ ${score} очков.`,
+        scoreText: `Поймано ${goodCatches} из ${fishCount} рыбок. ⭐ ${score} очков.`,
         onRestart: () => startFishGame(level),
-        onClose: () => speak(`Неплохо! ${catches} улова и ${score} очков.`)
+        onClose: () => speak(`Неплохо! ${goodCatches} улова и ${score} очков.`)
       });
-      trackEvent('fish_game_lost', { level, score, catches });
+      trackEvent('fish_game_lost', { level, score, catches: goodCatches });
     }
   }
 

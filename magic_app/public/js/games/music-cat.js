@@ -1,6 +1,6 @@
 import { appState } from '../core.js';
 import { createGameScreen, getGameLevel } from './game-ui.js';
-import { avatarUrl } from '../config.js';
+import { avatarImgHtml } from '../config.js';
 
 const BODY_NOTES = {
   leftEar: { freq: 659, label: 'E5', name: 'Левое ухо' },
@@ -25,25 +25,108 @@ const DRUM_PATTERNS = ['kick', 'snare', 'hihat', 'clap'];
 class DJEngine {
   constructor() {
     this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    this._buildMasterBus();
     this.activeLoops = {};
     this.bassLoop = null;
     this.recording = [];
     this.isRecording = false;
+    this.recordStart = 0;
   }
 
-  playNote(freq, duration = 0.5, type = 'sine') {
-    if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-    const osc = this.audioCtx.createOscillator();
-    const gain = this.audioCtx.createGain();
-    osc.type = type;
+  _buildMasterBus() {
+    const ctx = this.audioCtx;
+    this.dryBus = ctx.createGain();
+    this.reverbSend = ctx.createGain();
+    this.reverbSend.gain.value = 0.2;
+
+    this.reverb = ctx.createConvolver();
+    this.reverb.buffer = this._makeImpulse(1.6, 2.2);
+
+    const reverbOut = ctx.createGain();
+    reverbOut.gain.value = 0.35;
+    this.reverb.connect(reverbOut);
+
+    this.compressor = ctx.createDynamicsCompressor();
+    this.compressor.threshold.value = -20;
+    this.compressor.knee.value = 14;
+    this.compressor.ratio.value = 2.8;
+    this.compressor.attack.value = 0.004;
+    this.compressor.release.value = 0.18;
+
+    this.masterGain = ctx.createGain();
+    this.masterGain.gain.value = 0.82;
+
+    this.dryBus.connect(this.compressor);
+    this.reverbSend.connect(this.reverb);
+    reverbOut.connect(this.compressor);
+    this.compressor.connect(this.masterGain);
+    this.masterGain.connect(ctx.destination);
+  }
+
+  _makeImpulse(duration, decay) {
+    const rate = this.audioCtx.sampleRate;
+    const len = Math.floor(rate * duration);
+    const buf = this.audioCtx.createBuffer(2, len, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buf.getChannelData(ch);
+      for (let i = 0; i < len; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+      }
+    }
+    return buf;
+  }
+
+  _routeOutput(node) {
+    node.connect(this.dryBus);
+    node.connect(this.reverbSend);
+  }
+
+  async _resume() {
+    if (this.audioCtx.state === 'suspended') await this.audioCtx.resume();
+  }
+
+  _scheduleNote(at, freq, duration = 0.45) {
+    const ctx = this.audioCtx;
+    const osc = ctx.createOscillator();
+    const harm = ctx.createOscillator();
+    const harmGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
     osc.frequency.value = freq;
-    gain.gain.value = 0.3;
-    osc.connect(gain);
-    gain.connect(this.audioCtx.destination);
-    osc.start();
-    gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
-    osc.stop(this.audioCtx.currentTime + duration);
-    if (this.isRecording) this.recording.push({ freq, duration, type, time: Date.now() });
+    harm.type = 'triangle';
+    harm.frequency.value = freq * 2;
+    harmGain.gain.value = 0.06;
+
+    filter.type = 'lowpass';
+    filter.frequency.value = Math.min(freq * 5, 9000);
+    filter.Q.value = 0.7;
+
+    osc.connect(filter);
+    harm.connect(harmGain);
+    harmGain.connect(filter);
+    filter.connect(gain);
+    this._routeOutput(gain);
+
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.linearRampToValueAtTime(0.32, at + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.14, at + duration * 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+
+    osc.start(at);
+    harm.start(at);
+    osc.stop(at + duration + 0.04);
+    harm.stop(at + duration + 0.04);
+
+    if (this.isRecording) {
+      this.recording.push({ kind: 'note', freq, duration, at: at - this.recordStart });
+    }
+  }
+
+  playNote(freq, duration = 0.45) {
+    this._resume();
+    this._scheduleNote(this.audioCtx.currentTime, freq, duration);
   }
 
   toggleLoop(partKey, freq) {
@@ -51,21 +134,47 @@ class DJEngine {
       this.stopLoop(partKey);
       return false;
     }
-    const osc = this.audioCtx.createOscillator();
-    const gain = this.audioCtx.createGain();
+    this._resume();
+    const ctx = this.audioCtx;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const harm = ctx.createOscillator();
+    const harmGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
     osc.type = 'sine';
     osc.frequency.value = freq;
-    gain.gain.value = 0.15;
-    osc.connect(gain);
-    gain.connect(this.audioCtx.destination);
-    osc.start();
-    this.activeLoops[partKey] = { osc, gain };
+    harm.type = 'triangle';
+    harm.frequency.value = freq * 1.5;
+    harmGain.gain.value = 0.04;
+    filter.type = 'lowpass';
+    filter.frequency.value = Math.min(freq * 4, 6000);
+
+    osc.connect(filter);
+    harm.connect(harmGain);
+    harmGain.connect(filter);
+    filter.connect(gain);
+    this._routeOutput(gain);
+
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.18, t + 0.06);
+
+    osc.start(t);
+    harm.start(t);
+    this.activeLoops[partKey] = { osc, harm, gain };
     return true;
   }
 
   stopLoop(partKey) {
-    if (!this.activeLoops[partKey]) return;
-    this.activeLoops[partKey].osc.stop();
+    const loop = this.activeLoops[partKey];
+    if (!loop) return;
+    const t = this.audioCtx.currentTime;
+    loop.gain.gain.cancelScheduledValues(t);
+    loop.gain.gain.setValueAtTime(Math.max(loop.gain.gain.value, 0.0001), t);
+    loop.gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+    loop.osc.stop(t + 0.12);
+    loop.harm.stop(t + 0.12);
     delete this.activeLoops[partKey];
   }
 
@@ -73,30 +182,126 @@ class DJEngine {
     Object.keys(this.activeLoops).forEach((k) => this.stopLoop(k));
   }
 
-  playBass(index) {
-    if (this.bassLoop) {
-      this.bassLoop.osc.stop();
-      this.bassLoop = null;
-    }
-    const osc = this.audioCtx.createOscillator();
-    const gain = this.audioCtx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.value = BASS_NOTES[index].freq;
-    gain.gain.value = 0.2;
-    osc.connect(gain);
-    gain.connect(this.audioCtx.destination);
-    osc.start();
-    this.bassLoop = { osc, gain };
+  stopBass() {
+    if (!this.bassLoop) return;
+    const t = this.audioCtx.currentTime;
+    this.bassLoop.gain.gain.cancelScheduledValues(t);
+    this.bassLoop.gain.gain.setValueAtTime(Math.max(this.bassLoop.gain.gain.value, 0.0001), t);
+    this.bassLoop.gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    this.bassLoop.osc.stop(t + 0.1);
+    this.bassLoop = null;
   }
 
-  playDrum(type) {
-    const freq = { kick: 60, snare: 200, hihat: 8000, clap: 1000 }[type];
-    this.playNote(freq, 0.15, 'square');
+  playBass(index) {
+    this.stopBass();
+    this._resume();
+    const ctx = this.audioCtx;
+    const t = ctx.currentTime;
+    const freq = BASS_NOTES[index].freq;
+    const osc = ctx.createOscillator();
+    const sub = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    sub.type = 'sine';
+    sub.frequency.value = freq * 0.5;
+    subGain.gain.value = 0.35;
+    filter.type = 'lowpass';
+    filter.frequency.value = 420;
+
+    osc.connect(filter);
+    sub.connect(subGain);
+    subGain.connect(filter);
+    filter.connect(gain);
+    this._routeOutput(gain);
+
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.28, t + 0.04);
+
+    osc.start(t);
+    sub.start(t);
+    this.bassLoop = { osc, sub, gain };
+
+    if (this.isRecording) {
+      this.recording.push({ kind: 'bass', index, at: t - this.recordStart });
+    }
+  }
+
+  _noiseBurst(at, duration, gainPeak, filterFreq, filterQ = 1) {
+    const ctx = this.audioCtx;
+    const len = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+
+    const src = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    src.buffer = buf;
+    filter.type = 'bandpass';
+    filter.frequency.value = filterFreq;
+    filter.Q.value = filterQ;
+    src.connect(filter);
+    filter.connect(gain);
+    this._routeOutput(gain);
+
+    gain.gain.setValueAtTime(gainPeak, at);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+    src.start(at);
+    src.stop(at + duration + 0.02);
+    return { src, gain };
+  }
+
+  playDrum(type, atTime) {
+    this._resume();
+    const ctx = this.audioCtx;
+    const t = atTime ?? ctx.currentTime;
+
+    if (type === 'kick') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(150, t);
+      osc.frequency.exponentialRampToValueAtTime(42, t + 0.11);
+      gain.gain.setValueAtTime(0.85, t);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+      osc.connect(gain);
+      this._routeOutput(gain);
+      osc.start(t);
+      osc.stop(t + 0.42);
+    } else if (type === 'snare') {
+      this._noiseBurst(t, 0.14, 0.45, 1800, 0.8);
+      const tone = ctx.createOscillator();
+      const toneGain = ctx.createGain();
+      tone.type = 'triangle';
+      tone.frequency.setValueAtTime(220, t);
+      tone.frequency.exponentialRampToValueAtTime(160, t + 0.06);
+      toneGain.gain.setValueAtTime(0.22, t);
+      toneGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+      tone.connect(toneGain);
+      this._routeOutput(toneGain);
+      tone.start(t);
+      tone.stop(t + 0.12);
+    } else if (type === 'hihat') {
+      this._noiseBurst(t, 0.05, 0.18, 7000, 2.5);
+    } else if (type === 'clap') {
+      [0, 0.012, 0.024].forEach((off) => {
+        this._noiseBurst(t + off, 0.06, 0.28, 2400, 1.2);
+      });
+    }
+
+    if (this.isRecording && atTime == null) {
+      this.recording.push({ kind: 'drum', type, at: t - this.recordStart });
+    }
   }
 
   startRecording() {
     this.recording = [];
     this.isRecording = true;
+    this.recordStart = this.audioCtx.currentTime;
   }
 
   stopRecording() {
@@ -105,16 +310,40 @@ class DJEngine {
 
   playRecording() {
     this.stopAllLoops();
-    if (this.bassLoop) {
-      this.bassLoop.osc.stop();
-      this.bassLoop = null;
-    }
+    this.stopBass();
     if (!this.recording.length) return;
-    const start = this.recording[0].time;
-    this.recording.forEach((note) => {
-      const delay = note.time - start;
-      setTimeout(() => this.playNote(note.freq, note.duration, note.type), delay);
+    this._resume();
+    const t0 = this.audioCtx.currentTime + 0.05;
+    this.recording.forEach((ev) => {
+      const when = t0 + ev.at;
+      if (ev.kind === 'note') this._scheduleNote(when, ev.freq, ev.duration);
+      else if (ev.kind === 'bass') this.playBassAt(when, ev.index);
+      else if (ev.kind === 'drum') this.playDrumAt(when, ev.type);
     });
+  }
+
+  playBassAt(at, index) {
+    const ctx = this.audioCtx;
+    const freq = BASS_NOTES[index].freq;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    filter.type = 'lowpass';
+    filter.frequency.value = 420;
+    osc.connect(filter);
+    filter.connect(gain);
+    this._routeOutput(gain);
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.linearRampToValueAtTime(0.22, at + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.5);
+    osc.start(at);
+    osc.stop(at + 0.55);
+  }
+
+  playDrumAt(at, type) {
+    this.playDrum(type, at);
   }
 
   downloadRecording() {
@@ -128,7 +357,26 @@ class DJEngine {
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  dispose() {
+    this.stopAllLoops();
+    this.stopBass();
+    if (this.audioCtx.state !== 'closed') this.audioCtx.close().catch(() => {});
+  }
 }
+
+const BODY_LAYOUT = [
+  { key: 'forehead', x: 95, y: 20, w: 60, h: 35 },
+  { key: 'leftEar', x: 55, y: 35, w: 30, h: 30 },
+  { key: 'rightEar', x: 165, y: 35, w: 30, h: 30 },
+  { key: 'leftEye', x: 80, y: 70, w: 28, h: 20 },
+  { key: 'rightEye', x: 142, y: 70, w: 28, h: 20 },
+  { key: 'nose', x: 110, y: 95, w: 30, h: 20 },
+  { key: 'leftPaw', x: 55, y: 150, w: 35, h: 40 },
+  { key: 'rightPaw', x: 160, y: 150, w: 35, h: 40 },
+  { key: 'belly', x: 90, y: 130, w: 70, h: 50 },
+  { key: 'tail', x: 180, y: 190, w: 40, h: 30 }
+];
 
 export function startMusicCatGame(level) {
   if (appState.gameActive) return;
@@ -140,44 +388,32 @@ export function startMusicCatGame(level) {
 
   const stage = document.createElement('div');
   stage.className = 'dj-stage';
-  stage.style.cssText = 'position:relative;width:100%;max-width:600px;margin:0 auto;padding:16px;';
 
   const avatarWrap = document.createElement('div');
   avatarWrap.className = 'dj-avatar-wrap';
-  avatarWrap.style.cssText = 'position:relative;width:250px;height:250px;margin:0 auto 20px;';
-  avatarWrap.innerHTML = `<img src="${avatarUrl('lucik', 'png')}" alt="Люцик" style="width:100%;height:100%;border-radius:50%;box-shadow:0 0 40px rgba(255,215,0,0.5);">`;
+  avatarWrap.innerHTML = avatarImgHtml('lucik', 250, 'dj-avatar-img');
 
-  const bodyButtons = [
-    { key: 'forehead', x: 95, y: 20, w: 60, h: 35 },
-    { key: 'leftEar', x: 55, y: 35, w: 30, h: 30 },
-    { key: 'rightEar', x: 165, y: 35, w: 30, h: 30 },
-    { key: 'leftEye', x: 80, y: 70, w: 28, h: 20 },
-    { key: 'rightEye', x: 142, y: 70, w: 28, h: 20 },
-    { key: 'nose', x: 110, y: 95, w: 30, h: 20 },
-    { key: 'leftPaw', x: 55, y: 150, w: 35, h: 40 },
-    { key: 'rightPaw', x: 160, y: 150, w: 35, h: 40 },
-    { key: 'belly', x: 90, y: 130, w: 70, h: 50 },
-    { key: 'tail', x: 180, y: 190, w: 40, h: 30 }
-  ];
-
-  bodyButtons.forEach((btn) => {
+  BODY_LAYOUT.forEach((btn) => {
     const el = document.createElement('button');
     el.type = 'button';
     el.className = 'dj-body-btn';
     el.title = BODY_NOTES[btn.key].name;
-    el.style.cssText = `position:absolute;left:${btn.x}px;top:${btn.y}px;width:${btn.w}px;height:${btn.h}px;border-radius:50%;border:2px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.1);cursor:pointer;z-index:5;transition:all 0.2s;`;
+    el.style.left = `${btn.x}px`;
+    el.style.top = `${btn.y}px`;
+    el.style.width = `${btn.w}px`;
+    el.style.height = `${btn.h}px`;
     let looping = false;
 
     const startLoop = (e) => {
       e.stopPropagation();
       looping = dj.toggleLoop(btn.key, BODY_NOTES[btn.key].freq);
-      el.style.background = looping ? 'rgba(255,215,0,0.4)' : 'rgba(255,215,0,0.1)';
+      el.classList.toggle('active', looping);
     };
     const stopLoop = () => {
       if (looping) {
         dj.stopLoop(btn.key);
         looping = false;
-        el.style.background = 'rgba(255,215,0,0.1)';
+        el.classList.remove('active');
       }
     };
 
@@ -226,17 +462,14 @@ export function startMusicCatGame(level) {
   stage.querySelector('#btnRecord').onclick = () => dj.startRecording();
   stage.querySelector('#btnStop').onclick = () => {
     dj.stopAllLoops();
+    dj.stopBass();
     dj.stopRecording();
   };
   stage.querySelector('#btnPlay').onclick = () => dj.playRecording();
   stage.querySelector('#btnDownload').onclick = () => dj.downloadRecording();
 
   body.querySelector('.game-close-btn')?.addEventListener('click', () => {
-    dj.stopAllLoops();
-    if (dj.bassLoop) {
-      dj.bassLoop.osc.stop();
-      dj.bassLoop = null;
-    }
+    dj.dispose();
     appState.gameActive = false;
   }, { once: true });
 }

@@ -12,16 +12,17 @@ const FEARS = [
 
 const PARTICLE_COLORS = ['#FFD700', '#FF6B9D', '#7B68EE', '#4CAF50'];
 
-function popBubble(bubble, fear, onPopped) {
+function popBubble(bubble, fear, container, onPopped) {
+  const containerRect = container.getBoundingClientRect();
   const rect = bubble.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
+  const cx = rect.left - containerRect.left + rect.width / 2;
+  const cy = rect.top - containerRect.top + rect.height / 2;
 
   const flash = document.createElement('div');
   flash.className = 'pop-flash';
   flash.style.left = `${cx - 60}px`;
   flash.style.top = `${cy - 60}px`;
-  document.body.appendChild(flash);
+  container.appendChild(flash);
   setTimeout(() => flash.remove(), 400);
 
   for (let i = 0; i < 12; i++) {
@@ -32,7 +33,7 @@ function popBubble(bubble, fear, onPopped) {
     p.style.setProperty('--dx', `${(Math.random() - 0.5) * 200}px`);
     p.style.setProperty('--dy', `${(Math.random() - 0.5) * 200}px`);
     p.style.background = PARTICLE_COLORS[i % 4];
-    document.body.appendChild(p);
+    container.appendChild(p);
     setTimeout(() => p.remove(), 800);
   }
 
@@ -80,7 +81,7 @@ export function startPopFearsGame(level) {
 
     bubble.addEventListener('click', () => {
       if (bubble.classList.contains('popping')) return;
-      popBubble(bubble, fear, () => {
+      popBubble(bubble, fear, container, () => {
         popped += 1;
         updateCounter();
         if (popped % 5 === 0) spawnBubble();

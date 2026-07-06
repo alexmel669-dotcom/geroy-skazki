@@ -8,7 +8,7 @@ import {
   createConfetti, triggerGameWin
 } from './game-ui.js';
 import { getPuzzleGrid } from './game-difficulty.js';
-import { avatarUrl } from '../config.js';
+import { getAvatarPaths } from '../config.js';
 
 class PuzzleGame {
   constructor(size, level, overlay, onWin) {
@@ -22,11 +22,18 @@ class PuzzleGame {
     this.solved = false;
     this.image = new Image();
     this.imageLoaded = false;
-    this.image.src = avatarUrl('lucik', 'png');
+    const paths = getAvatarPaths('lucik');
     this.image.onload = () => {
       this.imageLoaded = true;
       this.draw();
     };
+    this.image.onerror = () => {
+      if (this.image.dataset.stage !== 'png') {
+        this.image.dataset.stage = 'png';
+        this.image.src = paths.png;
+      }
+    };
+    this.image.src = paths.svg;
   }
 
   init(canvas) {

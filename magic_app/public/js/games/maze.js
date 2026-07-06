@@ -155,6 +155,8 @@ function drawMaze(ctx, maze, cellSize, px, py, vines, exit) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('⭐', exitX * cellSize + cellSize / 2, exitY * cellSize + cellSize / 2);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
 }
 
 function mazeSizeForLevel(level) {
