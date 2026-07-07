@@ -277,6 +277,7 @@ export function startMazeGame(level) {
   document.addEventListener('keydown', onKey);
   overlay?.querySelector('.game-close-btn')?.addEventListener('click', () => {
     document.removeEventListener('keydown', onKey);
+    appState.gameActive = false;
   }, { once: true });
 
   redraw();

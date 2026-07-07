@@ -1396,6 +1396,25 @@ header {
 /* ===== Pixar-стиль v5.1.13 — 5 игр ===== */
 
 /* 🐱 Люцик-раннер */
+.runner-canvas-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.runner-lucik-avatar {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  pointer-events: none;
+  z-index: 4;
+  border-radius: 50%;
+  object-fit: cover;
+  filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.45)) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
+  transition: transform 0.05s linear;
+}
+
 .runner-pixar-canvas {
   border: 3px solid rgba(255, 255, 255, 0.35);
 }

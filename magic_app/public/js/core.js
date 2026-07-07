@@ -1956,21 +1956,6 @@ export function showGamesMenu() {
       <button class="modal-btn secondary games-menu-close" data-game="close">✕ Закрыть</button>
     </div>`;
 
-  const games = {
-    fish: startFishGame,
-    memory: startMemoryGame,
-    puzzle: startPuzzleGame,
-    riddles: startRiddlesGame,
-    quest: startQuestGame,
-    maze: startMazeGame,
-    quiz: startQuizGame,
-    runner: startRunnerGame,
-    drawAi: startDrawAIGame,
-    musicCat: startMusicCatGame,
-    constellation: startConstellationGame,
-    popFears: startPopFearsGame
-  };
-
   overlay.querySelector('#gamesLeaderboardBtn')?.addEventListener('click', () => {
     overlay.remove();
     if (typeof window.showLeaderboard === 'function') window.showLeaderboard();
@@ -1985,10 +1970,38 @@ export function showGamesMenu() {
         synthesizeSpeech('Эта игра доступна в полной версии. Попроси родителей открыть доступ!', getCharacter()).catch(() => {});
         return;
       }
+      const launchers = {
+        fish: (lvl) => startFishGame(lvl),
+        memory: (lvl) => startMemoryGame(lvl),
+        puzzle: (lvl) => startPuzzleGame(lvl),
+        riddles: (lvl) => startRiddlesGame(lvl),
+        quest: (lvl) => startQuestGame(lvl),
+        maze: (lvl) => startMazeGame(lvl),
+        quiz: (lvl) => startQuizGame(lvl),
+        runner: (lvl) => startRunnerGame(lvl),
+        drawAi: (lvl) => startDrawAIGame(lvl),
+        musicCat: (lvl) => startMusicCatGame(lvl),
+        constellation: (lvl) => startConstellationGame(lvl),
+        popFears: (lvl) => startPopFearsGame(lvl)
+      };
+      const launch = launchers[id];
+      if (typeof launch !== 'function') {
+        console.error('[games] Не найден запуск игры:', id);
+        return;
+      }
+      appState.gameActive = false;
+      document.body.classList.remove('game-active');
       incrementGames();
       updateStatsDisplay();
       const lvl = getGameLevel(id);
-      games[id]?.(lvl);
+      try {
+        launch(lvl);
+      } catch (err) {
+        appState.gameActive = false;
+        document.body.classList.remove('game-active');
+        console.error('[games] Ошибка запуска', id, err);
+        logError('game_launch_failed', { gameId: id, message: err?.message });
+      }
       checkAchievements();
       trackEvent('game_selected', id);
     };
@@ -2018,6 +2031,10 @@ if (typeof window !== 'undefined') {
   window.showChildSelectModal = showChildSelectModal;
   window.showGamesMenu = showGamesMenu;
   window.onGameClose = onGameClose;
+  window.startMazeGame = startMazeGame;
+  window.startPuzzleGame = startPuzzleGame;
+  window.startConstellationGame = startConstellationGame;
+  window.startRunnerGame = startRunnerGame;
   window.launchFishGame = launchFishGame;
   window.isAppReady = isAppReady;
   window.sendTestNotification = sendTestNotification;

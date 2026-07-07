@@ -1,6 +1,6 @@
 import { appState } from '../core.js';
 import { createGameScreen, getGameLevel, showGameResult } from './game-ui.js';
-import { getAvatarPaths } from '../config.js';
+import { avatarUrl } from '../config.js';
 
 const OBSTACLE_TYPES = [
   {
@@ -131,30 +131,6 @@ function drawPixarStar(ctx, s, frame) {
   ctx.fill();
 }
 
-function preloadRunnerAvatar(onReady) {
-  const paths = getAvatarPaths('lucik');
-  const img = new Image();
-  let stage = 'svg';
-
-  const done = () => {
-    if (img.naturalWidth > 0) onReady(img);
-    else onReady(null);
-  };
-
-  img.onload = done;
-  img.onerror = () => {
-    if (stage === 'svg') {
-      stage = 'png';
-      img.src = paths.png;
-      return;
-    }
-    onReady(null);
-  };
-
-  img.src = paths.svg;
-  return img;
-}
-
 export function startRunnerGame(level) {
   if (appState.gameActive) return;
   appState.gameActive = true;
@@ -165,18 +141,23 @@ export function startRunnerGame(level) {
   const canvas = document.createElement('canvas');
   canvas.id = 'runnerCanvas';
   canvas.className = 'runner-pixar-canvas';
-  canvas.style.cssText = 'width:100%;max-width:520px;border-radius:16px;touch-action:none;box-shadow:0 12px 40px rgba(0,0,0,0.35);';
-  body.appendChild(canvas);
+  canvas.style.cssText = 'display:block;width:100%;max-width:520px;border-radius:16px;touch-action:none;box-shadow:0 12px 40px rgba(0,0,0,0.35);';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'runner-canvas-wrap';
+
+  const lucikEl = document.createElement('img');
+  lucikEl.className = 'runner-lucik-avatar';
+  lucikEl.src = avatarUrl('lucik', 'svg');
+  lucikEl.alt = 'Люцик';
+  lucikEl.width = 56;
+  lucikEl.height = 56;
+
+  wrap.appendChild(canvas);
+  wrap.appendChild(lucikEl);
+  body.appendChild(wrap);
 
   const ctx = canvas.getContext('2d');
-  let lucikImg = null;
-  let lucikReady = false;
-  lucikImg = preloadRunnerAvatar((img) => {
-    if (img) {
-      lucikImg = img;
-      lucikReady = true;
-    }
-  });
 
   const resize = () => {
     canvas.width = Math.min(window.innerWidth - 32, 520);
@@ -341,42 +322,28 @@ export function startRunnerGame(level) {
     speed = Math.min(4 + Math.min(level, 5) * 0.3 + frame * 0.0008, 12);
   }
 
-  function drawLucik() {
+  function positionLucik() {
     const bounce = lucik.jumping ? 0 : Math.sin(lucik.frame * 0.25) * 3;
     const size = 56;
-    const half = size / 2;
-    const cx = lucik.x;
-    const cy = lucik.y - half + 10 + bounce;
 
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.beginPath();
-    ctx.ellipse(cx, lucik.y + 4, 26, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(lucik.x, lucik.y + 4, 26, 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    if (lucikReady && lucikImg?.naturalWidth) {
-      const glow = ctx.createRadialGradient(cx, cy, 6, cx, cy, half + 14);
-      glow.addColorStop(0, 'rgba(255,215,0,0.5)');
-      glow.addColorStop(1, 'rgba(255,215,0,0)');
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(cx, cy, half + 14, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.save();
-      ctx.translate(cx, cy);
-      if (lucik.spinning) ctx.rotate(lucik.spinAngle);
-      const squash = lucik.jumping ? 1.06 : 1 + Math.sin(lucik.frame * 0.25) * 0.05;
-      ctx.scale(1 / squash, squash);
-      ctx.drawImage(lucikImg, -half, -half, size, size);
-      ctx.restore();
-    } else {
-      ctx.font = '40px serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('🐱', cx, cy);
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'alphabetic';
+    if (gameOver) {
+      lucikEl.style.display = 'none';
+      return;
     }
+
+    lucikEl.style.display = 'block';
+    const leftPct = (lucik.x / canvas.width) * 100;
+    const topPct = ((lucik.y - size + 10 + bounce) / canvas.height) * 100;
+    lucikEl.style.left = `${leftPct}%`;
+    lucikEl.style.top = `${topPct}%`;
+    lucikEl.style.transform = lucik.spinning
+      ? `translate(-50%, -100%) rotate(${lucik.spinAngle}rad)`
+      : 'translate(-50%, -100%)';
   }
 
   function draw() {
@@ -398,7 +365,7 @@ export function startRunnerGame(level) {
     });
     ctx.globalAlpha = 1;
 
-    if (!gameOver) drawLucik();
+    if (!gameOver) positionLucik();
 
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 20px Georgia, serif';
