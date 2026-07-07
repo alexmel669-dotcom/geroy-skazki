@@ -1,272 +1,143 @@
-import { appState, getActiveChild, getActiveChildName } from '../core.js';
-import { updateAchievement } from '../achievements.js';
-import { recordPuzzleWin } from '../game-progress.js';
-import { setAvatarState } from '../ui.js';
+import { appState } from '../core.js';
+import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
-import {
-  createGameScreen, showGameResult, recordGameWin, getGameLevel,
-  createConfetti, triggerGameWin, resetGameSession, loadImageForCanvas
-} from './game-ui.js';
-import { avatarUrl } from '../config.js';
+import { recordGameResult } from '../game-progress.js';
+import { updateAchievement, checkProgressAchievements } from '../achievements.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel, createConfetti } from './game-ui.js';
 import { getPuzzleGrid } from './game-difficulty.js';
+import { avatarUrl } from '../config.js';
 
-class PuzzleGame {
-  constructor(size, level, overlay, onWin) {
+class Puzzle {
+  constructor(size, onWin) {
     this.size = size;
-    this.level = level;
-    this.overlay = overlay;
-    this.onWin = onWin;
     this.tiles = [];
-    this.emptyIndex = size * size - 1;
+    this.empty = size * size - 1;
     this.moves = 0;
     this.solved = false;
-    this.image = new Image();
-    this.imageLoaded = false;
+    this.onWin = onWin;
   }
 
-  async loadImage() {
-    const svg = avatarUrl('lucik', 'svg');
-    this.image.onerror = () => {
-      this.image.src = svg;
-    };
-    try {
-      this.image = await loadImageForCanvas(svg);
-      this.imageLoaded = true;
-    } catch {
-      try {
-        this.image = await loadImageForCanvas(avatarUrl('lucik', 'png'));
-        this.imageLoaded = true;
-      } catch {
-        this.imageLoaded = false;
-      }
-    }
-  }
-
-  init(canvas) {
+  init(canvas, img) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.canvasSize = 300;
-    this.tileSize = this.canvasSize / this.size;
-    canvas.width = this.canvasSize;
-    canvas.height = this.canvasSize + 36;
+    this.img = img;
+    this.ts = Math.floor(300 / this.size);
 
-    for (let row = 0; row < this.size; row++) {
-      for (let col = 0; col < this.size; col++) {
-        const index = row * this.size + col;
-        this.tiles.push({
-          index,
-          correctRow: row,
-          correctCol: col,
-          currentRow: row,
-          currentCol: col
-        });
+    for (let r = 0; r < this.size; r++) {
+      for (let c = 0; c < this.size; c++) {
+        this.tiles.push({ cr: r, cc: c, tr: r, tc: c, i: r * this.size + c });
       }
     }
 
-    this.shuffle();
-    this.draw();
-
-    canvas.addEventListener('click', (e) => {
-      const r = canvas.getBoundingClientRect();
-      const mx = (e.clientX - r.left) * (canvas.width / r.width);
-      const my = (e.clientY - r.top) * (canvas.height / r.height);
-      if (my > this.canvasSize) return;
-      this.handleClick(mx, my);
-    });
-
-    canvas.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      const t = e.touches[0];
-      const r = canvas.getBoundingClientRect();
-      const mx = (t.clientX - r.left) * (canvas.width / r.width);
-      const my = (t.clientY - r.top) * (canvas.height / r.height);
-      if (my > this.canvasSize) return;
-      this.handleClick(mx, my);
-    }, { passive: false });
-  }
-
-  shuffle() {
     for (let i = 0; i < 100; i++) {
-      const neighbors = this.getValidMoves();
-      if (neighbors.length > 0) {
-        const tile = neighbors[Math.floor(Math.random() * neighbors.length)];
-        this.moveTile(tile, false);
-      }
+      const moves = this.validMoves();
+      if (moves.length) this.swap(moves[Math.floor(Math.random() * moves.length)], false);
     }
     this.moves = 0;
-    this.solved = false;
-  }
-
-  getValidMoves() {
-    const empty = this.tiles[this.emptyIndex];
-    return this.tiles.filter((t) => {
-      if (t.index === this.emptyIndex) return false;
-      const dr = Math.abs(t.currentRow - empty.currentRow);
-      const dc = Math.abs(t.currentCol - empty.currentCol);
-      return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
-    });
-  }
-
-  moveTile(tile, animate = true) {
-    const empty = this.tiles[this.emptyIndex];
-    [tile.currentRow, empty.currentRow] = [empty.currentRow, tile.currentRow];
-    [tile.currentCol, empty.currentCol] = [empty.currentCol, tile.currentCol];
-    this.emptyIndex = tile.index;
-    if (animate) this.moves++;
-
-    if (animate && this.canvas) {
-      this.canvas.style.transform = 'scale(1.02)';
-      setTimeout(() => { this.canvas.style.transform = 'scale(1)'; }, 150);
-    }
-
-    if (this.checkWin()) {
-      this.onWinAction();
-    } else {
-      this.draw();
-    }
-  }
-
-  checkWin() {
-    return this.tiles.every(
-      (t) => t.currentRow === t.correctRow && t.currentCol === t.correctCol
-    );
-  }
-
-  onWinAction() {
-    if (this.solved) return;
-    this.solved = true;
     this.draw();
-    triggerGameWin(this.overlay);
-    window.ttsEngine?.speak(`Ура! Ты собрал пазл! Всего за ${this.moves} ходов!`);
-    this.onWin(this.moves);
   }
 
-  drawWoodBackground(ctx) {
-    ctx.fillStyle = '#DEB887';
-    ctx.fillRect(0, 0, this.canvasSize, this.canvasSize);
-    ctx.strokeStyle = 'rgba(139,90,43,0.2)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < this.canvasSize; i += 8) {
-      ctx.beginPath();
-      ctx.moveTo(0, i + Math.sin(i * 0.1) * 3);
-      ctx.lineTo(this.canvasSize, i + Math.cos(i * 0.1) * 3);
-      ctx.stroke();
-    }
+  validMoves() {
+    const e = this.tiles[this.empty];
+    return this.tiles.filter((t) => t !== e && ((Math.abs(t.cr - e.cr) === 1 && t.cc === e.cc) || (Math.abs(t.cc - e.cc) === 1 && t.cr === e.cr)));
+  }
+
+  swap(tile, count = true) {
+    const e = this.tiles[this.empty];
+    [tile.cr, e.cr] = [e.cr, tile.cr];
+    [tile.cc, e.cc] = [e.cc, tile.cc];
+    this.empty = tile.i;
+    if (count) this.moves++;
+    this.draw();
+    if (this.tiles.every((t) => t.cr === t.tr && t.cc === t.tc)) this.win();
   }
 
   draw() {
-    const ctx = this.ctx;
-    const ts = this.tileSize;
-    if (!ctx) return;
+    const ctx = this.ctx; const ts = this.ts;
+    ctx.fillStyle = '#DEB887';
+    ctx.fillRect(0, 0, 300, 300);
 
-    this.drawWoodBackground(ctx);
-
-    const imgReady = this.imageLoaded && this.image?.complete;
-
-    this.tiles.forEach((tile) => {
-      if (tile.index === this.emptyIndex) return;
-
-      const x = tile.currentCol * ts;
-      const y = tile.currentRow * ts;
-
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.fillRect(x + 3, y + 3, ts - 2, ts - 2);
-
-      if (imgReady) {
-        const iw = this.image.naturalWidth || this.image.width || 300;
-        const ih = this.image.naturalHeight || this.image.height || 300;
-        const sw = iw / this.size;
-        const sh = ih / this.size;
-        ctx.drawImage(
-          this.image,
-          tile.correctCol * sw,
-          tile.correctRow * sh,
-          sw,
-          sh,
-          x + 1,
-          y + 1,
-          ts - 3,
-          ts - 3
-        );
-      } else {
-        const hue = (tile.index * 37) % 360;
-        ctx.fillStyle = `hsl(${hue}, 55%, 55%)`;
-        ctx.fillRect(x + 1, y + 1, ts - 3, ts - 3);
-      }
-
+    this.tiles.forEach((t) => {
+      if (t.i === this.empty) return;
+      const x = t.cc * ts; const y = t.cr * ts;
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fillRect(x + 2, y + 2, ts - 2, ts - 2);
+      ctx.drawImage(this.img, t.tc * (120 / this.size), t.tr * (120 / this.size), 120 / this.size, 120 / this.size, x, y, ts - 2, ts - 2);
       ctx.strokeStyle = '#FFD700';
       ctx.lineWidth = 2;
-      ctx.strokeRect(x + 2, y + 2, ts - 5, ts - 5);
+      ctx.strokeRect(x + 1, y + 1, ts - 4, ts - 4);
     });
 
-    const empty = this.tiles[this.emptyIndex];
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
-    ctx.fillRect(empty.currentCol * ts, empty.currentRow * ts, ts, ts);
+    const e = this.tiles[this.empty];
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.fillRect(e.cc * ts, e.cr * ts, ts, ts);
 
-    ctx.fillStyle = '#8B4513';
-    ctx.font = 'bold 18px Georgia, serif';
-    ctx.fillText(`Ходы: ${this.moves}`, 10, this.canvasSize + 24);
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 16px Georgia';
+    ctx.fillText(`Ходы: ${this.moves}`, 10, 320);
   }
 
-  handleClick(mx, my) {
+  click(mx, my) {
     if (this.solved) return;
-    const col = Math.floor(mx / this.tileSize);
-    const row = Math.floor(my / this.tileSize);
-    const tile = this.tiles.find(
-      (t) => t.currentRow === row && t.currentCol === col && t.index !== this.emptyIndex
-    );
-    if (tile && this.getValidMoves().includes(tile)) {
-      this.moveTile(tile);
-    }
+    const c = Math.floor(mx / this.ts); const r = Math.floor(my / this.ts);
+    const tile = this.tiles.find((t) => t.cr === r && t.cc === c && t.i !== this.empty);
+    if (tile && this.validMoves().includes(tile)) this.swap(tile);
+  }
+
+  win() {
+    if (this.solved) return;
+    this.solved = true;
+    createConfetti(document.querySelector('.game-fullscreen') || document.body);
+    speak('Ура! Пазл собран!');
+    this.onWin?.(this.moves);
   }
 }
 
-export function startPuzzleGame(level) {
-  resetGameSession();
+export function startPuzzleGame(level = 1) {
+  if (appState.gameActive) return;
+  appState.gameActive = true;
   level = level || getGameLevel('puzzle');
-  runPuzzle(level);
-}
+  const size = getPuzzleGrid(7, level);
 
-async function runPuzzle(level) {
-  const age = getActiveChild()?.age || 7;
-  const size = getPuzzleGrid(age, level);
-
-  const { body, close, overlay } = createGameScreen({
-    gameId: 'puzzle',
-    title: `Пазл ${size}×${size}`,
-    emoji: '🧩',
-    level
-  });
+  const { body, close } = createGameScreen({ gameId: 'puzzle', title: `🧩 Пазл ${size}×${size}`, emoji: '🧩', level });
 
   const wrap = document.createElement('div');
-  wrap.className = 'puzzle-canvas-wrap';
-  wrap.style.cssText = 'padding:12px;background:linear-gradient(180deg,#DEB887,#8B4513);border-radius:20px;box-shadow:0 12px 40px rgba(0,0,0,0.35);';
+  wrap.style.cssText = 'padding:16px;background:linear-gradient(180deg,#DEB887,#8B4513);border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,0.4);';
 
   const canvas = document.createElement('canvas');
-  canvas.className = 'puzzle-pixar-canvas';
-  canvas.style.cssText = 'display:block;border-radius:12px;max-width:100%;touch-action:none;';
+  canvas.width = 300; canvas.height = 340;
+  canvas.style.cssText = 'display:block;border-radius:12px;cursor:pointer;max-width:100%;';
   wrap.appendChild(canvas);
   body.appendChild(wrap);
 
-  const game = new PuzzleGame(size, level, overlay, (moves) => {
-    updateAchievement('puzzle_solver');
-    recordPuzzleWin(getActiveChildName());
-    recordGameWin('puzzle', level);
-    setAvatarState('happy');
+  const img = new Image();
+  img.src = avatarUrl('lucik', 'svg');
+
+  const game = new Puzzle(size, (moves) => {
     appState.gameActive = false;
     close();
-    setTimeout(() => setAvatarState(null), 800);
-    showGameResult({
-      won: true,
-      level,
-      scoreText: `Собрано за ${moves} ходов!`,
-      onNext: () => startPuzzleGame(level + 1)
-    });
+    recordGameResult('puzzle', true, level);
+    recordGameWin('puzzle', level);
+    updateAchievement('puzzle_solver');
+    checkProgressAchievements();
     trackEvent('puzzle_won', { level, moves, gridSize: size });
+    showGameResult({
+      won: true, level,
+      scoreText: `Собрано за ${moves} ходов!`,
+      onNext: () => startPuzzleGame(level + 1),
+      onRestart: () => startPuzzleGame(level)
+    });
   });
 
-  await game.loadImage();
-  game.init(canvas);
+  img.onload = () => { game.init(canvas, img); };
+  img.onerror = () => { img.src = avatarUrl('lucik', 'png'); };
+  setTimeout(() => { if (!img.complete) game.init(canvas, img); }, 1000);
+
+  canvas.onclick = (e) => {
+    const r = canvas.getBoundingClientRect();
+    game.click((e.clientX - r.left) * (300 / r.width), (e.clientY - r.top) * (300 / r.height));
+  };
+
   trackEvent('puzzle_started', { level, gridSize: size });
 }
 

@@ -1,51 +1,38 @@
 import { appState, getActiveChild } from '../core.js';
-import { setAvatarState } from '../ui.js';
+import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel, resetGameSession } from './game-ui.js';
+import { recordGameResult } from '../game-progress.js';
+import { updateAchievement, checkProgressAchievements } from '../achievements.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 import { getChildGender, formatChildText } from '../gender.js';
-import { getQuestMaxMoves } from './game-difficulty.js';
-const QUEST_STORY = {
+
+const STORY = {
   start: {
     text: '🗺️ Люцик потерял волшебный кристалл! Поможешь найти?\n\nВы стоите у лесной тропинки. Куда пойдёте?',
     emoji: '🌲',
-    choices: [
-      { label: '🏔️ В горы', next: 'mountain' },
-      { label: '🌊 К реке', next: 'river' }
-    ]
+    choices: [{ label: '⛰️ В горы', next: 'mountain' }, { label: '🌊 К реке', next: 'river' }]
   },
   mountain: {
     text: '⛰️ В горах ветрено. На скале сидит мудрая сова.',
     emoji: '🦉',
-    choices: [
-      { label: '🗣️ Спросить сову', next: 'owl' },
-      { label: '🔦 Осмотреть пещеру', next: 'cave' }
-    ]
+    choices: [{ label: '🗣️ Спросить сову', next: 'owl' }, { label: '🕳️ Осмотреть пещеру', next: 'cave' }]
   },
   river: {
     text: '🌊 У реки плещется рыбка. Она что-то знает!',
     emoji: '🐟',
-    choices: [
-      { label: '💬 Поговорить с рыбкой', next: 'fish' },
-      { label: '🌉 Перейти мост', next: 'bridge' }
-    ]
+    choices: [{ label: '💬 Поговорить с рыбкой', next: 'fish_talk' }, { label: '🌉 Перейти мост', next: 'bridge' }]
   },
   owl: {
     text: '🦉 Сова шепчет: «Кристалл там, где светит луна и поют сверчки.»',
     emoji: '🌙',
-    choices: [
-      { label: '🌿 Идти к поляне', next: 'meadow' },
-      { label: '🏠 Вернуться в деревню', next: 'village' }
-    ]
+    choices: [{ label: '🌿 Идти к поляне', next: 'meadow' }, { label: '🏘️ Вернуться в деревню', next: 'village' }]
   },
   cave: {
     text: '🕳️ В пещере темно, но ты {смелый}! Там светится что-то...',
     emoji: '💎',
-    choices: [
-      { label: '✨ Взять кристалл', next: 'win_cave' },
-      { label: '🔙 Назад', next: 'mountain' }
-    ]
+    choices: [{ label: '✨ Взять кристалл', next: 'win_cave' }, { label: '↩️ Назад', next: 'mountain' }]
   },
-  fish: {
+  fish_talk: {
     text: '🐟 Рыбка говорит: «Кристалл спрятан под мостом, где растут цветы.»',
     emoji: '🌸',
     choices: [{ label: '🌉 К мосту', next: 'bridge' }]
@@ -53,10 +40,7 @@ const QUEST_STORY = {
   bridge: {
     text: '🌉 Под мостом блестит кристалл! Но его охраняет маленький дракончик.',
     emoji: '🐉',
-    choices: [
-      { label: '🎁 Подарить яблоко', next: 'win_kind' },
-      { label: '🏃 Убежать', next: 'lose_run' }
-    ]
+    choices: [{ label: '🎁 Подарить яблоко', next: 'win_kind' }, { label: '🏃 Убежать', next: 'lose_run' }]
   },
   meadow: {
     text: '🌿 На поляне сверчки поют. Кристалл лежит среди цветов!',
@@ -74,113 +58,93 @@ const QUEST_STORY = {
   lose_run: { end: true, text: '😅 Дракончик спрятал кристалл. Но ты {смелый} — попробуй ещё раз!', emoji: '🐉', win: false }
 };
 
-const START_BY_LEVEL = {
-  1: 'start',
-  2: 'mountain',
-  3: 'river',
-  4: 'village',
-  5: 'bridge'
-};
+const STARTS = { 1: 'start', 2: 'mountain', 3: 'river', 4: 'village', 5: 'bridge' };
 
-export function startQuestGame(level) {
-  resetGameSession();
+export function startQuestGame(level = 1) {
+  if (appState.gameActive) return;
+  appState.gameActive = true;
   level = level || getGameLevel('quest');
 
-  let step = START_BY_LEVEL[level] || 'start';
-  let moves = 0;
-  const maxMoves = getQuestMaxMoves(level);
+  let step = STARTS[Math.min(level, 5)] || 'start';
+  let moves = 0; const maxMoves = 5 + level * 2; let ended = false;
 
-  const { body, close } = createGameScreen({
-    gameId: 'quest',
-    title: 'Текстовый квест',
-    emoji: '🗺️',
-    level
-  });
+  const { body, close } = createGameScreen({ gameId: 'quest', title: '🗺️ Квест', emoji: '🗺️', level });
 
   const panel = document.createElement('div');
-  panel.className = 'game-panel quest-panel';
-  panel.style.cssText = 'max-width:400px;width:100%;text-align:center;';
+  panel.style.cssText = 'text-align:center;color:#fff;max-width:400px;margin:0 auto;';
 
   const art = document.createElement('div');
-  art.className = 'quest-art';
-  art.style.cssText = 'font-size:4.5rem;margin:8px 0;animation:gameResultBounce 2s ease-in-out infinite;';
+  art.style.cssText = 'font-size:64px;margin:8px 0;';
 
-  const text = document.createElement('p');
-  text.style.cssText = 'line-height:1.55;font-size:1rem;margin:0 0 16px;';
+  const textEl = document.createElement('p');
+  textEl.style.cssText = 'font-size:16px;line-height:1.5;margin:0 0 16px;min-height:60px;';
 
   const movesEl = document.createElement('p');
-  movesEl.style.cssText = 'font-size:0.8rem;opacity:0.7;margin-bottom:12px;';
+  movesEl.style.cssText = 'font-size:14px;opacity:0.7;margin-bottom:12px;';
 
-  const choices = document.createElement('div');
-  choices.style.cssText = 'display:flex;flex-direction:column;gap:10px;width:100%;';
+  const choicesEl = document.createElement('div');
+  choicesEl.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
 
-  function finishEnd(node) {
-    appState.gameActive = false;
-    close();
-    if (node.win) {
-      setAvatarState('happy');
-      setTimeout(() => setAvatarState(null), 1200);
-      recordGameWin('quest', level);
-      showGameResult({
-        won: true,
-        level,
-        scoreText: `Квест пройден за ${moves} шагов!`,
-        onNext: () => startQuestGame(level + 1)
-      });
-      trackEvent('quest_won', { level, moves });
-    } else {
-      showGameResult({
-        won: false,
-        level,
-        scoreText: formatChildText(node.text, getChildGender(getActiveChild())),
-        onRestart: () => startQuestGame(level)
-      });
-      trackEvent('quest_lost', { level });
-    }
-  }
+  panel.append(art, textEl, movesEl, choicesEl);
+  body.appendChild(panel);
 
   function render() {
-    const node = QUEST_STORY[step];
+    const node = STORY[step];
     if (!node) return;
 
     art.textContent = node.emoji || '🗺️';
-    const gender = getChildGender(getActiveChild());
-    text.textContent = formatChildText(node.text, gender);
-    movesEl.textContent = `Шагов: ${moves}${maxMoves < 14 ? ` · лимит ${maxMoves}` : ''}`;
+    textEl.textContent = formatChildText(node.text, getChildGender(getActiveChild()));
+    movesEl.textContent = `Шагов: ${moves} / ${maxMoves}`;
 
     if (node.end) {
-      choices.innerHTML = '';
-      const again = document.createElement('button');
-      again.className = 'modal-btn';
-      again.textContent = node.win ? '🎉 Ура!' : '🔄 Ещё раз';
-      again.onclick = () => finishEnd(node);
-      choices.appendChild(again);
+      choicesEl.innerHTML = '';
+      const btn = document.createElement('button');
+      btn.textContent = node.win ? '🎉 Ура!' : '🔄 Ещё раз';
+      btn.style.cssText = 'padding:12px 32px;border-radius:12px;border:none;background:#FFD700;color:#333;font-size:18px;cursor:pointer;';
+      btn.onclick = () => endGame(node.win);
+      choicesEl.appendChild(btn);
       return;
     }
 
     if (moves >= maxMoves) {
-      finishEnd({ win: false, text: '⏱️ Время вышло! Попробуй короче путь.' });
+      choicesEl.innerHTML = '';
+      const btn = document.createElement('button');
+      btn.textContent = '⏱ Время вышло';
+      btn.style.cssText = 'padding:12px 32px;border-radius:12px;border:none;background:#FF6B6B;color:#fff;font-size:18px;cursor:pointer;';
+      btn.onclick = () => endGame(false);
+      choicesEl.appendChild(btn);
       return;
     }
 
-    choices.innerHTML = '';
+    choicesEl.innerHTML = '';
     node.choices.forEach((c) => {
       const btn = document.createElement('button');
-      btn.className = 'modal-btn quest-choice-btn';
       btn.textContent = c.label;
-      btn.onclick = () => {
-        moves++;
-        step = c.next;
-        render();
-      };
-      choices.appendChild(btn);
+      btn.style.cssText = 'padding:12px 20px;border-radius:12px;border:2px solid #FFD700;background:transparent;color:#FFD700;font-size:16px;cursor:pointer;';
+      btn.onclick = () => { moves++; step = c.next; render(); };
+      choicesEl.appendChild(btn);
     });
   }
 
-  panel.append(art, text, movesEl, choices);
-  body.appendChild(panel);
+  function endGame(won) {
+    if (ended) return;
+    ended = true;
+    appState.gameActive = false;
+    close();
+    recordGameResult('quest', won, level);
+    if (won) { recordGameWin('quest', level); updateAchievement('quest_hero'); checkProgressAchievements(); }
+    trackEvent(won ? 'quest_won' : 'quest_lost', { level, moves });
+    speak(won ? 'Кристалл найден!' : 'Попробуй другой путь!');
+    showGameResult({
+      won, level,
+      scoreText: `Пройдено за ${moves} шагов`,
+      onNext: won ? () => startQuestGame(level + 1) : null,
+      onRestart: () => startQuestGame(level)
+    });
+  }
+
   render();
   trackEvent('quest_started', { level });
 }
 
-export default startQuestGame;
+export default { startQuestGame };

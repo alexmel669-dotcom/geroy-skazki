@@ -1,190 +1,121 @@
 import { appState } from '../core.js';
-import { ttsEngine } from '../audio.js';
-import { updateAchievement } from '../achievements.js';
-import { createGameScreen, getGameLevel, resetGameSession, showGameResult, recordGameWin } from './game-ui.js';
+import { speak } from '../audio.js';
+import { trackEvent } from '../analytics.js';
+import { recordGameResult } from '../game-progress.js';
+import { updateAchievement, checkProgressAchievements } from '../achievements.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 
-const PALETTE = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#6C5CE7', '#FF8C00', '#A8E6CF', '#FF6B9D', '#333333'];
-
-const DRAWING_TASKS = {
-  1: { prompt: 'солнышко', hint: 'Нарисуй солнышко! ☀️', check: (desc) => /жёлт|желт|солнц|круг/i.test(desc) },
-  2: { prompt: 'домик', hint: 'Нарисуй домик! 🏠', check: (desc) => /квадрат|крыш|дом/i.test(desc) },
-  3: { prompt: 'котик', hint: 'Нарисуй котика! 🐱', check: (desc) => /круг|уш|кот/i.test(desc) },
-  4: { prompt: 'дерево', hint: 'Нарисуй дерево! 🌳', check: (desc) => /зелён|зелен|ствол|дерев/i.test(desc) },
-  5: { prompt: 'машина', hint: 'Нарисуй машину! 🚗', check: (desc) => /прямоуг|колёс|колес|машин|авто/i.test(desc) }
+const TASKS = {
+  1: { hint: 'Нарисуй солнышко ☀️', check: (d) => d.includes('жёлт') || d.includes('желт') || d.includes('круг') },
+  2: { hint: 'Нарисуй домик 🏠', check: (d) => d.includes('квадрат') || d.includes('крыш') },
+  3: { hint: 'Нарисуй котика 🐱', check: (d) => d.includes('круг') || d.includes('уш') },
+  4: { hint: 'Нарисуй дерево 🌳', check: (d) => d.includes('зелён') || d.includes('зелен') || d.includes('ствол') },
+  5: { hint: 'Нарисуй машину 🚗', check: (d) => d.includes('прямоуг') || d.includes('колёс') || d.includes('колес') }
 };
 
-function drawWithSparkle(ctx, x, y, color) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(x, y, 8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.beginPath();
-  ctx.arc(x - 2, y - 2, 3, 0, Math.PI * 2);
-  ctx.fill();
-}
+export function startDrawAIGame(level = 1) {
+  if (appState.gameActive) return;
+  appState.gameActive = true;
+  level = level || getGameLevel('drawAi');
+  const task = TASKS[Math.min(level, 5)] || TASKS[1];
 
-function setupPixarCanvas(body) {
-  const wrap = document.createElement('div');
-  wrap.className = 'draw-pixar-wrap';
+  const { body, close } = createGameScreen({ gameId: 'drawAi', title: '🎨 Рисовалка', emoji: '🎨', level });
 
-  const taskHint = document.createElement('p');
-  taskHint.id = 'taskHint';
-  taskHint.className = 'draw-pixar-task';
-  taskHint.style.cssText = 'text-align:center;font-weight:600;margin:0 0 8px;';
-
-  const easel = document.createElement('div');
-  easel.className = 'draw-pixar-easel';
+  const hintEl = document.createElement('p');
+  hintEl.style.cssText = 'text-align:center;color:#FFD700;font-size:18px;margin:8px 0;';
+  hintEl.textContent = task.hint;
 
   const canvas = document.createElement('canvas');
-  canvas.id = 'drawCanvas';
-  canvas.width = 300;
-  canvas.height = 300;
-  canvas.className = 'draw-pixar-canvas';
-  easel.appendChild(canvas);
+  canvas.width = 300; canvas.height = 300;
+  canvas.style.cssText = 'display:block;margin:0 auto;background:#FFFEF5;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);cursor:crosshair;';
 
   const palette = document.createElement('div');
-  palette.className = 'draw-pixar-palette';
-  PALETTE.forEach((c, i) => {
-    const swatch = document.createElement('button');
-    swatch.type = 'button';
-    swatch.className = 'draw-color-swatch' + (i === 7 ? ' active' : '');
-    swatch.style.background = c;
-    swatch.dataset.color = c;
-    swatch.setAttribute('aria-label', `Цвет ${c}`);
-    palette.appendChild(swatch);
+  palette.style.cssText = 'display:flex;gap:6px;justify-content:center;margin:8px 0;';
+  ['#FF6B6B', '#4ECDC4', '#FFD93D', '#6C5CE7', '#FF8C00', '#A8E6CF', '#FF6B9D', '#333'].forEach((c) => {
+    const s = document.createElement('div');
+    s.style.cssText = `width:30px;height:30px;border-radius:50%;background:${c};border:3px solid #fff;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);`;
+    s.onclick = () => { currentColor = c; };
+    palette.appendChild(s);
   });
-
-  const guessBtn = document.createElement('button');
-  guessBtn.type = 'button';
-  guessBtn.id = 'guessBtn';
-  guessBtn.className = 'draw-pixar-guess-btn';
-  guessBtn.textContent = '🤔 Угадай!';
-
-  const clearBtn = document.createElement('button');
-  clearBtn.type = 'button';
-  clearBtn.id = 'clearBtn';
-  clearBtn.className = 'modal-btn secondary draw-pixar-clear-btn';
-  clearBtn.textContent = '🧹 Очистить';
 
   const btnRow = document.createElement('div');
-  btnRow.className = 'draw-pixar-btns';
-  btnRow.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px;';
-  btnRow.append(clearBtn, guessBtn);
+  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:center;margin:8px 0;';
+
+  const clearBtn = document.createElement('button');
+  clearBtn.textContent = '🧹 Очистить';
+  clearBtn.style.cssText = 'padding:10px 20px;border-radius:8px;border:none;background:#FF6B6B;color:#fff;cursor:pointer;';
+  clearBtn.onclick = () => { ctx.fillStyle = '#FFFEF5'; ctx.fillRect(0, 0, 300, 300); };
+
+  const guessBtn = document.createElement('button');
+  guessBtn.textContent = '🤔 Угадай!';
+  guessBtn.style.cssText = 'padding:10px 20px;border-radius:8px;border:none;background:#FFD700;color:#333;cursor:pointer;';
 
   const resultEl = document.createElement('p');
-  resultEl.id = 'guessResult';
-  resultEl.className = 'draw-pixar-result';
+  resultEl.style.cssText = 'text-align:center;color:#fff;min-height:24px;';
 
-  wrap.append(taskHint, easel, palette, btnRow, resultEl);
-  body.appendChild(wrap);
-
-  return { wrap, canvas, guessBtn, clearBtn, resultEl, palette, taskHint };
-}
-
-export function startDrawAIGame(level) {
-  resetGameSession();
-  level = level || getGameLevel('drawAi');
-
-  const task = DRAWING_TASKS[level] || DRAWING_TASKS[1];
-  const { body, close } = createGameScreen({ gameId: 'drawAi', title: 'Рисовалка', emoji: '🎨', level });
-  const { canvas, guessBtn, clearBtn, resultEl, palette, taskHint } = setupPixarCanvas(body);
-  taskHint.textContent = task.hint;
+  btnRow.append(clearBtn, guessBtn);
+  body.append(hintEl, canvas, palette, btnRow, resultEl);
 
   const ctx = canvas.getContext('2d');
-  let won = false;
+  ctx.fillStyle = '#FFFEF5'; ctx.fillRect(0, 0, 300, 300);
+  let currentColor = '#333'; let drawing = false; let won = false;
 
-  function clearCanvas() {
-    ctx.fillStyle = '#FFFEF5';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    resultEl.textContent = '';
-  }
-
-  clearCanvas();
-
-  let drawing = false;
-  let currentColor = '#333333';
-
-  palette.querySelectorAll('.draw-color-swatch').forEach((swatch) => {
-    swatch.addEventListener('click', () => {
-      currentColor = swatch.dataset.color;
-      palette.querySelectorAll('.draw-color-swatch').forEach((s) => s.classList.remove('active'));
-      swatch.classList.add('active');
-    });
-  });
-
-  const scalePoint = (clientX, clientY) => {
+  canvas.onmousedown = () => { drawing = true; };
+  canvas.onmouseup = () => { drawing = false; };
+  canvas.onmousemove = (e) => {
+    if (!drawing) return;
     const r = canvas.getBoundingClientRect();
-    return {
-      x: (clientX - r.left) * (canvas.width / r.width),
-      y: (clientY - r.top) * (canvas.height / r.height)
-    };
+    ctx.fillStyle = currentColor;
+    ctx.beginPath();
+    ctx.arc((e.clientX - r.left) * (300 / r.width), (e.clientY - r.top) * (300 / r.height), 6, 0, Math.PI * 2);
+    ctx.fill();
   };
 
-  const drawAt = (clientX, clientY) => {
-    const { x, y } = scalePoint(clientX, clientY);
-    drawWithSparkle(ctx, x, y, currentColor);
+  canvas.ontouchstart = (e) => { drawing = true; const t = e.touches[0]; const r = canvas.getBoundingClientRect(); ctx.fillStyle = currentColor; ctx.beginPath(); ctx.arc((t.clientX - r.left) * (300 / r.width), (t.clientY - r.top) * (300 / r.height), 6, 0, Math.PI * 2); ctx.fill(); };
+  canvas.ontouchend = () => { drawing = false; };
+  canvas.ontouchmove = (e) => {
+    if (!drawing) return;
+    const t = e.touches[0]; const r = canvas.getBoundingClientRect();
+    ctx.fillStyle = currentColor;
+    ctx.beginPath();
+    ctx.arc((t.clientX - r.left) * (300 / r.width), (t.clientY - r.top) * (300 / r.height), 6, 0, Math.PI * 2);
+    ctx.fill();
   };
 
-  canvas.addEventListener('mousedown', () => { drawing = true; });
-  canvas.addEventListener('mouseup', () => { drawing = false; });
-  canvas.addEventListener('mouseleave', () => { drawing = false; });
-  canvas.addEventListener('mousemove', (e) => {
-    if (!drawing) return;
-    drawAt(e.clientX, e.clientY);
-  });
-
-  canvas.addEventListener('touchstart', (e) => {
-    drawing = true;
-    const t = e.touches[0];
-    drawAt(t.clientX, t.clientY);
-  }, { passive: true });
-  canvas.addEventListener('touchend', () => { drawing = false; });
-  canvas.addEventListener('touchmove', (e) => {
-    if (!drawing) return;
-    const t = e.touches[0];
-    drawAt(t.clientX, t.clientY);
-  }, { passive: true });
-
-  clearBtn.addEventListener('click', clearCanvas);
-
-  guessBtn.addEventListener('click', async () => {
+  guessBtn.onclick = async () => {
     if (won) return;
     resultEl.textContent = '🤔 Думаю...';
+    const dataUrl = canvas.toDataURL('image/png');
+
     try {
-      const dataUrl = canvas.toDataURL('image/png');
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `Посмотри на картинку. Ребёнок рисовал: ${task.prompt}. Опиши что видишь одним-двумя словами по-русски.`,
-          requestType: 'draw_guess',
-          image: dataUrl
-        })
+        body: JSON.stringify({ text: 'Посмотри на картинку. Ответь ОДНИМ словом что нарисовано.', type: 'chat', image: dataUrl })
       });
-      const data = await res.json();
-      const desc = (data.reply || data.message || '').toLowerCase();
-      const guess = desc.split(/[\s,.!?«»"]+/)[0] || 'не знаю';
-      resultEl.textContent = `🤔 Это ${guess}?`;
-      ttsEngine.speak(`Мне кажется, это ${guess}. Правильно?`).catch(() => {});
 
-      if (task.check(desc)) {
+      const data = await res.json();
+      const guess = (data.reply || data.message || 'не знаю').toLowerCase().trim();
+      resultEl.textContent = `🤔 Это ${guess}?`;
+      speak(`Мне кажется, это ${guess}. Правильно?`);
+
+      if (task.check(guess)) {
         won = true;
         appState.gameActive = false;
         close();
+        recordGameResult('drawAi', true, level);
         recordGameWin('drawAi', level);
         updateAchievement('artist');
-        showGameResult({
-          won: true,
-          level,
-          scoreText: `Задание «${task.prompt}» выполнено!`,
-          onNext: () => startDrawAIGame(level + 1)
-        });
+        checkProgressAchievements();
+        speak('Угадал! Молодец!');
+        showGameResult({ won: true, level, onNext: () => startDrawAIGame(level + 1), onRestart: () => startDrawAIGame(level) });
       }
     } catch {
       resultEl.textContent = 'Не удалось угадать. Попробуй ещё раз!';
     }
-  });
+  };
+
+  trackEvent('drawAi_started', { level });
 }
 
 export default { startDrawAIGame };

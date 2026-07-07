@@ -1,117 +1,96 @@
-import { appState, getActiveChildName } from '../core.js';
-import { updateAchievement } from '../achievements.js';
+import { appState } from '../core.js';
+import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
-import { recordMemoryWin } from '../game-progress.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel, spawnMatchHearts, resetGameSession } from './game-ui.js';
+import { recordGameResult } from '../game-progress.js';
+import { updateAchievement, checkProgressAchievements } from '../achievements.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 import { getMemoryPairs } from './game-difficulty.js';
 
-export function startMemoryGame(level) {
-  resetGameSession();
+export function startMemoryGame(level = 1) {
+  if (appState.gameActive) return;
+  appState.gameActive = true;
   level = level || getGameLevel('memory');
+  const pairs = getMemoryPairs(level);
+  const total = pairs * 2;
+  const cols = total <= 8 ? 4 : total <= 12 ? 4 : 5;
 
-  const pairCount = getMemoryPairs(level);
-  const cardCount = pairCount * 2;
-  const cols = cardCount <= 8 ? 4 : cardCount <= 12 ? 4 : 5;
+  const emojis = ['😊', '😢', '😨', '😡', '😴', '😍', '🥳', '🤗', '🐱', '🌟', '🎈', '🦋', '🌈', '🍎', '🎹', '⚽'];
+  const cards = [...emojis.slice(0, pairs), ...emojis.slice(0, pairs)].sort(() => Math.random() - 0.5);
 
-  const emojiPool = ['😊','😢','😨','😡','😴','😍','🥳','🤗','🐱','🌟','🎈','🦋','🌈','🍎','🎸','⚽'];
-  const picked = emojiPool.slice(0, pairCount);
-  appState.memoryCards = [...picked, ...picked].sort(() => Math.random() - 0.5);
-  appState.memoryFlipped = new Array(cardCount).fill(false);
-  appState.memoryMatches = 0;
-  appState.memoryLocked = false;
-
-  let attempts = 0;
-  let firstCardIndex = null;
-  let firstCardElement = null;
-
-  const { body, close } = createGameScreen({ gameId: 'memory', title: 'Мемори', emoji: '🧠', level });
+  let flipped = []; let matched = 0; let attempts = 0; let locked = false; let ended = false;
+  const { body, close } = createGameScreen({ gameId: 'memory', title: '🧠 Мемори', emoji: '🧠', level });
 
   const info = document.createElement('div');
-  info.style.cssText = 'margin:8px 0;font-size:1rem;color:white;text-align:center;';
-  info.textContent = `Найдено пар: 0 / ${pairCount} | Попытки: 0`;
+  info.style.cssText = 'text-align:center;color:#fff;font-size:16px;margin-bottom:12px;';
+  info.textContent = `Пары: 0/${pairs} | Попытки: 0`;
 
   const board = document.createElement('div');
-  board.className = 'memory-board';
-  board.style.cssText = `display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;max-width:min(420px,92vw);margin:0 auto;width:100%;`;
+  board.style.cssText = `display:grid;grid-template-columns:repeat(${cols},1fr);gap:10px;max-width:400px;margin:0 auto;`;
 
   body.appendChild(info);
   body.appendChild(board);
 
-  for (let i = 0; i < cardCount; i++) {
+  cards.forEach((emoji, i) => {
     const card = document.createElement('div');
-    card.className = 'memory-card';
+    card.style.cssText = 'aspect-ratio:1;background:linear-gradient(135deg,#7B68EE,#4a3a8a);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:36px;cursor:pointer;transition:all 0.3s;box-shadow:0 4px 16px rgba(0,0,0,0.3);';
     card.textContent = '?';
-    card.dataset.index = i;
-
     card.onclick = () => {
-      if (appState.memoryLocked || appState.memoryFlipped[i] || firstCardIndex === i) return;
-      flipCard(card, i);
+      if (locked || flipped.includes(i) || ended) return;
 
-      if (firstCardIndex === null) {
-        firstCardIndex = i;
-        firstCardElement = card;
-      } else {
+      card.textContent = emoji;
+      card.style.background = 'rgba(255,255,255,0.15)';
+      flipped.push(i);
+
+      if (flipped.length === 2) {
         attempts++;
-        info.textContent = `Найдено пар: ${appState.memoryMatches} / ${pairCount} | Попытки: ${attempts}`;
-        appState.memoryLocked = true;
+        info.textContent = `Пары: ${matched}/${pairs} | Попытки: ${attempts}`;
+        locked = true;
 
-        if (appState.memoryCards[firstCardIndex] === appState.memoryCards[i]) {
-          appState.memoryMatches++;
-          const rect = card.getBoundingClientRect();
-          spawnMatchHearts(body, rect.left + rect.width / 2, rect.top);
+        const [a, b] = flipped;
+        const cardA = board.children[a]; const cardB = board.children[b];
 
-          setTimeout(() => {
-            card.classList.add('matched', 'flipped');
-            firstCardElement.classList.add('matched', 'flipped');
-            firstCardIndex = null;
-            firstCardElement = null;
-            appState.memoryLocked = false;
-            info.textContent = `Найдено пар: ${appState.memoryMatches} / ${pairCount} | Попытки: ${attempts}`;
+        if (cards[a] === cards[b]) {
+          matched++;
+          cardA.classList.add('matched');
+          cardB.classList.add('matched');
+          flipped = [];
+          locked = false;
+          info.textContent = `Пары: ${matched}/${pairs} | Попытки: ${attempts}`;
 
-            if (appState.memoryMatches === pairCount) {
-              updateAchievement('memory_champion');
-              recordMemoryWin(pairCount, getActiveChildName());
-              recordGameWin('memory', level);
-              if (window.leaderboard) window.leaderboard.submitScore('memory', Math.max(1, pairCount * 20 - attempts));
-              trackEvent('memory_game_won', { attempts, level });
-              appState.gameActive = false;
-              close();
-              showGameResult({
-                won: true,
-                level,
-                scoreText: `Все пары за ${attempts} попыток!`,
-                onNext: () => startMemoryGame(level + 1)
-              });
-            }
-          }, 500);
+          if (matched === pairs) {
+            ended = true;
+            appState.gameActive = false;
+            close();
+            recordGameResult('memory', true, level);
+            recordGameWin('memory', level);
+            updateAchievement('memory_champion');
+            checkProgressAchievements();
+            trackEvent('memory_won', { level, attempts });
+            speak('Все пары найдены! Молодец!');
+            showGameResult({
+              won: true, level,
+              scoreText: `Все пары за ${attempts} попыток!`,
+              onNext: () => startMemoryGame(level + 1),
+              onRestart: () => startMemoryGame(level)
+            });
+            if (window.leaderboard) window.leaderboard.submitScore('memory', attempts);
+          }
         } else {
           setTimeout(() => {
-            unflipCard(card, i);
-            unflipCard(firstCardElement, firstCardIndex);
-            firstCardIndex = null;
-            firstCardElement = null;
-            appState.memoryLocked = false;
-          }, 1000);
+            cardA.textContent = '?';
+            cardA.style.background = 'linear-gradient(135deg,#7B68EE,#4a3a8a)';
+            cardB.textContent = '?';
+            cardB.style.background = 'linear-gradient(135deg,#7B68EE,#4a3a8a)';
+            flipped = [];
+            locked = false;
+          }, 800);
         }
       }
     };
-
     board.appendChild(card);
-  }
+  });
 
-  function flipCard(card, index) {
-    appState.memoryFlipped[index] = true;
-    card.textContent = appState.memoryCards[index];
-    card.classList.add('flipped');
-  }
-
-  function unflipCard(card, index) {
-    appState.memoryFlipped[index] = false;
-    card.textContent = '?';
-    card.classList.remove('flipped');
-  }
-
-  trackEvent('memory_game_started', { level });
+  trackEvent('memory_started', { level });
 }
 
 export default { startMemoryGame };

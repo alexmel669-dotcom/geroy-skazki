@@ -1,204 +1,139 @@
-import { appState, getActiveChildName } from '../core.js';
-import { setAvatarState } from '../ui.js';
-import { updateAchievement } from '../achievements.js';
+import { appState } from '../core.js';
+import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel, resetGameSession } from './game-ui.js';
-import { getRiddlesConfig } from './game-difficulty.js';
-
-const HINTS = [
-  'Первая буква: {first}',
-  'Последняя буква: {last}',
-  'Это {length} букв',
-  'Связано с: {category}'
-];
+import { recordGameResult } from '../game-progress.js';
+import { updateAchievement, checkProgressAchievements } from '../achievements.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 
 const RIDDLES = [
-  { q: 'Зимой и летом одним цветом.', a: ['ёлка', 'елка', 'ёлочка', 'елочка'], category: 'лесом' },
-  { q: 'Сидит дед, в шубе одет, нос в руке, а дышит на всех.', a: ['мороз', 'морозец', 'зима'], category: 'зимой' },
-  { q: 'Не лает, не кусает, а в дом не пускает.', a: ['замок', 'замочек'], category: 'дверью' },
-  { q: 'Без окон, без дверей — полна горница людей.', a: ['огурец', 'огурчик'], category: 'огородом' },
-  { q: 'Кто утром на работу всходит раньше всех?', a: ['петух', 'петушок'], category: 'фермой' },
-  { q: 'Висит груша — нельзя скушать.', a: ['лампочка', 'лампа', 'свет'], category: 'домом' },
-  { q: 'Что можно сломать, не трогая руками?', a: ['молчание', 'тишина', 'обещание', 'слово'], category: 'абстракцией' },
-  { q: 'Чем больше берёшь, тем больше становится?', a: ['яма', 'яму', 'ямы'], category: 'землёй' },
-  { q: 'Бежит без ног, а догнать нельзя.', a: ['время', 'река', 'вода'], category: 'природой' },
-  { q: 'Два кольца, два конца, посередине — связь.', a: ['ножницы', 'ножниц'], category: 'школой' },
-  { q: 'Круглое, румяное, растёт на ветке.', a: ['яблоко', 'яблочко'], category: 'садом' },
-  { q: 'Сам не ест, а людей кормит.', a: ['хлеб', 'хлебушек', 'пекарь'], category: 'еда' }
+  { q: 'Зимой и летом одним цветом.', a: ['ёлка', 'елка'], cat: 'лес' },
+  { q: 'Сидит дед, в шубе одет, нос в руке, а дышит на всех.', a: ['мороз'], cat: 'зима' },
+  { q: 'Не лает, не кусает, а в дом не пускает.', a: ['замок'], cat: 'дверь' },
+  { q: 'Без окон, без дверей — полна горница людей.', a: ['огурец'], cat: 'огород' },
+  { q: 'Кто утром на работу входит раньше всех?', a: ['петух'], cat: 'ферма' },
+  { q: 'Висит груша — нельзя скушать.', a: ['лампочка', 'лампа'], cat: 'дом' },
+  { q: 'Что можно сломать, не трогая руками?', a: ['молчание', 'тишина', 'обещание'], cat: 'абстракция' },
+  { q: 'Чем больше берёшь, тем больше становится?', a: ['яма'], cat: 'земля' },
+  { q: 'Бежит без ног, а догнать нельзя.', a: ['время'], cat: 'природа' },
+  { q: 'Два кольца, два конца, посередине — связь.', a: ['ножницы'], cat: 'школа' },
+  { q: 'Круглое, румяное, растёт на ветке.', a: ['яблоко'], cat: 'сад' },
+  { q: 'Сам не ест, а людей кормит.', a: ['хлеб'], cat: 'еда' }
 ];
 
-function getHint(riddle, attempt) {
-  const answer = riddle.a[0];
-  const hintIndex = (attempt - 1) % HINTS.length;
-  let hint = HINTS[hintIndex];
-  hint = hint.replace('{first}', answer[0].toUpperCase());
-  hint = hint.replace('{last}', answer[answer.length - 1].toUpperCase());
-  hint = hint.replace('{length}', String(answer.length));
-  hint = hint.replace('{category}', riddle.category || 'природой');
-  return hint;
+const HINTS = ['Первая буква: {first}', 'Последняя буква: {last}', 'Это {len} букв', 'Связано с: {cat}'];
+
+function formatHint(template, ans, cat) {
+  return template
+    .replace('{first}', ans[0].toUpperCase())
+    .replace('{last}', ans[ans.length - 1].toUpperCase())
+    .replace('{len}', ans.length)
+    .replace('{cat}', cat);
 }
 
-export function startRiddlesGame(level) {
-  resetGameSession();
+export function startRiddlesGame(level = 1) {
+  if (appState.gameActive) return;
+  appState.gameActive = true;
   level = level || getGameLevel('riddles');
+  const total = Math.min(RIDDLES.length, 5 + level * 2);
 
-  const { total: rawTotal, hintsLeft, needToWin } = getRiddlesConfig(level);
-  const total = Math.min(RIDDLES.length, rawTotal);
-
-  let index = 0;
-  let score = 0;
-  let hints = hintsLeft;
-  let attempts = 0;
-  let showAnswerBtn = null;
+  let idx = 0; let score = 0; let hints = 3; let attempts = 0; let ended = false;
   const order = [...RIDDLES].sort(() => Math.random() - 0.5).slice(0, total);
 
-  const { body, close } = createGameScreen({
-    gameId: 'riddles',
-    title: 'Загадки',
-    emoji: '❓',
-    level
-  });
+  const { body, close } = createGameScreen({ gameId: 'riddles', title: '❓ Загадки', emoji: '❓', level });
 
   const panel = document.createElement('div');
-  panel.className = 'game-panel game-panel-riddles';
+  panel.style.cssText = 'text-align:center;color:#fff;max-width:400px;margin:0 auto;';
 
-  const question = document.createElement('p');
-  question.className = 'game-question-text';
-  question.style.cssText = 'font-size:1.15rem;line-height:1.5;margin:12px 0;min-height:3em;';
+  const qEl = document.createElement('p');
+  qEl.style.cssText = 'font-size:20px;margin:16px 0;min-height:50px;';
 
   const hintEl = document.createElement('p');
-  hintEl.id = 'riddleHint';
-  hintEl.style.cssText = 'opacity:0.85;font-size:0.9rem;min-height:1.4em;color:var(--yellow);';
+  hintEl.style.cssText = 'color:#FFD700;min-height:24px;';
 
   const input = document.createElement('input');
   input.type = 'text';
   input.placeholder = 'Твой ответ...';
-  input.className = 'game-text-input';
+  input.style.cssText = 'width:100%;padding:12px;border-radius:8px;border:none;font-size:16px;text-align:center;';
 
-  const scoreEl = document.createElement('div');
-  scoreEl.className = 'game-hud-row';
-  scoreEl.style.cssText = 'margin:10px 0;font-weight:600;';
-
-  const answerEl = document.createElement('p');
-  answerEl.id = 'riddleAnswer';
-  answerEl.style.cssText = 'display:none;color:var(--green);font-weight:600;margin:8px 0;';
+  const scoreEl = document.createElement('p');
+  scoreEl.style.cssText = 'margin:8px 0;';
 
   const btnRow = document.createElement('div');
-  btnRow.id = 'riddleControls';
-  btnRow.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;';
+  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-top:8px;';
 
-  function showAnswerButton() {
-    if (showAnswerBtn) return;
-    showAnswerBtn = document.createElement('button');
-    showAnswerBtn.type = 'button';
-    showAnswerBtn.textContent = '💡 Показать ответ';
-    showAnswerBtn.className = 'modal-btn secondary';
-    showAnswerBtn.onclick = () => {
-      const ans = order[index].a[0];
-      answerEl.textContent = `Ответ: ${ans.charAt(0).toUpperCase() + ans.slice(1)}`;
-      answerEl.style.display = 'block';
-      showAnswerBtn.remove();
-      showAnswerBtn = null;
-    };
-    btnRow.appendChild(showAnswerBtn);
-  }
+  const submitBtn = document.createElement('button');
+  submitBtn.textContent = 'Ответить';
+  submitBtn.style.cssText = 'padding:10px 24px;border-radius:8px;border:none;background:#FFD700;color:#333;font-size:16px;cursor:pointer;';
 
-  function finish(won) {
-    appState.gameActive = false;
-    close();
-    if (won) {
-      updateAchievement('riddle_master');
-      recordGameWin('riddles', level);
-      showGameResult({
-        won: true,
-        level,
-        scoreText: `Отгадано ${score} из ${total}!`,
-        onNext: () => startRiddlesGame(level + 1)
-      });
-      trackEvent('riddles_won', { level, score, total });
-    } else {
-      showGameResult({
-        won: false,
-        level,
-        scoreText: `Отгадано ${score} из ${needToWin} нужных.`,
-        onRestart: () => startRiddlesGame(level),
-        onClose: () => {}
-      });
-      trackEvent('riddles_lost', { level, score });
-    }
-  }
+  const hintBtn = document.createElement('button');
+  hintBtn.textContent = '💡 Подсказка';
+  hintBtn.style.cssText = 'padding:10px 24px;border-radius:8px;border:2px solid #FFD700;background:transparent;color:#FFD700;font-size:16px;cursor:pointer;';
 
-  function showCurrent() {
-    if (index >= order.length) {
-      finish(score >= needToWin);
-      return;
-    }
-    question.textContent = order[index].q;
+  btnRow.append(submitBtn, hintBtn);
+  panel.append(qEl, hintEl, input, scoreEl, btnRow);
+  body.appendChild(panel);
+
+  function show() {
+    if (idx >= order.length) return endGame(score >= Math.ceil(total * 0.6));
+    qEl.textContent = order[idx].q;
     hintEl.textContent = '';
-    answerEl.style.display = 'none';
-    answerEl.textContent = '';
     attempts = 0;
-    if (showAnswerBtn) {
-      showAnswerBtn.remove();
-      showAnswerBtn = null;
-    }
     input.value = '';
-    scoreEl.textContent = `✅ ${score} · ${index + 1}/${total} · 💡 ${hints}`;
+    scoreEl.textContent = `✅ ${score} | ${idx + 1}/${total} | 💡 ${hints}`;
     input.focus();
   }
 
-  function showHint() {
-    if (hints <= 0) {
-      hintEl.textContent = 'Подсказки закончились';
-      return;
-    }
-    hints--;
-    attempts++;
-    const hint = getHint(order[index], attempts);
-    hintEl.textContent = `💡 Подсказка: ${hint}`;
-    scoreEl.textContent = `✅ ${score} · ${index + 1}/${total} · 💡 ${hints}`;
-    if (attempts >= 3) showAnswerButton();
-  }
-
-  function checkAnswer() {
+  submitBtn.onclick = () => {
     const val = input.value.trim().toLowerCase();
     if (!val || val.length < 2) return;
-    const ok = order[index].a.some((a) => val === a || (val.length > 2 && val.includes(a)));
-    if (ok) {
+    if (order[idx].a.some((a) => val === a || (val.length > 2 && val.includes(a)))) {
       score++;
-      setAvatarState('happy');
-      setTimeout(() => setAvatarState(null), 1200);
-      index++;
-      showCurrent();
+      idx++;
+      show();
     } else {
       attempts++;
-      const hint = getHint(order[index], attempts);
-      hintEl.textContent = `💡 Подсказка: ${hint}`;
-      input.classList.add('shake');
-      setTimeout(() => input.classList.remove('shake'), 400);
-      if (attempts >= 3) showAnswerButton();
+      const ans = order[idx].a[0];
+      hintEl.textContent = `❌ Неверно. ${formatHint(HINTS[Math.min(attempts - 1, 3)], ans, order[idx].cat)}`;
+      if (attempts >= 3 && !document.getElementById('showAnswer')) {
+        const showBtn = document.createElement('button');
+        showBtn.id = 'showAnswer';
+        showBtn.textContent = '💡 Показать ответ';
+        showBtn.style.cssText = 'margin-top:8px;padding:8px 16px;border-radius:8px;border:none;background:#FF6B6B;color:#fff;cursor:pointer;';
+        showBtn.onclick = () => { input.value = ans; showBtn.remove(); };
+        btnRow.appendChild(showBtn);
+      }
     }
+  };
+
+  hintBtn.onclick = () => {
+    if (hints <= 0) return;
+    hints--;
+    const ans = order[idx].a[0];
+    hintEl.textContent = formatHint(HINTS[Math.min(attempts, 3)], ans, order[idx].cat);
+    scoreEl.textContent = `✅ ${score} | ${idx + 1}/${total} | 💡 ${hints}`;
+  };
+
+  input.onkeydown = (e) => { if (e.key === 'Enter') submitBtn.click(); };
+
+  function endGame(won) {
+    if (ended) return;
+    ended = true;
+    appState.gameActive = false;
+    close();
+    recordGameResult('riddles', won, level);
+    if (won) { recordGameWin('riddles', level); updateAchievement('riddle_master'); checkProgressAchievements(); }
+    trackEvent(won ? 'riddles_won' : 'riddles_lost', { level, score });
+    speak(won ? 'Молодец!' : 'Попробуй ещё раз!');
+    showGameResult({
+      won, level,
+      scoreText: `Отгадано ${score} из ${total}`,
+      onNext: won ? () => startRiddlesGame(level + 1) : null,
+      onRestart: () => startRiddlesGame(level)
+    });
   }
 
-  const submitBtn = document.createElement('button');
-  submitBtn.className = 'modal-btn';
-  submitBtn.textContent = 'Ответить';
-  submitBtn.onclick = checkAnswer;
-
-  const hintBtn = document.createElement('button');
-  hintBtn.className = 'modal-btn secondary';
-  hintBtn.textContent = 'Подсказка';
-  hintBtn.onclick = showHint;
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') checkAnswer();
-  });
-
-  btnRow.append(submitBtn, hintBtn);
-  panel.append(question, hintEl, answerEl, input, scoreEl, btnRow);
-  body.appendChild(panel);
-  showCurrent();
-  trackEvent('riddles_started', { level, total });
+  show();
+  trackEvent('riddles_started', { level });
 }
 
-export default startRiddlesGame;
+export default { startRiddlesGame };

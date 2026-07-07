@@ -1,327 +1,149 @@
-import { appState, incrementGames, getActiveChild } from '../core.js';
+import { appState } from '../core.js';
 import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel, resetGameSession, loadImageForCanvas } from './game-ui.js';
+import { recordGameResult } from '../game-progress.js';
+import { updateAchievement, checkProgressAchievements } from '../achievements.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 import { avatarUrl } from '../config.js';
 
-const MAX_STEPS = { 1: 50, 2: 80, 3: 120 };
-import { getChildGender, applyGenderToText } from '../gender.js';
+const SIZES = [7, 11, 15];
+const MAX_STEPS = [50, 80, 120];
 
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-/** Рекурсивный backtracking — гарантированный путь на любом уровне */
-function generateMaze(size) {
-  const maze = Array(size).fill(null).map(() => Array(size).fill(1));
-  const visited = Array(size).fill(null).map(() => Array(size).fill(false));
+function generate(size) {
+  const m = Array(size).fill().map(() => Array(size).fill(1));
+  const v = Array(size).fill().map(() => Array(size).fill(false));
 
   function carve(x, y) {
-    visited[y][x] = true;
-    maze[y][x] = 0;
-
-    for (const [dx, dy] of shuffle([[0, -2], [2, 0], [0, 2], [-2, 0]])) {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (nx >= 0 && nx < size && ny >= 0 && ny < size && !visited[ny][nx]) {
-        maze[y + dy / 2][x + dx / 2] = 0;
+    v[y][x] = true; m[y][x] = 0;
+    const dirs = [[0, -2], [2, 0], [0, 2], [-2, 0]].sort(() => Math.random() - 0.5);
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx; const ny = y + dy;
+      if (nx >= 0 && nx < size && ny >= 0 && ny < size && !v[ny][nx]) {
+        m[y + dy / 2][x + dx / 2] = 0;
         carve(nx, ny);
       }
     }
   }
 
   carve(1, 1);
-  maze[1][0] = 0;
-  maze[size - 2][size - 1] = 0;
-
-  if (maze[size - 2][size - 2] === 1 && maze[size - 3]?.[size - 1] === 1) {
-    maze[size - 2][size - 2] = 0;
-  }
-
-  return maze;
+  m[1][0] = 0;
+  m[size - 2][size - 1] = 0;
+  if (m[size - 2][size - 2] === 1) m[size - 2][size - 2] = 0;
+  return m;
 }
 
-function buildVines(maze, cellSize) {
-  const vines = [];
-  for (let y = 0; y < maze.length; y++) {
-    for (let x = 0; x < maze[0].length; x++) {
-      if (maze[y][x] === 1 && ((x * 7 + y * 13) % 5 === 0)) {
-        vines.push({
-          x: x * cellSize,
-          y: y * cellSize,
-          cx: x * cellSize + cellSize * 0.5,
-          cy: y * cellSize + cellSize * 0.5,
-          tipX: x * cellSize + cellSize * ((x + y) % 3) / 3,
-          tipY: y * cellSize
-        });
-      }
-    }
-  }
-  return vines;
-}
-
-function drawPlayer(ctx, playerImg, px, py, cellSize) {
-  const x = px * cellSize + 4;
-  const y = py * cellSize + 4;
-  const s = cellSize - 8;
-  if (playerImg?.naturalWidth > 0) {
-    ctx.drawImage(playerImg, x, y, s, s);
-    return;
-  }
-  ctx.font = `${cellSize * 0.45}px serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('🐱', px * cellSize + cellSize / 2, py * cellSize + cellSize / 2);
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-}
-
-function drawMaze(ctx, maze, cellSize, px, py, vines, exit, playerImg) {
-  const cw = ctx.canvas.width;
-  const ch = ctx.canvas.height;
-
-  const bgGrad = ctx.createRadialGradient(
-    px * cellSize + cellSize / 2,
-    py * cellSize + cellSize / 2,
-    30,
-    cw / 2,
-    ch / 2,
-    Math.max(cw, ch)
-  );
-  bgGrad.addColorStop(0, 'rgba(30,30,50,0.85)');
-  bgGrad.addColorStop(1, 'rgba(10,10,20,0.98)');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, cw, ch);
-
-  for (let y = 0; y < maze.length; y++) {
-    for (let x = 0; x < maze[0].length; x++) {
-      if (maze[y][x] === 1) {
-        const wallGrad = ctx.createLinearGradient(
-          x * cellSize, y * cellSize,
-          (x + 1) * cellSize, (y + 1) * cellSize
-        );
-        wallGrad.addColorStop(0, '#5c4033');
-        wallGrad.addColorStop(1, '#3e2723');
-        ctx.fillStyle = wallGrad;
-        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-      } else {
-        ctx.fillStyle = 'rgba(20,30,20,0.4)';
-        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-      }
-    }
-  }
-
-  ctx.strokeStyle = '#2d5a27';
-  ctx.lineWidth = 1.5;
-  vines.forEach((v) => {
-    ctx.beginPath();
-    ctx.moveTo(v.cx, v.y + cellSize);
-    ctx.quadraticCurveTo(v.cx, v.cy, v.tipX, v.tipY);
-    ctx.stroke();
-  });
-
-  const exitX = exit.x;
-  const exitY = exit.y;
-  const exitGlow = ctx.createRadialGradient(
-    exitX * cellSize + cellSize / 2,
-    exitY * cellSize + cellSize / 2,
-    5,
-    exitX * cellSize + cellSize / 2,
-    exitY * cellSize + cellSize / 2,
-    cellSize * 1.2
-  );
-  exitGlow.addColorStop(0, 'rgba(255,255,255,0.95)');
-  exitGlow.addColorStop(0.3, 'rgba(255,255,200,0.5)');
-  exitGlow.addColorStop(1, 'rgba(255,200,100,0)');
-  ctx.fillStyle = exitGlow;
-  ctx.beginPath();
-  ctx.arc(
-    exitX * cellSize + cellSize / 2,
-    exitY * cellSize + cellSize / 2,
-    cellSize * 0.55,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
-
-  const glowGrad = ctx.createRadialGradient(
-    px * cellSize + cellSize / 2,
-    py * cellSize + cellSize / 2,
-    4,
-    px * cellSize + cellSize / 2,
-    py * cellSize + cellSize / 2,
-    cellSize * 0.9
-  );
-  glowGrad.addColorStop(0, 'rgba(255,215,0,1)');
-  glowGrad.addColorStop(0.35, 'rgba(255,215,0,0.5)');
-  glowGrad.addColorStop(1, 'rgba(255,215,0,0)');
-  ctx.fillStyle = glowGrad;
-  ctx.beginPath();
-  ctx.arc(px * cellSize + cellSize / 2, py * cellSize + cellSize / 2, cellSize * 0.55, 0, Math.PI * 2);
-  ctx.fill();
-
-  drawPlayer(ctx, playerImg, px, py, cellSize);
-
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('⭐', exitX * cellSize + cellSize / 2, exitY * cellSize + cellSize / 2);
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-}
-
-function mazeSizeForLevel(level) {
-  const sizes = [7, 11, 15];
-  return sizes[Math.min(Math.max(level, 1), sizes.length) - 1] || 15;
-}
-
-export function startMazeGame(level) {
-  resetGameSession();
-  level = level || getGameLevel('maze');
-
-  const size = mazeSizeForLevel(level);
-  const grid = generateMaze(size);
-  const rows = grid.length;
-  const cols = grid[0].length;
-
-  let px = 0;
-  let py = 1;
-  const exit = { x: cols - 1, y: rows - 2 };
-  let steps = 0;
-  const stepLimit = MAX_STEPS[Math.min(Math.max(level, 1), 3)] || 120;
-
+export function startMazeGame(level = 1) {
+  if (appState.gameActive) return;
   appState.gameActive = true;
-  const cell = Math.min(36, Math.floor(Math.min(window.innerWidth * 0.9, 380) / cols));
+  level = level || getGameLevel('maze');
+  const size = SIZES[Math.min(level, 3) - 1] || 7;
+  const maxSteps = MAX_STEPS[Math.min(level, 3) - 1] || 50;
+  const maze = generate(size);
 
-  const { body, close, onClose } = createGameScreen({
-    gameId: 'maze',
-    title: 'Лабиринт',
-    emoji: '🌀',
-    level
-  });
+  let px = 0; let py = 1; let steps = 0; let ended = false;
+  const exitX = size - 1; const exitY = size - 2;
 
-  const hint = document.createElement('p');
-  hint.className = 'maze-hint';
-  hint.textContent = 'Свайпай или стрелки — веди огонёк к ⭐';
+  const { body, close } = createGameScreen({ gameId: 'maze', title: '🌀 Лабиринт', emoji: '🌀', level });
 
-  const wrap = document.createElement('div');
-  wrap.className = 'maze-canvas-wrap';
   const canvas = document.createElement('canvas');
-  canvas.id = 'mazeCanvas';
-  canvas.width = cols * cell;
-  canvas.height = rows * cell;
-  canvas.style.cssText = 'display:block;touch-action:none;max-width:100%;border-radius:12px;';
-  wrap.appendChild(canvas);
-
-  const stepsEl = document.createElement('p');
-  stepsEl.className = 'maze-steps';
-  stepsEl.textContent = `Шагов: 0 / ${stepLimit}`;
-
-  body.append(hint, wrap, stepsEl);
+  canvas.style.cssText = 'display:block;max-width:100%;border-radius:12px;';
+  body.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  const vines = buildVines(grid, cell);
-  let playerImg = null;
-  let lost = false;
+  const cs = Math.min(400, window.innerWidth - 32) / size;
+  canvas.width = cs * size;
+  canvas.height = cs * size;
 
-  loadImageForCanvas(avatarUrl('lucik', 'svg')).then((img) => {
-    playerImg = img;
-    redraw();
-  }).catch(() => redraw());
+  const playerImg = new Image();
+  playerImg.src = avatarUrl('lucik', 'svg');
+  playerImg.onerror = () => { playerImg.src = avatarUrl('lucik', 'png'); };
 
-  function redraw() {
-    drawMaze(ctx, grid, cell, px, py, vines, exit, playerImg);
+  function draw() {
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        if (maze[y][x] === 1) {
+          ctx.fillStyle = '#3e2723';
+          ctx.fillRect(x * cs, y * cs, cs, cs);
+          ctx.fillStyle = '#5c4033';
+          ctx.fillRect(x * cs + 1, y * cs + 1, cs - 2, cs - 2);
+        }
+      }
+    }
+
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    ctx.arc(exitX * cs + cs / 2, exitY * cs + cs / 2, cs * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `${cs * 0.5}px serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('⭐', exitX * cs + cs / 2, exitY * cs + cs / 2 + cs * 0.15);
+
+    if (playerImg.complete && playerImg.naturalWidth > 0) {
+      ctx.drawImage(playerImg, px * cs + 2, py * cs + 2, cs - 4, cs - 4);
+    } else {
+      ctx.fillStyle = '#FF8C00';
+      ctx.beginPath();
+      ctx.arc(px * cs + cs / 2, py * cs + cs / 2, cs / 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#fff';
+    ctx.font = '14px sans-serif';
+    ctx.fillText(`Шаги: ${steps}/${maxSteps}`, 8, canvas.height - 8);
   }
 
-  function loseGame() {
-    if (lost) return;
-    lost = true;
-    speak('Слишком много шагов! Попробуй короче путь.');
+  function move(dx, dy) {
+    if (ended) return;
+    const nx = px + dx; const ny = py + dy;
+    if (nx >= 0 && nx < size && ny >= 0 && ny < size && maze[ny][nx] === 0) {
+      px = nx; py = ny; steps++;
+      draw();
+      if (px === exitX && py === exitY) endGame(true);
+      else if (steps >= maxSteps) endGame(false);
+    }
+  }
+
+  const onKey = (e) => {
+    const keys = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+    if (keys[e.key]) { e.preventDefault(); move(...keys[e.key]); }
+  };
+  document.addEventListener('keydown', onKey);
+
+  let touchX = 0; let touchY = 0;
+  canvas.onpointerdown = (e) => { touchX = e.clientX; touchY = e.clientY; };
+  canvas.onpointerup = (e) => {
+    const dx = e.clientX - touchX; const dy = e.clientY - touchY;
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+    if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1, 0);
+    else move(0, dy > 0 ? 1 : -1);
+  };
+
+  function endGame(won) {
+    if (ended) return;
+    ended = true;
     appState.gameActive = false;
+    document.removeEventListener('keydown', onKey);
     close();
+    recordGameResult('maze', won, level);
+    if (won) { recordGameWin('maze', level); updateAchievement('maze_runner'); checkProgressAchievements(); }
+    trackEvent(won ? 'maze_won' : 'maze_lost', { level, steps });
+    speak(won ? 'Выход найден!' : 'Слишком много шагов!');
     showGameResult({
-      won: false,
-      level,
-      scoreText: `Лимит ${stepLimit} шагов исчерпан`,
+      won, level,
+      scoreText: `Пройдено за ${steps} шагов`,
+      onNext: won ? () => startMazeGame(level + 1) : null,
       onRestart: () => startMazeGame(level)
     });
-    trackEvent('maze_lost', { level, steps, size, reason: 'step_limit' });
   }
 
-  function winGame() {
-    const gender = getChildGender(getActiveChild());
-    speak(applyGenderToText('Ура! Ты провёл меня через лабиринт!', gender));
-    incrementGames();
-    appState.gameActive = false;
-    close();
-    recordGameWin('maze', level);
-    showGameResult({
-      won: true,
-      level,
-      scoreText: `Выход найден за ${steps} шагов!`,
-      onNext: () => startMazeGame(level + 1)
-    });
-    trackEvent('maze_won', { level, steps, size });
-  }
-
-  function tryMove(dx, dy) {
-    if (lost) return;
-    const nx = px + dx;
-    const ny = py + dy;
-    if (grid[ny]?.[nx] === 0) {
-      px = nx;
-      py = ny;
-      steps++;
-      stepsEl.textContent = `Шагов: ${steps} / ${stepLimit}`;
-      redraw();
-      if (steps >= stepLimit) {
-        loseGame();
-        return;
-      }
-      if (px === exit.x && py === exit.y) {
-        canvas.style.animation = 'pulse 0.4s ease';
-        setTimeout(winGame, 450);
-      }
-    }
-  }
-
-  let startX = 0;
-  let startY = 0;
-
-  canvas.addEventListener('touchstart', (e) => {
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-  }, { passive: true });
-
-  canvas.addEventListener('touchend', (e) => {
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
-    if (Math.abs(dx) > Math.abs(dy)) tryMove(dx > 0 ? 1 : -1, 0);
-    else tryMove(0, dy > 0 ? 1 : -1);
-  });
-
-  const overlay = body.closest('.game-screen');
-
-  function onKey(e) {
-    if (!appState.gameActive) return;
-    const map = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
-    const d = map[e.key];
-    if (d) {
-      e.preventDefault();
-      tryMove(d[0], d[1]);
-    }
-  }
-
-  document.addEventListener('keydown', onKey);
-  onClose(() => document.removeEventListener('keydown', onKey));
-
-  redraw();
-  trackEvent('maze_started', { level, size });
+  playerImg.onload = () => draw();
+  draw();
+  trackEvent('maze_started', { level });
 }
 
 export default { startMazeGame };
