@@ -91,7 +91,11 @@ export function startDrawAIGame(level = 1) {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: 'Посмотри на картинку. Ответь ОДНИМ словом что нарисовано.', type: 'chat', image: dataUrl })
+        body: JSON.stringify({
+          message: 'Посмотри на картинку. Ответь ОДНИМ словом что нарисовано.',
+          requestType: 'draw_guess',
+          image: dataUrl
+        })
       });
 
       const data = await res.json();

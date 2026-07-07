@@ -36,7 +36,7 @@ export function startRunnerGame(level = 1) {
 
   const lucik = { x: 60, y: 0, vy: 0, w: 50, h: 50, jumping: false };
   let obstacles = []; let stars = []; let score = 0; let speed = 3; let frame = 0; let jumpCount = 0;
-  let gameOver = false; let gameWon = false; let ended = false;
+  let gameOver = false; let gameWon = false; let ended = false; let gameOverAt = 0;
   const ground = () => canvas.height - 60;
   lucik.y = ground() - lucik.h;
 
@@ -51,37 +51,59 @@ export function startRunnerGame(level = 1) {
   function jump() { if (jumpCount < 2) { lucik.vy = jumpCount === 0 ? -11 : -8; lucik.jumping = true; jumpCount++; } }
 
   function update() {
-    if (gameOver) return;
-    frame++;
-    lucik.vy += 0.5; lucik.y += lucik.vy;
-    const g = ground();
-    if (lucik.y >= g - lucik.h) { lucik.y = g - lucik.h; lucik.vy = 0; lucik.jumping = false; jumpCount = 0; }
+    if (!gameOver) {
+      frame++;
+      lucik.vy += 0.5; lucik.y += lucik.vy;
+      const g = ground();
+      if (lucik.y >= g - lucik.h) { lucik.y = g - lucik.h; lucik.vy = 0; lucik.jumping = false; jumpCount = 0; }
 
-    obstacles.forEach((o) => { o.x -= speed; });
-    stars.forEach((s) => { s.x -= speed; });
-    obstacles = obstacles.filter((o) => o.x > -60);
-    stars = stars.filter((s) => s.x > -20);
+      obstacles.forEach((o) => { o.x -= speed; });
+      stars.forEach((s) => { s.x -= speed; });
+      obstacles = obstacles.filter((o) => o.x > -60);
+      stars = stars.filter((s) => s.x > -20);
 
-    for (const o of obstacles) {
-      if (lucik.x < o.x + o.w && lucik.x + lucik.w > o.x && lucik.y < o.y + o.h && lucik.y + lucik.h > o.y) {
-        gameOver = true;
+      for (const o of obstacles) {
+        if (lucik.x < o.x + o.w && lucik.x + lucik.w > o.x && lucik.y < o.y + o.h && lucik.y + lucik.h > o.y) {
+          gameOver = true;
+        }
       }
-    }
 
-    for (const s of [...stars]) {
-      if (Math.abs(lucik.x + 25 - s.x) < 30 && Math.abs(lucik.y + 25 - s.y) < 30) {
-        score += 10; stars = stars.filter((x) => x !== s);
-        if (score >= WIN_SCORE) { gameWon = true; gameOver = true; }
+      for (const s of [...stars]) {
+        if (Math.abs(lucik.x + 25 - s.x) < 30 && Math.abs(lucik.y + 25 - s.y) < 30) {
+          score += 10; stars = stars.filter((x) => x !== s);
+          if (score >= WIN_SCORE) { gameWon = true; gameOver = true; }
+        }
       }
-    }
 
-    if (Math.random() < 0.02) spawnObstacle();
-    if (Math.random() < 0.03) spawnStar();
-    speed = Math.min(3 + frame * 0.001, 10);
+      if (Math.random() < 0.02) spawnObstacle();
+      if (Math.random() < 0.03) spawnStar();
+      speed = Math.min(3 + frame * 0.001, 10);
+    }
 
     lucikImg.style.left = `${lucik.x}px`;
     lucikImg.style.top = `${lucik.y - 60}px`;
     lucikImg.style.transform = lucik.jumping && jumpCount === 2 ? 'rotate(360deg)' : '';
+
+    if (gameOver && !ended) {
+      ended = true;
+      gameOverAt = Date.now();
+    }
+  }
+
+  function finishGame() {
+    window.removeEventListener('resize', resize);
+    appState.gameActive = false;
+    close();
+    recordGameResult('runner', gameWon, level);
+    if (gameWon) { recordGameWin('runner', level); updateAchievement('runner_star'); checkProgressAchievements(); }
+    speak(gameWon ? 'Победа!' : 'Попробуй ещё!');
+    showGameResult({
+      won: gameWon, level,
+      scoreText: `Собрано ${score} звёзд`,
+      onNext: gameWon ? () => startRunnerGame(level + 1) : null,
+      onRestart: () => startRunnerGame(level)
+    });
+    if (gameWon && window.leaderboard) window.leaderboard.submitScore('runner', score);
   }
 
   function draw() {
@@ -110,28 +132,14 @@ export function startRunnerGame(level = 1) {
   canvas.onclick = jump;
   canvas.ontouchstart = (e) => { e.preventDefault(); jump(); };
 
-  const loop = setInterval(() => { update(); draw(); }, 20);
-
-  const checkEnd = setInterval(() => {
-    if (gameOver && !ended) {
-      ended = true;
-      setTimeout(() => {
-        clearInterval(loop); clearInterval(checkEnd);
-        window.removeEventListener('resize', resize);
-        appState.gameActive = false; close();
-        recordGameResult('runner', gameWon, level);
-        if (gameWon) { recordGameWin('runner', level); updateAchievement('runner_star'); checkProgressAchievements(); }
-        speak(gameWon ? 'Победа!' : 'Попробуй ещё!');
-        showGameResult({
-          won: gameWon, level,
-          scoreText: `Собрано ${score} звёзд`,
-          onNext: gameWon ? () => startRunnerGame(level + 1) : null,
-          onRestart: () => startRunnerGame(level)
-        });
-        if (gameWon && window.leaderboard) window.leaderboard.submitScore('runner', score);
-      }, 2000);
+  const loop = setInterval(() => {
+    update();
+    draw();
+    if (gameOver && ended && Date.now() - gameOverAt >= 2000) {
+      clearInterval(loop);
+      finishGame();
     }
-  }, 100);
+  }, 20);
 
   trackEvent('runner_started', { level });
 }
