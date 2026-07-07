@@ -41,12 +41,16 @@ export function startRunnerGame(level = 1) {
   lucik.y = ground() - lucik.h;
 
   function spawnObstacle() {
+    if (canvas.width <= 0) return;
     const types = [{ w: 30, h: 30, color: '#666' }, { w: 40, h: 25, color: '#8B4513' }, { w: 50, h: 15, color: '#1e3a5f' }];
     const t = types[Math.floor(Math.random() * types.length)];
     obstacles.push({ x: canvas.width, y: ground() - t.h, ...t });
   }
 
-  function spawnStar() { stars.push({ x: canvas.width, y: ground() - 70 - Math.random() * 60 }); }
+  function spawnStar() {
+    if (canvas.width <= 0) return;
+    stars.push({ x: canvas.width, y: ground() - 70 - Math.random() * 60 });
+  }
 
   function jump() { if (jumpCount < 2) { lucik.vy = jumpCount === 0 ? -11 : -8; lucik.jumping = true; jumpCount++; } }
 
@@ -63,7 +67,7 @@ export function startRunnerGame(level = 1) {
       stars = stars.filter((s) => s.x > -20);
 
       for (const o of obstacles) {
-        if (lucik.x < o.x + o.w && lucik.x + lucik.w > o.x && lucik.y < o.y + o.h && lucik.y + lucik.h > o.y) {
+        if (o.x > 0 && lucik.x < o.x + o.w && lucik.x + lucik.w > o.x && lucik.y < o.y + o.h && lucik.y + lucik.h > o.y) {
           gameOver = true;
         }
       }
