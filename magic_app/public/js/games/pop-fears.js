@@ -1,6 +1,6 @@
 import { appState } from '../core.js';
 import { ttsEngine } from '../audio.js';
-import { createGameScreen, getGameLevel } from './game-ui.js';
+import { createGameScreen, getGameLevel, resetGameSession } from './game-ui.js';
 
 const FEARS = [
   { name: 'Темнота', emoji: '🌑', message: 'Темнота — это просто время для звёзд. В темноте можно увидеть самые красивые сны!' },
@@ -46,11 +46,10 @@ function popBubble(bubble, fear, container, onPopped) {
 }
 
 export function startPopFearsGame(level) {
-  if (appState.gameActive) return;
-  appState.gameActive = true;
+  resetGameSession();
   level = level || getGameLevel('popFears');
 
-  const { body, close } = createGameScreen({ gameId: 'popFears', title: 'Лопни страхи', emoji: '🫧', level });
+  const { body, onClose } = createGameScreen({ gameId: 'popFears', title: 'Лопни страхи', emoji: '🫧', level });
 
   const container = document.createElement('div');
   container.id = 'bubblesContainer';
@@ -95,10 +94,7 @@ export function startPopFearsGame(level) {
   for (let i = 0; i < 5; i++) spawnBubble();
   spawnTimer = setInterval(spawnBubble, 4000);
 
-  body.querySelector('.game-close-btn')?.addEventListener('click', () => {
-    clearInterval(spawnTimer);
-    appState.gameActive = false;
-  }, { once: true });
+  onClose(() => clearInterval(spawnTimer));
 }
 
 export default { startPopFearsGame };

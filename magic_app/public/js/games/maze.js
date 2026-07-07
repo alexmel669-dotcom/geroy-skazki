@@ -1,7 +1,7 @@
 import { appState, incrementGames, getActiveChild } from '../core.js';
 import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel, resetGameSession } from './game-ui.js';
 import { getChildGender, applyGenderToText } from '../gender.js';
 
 function shuffle(arr) {
@@ -146,12 +146,12 @@ function drawMaze(ctx, maze, cellSize, px, py, vines, exit) {
   ctx.arc(px * cellSize + cellSize / 2, py * cellSize + cellSize / 2, cellSize * 0.55, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#FF8C00';
-  ctx.beginPath();
-  ctx.arc(px * cellSize + cellSize / 2, py * cellSize + cellSize / 2, cellSize / 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.font = `${cellSize * 0.5}px serif`;
+  ctx.font = `${cellSize * 0.45}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🐱', px * cellSize + cellSize / 2, py * cellSize + cellSize / 2);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('⭐', exitX * cellSize + cellSize / 2, exitY * cellSize + cellSize / 2);
@@ -165,7 +165,7 @@ function mazeSizeForLevel(level) {
 }
 
 export function startMazeGame(level) {
-  if (appState.gameActive) return;
+  resetGameSession();
   level = level || getGameLevel('maze');
 
   const size = mazeSizeForLevel(level);
@@ -181,7 +181,7 @@ export function startMazeGame(level) {
   appState.gameActive = true;
   const cell = Math.min(36, Math.floor(Math.min(window.innerWidth * 0.9, 380) / cols));
 
-  const { body, close } = createGameScreen({
+  const { body, close, onClose } = createGameScreen({
     gameId: 'maze',
     title: 'Лабиринт',
     emoji: '🌀',
@@ -275,10 +275,7 @@ export function startMazeGame(level) {
   }
 
   document.addEventListener('keydown', onKey);
-  overlay?.querySelector('.game-close-btn')?.addEventListener('click', () => {
-    document.removeEventListener('keydown', onKey);
-    appState.gameActive = false;
-  }, { once: true });
+  onClose(() => document.removeEventListener('keydown', onKey));
 
   redraw();
   trackEvent('maze_started', { level, size });

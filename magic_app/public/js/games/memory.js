@@ -2,18 +2,16 @@ import { appState, getActiveChildName } from '../core.js';
 import { updateAchievement } from '../achievements.js';
 import { trackEvent } from '../analytics.js';
 import { recordMemoryWin } from '../game-progress.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel, spawnMatchHearts } from './game-ui.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel, spawnMatchHearts, resetGameSession } from './game-ui.js';
 import { getMemoryPairs } from './game-difficulty.js';
 
 export function startMemoryGame(level) {
-  if (appState.gameActive) return;
+  resetGameSession();
   level = level || getGameLevel('memory');
 
   const pairCount = getMemoryPairs(level);
   const cardCount = pairCount * 2;
   const cols = cardCount <= 8 ? 4 : cardCount <= 12 ? 4 : 5;
-
-  appState.gameActive = true;
 
   const emojiPool = ['😊','😢','😨','😡','😴','😍','🥳','🤗','🐱','🌟','🎈','🦋','🌈','🍎','🎸','⚽'];
   const picked = emojiPool.slice(0, pairCount);
@@ -38,10 +36,6 @@ export function startMemoryGame(level) {
 
   body.appendChild(info);
   body.appendChild(board);
-
-  body.querySelector('.game-close-btn')?.addEventListener('click', () => {
-    appState.gameActive = false;
-  }, { once: true });
 
   for (let i = 0; i < cardCount; i++) {
     const card = document.createElement('div');

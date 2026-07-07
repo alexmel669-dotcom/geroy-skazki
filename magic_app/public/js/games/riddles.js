@@ -2,7 +2,7 @@ import { appState, getActiveChildName } from '../core.js';
 import { setAvatarState } from '../ui.js';
 import { updateAchievement } from '../achievements.js';
 import { trackEvent } from '../analytics.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel, resetGameSession } from './game-ui.js';
 import { getRiddlesConfig } from './game-difficulty.js';
 
 const HINTS = [
@@ -39,13 +39,12 @@ function getHint(riddle, attempt) {
 }
 
 export function startRiddlesGame(level) {
-  if (appState.gameActive) return;
+  resetGameSession();
   level = level || getGameLevel('riddles');
 
   const { total: rawTotal, hintsLeft, needToWin } = getRiddlesConfig(level);
   const total = Math.min(RIDDLES.length, rawTotal);
 
-  appState.gameActive = true;
   let index = 0;
   let score = 0;
   let hints = hintsLeft;

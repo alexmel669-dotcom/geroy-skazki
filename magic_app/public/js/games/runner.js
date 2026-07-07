@@ -1,5 +1,5 @@
 import { appState } from '../core.js';
-import { createGameScreen, getGameLevel, showGameResult } from './game-ui.js';
+import { createGameScreen, getGameLevel, showGameResult, resetGameSession } from './game-ui.js';
 import { avatarUrl } from '../config.js';
 
 const OBSTACLE_TYPES = [
@@ -132,11 +132,10 @@ function drawPixarStar(ctx, s, frame) {
 }
 
 export function startRunnerGame(level) {
-  if (appState.gameActive) return;
-  appState.gameActive = true;
+  resetGameSession();
   level = level || getGameLevel('runner');
 
-  const { body, close } = createGameScreen({ gameId: 'runner', title: 'Люцик-раннер', emoji: '🏃', level });
+  const { body, close, onClose } = createGameScreen({ gameId: 'runner', title: 'Люцик-раннер', emoji: '🏃', level });
 
   const canvas = document.createElement('canvas');
   canvas.id = 'runnerCanvas';
@@ -400,11 +399,10 @@ export function startRunnerGame(level) {
     }
   }, 20);
 
-  body.querySelector('.game-close-btn')?.addEventListener('click', () => {
+  onClose(() => {
     clearInterval(loopId);
     window.removeEventListener('resize', onResize);
-    appState.gameActive = false;
-  }, { once: true });
+  });
 }
 
 export default { startRunnerGame };

@@ -5,10 +5,10 @@ import { setAvatarState } from '../ui.js';
 import { trackEvent } from '../analytics.js';
 import {
   createGameScreen, showGameResult, recordGameWin, getGameLevel,
-  createConfetti, triggerGameWin
+  createConfetti, triggerGameWin, resetGameSession, loadImageForCanvas
 } from './game-ui.js';
+import { avatarUrl } from '../config.js';
 import { getPuzzleGrid } from './game-difficulty.js';
-import { getAvatarPaths } from '../config.js';
 
 class PuzzleGame {
   constructor(size, level, overlay, onWin) {
@@ -22,18 +22,15 @@ class PuzzleGame {
     this.solved = false;
     this.image = new Image();
     this.imageLoaded = false;
-    const paths = getAvatarPaths('lucik');
-    this.image.onload = () => {
+  }
+
+  async loadImage() {
+    try {
+      this.image = await loadImageForCanvas(avatarUrl('lucik', 'svg'));
       this.imageLoaded = true;
-      this.draw();
-    };
-    this.image.onerror = () => {
-      if (this.image.dataset.stage !== 'png') {
-        this.image.dataset.stage = 'png';
-        this.image.src = paths.png;
-      }
-    };
-    this.image.src = paths.svg;
+    } catch {
+      this.imageLoaded = false;
+    }
   }
 
   init(canvas) {
@@ -155,7 +152,7 @@ class PuzzleGame {
 
     this.drawWoodBackground(ctx);
 
-    const imgReady = this.imageLoaded && this.image.naturalWidth;
+    const imgReady = this.imageLoaded && this.image?.complete;
 
     this.tiles.forEach((tile) => {
       if (tile.index === this.emptyIndex) return;
@@ -167,8 +164,10 @@ class PuzzleGame {
       ctx.fillRect(x + 3, y + 3, ts - 2, ts - 2);
 
       if (imgReady) {
-        const sw = this.image.naturalWidth / this.size;
-        const sh = this.image.naturalHeight / this.size;
+        const iw = this.image.naturalWidth || this.image.width || 300;
+        const ih = this.image.naturalHeight || this.image.height || 300;
+        const sw = iw / this.size;
+        const sh = ih / this.size;
         ctx.drawImage(
           this.image,
           tile.correctCol * sw,
@@ -214,15 +213,14 @@ class PuzzleGame {
 }
 
 export function startPuzzleGame(level) {
-  if (appState.gameActive) return;
+  resetGameSession();
   level = level || getGameLevel('puzzle');
   runPuzzle(level);
 }
 
-function runPuzzle(level) {
+async function runPuzzle(level) {
   const age = getActiveChild()?.age || 7;
   const size = getPuzzleGrid(age, level);
-  appState.gameActive = true;
 
   const { body, close, overlay } = createGameScreen({
     gameId: 'puzzle',
@@ -258,12 +256,9 @@ function runPuzzle(level) {
     trackEvent('puzzle_won', { level, moves, gridSize: size });
   });
 
+  await game.loadImage();
   game.init(canvas);
   trackEvent('puzzle_started', { level, gridSize: size });
-
-  body.querySelector('.game-close-btn')?.addEventListener('click', () => {
-    appState.gameActive = false;
-  }, { once: true });
 }
 
 export default { startPuzzleGame };

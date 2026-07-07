@@ -3,7 +3,7 @@ import { speak } from '../audio.js';
 import { updateAchievement } from '../achievements.js';
 import { trackEvent } from '../analytics.js';
 import { recordFishResult } from '../game-progress.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel, resetGameSession } from './game-ui.js';
 import { getFishConfig } from './game-difficulty.js';
 
 const CATCH_ITEMS = [
@@ -41,18 +41,16 @@ function showCatchAnimation(fishArea, item) {
 }
 
 export function startFishGame(level) {
-  if (appState.gameActive) return;
+  resetGameSession();
   level = level || getGameLevel('fish');
   const cfg = getFishConfig(level);
   const { fishCount, time, fishSize, speed } = cfg;
-
-  appState.gameActive = true;
   let score = 0;
   let goodCatches = 0;
   let timeLeft = time;
   let combo = 0;
 
-  const { body, close } = createGameScreen({ gameId: 'fish', title: 'Рыбалка', emoji: '🎣', level });
+  const { body, close, onClose } = createGameScreen({ gameId: 'fish', title: 'Рыбалка', emoji: '🎣', level });
 
   const hud = document.createElement('div');
   hud.className = 'game-hud-row';
@@ -147,6 +145,11 @@ export function startFishGame(level) {
       fish.style.top = `${Math.random() * maxY}px`;
     });
   }, speed);
+
+  onClose(() => {
+    clearInterval(timerInterval);
+    clearInterval(moveInterval);
+  });
 
   let ended = false;
 

@@ -1,6 +1,6 @@
 import { appState } from '../core.js';
 import { ttsEngine } from '../audio.js';
-import { createGameScreen, getGameLevel } from './game-ui.js';
+import { createGameScreen, getGameLevel, resetGameSession } from './game-ui.js';
 
 const PALETTE = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#6C5CE7', '#FF8C00', '#A8E6CF', '#FF6B9D', '#333333'];
 
@@ -69,11 +69,10 @@ function setupPixarCanvas(body) {
 }
 
 export function startDrawAIGame(level) {
-  if (appState.gameActive) return;
-  appState.gameActive = true;
+  resetGameSession();
   level = level || getGameLevel('drawAi');
 
-  const { body, close } = createGameScreen({ gameId: 'drawAi', title: 'Рисовалка', emoji: '🎨', level });
+  const { body } = createGameScreen({ gameId: 'drawAi', title: 'Рисовалка', emoji: '🎨', level });
   const { canvas, guessBtn, clearBtn, resultEl, palette } = setupPixarCanvas(body);
 
   const ctx = canvas.getContext('2d');
@@ -154,13 +153,6 @@ export function startDrawAIGame(level) {
       resultEl.textContent = 'Не удалось угадать. Попробуй ещё раз!';
     }
   });
-
-  body.querySelector('.game-close-btn')?.addEventListener('click', () => {
-    appState.gameActive = false;
-  }, { once: true });
-
-  const origClose = close;
-  return { close: () => { appState.gameActive = false; origClose(); } };
 }
 
 export default { startDrawAIGame };

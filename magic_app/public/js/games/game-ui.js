@@ -29,6 +29,38 @@ export function applyGameStyle(gameId) {
 }
 
 const starfieldControllers = new WeakMap();
+const gameCloseCallbacks = new WeakMap();
+
+/** Сброс зависшей игровой сессии (DOM + флаги) */
+export function resetGameSession() {
+  appState.gameActive = false;
+  document.body.classList.remove('game-active');
+  document.querySelectorAll('.game-screen, .game-fullscreen').forEach((el) => {
+    el.classList.remove('game-screen-visible');
+    el.remove();
+  });
+  document.querySelectorAll('.game-result-modal').forEach((el) => el.remove());
+}
+
+/** Загрузка SVG/PNG для canvas (обход naturalWidth === 0 у SVG) */
+export async function loadImageForCanvas(src) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  const tryLoad = (url) => new Promise((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = reject;
+    img.src = url;
+  });
+  try {
+    await tryLoad(src);
+    if (img.naturalWidth > 0) return img;
+  } catch { /* blob fallback */ }
+  const res = await fetch(src);
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  await tryLoad(blobUrl);
+  return img;
+}
 
 export function getGameLevel(gameId) {
   const p = loadGameProgress(getActiveChildName());
@@ -230,7 +262,14 @@ export function createGameScreen({
   const body = overlay.querySelector('.game-screen-body');
   document.body.appendChild(overlay);
   document.body.classList.add('game-active');
+  appState.gameActive = true;
   requestAnimationFrame(() => overlay.classList.add('game-screen-visible'));
+
+  const closeHooks = [];
+  const onClose = (fn) => {
+    if (typeof fn === 'function') closeHooks.push(fn);
+  };
+  gameCloseCallbacks.set(overlay, closeHooks);
 
   const bgEl = overlay.querySelector('.game-screen-bg');
   if (bgEl) {
@@ -262,6 +301,11 @@ export function createGameScreen({
   overlay.addEventListener('gameWin', () => createConfetti(overlay));
 
   const close = () => {
+    const hooks = gameCloseCallbacks.get(overlay) || closeHooks;
+    hooks.forEach((fn) => {
+      try { fn(); } catch (e) { console.error('[game] onClose error', e); }
+    });
+    gameCloseCallbacks.delete(overlay);
     starfieldCtrl?.stop();
     appState.gameActive = false;
     document.body.classList.remove('game-active');
@@ -271,7 +315,7 @@ export function createGameScreen({
   };
   overlay.querySelector('.game-close-btn').onclick = close;
 
-  return { overlay, body, level, close, gameId, triggerWin: () => triggerGameWin(overlay) };
+  return { overlay, body, level, close, onClose, gameId, triggerWin: () => triggerGameWin(overlay) };
 }
 
 export function showGameResult({ won, level, scoreText, score, onNext, onRestart, onClose }) {
@@ -320,5 +364,5 @@ export function showGameResult({ won, level, scoreText, score, onNext, onRestart
 export default {
   getGameLevel, recordGameWin, createGameScreen, createBeautifulGame,
   showGameResult, createStarfield, createConfetti, spawnMatchHearts, triggerGameWin,
-  applyGameStyle
+  applyGameStyle, resetGameSession, loadImageForCanvas
 };

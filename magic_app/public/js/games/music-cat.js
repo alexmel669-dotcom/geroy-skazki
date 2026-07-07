@@ -1,5 +1,5 @@
 import { appState } from '../core.js';
-import { createGameScreen, getGameLevel } from './game-ui.js';
+import { createGameScreen, getGameLevel, resetGameSession } from './game-ui.js';
 import { avatarImgHtml } from '../config.js';
 
 const BODY_NOTES = {
@@ -500,12 +500,11 @@ const BODY_LAYOUT = [
 ];
 
 export function startMusicCatGame(level) {
-  if (appState.gameActive) return;
-  appState.gameActive = true;
+  resetGameSession();
   level = level || getGameLevel('musicCat');
   const dj = new DJEngine();
 
-  const { body } = createGameScreen({ gameId: 'musicCat', title: '🎧 DJ Люцик', emoji: '🎵', level });
+  const { body, onClose } = createGameScreen({ gameId: 'musicCat', title: '🎧 DJ Люцик', emoji: '🎵', level });
 
   const stage = document.createElement('div');
   stage.className = 'dj-stage';
@@ -634,10 +633,7 @@ export function startMusicCatGame(level) {
     filterLabel.textContent = `${e.target.value} Hz`;
   };
 
-  body.querySelector('.game-close-btn')?.addEventListener('click', () => {
-    dj.dispose();
-    appState.gameActive = false;
-  }, { once: true });
+  onClose(() => dj.dispose());
 }
 
 export default { startMusicCatGame };

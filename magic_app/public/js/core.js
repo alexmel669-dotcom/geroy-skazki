@@ -37,7 +37,7 @@ import { startDrawAIGame } from './games/draw-ai.js';
 import { startMusicCatGame } from './games/music-cat.js';
 import { startConstellationGame } from './games/constellation.js';
 import { startPopFearsGame } from './games/pop-fears.js';
-import { getGameLevel, createConfetti } from './games/game-ui.js';
+import { getGameLevel, createConfetti, resetGameSession } from './games/game-ui.js';
 import { setAvatarState, playPurrSound, switchCharacter, showMicHint, showGamesHint, showSwipeHint } from './ui.js';
 import { getTimeContext } from './context.js';
 import { detectRequestType, getDictionaryFallback, learnFromResponse, isBedtimeStoryRequest } from './dictionary.js';
@@ -1928,7 +1928,11 @@ async function processAudio(audioBlob) {
 // ========================================
 
 export function showGamesMenu() {
-  if (appState.gameActive || document.body.classList.contains('game-active') || document.getElementById('gamesMenuOverlay')) return;
+  if (document.getElementById('gamesMenuOverlay')) return;
+  if (appState.gameActive || document.body.classList.contains('game-active')) {
+    if (!document.querySelector('.game-screen')) resetGameSession();
+    else return;
+  }
 
   const overlay = document.createElement('div');
   overlay.id = 'gamesMenuOverlay';
@@ -1989,8 +1993,7 @@ export function showGamesMenu() {
         console.error('[games] Не найден запуск игры:', id);
         return;
       }
-      appState.gameActive = false;
-      document.body.classList.remove('game-active');
+      resetGameSession();
       incrementGames();
       updateStatsDisplay();
       const lvl = getGameLevel(id);

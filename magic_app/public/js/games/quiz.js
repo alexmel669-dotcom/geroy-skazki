@@ -2,7 +2,7 @@ import { appState, incrementGames, getActiveChild } from '../core.js';
 import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { setAvatarState } from '../ui.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel, resetGameSession } from './game-ui.js';
 
 const ALL_QUESTIONS = [
   { id: 'q_anim1', q: 'Какое животное самое высокое?', a: ['Жираф', 'Слон', 'Кит', 'Медведь'], correct: 0, level: 1 },
@@ -108,7 +108,7 @@ class QuizGame {
 }
 
 export function startQuizGame(level) {
-  if (appState.gameActive) return;
+  resetGameSession();
   level = level || getGameLevel('quiz');
   const child = getActiveChild();
 
@@ -141,9 +141,7 @@ export function startQuizGame(level) {
     }, 1000);
   }
 
-  appState.gameActive = true;
-
-  const { body, close } = createGameScreen({
+  const { body, close, onClose } = createGameScreen({
     gameId: 'quiz',
     title: 'Викторина',
     emoji: '❓',
@@ -262,15 +260,10 @@ export function startQuizGame(level) {
   render();
   trackEvent('quiz_started', { level, quizLevel: quiz.level });
 
-  function closeQuiz() {
+  onClose(() => {
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = null;
-    appState.gameActive = false;
-    close();
-  }
-
-  const closeBtn = body.closest('.game-screen')?.querySelector('.game-close-btn');
-  if (closeBtn) closeBtn.onclick = closeQuiz;
+  });
 }
 
 export default { startQuizGame };

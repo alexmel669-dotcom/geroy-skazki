@@ -1,7 +1,7 @@
 import { appState, getActiveChild } from '../core.js';
 import { setAvatarState } from '../ui.js';
 import { trackEvent } from '../analytics.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel, resetGameSession } from './game-ui.js';
 import { getChildGender, formatChildText } from '../gender.js';
 import { getQuestMaxMoves } from './game-difficulty.js';
 const QUEST_STORY = {
@@ -83,14 +83,12 @@ const START_BY_LEVEL = {
 };
 
 export function startQuestGame(level) {
-  if (appState.gameActive) return;
+  resetGameSession();
   level = level || getGameLevel('quest');
 
   let step = START_BY_LEVEL[level] || 'start';
   let moves = 0;
   const maxMoves = getQuestMaxMoves(level);
-
-  appState.gameActive = true;
 
   const { body, close } = createGameScreen({
     gameId: 'quest',

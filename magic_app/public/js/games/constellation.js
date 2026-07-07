@@ -1,6 +1,6 @@
 import { appState } from '../core.js';
 import { ttsEngine } from '../audio.js';
-import { createGameScreen, getGameLevel, triggerGameWin, recordGameWin, showGameResult } from './game-ui.js';
+import { createGameScreen, getGameLevel, triggerGameWin, recordGameWin, showGameResult, resetGameSession } from './game-ui.js';
 
 const CONSTELLATIONS = [
   {
@@ -107,15 +107,14 @@ function redrawCanvas(ctx, canvas, constellation, drawnStars, bgStars) {
 }
 
 export function startConstellationGame(level) {
-  if (appState.gameActive) return;
-  appState.gameActive = true;
+  resetGameSession();
   level = level || getGameLevel('constellation');
 
   const template = CONSTELLATIONS[Math.floor(Math.random() * CONSTELLATIONS.length)];
   let drawnStars = [];
   let completed = false;
 
-  const { body, close, overlay } = createGameScreen({
+  const { body, close, overlay, onClose } = createGameScreen({
     gameId: 'constellation',
     title: 'Созвездия',
     emoji: '🌟',
@@ -152,10 +151,7 @@ export function startConstellationGame(level) {
   resize();
   window.addEventListener('resize', onResize);
 
-  body.querySelector('.game-close-btn')?.addEventListener('click', () => {
-    window.removeEventListener('resize', onResize);
-    appState.gameActive = false;
-  }, { once: true });
+  onClose(() => window.removeEventListener('resize', onResize));
 
   function onComplete() {
     if (completed) return;
