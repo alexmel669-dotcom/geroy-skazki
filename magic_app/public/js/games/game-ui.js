@@ -3,6 +3,7 @@
 // ========================================
 
 import { loadGameProgress, saveGameProgress } from '../game-progress.js';
+import { checkProgressAchievements } from '../achievements.js';
 import { getActiveChildName, appState } from '../core.js';
 import { avatarImgHtml } from '../config.js';
 
@@ -80,6 +81,7 @@ export function recordGameWin(gameId, level) {
   block.lastLevel = level;
   p[gameId] = block;
   saveGameProgress(p, name);
+  checkProgressAchievements();
   return block.level;
 }
 

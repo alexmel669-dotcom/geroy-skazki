@@ -1,8 +1,10 @@
-import { appState } from '../core.js';
+import { appState, getActiveChild } from '../core.js';
 import { ttsEngine } from '../audio.js';
-import { createGameScreen, getGameLevel, resetGameSession } from './game-ui.js';
+import { FEAR_LABELS } from '../config.js';
+import { updateAchievement } from '../achievements.js';
+import { createGameScreen, getGameLevel, resetGameSession, showGameResult, recordGameWin } from './game-ui.js';
 
-const FEARS = [
+const DEFAULT_FEARS = [
   { name: 'Темнота', emoji: '🌑', message: 'Темнота — это просто время для звёзд. В темноте можно увидеть самые красивые сны!' },
   { name: 'Монстры', emoji: '👾', message: 'Монстры бывают только в сказках. А в жизни — просто тени от игрушек!' },
   { name: 'Одиночество', emoji: '😔', message: 'Ты не один! Я всегда рядом, и твои родители тебя любят.' },
@@ -10,7 +12,55 @@ const FEARS = [
   { name: 'Пауки', emoji: '🕷️', message: 'Паучки — наши друзья! Они ловят вредных мух и плетут красивые узоры.' }
 ];
 
+const FEAR_KEY_TO_DEFAULT = {
+  darkness: 'Темнота',
+  monsters: 'Монстры',
+  separation: 'Одиночество',
+  loud_noises: 'Гроза',
+  strangers: 'Незнакомцы',
+  school: 'Школа',
+  peers: 'Сверстники'
+};
+
 const PARTICLE_COLORS = ['#FFD700', '#FF6B9D', '#7B68EE', '#4CAF50'];
+
+function getPersonalizedFears() {
+  const child = getActiveChild();
+  let concerns = [];
+  try {
+    concerns = JSON.parse(localStorage.getItem('parentConcerns') || '[]');
+  } catch { /* ignore */ }
+
+  const fearStats = child?.fearStats || {};
+  const activeKeys = Object.entries(fearStats).filter(([, v]) => v > 0).map(([k]) => k);
+
+  if (activeKeys.length) {
+    const fromStats = activeKeys.map((key) => {
+      const label = FEAR_LABELS[key];
+      const defaultName = FEAR_KEY_TO_DEFAULT[key];
+      const base = DEFAULT_FEARS.find((f) => f.name === defaultName || f.name === label?.name);
+      if (base) return base;
+      if (label) {
+        return { name: label.name, emoji: label.icon, message: `Ты смелый! ${label.name} не страшно!` };
+      }
+      return null;
+    }).filter(Boolean);
+    if (fromStats.length) return fromStats;
+  }
+
+  if (concerns.length) {
+    const matched = DEFAULT_FEARS.filter((f) =>
+      concerns.some((c) => {
+        const cLower = String(c).toLowerCase();
+        const fLower = f.name.toLowerCase();
+        return fLower.includes(cLower) || cLower.includes(fLower.slice(0, 4));
+      })
+    );
+    if (matched.length) return matched;
+  }
+
+  return DEFAULT_FEARS;
+}
 
 function popBubble(bubble, fear, container, onPopped) {
   const containerRect = container.getBoundingClientRect();
@@ -49,7 +99,12 @@ export function startPopFearsGame(level) {
   resetGameSession();
   level = level || getGameLevel('popFears');
 
-  const { body, onClose } = createGameScreen({ gameId: 'popFears', title: 'Лопни страхи', emoji: '🫧', level });
+  const fears = getPersonalizedFears();
+  const totalFears = fears.length;
+  let poppedFears = 0;
+  let won = false;
+
+  const { body, close, onClose } = createGameScreen({ gameId: 'popFears', title: 'Лопни страхи', emoji: '🫧', level });
 
   const container = document.createElement('div');
   container.id = 'bubblesContainer';
@@ -57,44 +112,58 @@ export function startPopFearsGame(level) {
 
   const counter = document.createElement('p');
   counter.className = 'fear-pop-counter';
-  counter.innerHTML = 'Страхов лопнуто: <span id="popCount">0</span>';
+  counter.innerHTML = `Страхов лопнуто: <span id="popCount">0</span> / ${totalFears}`;
 
   body.appendChild(container);
   body.appendChild(counter);
 
-  let popped = 0;
-  let spawnTimer = null;
-
   function updateCounter() {
-    counter.innerHTML = `Страхов лопнуто: <span id="popCount">${popped}</span>`;
+    counter.innerHTML = `Страхов лопнуто: <span id="popCount">${poppedFears}</span> / ${totalFears}`;
   }
 
-  function spawnBubble() {
-    const fear = FEARS[Math.floor(Math.random() * FEARS.length)];
+  function onWin() {
+    if (won) return;
+    won = true;
+    ttsEngine.speak('Ты справился со всеми страхами! Ты очень смелый!').catch(() => {});
+    appState.gameActive = false;
+    close();
+    recordGameWin('popFears', level);
+    updateAchievement('brave_child');
+    showGameResult({
+      won: true,
+      level,
+      scoreText: `Все ${totalFears} страхов побеждены!`,
+      onNext: () => startPopFearsGame(level + 1)
+    });
+  }
+
+  function spawnBubble(fear, index) {
     const bubble = document.createElement('div');
     bubble.className = 'fear-bubble';
+    bubble.dataset.fearIndex = String(index);
     bubble.innerHTML = `<span class="fear-emoji">${fear.emoji}</span><small>${fear.name}</small>`;
-    bubble.style.left = `${Math.random() * 80 + 10}%`;
-    bubble.style.top = `${Math.random() * 70 + 10}%`;
+    bubble.style.left = `${Math.random() * 70 + 15}%`;
+    bubble.style.top = `${Math.random() * 60 + 15}%`;
     bubble.style.animationDelay = `${Math.random() * 2}s`;
 
     bubble.addEventListener('click', () => {
-      if (bubble.classList.contains('popping')) return;
+      if (bubble.classList.contains('popping') || won) return;
       popBubble(bubble, fear, container, () => {
-        popped += 1;
+        poppedFears++;
         updateCounter();
-        if (popped % 5 === 0) spawnBubble();
+        if (poppedFears >= totalFears) onWin();
       });
     });
 
     container.appendChild(bubble);
-    setTimeout(() => { if (bubble.parentNode && !bubble.classList.contains('popping')) bubble.remove(); }, 8000);
+    setTimeout(() => {
+      if (bubble.parentNode && !bubble.classList.contains('popping') && !won) bubble.remove();
+    }, 12000);
   }
 
-  for (let i = 0; i < 5; i++) spawnBubble();
-  spawnTimer = setInterval(spawnBubble, 4000);
+  fears.forEach((fear, i) => spawnBubble(fear, i));
 
-  onClose(() => clearInterval(spawnTimer));
+  onClose(() => {});
 }
 
 export default { startPopFearsGame };

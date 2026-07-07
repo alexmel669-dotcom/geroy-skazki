@@ -2,6 +2,26 @@
 // game-progress.js — ПРОГРЕСС ИГР ПО РЕБЁНКУ
 // ========================================
 
+export const GAME_PROGRESS_KEYS = [
+  'fish', 'memory', 'puzzle', 'riddles', 'quest', 'maze',
+  'quiz', 'runner', 'drawAi', 'musicCat', 'constellation', 'popFears'
+];
+
+const GAME_LABELS = {
+  fish: { label: 'Рыбалка', icon: '🎣' },
+  memory: { label: 'Мемори', icon: '🧠' },
+  puzzle: { label: 'Пазл', icon: '🧩' },
+  riddles: { label: 'Загадки', icon: '❓' },
+  quest: { label: 'Квест', icon: '🗺️' },
+  maze: { label: 'Лабиринт', icon: '🌀' },
+  quiz: { label: 'Викторина', icon: '❓' },
+  runner: { label: 'Бегун', icon: '🐱' },
+  drawAi: { label: 'Рисовалка', icon: '🎨' },
+  musicCat: { label: 'DJ Люцик', icon: '🎵' },
+  constellation: { label: 'Созвездия', icon: '🌟' },
+  popFears: { label: 'Лопни страхи', icon: '🫧' }
+};
+
 function resolveProgressChildName(childName) {
   if (childName != null && childName !== '') return childName;
   if (typeof globalThis !== 'undefined' && typeof globalThis.getActiveChildName === 'function') {
@@ -18,17 +38,30 @@ function hasEmotionProgress(emotion) {
   return Boolean(emotion?.completed || (emotion?.bestScore || 0) > 0 || (emotion?.level || 1) > 1);
 }
 
+const DEFAULT_GAME_BLOCK = { wins: 0, level: 1 };
+
 const DEFAULT_PROGRESS = {
   fish: { bestScore: 0, bestLevel: 1, level: 1, wins: 0 },
   memory: { pairsCollected: 0, wins: 0, level: 1 },
-  puzzle: { levelsCompleted: 0, level: 1 },
+  puzzle: { levelsCompleted: 0, level: 1, wins: 0 },
   riddles: { completed: 0, level: 1, wins: 0 },
-  quest: { completed: 0, level: 1 },
+  quest: { completed: 0, level: 1, wins: 0 },
   maze: { level: 1, wins: 0 },
   quiz: { level: 1, wins: 0 },
+  runner: { level: 1, wins: 0 },
+  drawAi: { level: 1, wins: 0 },
+  musicCat: { level: 1, wins: 0 },
+  constellation: { level: 1, wins: 0 },
+  popFears: { level: 1, wins: 0 },
   emotion: { completed: false, bestScore: 0, level: 1 },
   coloring: { completed: false, level: 1 }
 };
+
+function makeDefaultProgress() {
+  const p = {};
+  Object.entries(DEFAULT_PROGRESS).forEach(([k, v]) => { p[k] = { ...v }; });
+  return p;
+}
 
 export function getGameProgressKey(childName) {
   const safe = (childName || 'guest').replace(/[^\w\u0400-\u04FF-]/gi, '_').slice(0, 40);
@@ -41,45 +74,18 @@ function mergeProgressBlock(defaults, patch) {
 
 export function loadGameProgress(childName) {
   const key = getGameProgressKey(childName === 'Гость' ? 'guest' : childName);
+  const defaults = makeDefaultProgress();
   try {
     const raw = localStorage.getItem(key);
-    if (!raw) {
-      return {
-        fish: { ...DEFAULT_PROGRESS.fish },
-        memory: { ...DEFAULT_PROGRESS.memory },
-        puzzle: { ...DEFAULT_PROGRESS.puzzle },
-        riddles: { ...DEFAULT_PROGRESS.riddles },
-        quest: { ...DEFAULT_PROGRESS.quest },
-        maze: { ...DEFAULT_PROGRESS.maze },
-        quiz: { ...DEFAULT_PROGRESS.quiz },
-        emotion: { ...DEFAULT_PROGRESS.emotion },
-        coloring: { ...DEFAULT_PROGRESS.coloring }
-      };
-    }
+    if (!raw) return defaults;
     const parsed = JSON.parse(raw);
-    return {
-      fish: mergeProgressBlock(DEFAULT_PROGRESS.fish, parsed.fish),
-      memory: mergeProgressBlock(DEFAULT_PROGRESS.memory, parsed.memory),
-      puzzle: mergeProgressBlock(DEFAULT_PROGRESS.puzzle, parsed.puzzle),
-      riddles: mergeProgressBlock(DEFAULT_PROGRESS.riddles, parsed.riddles),
-      quest: mergeProgressBlock(DEFAULT_PROGRESS.quest, parsed.quest),
-      maze: mergeProgressBlock(DEFAULT_PROGRESS.maze, parsed.maze),
-      quiz: mergeProgressBlock(DEFAULT_PROGRESS.quiz, parsed.quiz),
-      emotion: mergeProgressBlock(DEFAULT_PROGRESS.emotion, parsed.emotion),
-      coloring: mergeProgressBlock(DEFAULT_PROGRESS.coloring, parsed.coloring)
-    };
+    const merged = {};
+    Object.keys(defaults).forEach((gameId) => {
+      merged[gameId] = mergeProgressBlock(defaults[gameId], parsed[gameId]);
+    });
+    return merged;
   } catch {
-    return {
-      fish: { ...DEFAULT_PROGRESS.fish },
-      memory: { ...DEFAULT_PROGRESS.memory },
-      puzzle: { ...DEFAULT_PROGRESS.puzzle },
-      riddles: { ...DEFAULT_PROGRESS.riddles },
-      quest: { ...DEFAULT_PROGRESS.quest },
-      maze: { ...DEFAULT_PROGRESS.maze },
-      quiz: { ...DEFAULT_PROGRESS.quiz },
-      emotion: { ...DEFAULT_PROGRESS.emotion },
-      coloring: { ...DEFAULT_PROGRESS.coloring }
-    };
+    return defaults;
   }
 }
 
@@ -94,6 +100,20 @@ export function updateGameProgress(patch, childName = 'guest') {
   const next = { ...current, ...patch };
   saveGameProgress(next, childName);
   return next;
+}
+
+export function recordGameResult(gameId, won, level, childName) {
+  const name = resolveProgressChildName(childName);
+  const p = loadGameProgress(name);
+  const block = { ...(p[gameId] || { ...DEFAULT_GAME_BLOCK }) };
+  if (won) {
+    block.wins = (block.wins || 0) + 1;
+    block.level = Math.max(block.level || 1, (level || 1) + 1);
+    block.lastLevel = level || 1;
+  }
+  p[gameId] = block;
+  saveGameProgress(p, name);
+  return block;
 }
 
 export function recordFishResult(score, level, childName = 'guest') {
@@ -117,6 +137,7 @@ export function recordMemoryWin(pairs, childName = 'guest') {
 export function recordPuzzleWin(childName = 'guest') {
   const p = loadGameProgress(childName);
   p.puzzle.levelsCompleted = (p.puzzle.levelsCompleted || 0) + 1;
+  p.puzzle.wins = (p.puzzle.wins || 0) + 1;
   saveGameProgress(p, childName);
   return p.puzzle;
 }
@@ -140,21 +161,33 @@ export function getGameProgressSummary(childName) {
   const p = loadGameProgress(childName);
   const coloringStarted = hasColoringProgress(p.coloring);
   const emotionStarted = hasEmotionProgress(p.emotion);
-  return [
-    { id: 'fish', label: 'Рыбалка', value: p.fish.level || 1, max: 20, detail: `ур. ${p.fish.level || 1}, счёт ${p.fish.bestScore || 0}` },
-    { id: 'memory', label: 'Мемори', value: p.memory.level || 1, max: 20, detail: `ур. ${p.memory.level || 1}, побед: ${p.memory.wins || 0}` },
-    { id: 'puzzle', label: 'Пазл', value: p.puzzle.level || 1, max: 20, detail: `ур. ${p.puzzle.level || 1}` },
-    { id: 'emotion', label: 'Эмоции', value: emotionStarted ? (p.emotion.level || 1) : 0, max: 10, detail: p.emotion.completed ? 'пройдено' : emotionStarted ? 'в процессе' : 'не начато' },
-    { id: 'coloring', label: 'Раскраска', value: coloringStarted ? (p.coloring.level || 1) : 0, max: 20, detail: p.coloring.completed ? 'есть работы' : coloringStarted ? 'в процессе' : 'не начато' },
-    { id: 'riddles', label: 'Загадки', value: p.riddles.level || 1, max: 20, detail: `ур. ${p.riddles.level || 1}` },
-    { id: 'quest', label: 'Квест', value: p.quest.level || 1, max: 20, detail: `ур. ${p.quest.level || 1}` },
-    { id: 'maze', label: 'Лабиринт', value: p.maze.level || 1, max: 20, detail: `ур. ${p.maze.level || 1}` },
-    { id: 'quiz', label: 'Викторина', value: p.quiz.level || 1, max: 20, detail: `ур. ${p.quiz.level || 1}` }
+
+  const mainGames = GAME_PROGRESS_KEYS.map((id) => {
+    const meta = GAME_LABELS[id] || { label: id, icon: '🎮' };
+    const block = p[id] || DEFAULT_GAME_BLOCK;
+    const lvl = block.level || 1;
+    const wins = block.wins || 0;
+    return {
+      id,
+      label: `${meta.icon} ${meta.label}`,
+      value: lvl,
+      max: 20,
+      detail: `ур. ${lvl} | 🏆 ${wins}`
+    };
+  });
+
+  const legacy = [
+    { id: 'emotion', label: '😊 Эмоции', value: emotionStarted ? (p.emotion.level || 1) : 0, max: 10, detail: p.emotion.completed ? 'пройдено' : emotionStarted ? 'в процессе' : 'не начато' },
+    { id: 'coloring', label: '🖍️ Раскраска', value: coloringStarted ? (p.coloring.level || 1) : 0, max: 20, detail: p.coloring.completed ? 'есть работы' : coloringStarted ? 'в процессе' : 'не начато' }
   ];
+
+  return [...mainGames, ...legacy];
 }
 
 export default {
+  GAME_PROGRESS_KEYS,
   loadGameProgress, saveGameProgress, updateGameProgress,
+  recordGameResult,
   recordFishResult, recordMemoryWin, recordPuzzleWin,
   recordEmotionComplete, recordColoringComplete, getGameProgressSummary
 };

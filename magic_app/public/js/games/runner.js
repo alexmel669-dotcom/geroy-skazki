@@ -1,6 +1,8 @@
 import { appState } from '../core.js';
-import { createGameScreen, getGameLevel, showGameResult, resetGameSession } from './game-ui.js';
+import { createGameScreen, getGameLevel, showGameResult, recordGameWin, resetGameSession } from './game-ui.js';
 import { avatarUrl } from '../config.js';
+
+const WIN_SCORE = 100;
 
 const OBSTACLE_TYPES = [
   {
@@ -166,7 +168,7 @@ export function startRunnerGame(level) {
   resize();
   window.addEventListener('resize', onResize);
 
-  function handleGameOver() {
+  function handleGameEnd() {
     if (gameOverHandled) return;
     gameOverHandled = true;
     clearInterval(loopId);
@@ -174,10 +176,12 @@ export function startRunnerGame(level) {
     appState.gameActive = false;
     close();
     if (window.leaderboard) window.leaderboard.submitScore('runner', score);
+    if (gameWon) recordGameWin('runner', level);
     showGameResult({
-      won: false,
+      won: gameWon,
       level,
-      scoreText: `Счёт: ${score}`,
+      scoreText: gameWon ? `Собрано ${score} звёзд!` : `Счёт: ${score}`,
+      onNext: gameWon ? () => startRunnerGame(level + 1) : undefined,
       onRestart: () => startRunnerGame(level)
     });
   }
@@ -191,6 +195,7 @@ export function startRunnerGame(level) {
   let score = 0;
   let speed = 4 + Math.min(level, 5) * 0.3;
   let gameOver = false;
+  let gameWon = false;
   let gameOverAt = 0;
   let gameOverHandled = false;
   let loopId = null;
@@ -317,7 +322,12 @@ export function startRunnerGame(level) {
     if (Math.random() < 0.018) spawnObstacle();
     if (Math.random() < 0.028) spawnStar();
 
-    // Плавное ускорение
+    if (score >= WIN_SCORE && !gameOver) {
+      gameWon = true;
+      gameOver = true;
+      gameOverAt = Date.now();
+    }
+
     speed = Math.min(4 + Math.min(level, 5) * 0.3 + frame * 0.0008, 12);
   }
 
@@ -374,14 +384,21 @@ export function startRunnerGame(level) {
     ctx.shadowBlur = 0;
 
     if (gameOver) {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#FFD700';
-      ctx.font = 'bold 26px Georgia, serif';
+      ctx.font = 'bold 28px Georgia, serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Игра окончена!', canvas.width / 2, canvas.height / 2 - 10);
-      ctx.font = '18px Georgia, serif';
-      ctx.fillText(`Счёт: ${score}`, canvas.width / 2, canvas.height / 2 + 24);
+      if (gameWon) {
+        ctx.fillText('🎉 Победа!', canvas.width / 2, canvas.height / 2 - 10);
+        ctx.font = '20px Georgia, serif';
+        ctx.fillText(`⭐ ${score}`, canvas.width / 2, canvas.height / 2 + 30);
+      } else {
+        ctx.font = 'bold 26px Georgia, serif';
+        ctx.fillText('Игра окончена!', canvas.width / 2, canvas.height / 2 - 10);
+        ctx.font = '18px Georgia, serif';
+        ctx.fillText(`Счёт: ${score}`, canvas.width / 2, canvas.height / 2 + 24);
+      }
       ctx.textAlign = 'left';
     }
   }
@@ -395,7 +412,7 @@ export function startRunnerGame(level) {
     draw();
     if (gameOver && !gameOverHandled) {
       if (!gameOverAt) gameOverAt = Date.now();
-      if (Date.now() - gameOverAt > 1500) handleGameOver();
+      if (Date.now() - gameOverAt > 2500) handleGameEnd();
     }
   }, 20);
 

@@ -4,16 +4,24 @@
 
 import { CONFIG } from './config.js';
 import { getActiveChildName, safeParseJSON } from './core.js';
+import { loadGameProgress } from './game-progress.js';
 
 const ACHIEVEMENTS = {
   first_story: { id: 'first_story', title: '📖 Первая сказка', description: 'Послушать первую сказку', icon: '🌟', threshold: 1, stat: 'totalStories' },
   story_master: { id: 'story_master', title: '🎭 Мастер сказок', description: 'Послушать 10 сказок', icon: '👑', threshold: 10, stat: 'totalStories' },
-  fish_master: { id: 'fish_master', title: '🎣 Мастер рыбалки', description: 'Поймать 10 рыб', icon: '🐟', threshold: 10, stat: 'fishScore' },
-  memory_champion: { id: 'memory_champion', title: '🧠 Чемпион памяти', description: 'Пройти «Мемори»', icon: '🧠', threshold: 1, stat: 'memoryWins' },
-  puzzle_solver: { id: 'puzzle_solver', title: '🧩 Собиратель пазлов', description: 'Собрать пазл', icon: '🧩', threshold: 1, stat: 'puzzleWins' },
+  fish_master: { id: 'fish_master', title: '🎣 Рыбак', description: 'Выиграть 5 раз в рыбалке', icon: '🎣', game: 'fish', wins: 5 },
+  memory_champion: { id: 'memory_champion', title: '🧠 Чемпион памяти', description: 'Выиграть 5 раз в мемори', icon: '🧠', game: 'memory', wins: 5 },
+  puzzle_solver: { id: 'puzzle_solver', title: '🧩 Мастер пазлов', description: 'Выиграть 3 раза в пазле', icon: '🧩', game: 'puzzle', wins: 3 },
+  riddle_master: { id: 'riddle_master', title: '❓ Мудрец', description: 'Выиграть 5 раз в загадках', icon: '❓', game: 'riddles', wins: 5 },
+  quest_hero: { id: 'quest_hero', title: '🗺️ Герой квестов', description: 'Выиграть 3 раза в квесте', icon: '🗺️', game: 'quest', wins: 3 },
+  maze_runner: { id: 'maze_runner', title: '🌀 Бегущий в лабиринте', description: 'Выиграть 3 раза в лабиринте', icon: '🌀', game: 'maze', wins: 3 },
+  quiz_genius: { id: 'quiz_genius', title: '❓ Эрудит', description: 'Выиграть 5 раз в викторине', icon: '❓', game: 'quiz', wins: 5 },
+  runner_star: { id: 'runner_star', title: '🐱 Звёздный бегун', description: 'Выиграть 3 раза в бегуне', icon: '🐱', game: 'runner', wins: 3 },
+  artist: { id: 'artist', title: '🎨 Художник', description: 'Выиграть 3 раза в рисовалке', icon: '🎨', game: 'drawAi', wins: 3 },
+  music_master: { id: 'music_master', title: '🎵 DJ Мастер', description: 'Выиграть 3 раза у DJ Люцика', icon: '🎵', game: 'musicCat', wins: 3 },
+  stargazer: { id: 'stargazer', title: '🌟 Звездочёт', description: 'Выиграть 3 раза в созвездиях', icon: '🌟', game: 'constellation', wins: 3 },
+  brave_child: { id: 'brave_child', title: '🫧 Храбрец', description: 'Справиться со страхами 3 раза', icon: '🫧', game: 'popFears', wins: 3 },
   emotion_master: { id: 'emotion_master', title: '😊 Мастер эмоций', description: 'Угадать эмоции', icon: '😊', threshold: 1, stat: 'emotionWins' },
-  artist: { id: 'artist', title: '🎨 Художник', description: 'Нарисовать рисунок', icon: '🎨', threshold: 1, stat: 'drawings' },
-  brave_child: { id: 'brave_child', title: '🦁 Храбрый ребёнок', description: 'Победить 5 страхов', icon: '🦁', threshold: 5, stat: 'fears' },
   game_master: { id: 'game_master', title: '🎮 Любитель игр', description: 'Сыграть в 5 игр', icon: '🎮', threshold: 5, stat: 'totalGames' }
 };
 
@@ -97,7 +105,8 @@ export function updateAchievement(achievementId) {
     puzzle_solver: 'puzzleWins',
     emotion_master: 'emotionWins',
     artist: 'drawings',
-    fish_master: 'fishScore'
+    fish_master: 'fishScore',
+    riddle_master: 'emotionWins'
   };
   const statKey = gameStats[achievementId];
   if (statKey) {
@@ -105,20 +114,31 @@ export function updateAchievement(achievementId) {
     stats[statKey] = (stats[statKey] || 0) + 1;
     localStorage.setItem(getStatsKey(), JSON.stringify(stats));
   }
-  showAchievement(achievementId);
+  checkProgressAchievements();
+}
+
+export function checkProgressAchievements() {
+  const progress = loadGameProgress(getActiveChildName());
+  for (const ach of Object.values(ACHIEVEMENTS)) {
+    if (unlockedAchievements.has(ach.id)) continue;
+    if (ach.game && ach.wins) {
+      const wins = progress[ach.game]?.wins || 0;
+      if (wins >= ach.wins) showAchievement(ach.id);
+    }
+  }
 }
 
 export function checkAchievements() {
   const stats = getCurrentStats();
-  const totalFears = Object.values(stats.fearStats || {}).reduce((a, b) => a + b, 0);
 
   for (const ach of Object.values(ACHIEVEMENTS)) {
     if (unlockedAchievements.has(ach.id)) continue;
-    let value = 0;
-    if (ach.stat === 'fears') value = totalFears;
-    else value = stats[ach.stat] || 0;
-    if (value >= ach.threshold) showAchievement(ach.id);
+    if (ach.stat) {
+      const value = stats[ach.stat] || 0;
+      if (value >= ach.threshold) showAchievement(ach.id);
+    }
   }
+  checkProgressAchievements();
 }
 
 loadAchievements();
@@ -136,4 +156,4 @@ export function getAchievementStats() {
   return { total, unlocked, percentage: total > 0 ? Math.round((unlocked / total) * 100) : 0 };
 }
 
-export default { showAchievement, updateAchievement, checkAchievements, getAllAchievements, getAchievementStats };
+export default { showAchievement, updateAchievement, checkAchievements, checkProgressAchievements, getAllAchievements, getAchievementStats };

@@ -43,8 +43,10 @@ export function getMemoryPairs(level) {
 }
 
 export function getPuzzleGrid(age, level) {
+  const SIZES = [3, 4, 6];
   const childAge = age ?? getChildAgeForGames();
-  let size = level <= 2 ? 3 : level <= 5 ? 4 : 5;
+  const lv = Math.max(1, Math.min(level || 1, SIZES.length));
+  let size = SIZES[lv - 1] || 3;
   if (childAge <= 4) size = Math.min(size, 3);
   if (childAge <= 6 && size > 4) size = 4;
   return size;

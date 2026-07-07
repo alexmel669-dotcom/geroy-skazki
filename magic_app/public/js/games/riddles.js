@@ -107,7 +107,7 @@ export function startRiddlesGame(level) {
     appState.gameActive = false;
     close();
     if (won) {
-      updateAchievement('emotion_master');
+      updateAchievement('riddle_master');
       recordGameWin('riddles', level);
       showGameResult({
         won: true,

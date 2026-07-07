@@ -25,11 +25,20 @@ class PuzzleGame {
   }
 
   async loadImage() {
+    const svg = avatarUrl('lucik', 'svg');
+    this.image.onerror = () => {
+      this.image.src = svg;
+    };
     try {
-      this.image = await loadImageForCanvas(avatarUrl('lucik', 'svg'));
+      this.image = await loadImageForCanvas(svg);
       this.imageLoaded = true;
     } catch {
-      this.imageLoaded = false;
+      try {
+        this.image = await loadImageForCanvas(avatarUrl('lucik', 'png'));
+        this.imageLoaded = true;
+      } catch {
+        this.imageLoaded = false;
+      }
     }
   }
 

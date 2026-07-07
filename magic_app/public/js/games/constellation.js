@@ -66,7 +66,7 @@ function drawSpaceBg(ctx, w, h, bgStars) {
   });
 }
 
-function redrawCanvas(ctx, canvas, constellation, drawnStars, bgStars) {
+function redrawCanvas(ctx, canvas, constellation, drawnStars, bgStars, nextStar = 0) {
   const w = canvas.width;
   const h = canvas.height;
   drawSpaceBg(ctx, w, h, bgStars);
@@ -104,6 +104,17 @@ function redrawCanvas(ctx, canvas, constellation, drawnStars, bgStars) {
     ctx.arc(star.x, star.y, active ? 8 : 5, 0, Math.PI * 2);
     ctx.fill();
   });
+
+  if (nextStar < constellation.stars.length) {
+    const star = constellation.stars[nextStar];
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, 15, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
 }
 
 export function startConstellationGame(level) {
@@ -112,6 +123,7 @@ export function startConstellationGame(level) {
 
   const template = CONSTELLATIONS[Math.floor(Math.random() * CONSTELLATIONS.length)];
   let drawnStars = [];
+  let nextStar = 0;
   let completed = false;
 
   const { body, close, overlay, onClose } = createGameScreen({
@@ -145,7 +157,7 @@ export function startConstellationGame(level) {
       ...template,
       stars: scaleStars(template.stars, canvas.width, canvas.height)
     };
-    redrawCanvas(ctx, canvas, currentConstellation, drawnStars, bgStars);
+    redrawCanvas(ctx, canvas, currentConstellation, drawnStars, bgStars, nextStar);
   };
   const onResize = () => resize();
   resize();
@@ -190,9 +202,10 @@ export function startConstellationGame(level) {
       }
     });
 
-    if (closest !== null && !drawnStars.includes(closest)) {
+    if (closest !== null && closest === nextStar) {
       drawnStars.push(closest);
-      redrawCanvas(ctx, canvas, currentConstellation, drawnStars, bgStars);
+      nextStar++;
+      redrawCanvas(ctx, canvas, currentConstellation, drawnStars, bgStars, nextStar);
       if (drawnStars.length === currentConstellation.stars.length) {
         onComplete();
       }

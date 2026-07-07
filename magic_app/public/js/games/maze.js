@@ -1,7 +1,10 @@
 import { appState, incrementGames, getActiveChild } from '../core.js';
 import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel, resetGameSession } from './game-ui.js';
+import { createGameScreen, showGameResult, recordGameWin, getGameLevel, resetGameSession, loadImageForCanvas } from './game-ui.js';
+import { avatarUrl } from '../config.js';
+
+const MAX_STEPS = { 1: 50, 2: 80, 3: 120 };
 import { getChildGender, applyGenderToText } from '../gender.js';
 
 function shuffle(arr) {
@@ -62,7 +65,23 @@ function buildVines(maze, cellSize) {
   return vines;
 }
 
-function drawMaze(ctx, maze, cellSize, px, py, vines, exit) {
+function drawPlayer(ctx, playerImg, px, py, cellSize) {
+  const x = px * cellSize + 4;
+  const y = py * cellSize + 4;
+  const s = cellSize - 8;
+  if (playerImg?.naturalWidth > 0) {
+    ctx.drawImage(playerImg, x, y, s, s);
+    return;
+  }
+  ctx.font = `${cellSize * 0.45}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🐱', px * cellSize + cellSize / 2, py * cellSize + cellSize / 2);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawMaze(ctx, maze, cellSize, px, py, vines, exit, playerImg) {
   const cw = ctx.canvas.width;
   const ch = ctx.canvas.height;
 
@@ -146,12 +165,8 @@ function drawMaze(ctx, maze, cellSize, px, py, vines, exit) {
   ctx.arc(px * cellSize + cellSize / 2, py * cellSize + cellSize / 2, cellSize * 0.55, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.font = `${cellSize * 0.45}px serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('🐱', px * cellSize + cellSize / 2, py * cellSize + cellSize / 2);
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
+  drawPlayer(ctx, playerImg, px, py, cellSize);
+
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('⭐', exitX * cellSize + cellSize / 2, exitY * cellSize + cellSize / 2);
@@ -177,6 +192,7 @@ export function startMazeGame(level) {
   let py = 1;
   const exit = { x: cols - 1, y: rows - 2 };
   let steps = 0;
+  const stepLimit = MAX_STEPS[Math.min(Math.max(level, 1), 3)] || 120;
 
   appState.gameActive = true;
   const cell = Math.min(36, Math.floor(Math.min(window.innerWidth * 0.9, 380) / cols));
@@ -203,15 +219,37 @@ export function startMazeGame(level) {
 
   const stepsEl = document.createElement('p');
   stepsEl.className = 'maze-steps';
-  stepsEl.textContent = 'Шагов: 0';
+  stepsEl.textContent = `Шагов: 0 / ${stepLimit}`;
 
   body.append(hint, wrap, stepsEl);
 
   const ctx = canvas.getContext('2d');
   const vines = buildVines(grid, cell);
+  let playerImg = null;
+  let lost = false;
+
+  loadImageForCanvas(avatarUrl('lucik', 'svg')).then((img) => {
+    playerImg = img;
+    redraw();
+  }).catch(() => redraw());
 
   function redraw() {
-    drawMaze(ctx, grid, cell, px, py, vines, exit);
+    drawMaze(ctx, grid, cell, px, py, vines, exit, playerImg);
+  }
+
+  function loseGame() {
+    if (lost) return;
+    lost = true;
+    speak('Слишком много шагов! Попробуй короче путь.');
+    appState.gameActive = false;
+    close();
+    showGameResult({
+      won: false,
+      level,
+      scoreText: `Лимит ${stepLimit} шагов исчерпан`,
+      onRestart: () => startMazeGame(level)
+    });
+    trackEvent('maze_lost', { level, steps, size, reason: 'step_limit' });
   }
 
   function winGame() {
@@ -231,14 +269,19 @@ export function startMazeGame(level) {
   }
 
   function tryMove(dx, dy) {
+    if (lost) return;
     const nx = px + dx;
     const ny = py + dy;
     if (grid[ny]?.[nx] === 0) {
       px = nx;
       py = ny;
       steps++;
-      stepsEl.textContent = `Шагов: ${steps}`;
+      stepsEl.textContent = `Шагов: ${steps} / ${stepLimit}`;
       redraw();
+      if (steps >= stepLimit) {
+        loseGame();
+        return;
+      }
       if (px === exit.x && py === exit.y) {
         canvas.style.animation = 'pulse 0.4s ease';
         setTimeout(winGame, 450);

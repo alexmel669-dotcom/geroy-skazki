@@ -1,6 +1,13 @@
-import { appState } from '../core.js';
-import { createGameScreen, getGameLevel, resetGameSession } from './game-ui.js';
+import { appState, getActiveChild } from '../core.js';
+import { ttsEngine } from '../audio.js';
+import { createGameScreen, getGameLevel, resetGameSession, showGameResult, recordGameWin } from './game-ui.js';
 import { avatarImgHtml } from '../config.js';
+
+function getDJMission(age) {
+  if (age <= 6) return { type: 'simple', part: 'nose', message: 'Нажми на носик Люцика!' };
+  if (age <= 10) return { type: 'repeat', sequence: ['nose', 'leftEar', 'belly', 'tail'], message: 'Повтори мелодию!' };
+  return { type: 'free', message: 'Создавай свою музыку!' };
+}
 
 // Профессиональные синтезаторные пресеты для частей тела
 const BODY_SYNTH_PRESETS = {
@@ -646,10 +653,59 @@ export function startMusicCatGame(level) {
   level = level || getGameLevel('musicCat');
   const dj = new DJEngine();
 
-  const { body, onClose } = createGameScreen({ gameId: 'musicCat', title: '🎧 DJ Люцик', emoji: '🎵', level });
+  const childAge = getActiveChild()?.age || 7;
+  const mission = getDJMission(childAge);
+  let missionCompleted = false;
+  let missionIndex = 0;
+
+  const { body, close, onClose } = createGameScreen({ gameId: 'musicCat', title: '🎧 DJ Люцик', emoji: '🎵', level });
 
   const stage = document.createElement('div');
   stage.className = 'dj-stage';
+
+  const missionBanner = document.createElement('p');
+  missionBanner.className = 'dj-mission-hint';
+  missionBanner.style.cssText = 'text-align:center;font-weight:600;margin:0 0 8px;color:#fff;';
+  missionBanner.textContent = mission.message;
+  stage.appendChild(missionBanner);
+
+  function finishDJWin() {
+    if (missionCompleted && mission.type !== 'free') {
+      recordGameWin('musicCat', level);
+      appState.gameActive = false;
+      close();
+      showGameResult({
+        won: true,
+        level,
+        scoreText: 'Миссия выполнена!',
+        onNext: () => startMusicCatGame(level + 1)
+      });
+    }
+  }
+
+  function checkMission(partKey) {
+    if (missionCompleted || mission.type === 'free') return;
+
+    if (mission.type === 'simple' && partKey === mission.part) {
+      missionCompleted = true;
+      ttsEngine?.speak('Молодец! Ты нашёл носик!').catch(() => {});
+      finishDJWin();
+      return;
+    }
+
+    if (mission.type === 'repeat') {
+      if (partKey === mission.sequence[missionIndex]) {
+        missionIndex++;
+        if (missionIndex >= mission.sequence.length) {
+          missionCompleted = true;
+          ttsEngine?.speak('Браво! Ты повторил мелодию!').catch(() => {});
+          finishDJWin();
+        }
+      } else {
+        missionIndex = 0;
+      }
+    }
+  }
 
   const avatarWrap = document.createElement('div');
   avatarWrap.className = 'dj-avatar-wrap';
@@ -671,6 +727,7 @@ export function startMusicCatGame(level) {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       dj.toggleLoop(btn.key);
+      checkMission(btn.key);
     });
 
     avatarWrap.appendChild(el);
