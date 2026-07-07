@@ -2,17 +2,18 @@ import { appState } from '../core.js';
 import { createGameScreen, getGameLevel, resetGameSession } from './game-ui.js';
 import { avatarImgHtml } from '../config.js';
 
-const BODY_NOTES = {
-  leftEar: { freq: 659, label: 'E5', name: 'Левое ухо' },
-  rightEar: { freq: 784, label: 'G5', name: 'Правое ухо' },
-  forehead: { freq: 523, label: 'C5', name: 'Лоб' },
-  leftEye: { freq: 587, label: 'D5', name: 'Левый глаз' },
-  rightEye: { freq: 587, label: 'D5', name: 'Правый глаз' },
-  nose: { freq: 880, label: 'A5', name: 'Нос' },
-  leftPaw: { freq: 698, label: 'F5', name: 'Левая лапа' },
-  rightPaw: { freq: 988, label: 'B5', name: 'Правая лапа' },
-  belly: { freq: 1047, label: 'C6', name: 'Живот' },
-  tail: { freq: 1319, label: 'E6', name: 'Хвост' }
+// Профессиональные синтезаторные пресеты для частей тела
+const BODY_SYNTH_PRESETS = {
+  forehead: { freq: 523, type: 'sine', label: 'Lead C5', name: 'Лоб', effects: ['compressor', 'reverb'] },
+  leftEar: { freq: 659, type: 'triangle', label: 'Pad E5', name: 'Левое ухо', effects: ['compressor', 'delay'] },
+  rightEar: { freq: 784, type: 'sawtooth', label: 'Pluck G5', name: 'Правое ухо', effects: ['compressor'] },
+  leftEye: { freq: 587, type: 'sine', label: 'Bell D5', name: 'Левый глаз', effects: ['reverb'] },
+  rightEye: { freq: 587, type: 'triangle', label: 'Soft D5', name: 'Правый глаз', effects: ['compressor', 'reverb'] },
+  nose: { freq: 880, type: 'square', label: 'Lead A5', name: 'Нос', effects: ['compressor', 'distortion'] },
+  leftPaw: { freq: 698, type: 'sawtooth', label: 'Bass F5', name: 'Левая лапа', effects: ['compressor', 'distortion'] },
+  rightPaw: { freq: 988, type: 'sine', label: 'Bell B5', name: 'Правая лапа', effects: ['compressor', 'reverb'] },
+  belly: { freq: 1047, type: 'triangle', label: 'Pad C6', name: 'Живот', effects: ['compressor', 'delay', 'reverb'] },
+  tail: { freq: 1319, type: 'sawtooth', label: 'Lead E6', name: 'Хвост', effects: ['compressor', 'distortion'] }
 };
 
 const BASS_NOTES = [
@@ -21,6 +22,25 @@ const BASS_NOTES = [
 ];
 
 const DRUM_PATTERNS = ['kick', 'snare', 'hihat', 'clap'];
+
+const DJ_SAMPLES = [
+  { id: 1, name: 'Kick', freq: 60, type: 'sine', duration: 0.3, label: '🥾' },
+  { id: 2, name: 'Snare', freq: 200, type: 'triangle', duration: 0.15, label: '🥁' },
+  { id: 3, name: 'Hi-hat', freq: 8000, type: 'square', duration: 0.08, label: '💿' },
+  { id: 4, name: 'Clap', freq: 1000, type: 'square', duration: 0.1, label: '👏' },
+  { id: 5, name: 'Bass C2', freq: 65, type: 'sawtooth', duration: 0.5, label: '🔊' },
+  { id: 6, name: 'Bass D2', freq: 73, type: 'sawtooth', duration: 0.5, label: '🔊' },
+  { id: 7, name: 'Bass E2', freq: 82, type: 'sawtooth', duration: 0.5, label: '🔊' },
+  { id: 8, name: 'Bass F2', freq: 87, type: 'sawtooth', duration: 0.5, label: '🔊' },
+  { id: 9, name: 'Synth C5', freq: 523, type: 'sine', duration: 0.4, label: '🎹' },
+  { id: 10, name: 'Synth E5', freq: 659, type: 'triangle', duration: 0.4, label: '🎹' },
+  { id: 11, name: 'Synth G5', freq: 784, type: 'sawtooth', duration: 0.4, label: '🎹' },
+  { id: 12, name: 'Synth A5', freq: 880, type: 'square', duration: 0.4, label: '🎹' },
+  { id: 13, name: 'Scratch', freq: -1, type: 'scratch', duration: 0.3, label: '🎚️' },
+  { id: 14, name: 'Noise', freq: -1, type: 'noise', duration: 2, label: '🌊' },
+  { id: 15, name: 'Yeah!', freq: -2, type: 'vocal', phrase: 'Йеа!', label: '🗣️' },
+  { id: 16, name: 'Drop!', freq: -2, type: 'vocal', phrase: 'Дроп!', label: '🗣️' }
+];
 
 class DJEngine {
   constructor() {
@@ -32,6 +52,34 @@ class DJEngine {
     this.isRecording = false;
     this.recordStart = 0;
     this.filterOn = false;
+    this.bodyButtons = {};
+  }
+
+  highlightButton(partKey, on) {
+    const el = this.bodyButtons[partKey];
+    if (el) el.classList.toggle('active', !!on);
+  }
+
+  _routeWithEffects(gain, effects = []) {
+    gain.connect(this.dryBus);
+    if (effects.includes('reverb')) {
+      const send = this.audioCtx.createGain();
+      send.gain.value = 0.38;
+      gain.connect(send);
+      send.connect(this.reverbSend);
+    }
+    if (effects.includes('delay')) {
+      const send = this.audioCtx.createGain();
+      send.gain.value = 0.32;
+      gain.connect(send);
+      send.connect(this.delaySend);
+    }
+    if (effects.includes('distortion')) {
+      const send = this.audioCtx.createGain();
+      send.gain.value = 0.55;
+      gain.connect(send);
+      send.connect(this.distortion);
+    }
   }
 
   _buildMasterBus() {
@@ -206,27 +254,32 @@ class DJEngine {
     if (this.audioCtx.state === 'suspended') await this.audioCtx.resume();
   }
 
-  _scheduleNote(at, freq, duration = 0.45) {
+  _scheduleNote(at, freq, duration = 0.45, type = 'sine') {
     const ctx = this.audioCtx;
     const osc = ctx.createOscillator();
-    const harm = ctx.createOscillator();
-    const harmGain = ctx.createGain();
     const filter = ctx.createBiquadFilter();
     const gain = ctx.createGain();
 
-    osc.type = 'sine';
+    osc.type = type;
     osc.frequency.value = freq;
-    harm.type = 'triangle';
-    harm.frequency.value = freq * 2;
-    harmGain.gain.value = 0.06;
+
+    if (type === 'sine') {
+      const harm = ctx.createOscillator();
+      const harmGain = ctx.createGain();
+      harm.type = 'triangle';
+      harm.frequency.value = freq * 2;
+      harmGain.gain.value = 0.06;
+      harm.connect(harmGain);
+      harmGain.connect(filter);
+      harm.start(at);
+      harm.stop(at + duration + 0.04);
+    }
 
     filter.type = 'lowpass';
     filter.frequency.value = Math.min(freq * 5, 9000);
     filter.Q.value = 0.7;
 
     osc.connect(filter);
-    harm.connect(harmGain);
-    harmGain.connect(filter);
     filter.connect(gain);
     this._routeOutput(gain);
 
@@ -237,54 +290,47 @@ class DJEngine {
     gain.gain.exponentialRampToValueAtTime(0.001, at + duration);
 
     osc.start(at);
-    harm.start(at);
     osc.stop(at + duration + 0.04);
-    harm.stop(at + duration + 0.04);
 
     if (this.isRecording) {
-      this.recording.push({ kind: 'note', freq, duration, at: at - this.recordStart });
+      this.recording.push({ kind: 'note', freq, duration, type, at: at - this.recordStart });
     }
   }
 
-  playNote(freq, duration = 0.45) {
+  playNote(freq, duration = 0.45, type = 'sine') {
     this._resume();
-    this._scheduleNote(this.audioCtx.currentTime, freq, duration);
+    this._scheduleNote(this.audioCtx.currentTime, freq, duration, type);
   }
 
-  toggleLoop(partKey, freq) {
+  toggleLoop(partKey) {
     if (this.activeLoops[partKey]) {
       this.stopLoop(partKey);
+      this.highlightButton(partKey, false);
       return false;
     }
+
+    const preset = BODY_SYNTH_PRESETS[partKey];
+    if (!preset) return false;
+
     this._resume();
     const ctx = this.audioCtx;
     const t = ctx.currentTime;
     const osc = ctx.createOscillator();
-    const harm = ctx.createOscillator();
-    const harmGain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
     const gain = ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    harm.type = 'triangle';
-    harm.frequency.value = freq * 1.5;
-    harmGain.gain.value = 0.04;
-    filter.type = 'lowpass';
-    filter.frequency.value = Math.min(freq * 4, 6000);
+    osc.type = preset.type;
+    osc.frequency.value = preset.freq;
 
-    osc.connect(filter);
-    harm.connect(harmGain);
-    harmGain.connect(filter);
-    filter.connect(gain);
-    this._routeOutput(gain);
+    osc.connect(gain);
+    this._routeWithEffects(gain, preset.effects);
 
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.linearRampToValueAtTime(0.22, t + 0.06);
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.3, t + 0.01);
+    gain.gain.linearRampToValueAtTime(0.2, t + 0.05);
 
     osc.start(t);
-    harm.start(t);
-    this.activeLoops[partKey] = { osc, harm, gain };
+    this.activeLoops[partKey] = { osc, gain };
+    this.highlightButton(partKey, true);
     return true;
   }
 
@@ -296,7 +342,6 @@ class DJEngine {
     loop.gain.gain.setValueAtTime(Math.max(loop.gain.gain.value, 0.0001), t);
     loop.gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
     loop.osc.stop(t + 0.12);
-    loop.harm.stop(t + 0.12);
     delete this.activeLoops[partKey];
   }
 
@@ -311,10 +356,15 @@ class DJEngine {
     this.bassLoop.gain.gain.setValueAtTime(Math.max(this.bassLoop.gain.gain.value, 0.0001), t);
     this.bassLoop.gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
     this.bassLoop.osc.stop(t + 0.1);
+    this.bassLoop.sub?.stop(t + 0.1);
     this.bassLoop = null;
   }
 
   playBass(index) {
+    if (this.bassLoop && this.bassLoop.index === index) {
+      this.stopBass();
+      return false;
+    }
     this.stopBass();
     this._resume();
     const ctx = this.audioCtx;
@@ -343,11 +393,12 @@ class DJEngine {
 
     osc.start(t);
     sub.start(t);
-    this.bassLoop = { osc, sub, gain };
+    this.bassLoop = { osc, sub, gain, index };
 
     if (this.isRecording) {
       this.recording.push({ kind: 'bass', index, at: t - this.recordStart });
     }
+    return true;
   }
 
   _noiseBurst(at, duration, gainPeak, filterFreq, filterQ = 1) {
@@ -429,14 +480,18 @@ class DJEngine {
   }
 
   playRecording() {
+    this.playRecordingFromData(this.recording);
+  }
+
+  playRecordingFromData(data) {
     this.stopAllLoops();
     this.stopBass();
-    if (!this.recording.length) return;
+    if (!data?.length) return;
     this._resume();
     const t0 = this.audioCtx.currentTime + 0.05;
-    this.recording.forEach((ev) => {
+    data.forEach((ev) => {
       const when = t0 + ev.at;
-      if (ev.kind === 'note') this._scheduleNote(when, ev.freq, ev.duration);
+      if (ev.kind === 'note') this._scheduleNote(when, ev.freq, ev.duration, ev.type || 'sine');
       else if (ev.kind === 'bass') this.playBassAt(when, ev.index);
       else if (ev.kind === 'drum') this.playDrumAt(when, ev.type);
       else if (ev.kind === 'scratch') this.playScratch(when);
@@ -499,6 +554,93 @@ const BODY_LAYOUT = [
   { key: 'tail', x: 180, y: 190, w: 40, h: 30 }
 ];
 
+function createDJPad(dj, stage) {
+  let customSamples = {};
+  try {
+    customSamples = JSON.parse(localStorage.getItem('dj-custom-samples') || '{}');
+  } catch { /* ignore */ }
+
+  const pad = document.createElement('div');
+  pad.className = 'dj-panel dj-pad';
+  pad.innerHTML = '<h4>🎛️ DJ Пульт (16 кнопок)</h4><div class="dj-pad-grid"></div><button type="button" class="dj-btn" id="btnRecordMode">🔴 Запись на кнопку</button>';
+
+  const grid = pad.querySelector('.dj-pad-grid');
+  const recordModeBtn = pad.querySelector('#btnRecordMode');
+  let recordMode = false;
+  let recordTarget = null;
+  let recordTimer = null;
+
+  const flashBtn = (btn) => {
+    btn.classList.add('dj-pad-flash');
+    setTimeout(() => btn.classList.remove('dj-pad-flash'), 200);
+  };
+
+  const playSample = (sample, index) => {
+    if (customSamples[index]) {
+      dj.playRecordingFromData(customSamples[index]);
+    } else if (sample.type === 'scratch') {
+      dj.playScratch();
+    } else if (sample.type === 'noise') {
+      dj.playNoiseSweep();
+    } else if (sample.type === 'vocal') {
+      dj.playVocal(sample.phrase);
+    } else {
+      dj.playNote(sample.freq, sample.duration, sample.type);
+    }
+  };
+
+  DJ_SAMPLES.forEach((sample, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'dj-pad-btn';
+    btn.textContent = sample.label;
+    btn.title = sample.name;
+    if (customSamples[i]) btn.classList.add('has-custom');
+
+    btn.addEventListener('click', () => {
+      if (recordMode) {
+        recordMode = false;
+        recordModeBtn.textContent = '🔴 Запись на кнопку';
+        recordModeBtn.classList.remove('active');
+        recordTarget = i;
+        btn.classList.add('recording-target');
+        dj.startRecording();
+        clearTimeout(recordTimer);
+        recordTimer = setTimeout(() => {
+          if (recordTarget === i) {
+            customSamples[i] = [...dj.recording];
+            localStorage.setItem('dj-custom-samples', JSON.stringify(customSamples));
+            dj.stopRecording();
+            btn.classList.add('has-custom');
+            btn.classList.remove('recording-target');
+            recordTarget = null;
+          }
+        }, 5000);
+        return;
+      }
+
+      playSample(sample, i);
+      flashBtn(btn);
+    });
+
+    grid.appendChild(btn);
+  });
+
+  recordModeBtn.addEventListener('click', () => {
+    recordMode = !recordMode;
+    recordModeBtn.textContent = recordMode ? '🎤 Нажми кнопку пульта для записи...' : '🔴 Запись на кнопку';
+    recordModeBtn.classList.toggle('active', recordMode);
+    if (!recordMode) {
+      clearTimeout(recordTimer);
+      dj.stopRecording();
+      recordTarget = null;
+      grid.querySelectorAll('.recording-target').forEach((b) => b.classList.remove('recording-target'));
+    }
+  });
+
+  stage.appendChild(pad);
+}
+
 export function startMusicCatGame(level) {
   resetGameSession();
   level = level || getGameLevel('musicCat');
@@ -514,34 +656,23 @@ export function startMusicCatGame(level) {
   avatarWrap.innerHTML = avatarImgHtml('lucik', 250, 'dj-avatar-img');
 
   BODY_LAYOUT.forEach((btn) => {
+    const preset = BODY_SYNTH_PRESETS[btn.key];
     const el = document.createElement('button');
     el.type = 'button';
     el.className = 'dj-body-btn';
-    el.title = BODY_NOTES[btn.key].name;
+    el.title = `${preset?.name || btn.key} · ${preset?.label || ''}`;
     el.style.left = `${btn.x}px`;
     el.style.top = `${btn.y}px`;
     el.style.width = `${btn.w}px`;
     el.style.height = `${btn.h}px`;
-    let looping = false;
 
-    const startLoop = (e) => {
+    dj.bodyButtons[btn.key] = el;
+
+    el.addEventListener('click', (e) => {
       e.stopPropagation();
-      looping = dj.toggleLoop(btn.key, BODY_NOTES[btn.key].freq);
-      el.classList.toggle('active', looping);
-    };
-    const stopLoop = () => {
-      if (looping) {
-        dj.stopLoop(btn.key);
-        looping = false;
-        el.classList.remove('active');
-      }
-    };
+      dj.toggleLoop(btn.key);
+    });
 
-    el.addEventListener('mousedown', startLoop);
-    el.addEventListener('mouseup', stopLoop);
-    el.addEventListener('mouseleave', stopLoop);
-    el.addEventListener('touchstart', startLoop, { passive: true });
-    el.addEventListener('touchend', stopLoop);
     avatarWrap.appendChild(el);
   });
 
@@ -549,16 +680,28 @@ export function startMusicCatGame(level) {
 
   const bassPanel = document.createElement('div');
   bassPanel.className = 'dj-panel';
-  bassPanel.innerHTML = '<h4>🔊 Бас</h4><div class="dj-bass-grid"></div>';
+  bassPanel.innerHTML = '<h4>🔊 Бас (вкл/выкл)</h4><div class="dj-bass-grid"></div>';
+  let activeBassBtn = null;
   BASS_NOTES.forEach((n, i) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'dj-btn';
     b.textContent = n.label;
-    b.onclick = () => dj.playBass(i);
+    b.onclick = () => {
+      const on = dj.playBass(i);
+      if (activeBassBtn) activeBassBtn.classList.remove('active');
+      if (on) {
+        b.classList.add('active');
+        activeBassBtn = b;
+      } else {
+        activeBassBtn = null;
+      }
+    };
     bassPanel.querySelector('.dj-bass-grid').appendChild(b);
   });
   stage.appendChild(bassPanel);
+
+  createDJPad(dj, stage);
 
   const drumPanel = document.createElement('div');
   drumPanel.className = 'dj-panel';

@@ -1317,6 +1317,49 @@ header {
   justify-content: center;
 }
 
+.dj-pad-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  justify-items: center;
+  margin-bottom: 12px;
+}
+
+.dj-pad-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  background: rgba(255, 215, 0, 0.1);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  touch-action: manipulation;
+}
+
+.dj-pad-btn:hover,
+.dj-pad-btn.dj-pad-flash {
+  background: rgba(255, 215, 0, 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.45);
+}
+
+.dj-pad-btn.has-custom {
+  border-color: rgba(76, 175, 80, 0.7);
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.35);
+}
+
+.dj-pad-btn.recording-target {
+  border-color: #ff4081;
+  animation: djRecordPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes djRecordPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 64, 129, 0.4); }
+  50% { box-shadow: 0 0 18px rgba(255, 64, 129, 0.8); }
+}
+
 .dj-btn {
   min-width: 48px;
   min-height: 44px;
