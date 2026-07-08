@@ -3376,6 +3376,21 @@ body.has-dev-panel {
   100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
 }
 
+@keyframes waveMove {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+
+@keyframes fishFloat {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-8px) rotate(3deg); }
+}
+
+@keyframes popUp {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(1.2); }
+}
+
 @keyframes dirtShake {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-3px); }
