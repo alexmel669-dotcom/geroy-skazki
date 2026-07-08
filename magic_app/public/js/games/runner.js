@@ -7,56 +7,8 @@ import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
-import { assetUrl } from '../config.js';
 
 const WIN_SCORE = 100;
-const FRAME_SPEED = 6;
-const WHITE_THRESHOLD = 235;
-
-/** Убирает белый/светлый фон с PNG через canvas */
-function stripWhiteBackground(srcImg, callback) {
-  const canvas = document.createElement('canvas');
-  canvas.width = srcImg.naturalWidth;
-  canvas.height = srcImg.naturalHeight;
-  const cx = canvas.getContext('2d');
-  cx.drawImage(srcImg, 0, 0);
-  const imageData = cx.getImageData(0, 0, canvas.width, canvas.height);
-  const { data } = imageData;
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i] >= WHITE_THRESHOLD && data[i + 1] >= WHITE_THRESHOLD && data[i + 2] >= WHITE_THRESHOLD) {
-      data[i + 3] = 0;
-    }
-  }
-  cx.putImageData(imageData, 0, 0);
-  const out = new Image();
-  out.onload = () => callback(out);
-  out.src = canvas.toDataURL('image/png');
-}
-
-function loadLucikFrame(index, frames) {
-  const num = index + 1;
-
-  const applyFrame = (img, strip) => {
-    if (strip) {
-      stripWhiteBackground(img, (processed) => { frames[index] = processed; });
-    } else {
-      frames[index] = img;
-    }
-  };
-
-  const trySvg = () => {
-    const svg = new Image();
-    svg.onload = () => applyFrame(svg, false);
-    svg.onerror = () => { frames[index] = null; };
-    svg.src = assetUrl(`lucik-run-${num}.svg`);
-  };
-
-  const png = new Image();
-  png.crossOrigin = 'anonymous';
-  png.onload = () => applyFrame(png, true);
-  png.onerror = trySvg;
-  png.src = assetUrl(`lucik-run-${num}.png`);
-}
 
 export function startRunnerGame(level = 1) {
   document.querySelectorAll('.game-fullscreen, .game-screen').forEach((el) => el.remove());
@@ -99,12 +51,18 @@ export function startRunnerGame(level = 1) {
   resize();
   window.addEventListener('resize', resize);
 
-  const lucikFrames = [null, null, null, null];
-  for (let i = 0; i < 4; i++) {
-    loadLucikFrame(i, lucikFrames);
+  // Кадры анимации (только PNG)
+  const lucikFrames = [];
+  for (let i = 1; i <= 4; i++) {
+    const img = new Image();
+    img.src = `assets/images/lucik-run-${i}.png`;
+    lucikFrames.push(img);
   }
   let currentFrame = 0;
   let frameCounter = 0;
+  const FRAME_SPEED = 6;
+
+  // Состояние анимации
   let animState = 'run';
 
   function spawnObstacle() {
@@ -167,21 +125,26 @@ export function startRunnerGame(level = 1) {
     if (Math.random() < 0.03) spawnStar();
     speed = Math.min(3 + frame * 0.001, 10);
 
-    if (lucik.jumping && lucik.vy < -2) animState = 'jump_up';
-    else if (lucik.jumping && lucik.vy > 2) animState = 'land';
-    else if (lucik.jumping && Math.abs(lucik.vy) < 3) animState = 'fly';
+    if (lucik.jumping && lucik.vy < -3) animState = 'jump_up';
+    else if (lucik.jumping && lucik.vy > 3) animState = 'land';
+    else if (lucik.jumping) animState = 'fly';
     else animState = 'run';
 
-    if (animState === 'run') {
-      frameCounter++;
-      if (frameCounter >= FRAME_SPEED) {
-        frameCounter = 0;
-        currentFrame = currentFrame === 0 ? 1 : 0;
-      }
-    } else {
+    frameCounter++;
+    if (frameCounter >= FRAME_SPEED) {
       frameCounter = 0;
-      if (animState === 'jump_up' || animState === 'land') currentFrame = 2;
-      else if (animState === 'fly') currentFrame = 3;
+      switch (animState) {
+        case 'run':
+          currentFrame = currentFrame === 0 ? 1 : 0;
+          break;
+        case 'jump_up':
+        case 'land':
+          currentFrame = 2;
+          break;
+        case 'fly':
+          currentFrame = 3;
+          break;
+      }
     }
   }
 
