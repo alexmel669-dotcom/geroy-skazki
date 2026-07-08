@@ -29,6 +29,7 @@ export function startDrawAIGame(level = 1) {
   let brushSize = BRUSH_SIZES[1];
   let drawing = false;
   let ended = false;
+  let guessing = false;
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   function playDraw() { if (Math.random() > 0.5) return; const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.type='sine';o.frequency.value=800+Math.random()*400;g.gain.setValueAtTime(0.02,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.05);o.start();o.stop(audioCtx.currentTime+0.05); }
@@ -145,7 +146,9 @@ export function startDrawAIGame(level = 1) {
   canvas.ontouchmove = (e) => { if (drawing) { const t = e.touches[0]; drawAt(t.clientX, t.clientY); } };
 
   guessBtn.onclick = async () => {
-    if (ended) return;
+    if (ended || guessing) return;
+    guessing = true;
+    guessBtn.disabled = true;
     resultEl.textContent = '🤔 Думаю...';
     const dataUrl = canvas.toDataURL('image/png');
 
@@ -163,7 +166,7 @@ export function startDrawAIGame(level = 1) {
       const data = await res.json();
       const guess = (data.reply || data.message || 'непонятно').toLowerCase().trim().replace(/[^а-яё]/g, '');
       resultEl.textContent = '🤔 ' + (guess || 'непонятно');
-      
+
       if (task.check(guess)) {
         playWin();
         ended = true;
@@ -175,18 +178,21 @@ export function startDrawAIGame(level = 1) {
           updateAchievement('artist');
           checkProgressAchievements();
           trackEvent('drawAi_won', { level });
-          const best = Math.max(+(localStorage.getItem('drawAi-best')||0), level);
+          const best = Math.max(+(localStorage.getItem('drawAi-best') || 0), level);
           localStorage.setItem('drawAi-best', best);
           const result = document.createElement('div');
           result.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:2000;display:flex;align-items:center;justify-content:center;';
-          result.innerHTML = '<div style="background:#fff;border-radius:20px;padding:clamp(20px,5vw,40px);text-align:center;max-width:90vw;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.6);"><div style="font-size:48px;">🎉</div><h2 style="margin:12px 0;color:#222;font-size:22px;">ИИ угадал!</h2><p style="color:#444;font-size:16px;">Это '+guess+'!</p><button id="dr" style="margin:8px;padding:14px 28px;border-radius:12px;border:none;background:#FFD700;color:#222;font-weight:bold;font-size:18px;cursor:pointer;width:80%;">🔄 Дальше</button><button id="de" style="margin:8px;padding:12px 24px;border-radius:12px;border:2px solid #ccc;background:#fff;color:#888;font-size:16px;cursor:pointer;width:80%;">🚪 Выйти</button></div>';
+          result.innerHTML = '<div style="background:#fff;border-radius:20px;padding:clamp(20px,5vw,40px);text-align:center;max-width:90vw;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.6);"><div style="font-size:48px;">🎉</div><h2 style="margin:12px 0;color:#222;font-size:22px;">ИИ угадал!</h2><p style="color:#444;font-size:16px;">Это ' + guess + '!</p><button id="dr" style="margin:8px;padding:14px 28px;border-radius:12px;border:none;background:#FFD700;color:#222;font-weight:bold;font-size:18px;cursor:pointer;width:80%;">🔄 Дальше</button><button id="de" style="margin:8px;padding:12px 24px;border-radius:12px;border:2px solid #ccc;background:#fff;color:#888;font-size:16px;cursor:pointer;width:80%;">🚪 Выйти</button></div>';
           document.body.appendChild(result);
-          result.querySelector('#dr').onclick = () => { result.remove(); startDrawAIGame(level+1); };
-          result.querySelector('#de').onclick = () => { result.remove(); if(typeof showGamesMenu==='function') showGamesMenu(); };
+          result.querySelector('#dr').onclick = () => { result.remove(); startDrawAIGame(level + 1); };
+          result.querySelector('#de').onclick = () => { result.remove(); if (typeof showGamesMenu === 'function') showGamesMenu(); };
         }, 500);
       }
     } catch {
       resultEl.textContent = '❌ Ошибка';
+    } finally {
+      guessing = false;
+      if (!ended) guessBtn.disabled = false;
     }
   };
 
