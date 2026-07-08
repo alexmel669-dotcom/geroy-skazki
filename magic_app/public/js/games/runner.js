@@ -1,13 +1,11 @@
 // ========================================
-// runner.js — Люцик-раннер (v5.5.13)
+// runner.js — Люцик-раннер (v5.5.14)
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
 import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
-import { updateAchievement, checkProgressAchievements } from '../achievements.js';
-
 
 export function startRunnerGame(level = 1) {
   document.querySelectorAll('.game-fullscreen, .game-screen').forEach((el) => el.remove());
@@ -16,7 +14,6 @@ export function startRunnerGame(level = 1) {
 
   appState.gameActive = true;
   level = level || 1;
-  const WIN_DISTANCE = 1000 + level * 200;
 
   const overlay = document.createElement('div');
   overlay.className = 'game-fullscreen';
@@ -51,7 +48,6 @@ export function startRunnerGame(level = 1) {
   let frame = 0;
   let jumpCount = 0;
   let gameOver = false;
-  let gameWon = false;
   let finished = false;
   let groundOffset = 0;
   let worldFlipped = false;
@@ -233,7 +229,7 @@ export function startRunnerGame(level = 1) {
   function spawnObstacle() {
     if (canvas.width <= 0) return;
 
-    const scale = 1 + distance * 0.0005;
+    const scale = 1 + distance * 0.0003;
 
     const types = [
       // ЗАБОРЧИК
@@ -411,10 +407,6 @@ export function startRunnerGame(level = 1) {
 
     distance += speed * 0.1;
     document.getElementById('runnerDistance').textContent = Math.floor(distance);
-    if (distance >= WIN_DISTANCE) {
-      gameWon = true;
-      gameOver = true;
-    }
 
     lucik.vy += 0.6;
     lucik.y += lucik.vy;
@@ -467,13 +459,14 @@ export function startRunnerGame(level = 1) {
       }
     }
 
-    const minGap = 250;
+    const minGap = Math.max(150, 350 - distance * 0.15);
+    const spawnRate = 0.01 + distance * 0.00004;
     const lastObstacle = obstacles[obstacles.length - 1];
-    if ((!lastObstacle || lastObstacle.x < canvas.width - minGap) && Math.random() < 0.012) {
+    if ((!lastObstacle || lastObstacle.x < canvas.width - minGap) && Math.random() < spawnRate) {
       spawnObstacle();
     }
     if (Math.random() < 0.03) spawnStar();
-    speed = 3 + distance * 0.002;
+    speed = Math.min(12, 3 + distance * 0.003);
     groundOffset = (groundOffset + speed) % 40;
 
     if (shakeIntensity > 0) {
@@ -612,10 +605,10 @@ export function startRunnerGame(level = 1) {
     if (gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = gameWon ? '#FFD700' : '#fff';
+      ctx.fillStyle = '#fff';
       ctx.font = 'bold 28px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(gameWon ? '🎉 Победа!' : 'Игра окончена', canvas.width / 2, canvas.height / 2);
+      ctx.fillText('Игра окончена', canvas.width / 2, canvas.height / 2);
       ctx.fillText(`🏃 ${Math.floor(distance)}м | ⭐ ${score}`, canvas.width / 2, canvas.height / 2 + 36);
       ctx.textAlign = 'left';
     }
@@ -647,15 +640,13 @@ export function startRunnerGame(level = 1) {
     document.body.classList.remove('game-active');
     overlay.remove();
 
-    recordGameResult('runner', gameWon, level);
-    if (gameWon) {
-      updateAchievement('runner_star');
-      checkProgressAchievements();
-    }
-    trackEvent(gameWon ? 'runner_won' : 'runner_lost', { level, score, distance: Math.floor(distance) });
-    speak(gameWon ? 'Победа! Молодец!' : 'Попробуй ещё раз!');
+    recordGameResult('runner', false, level);
+    trackEvent('runner_lost', { level, score, distance: Math.floor(distance) });
+    speak('Попробуй ещё раз!');
 
-    const resultStars = distance >= WIN_DISTANCE ? 3 : (distance >= WIN_DISTANCE * 0.5 ? 2 : 1);
+    const prevBest = parseInt(localStorage.getItem('runner-best') || '0', 10);
+    const newBest = Math.max(prevBest, Math.floor(distance));
+    localStorage.setItem('runner-best', String(newBest));
 
     const result = document.createElement('div');
     result.style.cssText = `
@@ -675,15 +666,16 @@ export function startRunnerGame(level = 1) {
         width: 320px;
         box-shadow: 0 20px 60px rgba(0,0,0,0.5);
       ">
-        <div style="font-size: clamp(40px, 10vw, 64px);">${gameWon ? '🎉' : '😅'}</div>
-        <h2 style="margin:12px 0;font-size:clamp(18px,4vw,24px);color:#333;">${gameWon ? 'Победа!' : 'Почти получилось!'}</h2>
-        <div style="font-size:clamp(24px,6vw,36px);margin:8px 0;">${'⭐'.repeat(resultStars)}</div>
-        <p style="font-size:16px;color:#666;">Дистанция: ${Math.floor(distance)}м | ⭐ ${score}</p>
+        <div style="font-size: clamp(40px, 10vw, 64px);">😅</div>
+        <h2 style="margin:12px 0;font-size:clamp(18px,4vw,24px);color:#333;">Почти получилось!</h2>
+        <p style="font-size:16px;color:#666;">🏃 Дистанция: <b>${Math.floor(distance)}м</b></p>
+        <p style="font-size:16px;color:#666;">⭐ Звёзд: ${score}</p>
+        <p style="font-size:16px;color:#666;">🏆 Рекорд: <b>${newBest}м</b></p>
         <button id="restartRunner" style="
           margin:8px;padding:clamp(10px,2vw,14px) clamp(20px,5vw,32px);
           border-radius:12px;border:none;background:#FFD700;color:#333;
           font-size:clamp(14px,3vw,18px);cursor:pointer;width:80%;
-        ">🔄 ${gameWon ? 'Дальше' : 'Ещё раз'}</button>
+        ">🔄 Ещё раз</button>
         <button id="exitRunner" style="
           margin:8px;padding:clamp(10px,2vw,14px) clamp(20px,5vw,32px);
           border-radius:12px;border:2px solid #ddd;background:#fff;color:#666;
@@ -693,10 +685,10 @@ export function startRunnerGame(level = 1) {
     `;
     document.body.appendChild(result);
 
-    result.querySelector('#restartRunner').onclick = () => { result.remove(); startRunnerGame(gameWon ? level + 1 : level); };
+    result.querySelector('#restartRunner').onclick = () => { result.remove(); startRunnerGame(level); };
     result.querySelector('#exitRunner').onclick = () => { result.remove(); if (typeof showGamesMenu === 'function') showGamesMenu(); };
 
-    if (gameWon && window.leaderboard) window.leaderboard.submitScore('runner', Math.floor(distance));
+    window.leaderboard?.submitScore('runner', Math.floor(distance));
   }
 
   document.getElementById('runnerMusic').onclick = function () {
