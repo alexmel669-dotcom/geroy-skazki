@@ -55,8 +55,38 @@ export function startPuzzleGame(level = 1) {
   let imgReady = false, gameInited = false;
 
   function draw() {
-    ctx.fillStyle = '#DEB887';
+    ctx.fillStyle = '#D2B48C';
     ctx.fillRect(0, 0, 300, 300);
+
+    ctx.strokeStyle = 'rgba(139,90,43,0.15)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 300; i += 6) {
+      ctx.beginPath();
+      ctx.moveTo(0, i + Math.sin(i * 0.05) * 4);
+      ctx.lineTo(300, i + Math.cos(i * 0.07) * 4);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = 'rgba(160,120,70,0.1)';
+    for (let i = 0; i < 300; i += 20) {
+      ctx.beginPath();
+      ctx.moveTo(i + Math.sin(i) * 3, 0);
+      ctx.lineTo(i + Math.cos(i) * 3, 300);
+      ctx.stroke();
+    }
+
+    const knots = [{ x: 50, y: 40 }, { x: 240, y: 120 }, { x: 150, y: 260 }];
+    knots.forEach((k) => {
+      ctx.fillStyle = 'rgba(139,90,43,0.2)';
+      ctx.beginPath();
+      ctx.arc(k.x, k.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(120,70,30,0.3)';
+      ctx.beginPath();
+      ctx.arc(k.x, k.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
     tiles.forEach(t => {
       const idx = t.r * size + t.c;
       if (idx === emptyIdx) return;
@@ -64,13 +94,12 @@ export function startPuzzleGame(level = 1) {
       ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x+2, y+2, ts-2, ts-2);
       if (imgReady && img.complete && img.naturalWidth > 0) {
         ctx.drawImage(img, t.tc*(img.naturalWidth/size), t.tr*(img.naturalHeight/size), img.naturalWidth/size, img.naturalHeight/size, x, y, ts-2, ts-2);
-      } else {
-        ctx.fillStyle = 'hsl('+((t.tr*size+t.tc)*37)+',55%,55%)'; ctx.fillRect(x, y, ts-2, ts-2);
       }
       ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2; ctx.strokeRect(x+1, y+1, ts-4, ts-4);
     });
     const e = tiles[emptyIdx];
-    ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(e.c*ts, e.r*ts, ts, ts);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(e.c * ts, e.r * ts, ts, ts);
     ctx.fillStyle = '#fff'; ctx.font = 'bold 18px sans-serif'; ctx.fillText('Ходы: '+moves, 10, 325);
   }
 
