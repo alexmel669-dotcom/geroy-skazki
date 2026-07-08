@@ -1,5 +1,5 @@
 // ========================================
-// runner.js — Люцик-раннер (v5.5.5)
+// runner.js — Люцик-раннер (v5.5.8)
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
@@ -24,7 +24,12 @@ export function startRunnerGame(level = 1) {
 
   const header = document.createElement('div');
   header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(0,0,0,0.4);color:#fff;z-index:10;';
-  header.innerHTML = '<span style="font-size:18px;">🏃 Люцик-раннер</span><span>⭐ <b id="runnerScore">0</b></span><button id="runnerClose" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>';
+  header.innerHTML = `
+    <span style="font-size:18px;">🏃 Люцик-раннер</span>
+    <span>⭐ <b id="runnerScore">0</b></span>
+    <button id="runnerMusic" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">🔊</button>
+    <button id="runnerClose" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>
+  `;
 
   const canvas = document.createElement('canvas');
   canvas.style.cssText = 'flex:1;display:block;width:100%;';
@@ -38,9 +43,94 @@ export function startRunnerGame(level = 1) {
 
   const groundY = () => canvas.height - 60;
   const lucik = { x: 0, y: 0, w: 50, h: 50, vy: 0, jumping: false };
-  let obstacles = []; let stars = [];
-  let score = 0; let speed = 4; let frame = 0; let jumpCount = 0;
-  let gameOver = false; let gameWon = false; let finished = false;
+  let obstacles = [];
+  let stars = [];
+  let score = 0;
+  let speed = 4;
+  let frame = 0;
+  let jumpCount = 0;
+  let gameOver = false;
+  let gameWon = false;
+  let finished = false;
+
+  // Web Audio контекст
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  let musicOn = true;
+  let musicInterval = null;
+
+  function playStarSound() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(1100, audioCtx.currentTime + 0.05);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.15);
+  }
+
+  function playJumpSound() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(500, audioCtx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.2);
+  }
+
+  function startMusic() {
+    if (!musicOn) return;
+    if (musicInterval) clearInterval(musicInterval);
+    const notes = [523, 587, 659, 698, 784, 880, 988, 1047];
+    let noteIndex = 0;
+    musicInterval = setInterval(() => {
+      if (!musicOn || gameOver) {
+        clearInterval(musicInterval);
+        musicInterval = null;
+        return;
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'triangle';
+      osc.frequency.value = notes[noteIndex % notes.length];
+      gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.2);
+      noteIndex++;
+    }, 400);
+  }
+
+  function toggleMusic() {
+    musicOn = !musicOn;
+    if (!musicOn && musicInterval) {
+      clearInterval(musicInterval);
+      musicInterval = null;
+    }
+    if (musicOn && !gameOver) startMusic();
+    return musicOn;
+  }
+
+  function cleanupAudio() {
+    if (musicInterval) {
+      clearInterval(musicInterval);
+      musicInterval = null;
+    }
+    audioCtx.close();
+  }
 
   function resize() {
     canvas.width = overlay.clientWidth;
@@ -85,6 +175,7 @@ export function startRunnerGame(level = 1) {
     lucik.vy = jumpCount === 0 ? -12 : -8;
     lucik.jumping = true;
     jumpCount++;
+    playJumpSound();
   }
 
   function update() {
@@ -117,6 +208,7 @@ export function startRunnerGame(level = 1) {
         score += 10;
         stars = stars.filter((x) => x !== s);
         document.getElementById('runnerScore').textContent = score;
+        playStarSound();
         if (score >= WIN_SCORE) { gameWon = true; gameOver = true; }
       }
     }
@@ -150,15 +242,72 @@ export function startRunnerGame(level = 1) {
 
   function draw() {
     const gy = groundY();
-    const grad = ctx.createLinearGradient(0, 0, 0, gy);
-    grad.addColorStop(0, '#87CEEB');
-    grad.addColorStop(0.6, '#B0E0E6');
-    grad.addColorStop(1, '#E8F5E9');
-    ctx.fillStyle = grad;
+
+    // НЕБО
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, gy);
+    skyGrad.addColorStop(0, '#4A90D9');
+    skyGrad.addColorStop(0.5, '#87CEEB');
+    skyGrad.addColorStop(1, '#B0E0E6');
+    ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, canvas.width, gy);
 
-    ctx.fillStyle = '#4CAF50';
+    // СОЛНЦЕ
+    const sunX = canvas.width * 0.85;
+    const sunY = canvas.height * 0.12;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + frame * 0.005;
+      const lx = sunX + Math.cos(angle) * 50;
+      const ly = sunY + Math.sin(angle) * 50;
+      ctx.strokeStyle = 'rgba(255,255,100,0.5)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(sunX + Math.cos(angle) * 25, sunY + Math.sin(angle) * 25);
+      ctx.lineTo(lx, ly);
+      ctx.stroke();
+    }
+    const sunGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 35);
+    sunGrad.addColorStop(0, 'rgba(255,255,200,1)');
+    sunGrad.addColorStop(0.5, 'rgba(255,240,150,0.8)');
+    sunGrad.addColorStop(1, 'rgba(255,200,100,0)');
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, 35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ОБЛАКА
+    const clouds = [
+      { x: 100, y: 40, s: 1.0 },
+      { x: canvas.width * 0.5, y: 30, s: 0.7 },
+      { x: canvas.width * 0.75, y: 55, s: 1.2 }
+    ];
+    clouds.forEach((c) => {
+      const cx = (c.x + frame * 0.3) % (canvas.width + 200) - 100;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(cx, c.y, 25 * c.s, 0, Math.PI * 2);
+      ctx.arc(cx + 20 * c.s, c.y - 8 * c.s, 20 * c.s, 0, Math.PI * 2);
+      ctx.arc(cx + 40 * c.s, c.y, 22 * c.s, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // ТРАВА
+    const grassGrad = ctx.createLinearGradient(0, gy, 0, canvas.height);
+    grassGrad.addColorStop(0, '#4CAF50');
+    grassGrad.addColorStop(0.3, '#388E3C');
+    grassGrad.addColorStop(1, '#2E7D32');
+    ctx.fillStyle = grassGrad;
     ctx.fillRect(0, gy, canvas.width, canvas.height - gy);
+
+    // ТРАВИНКИ
+    ctx.strokeStyle = '#66BB6A';
+    ctx.lineWidth = 1.5;
+    for (let x = 0; x < canvas.width; x += 12) {
+      const h = 8 + Math.sin(x * 0.3 + frame * 0.1) * 5;
+      ctx.beginPath();
+      ctx.moveTo(x, gy);
+      ctx.lineTo(x + 3, gy - h);
+      ctx.stroke();
+    }
 
     obstacles.forEach((o) => o.draw(ctx, o.x, o.y));
 
@@ -168,6 +317,12 @@ export function startRunnerGame(level = 1) {
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
       ctx.fill();
     });
+
+    // ТЕНЬ ПОД ЛЮЦИКОМ
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(lucik.x + 25, gy - 2, 22, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     const frameImg = lucikFrames[currentFrame];
     if (frameImg?.complete && frameImg.naturalWidth > 0) {
@@ -200,6 +355,10 @@ export function startRunnerGame(level = 1) {
 
     if (gameOver && !finished) {
       finished = true;
+      if (musicInterval) {
+        clearInterval(musicInterval);
+        musicInterval = null;
+      }
       setTimeout(() => finish(), 2000);
     }
   }, 20);
@@ -207,6 +366,7 @@ export function startRunnerGame(level = 1) {
   function finish() {
     clearInterval(loop);
     window.removeEventListener('resize', resize);
+    cleanupAudio();
     appState.gameActive = false;
     document.body.classList.remove('game-active');
     overlay.remove();
@@ -219,33 +379,65 @@ export function startRunnerGame(level = 1) {
     trackEvent(gameWon ? 'runner_won' : 'runner_lost', { level, score });
     speak(gameWon ? 'Победа! Молодец!' : 'Попробуй ещё раз!');
 
+    const resultStars = gameWon ? 3 : 2;
+
     const result = document.createElement('div');
-    result.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:2000;display:flex;align-items:center;justify-content:center;';
+    result.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+      font-family: sans-serif;
+    `;
     result.innerHTML = `
-      <div style="background:#fff;border-radius:20px;padding:32px;text-align:center;max-width:300px;">
-        <div style="font-size:48px;">${gameWon ? '🎉' : '😅'}</div>
-        <h2 style="margin:12px 0;">${gameWon ? 'Победа!' : 'Не получилось!'}</h2>
-        <p style="font-size:18px;">⭐ ${score}</p>
-        <button id="restartRunner" style="margin:8px;padding:12px 24px;border-radius:12px;border:none;background:#FFD700;color:#333;font-size:16px;cursor:pointer;">🔄 Ещё раз</button>
-        <button id="exitRunner" style="margin:8px;padding:12px 24px;border-radius:12px;border:2px solid #ccc;background:#fff;color:#333;font-size:16px;cursor:pointer;">🚪 Выйти</button>
+      <div style="
+        background: linear-gradient(135deg, #fff, #f0f0f0);
+        border-radius: 20px;
+        padding: clamp(20px, 5vw, 40px);
+        text-align: center;
+        max-width: 90vw;
+        width: 320px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      ">
+        <div style="font-size: clamp(40px, 10vw, 64px);">${gameWon ? '🎉' : '😅'}</div>
+        <h2 style="margin:12px 0;font-size:clamp(18px,4vw,24px);color:#333;">${gameWon ? 'Победа!' : 'Почти получилось!'}</h2>
+        <div style="font-size:clamp(24px,6vw,36px);margin:8px 0;">${'⭐'.repeat(resultStars)}</div>
+        <p style="font-size:16px;color:#666;">Собрано ${score} очков</p>
+        <button id="restartRunner" style="
+          margin:8px;padding:clamp(10px,2vw,14px) clamp(20px,5vw,32px);
+          border-radius:12px;border:none;background:#FFD700;color:#333;
+          font-size:clamp(14px,3vw,18px);cursor:pointer;width:80%;
+        ">🔄 ${gameWon ? 'Дальше' : 'Ещё раз'}</button>
+        <button id="exitRunner" style="
+          margin:8px;padding:clamp(10px,2vw,14px) clamp(20px,5vw,32px);
+          border-radius:12px;border:2px solid #ddd;background:#fff;color:#666;
+          font-size:clamp(14px,3vw,18px);cursor:pointer;width:80%;
+        ">🚪 Выйти</button>
       </div>
     `;
     document.body.appendChild(result);
 
     result.querySelector('#restartRunner').onclick = () => { result.remove(); startRunnerGame(gameWon ? level + 1 : level); };
-    result.querySelector('#exitRunner').onclick = () => { result.remove(); showGamesMenu(); };
+    result.querySelector('#exitRunner').onclick = () => { result.remove(); if (typeof showGamesMenu === 'function') showGamesMenu(); };
 
     if (gameWon && window.leaderboard) window.leaderboard.submitScore('runner', score);
   }
 
+  document.getElementById('runnerMusic').onclick = function () {
+    const on = toggleMusic();
+    this.textContent = on ? '🔊' : '🔇';
+  };
+
   document.getElementById('runnerClose').onclick = () => {
     clearInterval(loop);
     window.removeEventListener('resize', resize);
+    cleanupAudio();
     appState.gameActive = false;
     document.body.classList.remove('game-active');
     overlay.remove();
   };
 
+  startMusic();
   trackEvent('runner_started', { level });
 }
 
