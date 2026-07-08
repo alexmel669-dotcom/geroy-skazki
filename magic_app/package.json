@@ -1,6 +1,6 @@
 {
   "name": "geroy-skazki",
-  "version": "5.5.2",
+  "version": "5.5.5",
   "type": "module",
   "scripts": {
     "dev": "echo 'use npx vercel dev --listen 3000'",
@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:syntax": "node scripts/check-syntax.mjs",
+    "sprites:runner": "node scripts/generate-runner-sprites.mjs",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "sharp": "^0.35.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
     "vercel": "^32.7.2",

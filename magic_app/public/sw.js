@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geroy-skazki-v5.5.2';
+const CACHE_NAME = 'geroy-skazki-v5.5.5';
 const ASSETS = [
   '/',
   '/app.html',
@@ -24,6 +24,14 @@ const ASSETS = [
   '/assets/images/dad.svg',
   '/assets/images/dad.png',
   '/assets/images/parent-bg.svg',
+  '/assets/images/lucik-run-1.svg',
+  '/assets/images/lucik-run-2.svg',
+  '/assets/images/lucik-run-3.svg',
+  '/assets/images/lucik-run-4.svg',
+  '/assets/images/lucik-run-1.png',
+  '/assets/images/lucik-run-2.png',
+  '/assets/images/lucik-run-3.png',
+  '/assets/images/lucik-run-4.png',
   '/js/main.js',
   '/js/core.js',
   '/js/config.js',
