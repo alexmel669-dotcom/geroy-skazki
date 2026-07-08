@@ -52,6 +52,7 @@ export function startRunnerGame(level = 1) {
   let gameOver = false;
   let gameWon = false;
   let finished = false;
+  let groundOffset = 0;
 
   // Web Audio контекст
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -135,7 +136,7 @@ export function startRunnerGame(level = 1) {
   function resize() {
     canvas.width = overlay.clientWidth;
     canvas.height = overlay.clientHeight - header.offsetHeight;
-    lucik.x = canvas.width * 0.4;
+    lucik.x = canvas.width * 0.35;
     lucik.y = groundY() - lucik.h;
   }
   resize();
@@ -216,6 +217,7 @@ export function startRunnerGame(level = 1) {
     if (Math.random() < 0.02) spawnObstacle();
     if (Math.random() < 0.03) spawnStar();
     speed = Math.min(3 + frame * 0.001, 10);
+    groundOffset = (groundOffset + speed) % 40;
 
     if (lucik.jumping && lucik.vy < -3) animState = 'jump_up';
     else if (lucik.jumping && lucik.vy > 3) animState = 'land';
@@ -297,6 +299,12 @@ export function startRunnerGame(level = 1) {
     grassGrad.addColorStop(1, '#2E7D32');
     ctx.fillStyle = grassGrad;
     ctx.fillRect(0, gy, canvas.width, canvas.height - gy);
+
+    // Полоски на земле, бегущие влево
+    for (let x = -groundOffset; x < canvas.width; x += 40) {
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(x, gy + 10, 20, 2);
+    }
 
     // ТРАВИНКИ
     ctx.strokeStyle = '#66BB6A';
