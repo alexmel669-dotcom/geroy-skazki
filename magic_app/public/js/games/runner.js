@@ -1,149 +1,218 @@
-import { appState } from '../core.js';
+// ========================================
+// runner.js — Люцик-раннер (v5.5.4)
+// ========================================
+
+import { appState, showGamesMenu } from '../core.js';
 import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
-import { createGameScreen, showGameResult, recordGameWin, getGameLevel } from './game-ui.js';
 import { avatarUrl } from '../config.js';
 
 const WIN_SCORE = 100;
 
 export function startRunnerGame(level = 1) {
-  if (appState.gameActive) return;
+  document.querySelectorAll('.game-fullscreen, .game-screen').forEach((el) => el.remove());
+  document.body.classList.remove('game-active');
+  appState.gameActive = false;
+
   appState.gameActive = true;
-  level = level || getGameLevel('runner');
+  level = level || 1;
 
-  const { body, close } = createGameScreen({ gameId: 'runner', title: '🐱 Люцик-раннер', emoji: '🏃', level });
+  const overlay = document.createElement('div');
+  overlay.className = 'game-fullscreen';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;display:flex;flex-direction:column;';
 
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:relative;width:100%;max-width:500px;margin:0 auto;';
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(0,0,0,0.4);color:#fff;z-index:10;';
+  header.innerHTML = '<span style="font-size:18px;">🏃 Люцик-раннер</span><span>⭐ <b id="runnerScore">0</b></span><button id="runnerClose" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>';
 
   const canvas = document.createElement('canvas');
-  canvas.style.cssText = 'width:100%;border-radius:16px;';
-  wrap.appendChild(canvas);
-  body.appendChild(wrap);
+  canvas.style.cssText = 'flex:1;display:block;width:100%;';
+
+  overlay.appendChild(header);
+  overlay.appendChild(canvas);
+  document.body.appendChild(overlay);
+  document.body.classList.add('game-active');
 
   const ctx = canvas.getContext('2d');
-  const resize = () => { canvas.width = Math.min(480, window.innerWidth - 32); canvas.height = 300; };
+
+  function resize() {
+    canvas.width = overlay.clientWidth;
+    canvas.height = overlay.clientHeight - header.offsetHeight;
+  }
   resize();
   window.addEventListener('resize', resize);
 
-  const lucikImg = document.createElement('img');
+  const groundY = () => canvas.height - 60;
+  const lucik = { x: 60, y: 0, w: 50, h: 50, vy: 0, jumping: false };
+  let obstacles = []; let stars = [];
+  let score = 0; let speed = 4; let frame = 0; let jumpCount = 0;
+  let gameOver = false; let gameWon = false; let finished = false;
+
+  lucik.y = groundY() - lucik.h;
+
+  const lucikImg = new Image();
   lucikImg.src = avatarUrl('lucik', 'svg');
   lucikImg.onerror = () => { lucikImg.src = avatarUrl('lucik', 'png'); };
-  lucikImg.style.cssText = 'position:absolute;width:50px;height:50px;z-index:5;pointer-events:none;';
-  wrap.appendChild(lucikImg);
-
-  const lucik = { x: 60, y: 0, vy: 0, w: 50, h: 50, jumping: false };
-  let obstacles = []; let stars = []; let score = 0; let speed = 3; let frame = 0; let jumpCount = 0;
-  let gameOver = false; let gameWon = false; let ended = false; let gameOverAt = 0;
-  const ground = () => canvas.height - 60;
-  lucik.y = ground() - lucik.h;
 
   function spawnObstacle() {
     if (canvas.width <= 0) return;
-    const types = [{ w: 30, h: 30, color: '#666' }, { w: 40, h: 25, color: '#8B4513' }, { w: 50, h: 15, color: '#1e3a5f' }];
+    const types = [
+      { w: 30, h: 30, color: '#666', draw(ctx, x, y) { ctx.fillStyle = '#666'; ctx.beginPath(); ctx.arc(x + 15, y + 15, 15, 0, Math.PI * 2); ctx.fill(); } },
+      { w: 40, h: 25, color: '#8B4513', draw(ctx, x, y) { ctx.fillStyle = '#8B4513'; ctx.fillRect(x + 5, y + 5, 30, 20); ctx.fillStyle = '#A0522D'; ctx.beginPath(); ctx.arc(x + 20, y + 5, 15, Math.PI, 0); ctx.fill(); } }
+    ];
     const t = types[Math.floor(Math.random() * types.length)];
-    obstacles.push({ x: canvas.width, y: ground() - t.h, ...t });
+    obstacles.push({ x: canvas.width, y: groundY() - t.h, w: t.w, h: t.h, draw: t.draw });
   }
 
   function spawnStar() {
     if (canvas.width <= 0) return;
-    stars.push({ x: canvas.width, y: ground() - 70 - Math.random() * 60 });
+    stars.push({ x: canvas.width, y: groundY() - 60 - Math.random() * 60, r: 10 });
   }
 
-  function jump() { if (jumpCount < 2) { lucik.vy = jumpCount === 0 ? -11 : -8; lucik.jumping = true; jumpCount++; } }
+  function jump() {
+    if (jumpCount >= 2 || gameOver) return;
+    lucik.vy = jumpCount === 0 ? -12 : -8;
+    lucik.jumping = true;
+    jumpCount++;
+  }
 
   function update() {
-    if (!gameOver) {
-      frame++;
-      lucik.vy += 0.5; lucik.y += lucik.vy;
-      const g = ground();
-      if (lucik.y >= g - lucik.h) { lucik.y = g - lucik.h; lucik.vy = 0; lucik.jumping = false; jumpCount = 0; }
+    if (gameOver) return;
+    frame++;
 
-      obstacles.forEach((o) => { o.x -= speed; });
-      stars.forEach((s) => { s.x -= speed; });
-      obstacles = obstacles.filter((o) => o.x > -60);
-      stars = stars.filter((s) => s.x > -20);
-
-      for (const o of obstacles) {
-        if (o.x > 0 && lucik.x < o.x + o.w && lucik.x + lucik.w > o.x && lucik.y < o.y + o.h && lucik.y + lucik.h > o.y) {
-          gameOver = true;
-        }
-      }
-
-      for (const s of [...stars]) {
-        if (Math.abs(lucik.x + 25 - s.x) < 30 && Math.abs(lucik.y + 25 - s.y) < 30) {
-          score += 10; stars = stars.filter((x) => x !== s);
-          if (score >= WIN_SCORE) { gameWon = true; gameOver = true; }
-        }
-      }
-
-      if (Math.random() < 0.02) spawnObstacle();
-      if (Math.random() < 0.03) spawnStar();
-      speed = Math.min(3 + frame * 0.001, 10);
+    lucik.vy += 0.6;
+    lucik.y += lucik.vy;
+    const gy = groundY();
+    if (lucik.y >= gy - lucik.h) {
+      lucik.y = gy - lucik.h;
+      lucik.vy = 0;
+      lucik.jumping = false;
+      jumpCount = 0;
     }
 
-    lucikImg.style.left = `${lucik.x}px`;
-    lucikImg.style.top = `${lucik.y - 60}px`;
-    lucikImg.style.transform = lucik.jumping && jumpCount === 2 ? 'rotate(360deg)' : '';
+    obstacles.forEach((o) => { o.x -= speed; });
+    stars.forEach((s) => { s.x -= speed; });
+    obstacles = obstacles.filter((o) => o.x > -60);
+    stars = stars.filter((s) => s.x > -20);
 
-    if (gameOver && !ended) {
-      ended = true;
-      gameOverAt = Date.now();
+    for (const o of obstacles) {
+      if (o.x > 0 && lucik.x < o.x + o.w && lucik.x + lucik.w > o.x && lucik.y < o.y + o.h && lucik.y + lucik.h > o.y) {
+        gameOver = true;
+      }
     }
-  }
 
-  function finishGame() {
-    window.removeEventListener('resize', resize);
-    appState.gameActive = false;
-    close();
-    recordGameResult('runner', gameWon, level);
-    if (gameWon) { recordGameWin('runner', level); updateAchievement('runner_star'); checkProgressAchievements(); }
-    speak(gameWon ? 'Победа!' : 'Попробуй ещё!');
-    showGameResult({
-      won: gameWon, level,
-      scoreText: `Собрано ${score} звёзд`,
-      onNext: gameWon ? () => startRunnerGame(level + 1) : null,
-      onRestart: () => startRunnerGame(level)
-    });
-    if (gameWon && window.leaderboard) window.leaderboard.submitScore('runner', score);
+    for (const s of [...stars]) {
+      if (Math.abs(lucik.x + 25 - s.x) < 28 && Math.abs(lucik.y + 25 - s.y) < 28) {
+        score += 10;
+        stars = stars.filter((x) => x !== s);
+        document.getElementById('runnerScore').textContent = score;
+        if (score >= WIN_SCORE) { gameWon = true; gameOver = true; }
+      }
+    }
+
+    if (Math.random() < 0.02) spawnObstacle();
+    if (Math.random() < 0.03) spawnStar();
+    speed = Math.min(3 + frame * 0.001, 10);
   }
 
   function draw() {
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, '#87CEEB'); grad.addColorStop(0.6, '#B0E0E6'); grad.addColorStop(1, '#2d5a27');
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const gy = groundY();
+    const grad = ctx.createLinearGradient(0, 0, 0, gy);
+    grad.addColorStop(0, '#87CEEB');
+    grad.addColorStop(0.6, '#B0E0E6');
+    grad.addColorStop(1, '#E8F5E9');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, gy);
 
-    const g = ground();
-    ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, g, canvas.width, canvas.height - g);
+    ctx.fillStyle = '#4CAF50';
+    ctx.fillRect(0, gy, canvas.width, canvas.height - gy);
 
-    obstacles.forEach((o) => { ctx.fillStyle = o.color; ctx.fillRect(o.x, o.y, o.w, o.h); });
-    stars.forEach((s) => { ctx.fillStyle = '#FFD700'; ctx.beginPath(); ctx.arc(s.x, s.y, 10, 0, Math.PI * 2); ctx.fill(); });
+    obstacles.forEach((o) => o.draw(ctx, o.x, o.y));
 
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 20px Georgia'; ctx.fillText(`⭐ ${score}`, 16, 32);
+    stars.forEach((s) => {
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    if (lucikImg.complete && lucikImg.naturalWidth > 0) {
+      ctx.drawImage(lucikImg, lucik.x, lucik.y, lucik.w, lucik.h);
+    } else {
+      ctx.fillStyle = '#FF8C00';
+      ctx.beginPath();
+      ctx.arc(lucik.x + 25, lucik.y + 25, 25, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     if (gameOver) {
-      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = gameWon ? '#FFD700' : '#fff';
-      ctx.font = 'bold 28px Georgia'; ctx.textAlign = 'center';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
       ctx.fillText(gameWon ? '🎉 Победа!' : 'Игра окончена', canvas.width / 2, canvas.height / 2);
       ctx.fillText(`⭐ ${score}`, canvas.width / 2, canvas.height / 2 + 36);
       ctx.textAlign = 'left';
     }
   }
 
-  canvas.onclick = jump;
-  canvas.ontouchstart = (e) => { e.preventDefault(); jump(); };
+  canvas.addEventListener('click', jump);
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
 
   const loop = setInterval(() => {
     update();
     draw();
-    if (gameOver && ended && Date.now() - gameOverAt >= 2000) {
-      clearInterval(loop);
-      finishGame();
+
+    if (gameOver && !finished) {
+      finished = true;
+      setTimeout(() => finish(), 2000);
     }
   }, 20);
+
+  function finish() {
+    clearInterval(loop);
+    window.removeEventListener('resize', resize);
+    appState.gameActive = false;
+    document.body.classList.remove('game-active');
+    overlay.remove();
+
+    recordGameResult('runner', gameWon, level);
+    if (gameWon) {
+      updateAchievement('runner_star');
+      checkProgressAchievements();
+    }
+    trackEvent(gameWon ? 'runner_won' : 'runner_lost', { level, score });
+    speak(gameWon ? 'Победа! Молодец!' : 'Попробуй ещё раз!');
+
+    const result = document.createElement('div');
+    result.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:2000;display:flex;align-items:center;justify-content:center;';
+    result.innerHTML = `
+      <div style="background:#fff;border-radius:20px;padding:32px;text-align:center;max-width:300px;">
+        <div style="font-size:48px;">${gameWon ? '🎉' : '😅'}</div>
+        <h2 style="margin:12px 0;">${gameWon ? 'Победа!' : 'Не получилось!'}</h2>
+        <p style="font-size:18px;">⭐ ${score}</p>
+        <button id="restartRunner" style="margin:8px;padding:12px 24px;border-radius:12px;border:none;background:#FFD700;color:#333;font-size:16px;cursor:pointer;">🔄 Ещё раз</button>
+        <button id="exitRunner" style="margin:8px;padding:12px 24px;border-radius:12px;border:2px solid #ccc;background:#fff;color:#333;font-size:16px;cursor:pointer;">🚪 Выйти</button>
+      </div>
+    `;
+    document.body.appendChild(result);
+
+    result.querySelector('#restartRunner').onclick = () => { result.remove(); startRunnerGame(gameWon ? level + 1 : level); };
+    result.querySelector('#exitRunner').onclick = () => { result.remove(); showGamesMenu(); };
+
+    if (gameWon && window.leaderboard) window.leaderboard.submitScore('runner', score);
+  }
+
+  document.getElementById('runnerClose').onclick = () => {
+    clearInterval(loop);
+    window.removeEventListener('resize', resize);
+    appState.gameActive = false;
+    document.body.classList.remove('game-active');
+    overlay.remove();
+  };
 
   trackEvent('runner_started', { level });
 }
