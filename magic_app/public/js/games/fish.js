@@ -1,5 +1,4 @@
 import { appState, showGamesMenu } from '../core.js';
-import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
@@ -107,7 +106,6 @@ export function startFishGame(level = 1) {
     stormActive = true;
     pond.style.background = 'linear-gradient(180deg,#2c3e50,#1a252f)';
     overlay.style.animation = 'lightning 0.5s ease-in-out 3';
-    speak('Шторм! +50% очков!');
     setTimeout(() => {
       stormActive = false;
       pond.style.background = 'linear-gradient(180deg,#1a5276 0%,#154360 30%,#0d1b2a 60%,#0a1628 100%)';
@@ -176,7 +174,6 @@ export function startFishGame(level = 1) {
       el.style.transform = 'scale(1.6)';
       el.style.opacity = '0';
       setTimeout(() => el.remove(), 300);
-      speak(`${item.name}! ${points >= 0 ? '+' : ''}${points}`);
     };
 
     pond.appendChild(el);
