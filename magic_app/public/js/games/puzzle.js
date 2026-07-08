@@ -23,6 +23,49 @@ export function startPuzzleGame(level = 1) {
   }
   const emptyTile = tiles[tiles.length - 1];
 
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 300;
+  canvas.height = 340;
+  canvas.style.cssText = 'border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.4);cursor:pointer;';
+  const ts = Math.floor(300 / size);
+  const img = new Image();
+  img.src = 'assets/images/avatar.png';
+
+  function draw() {
+    ctx.fillStyle = '#DEB887';
+    ctx.fillRect(0, 0, 300, 300);
+
+    tiles.forEach((t) => {
+      if (t === emptyTile) return;
+      const x = t.c * ts;
+      const y = t.r * ts;
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fillRect(x + 2, y + 2, ts - 2, ts - 2);
+
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, t.tc * (120 / size), t.tr * (120 / size), 120 / size, 120 / size, x, y, ts - 2, ts - 2);
+      } else {
+        ctx.fillStyle = `hsl(${(t.tr * size + t.tc) * 37},55%,55%)`;
+        ctx.fillRect(x, y, ts - 2, ts - 2);
+      }
+
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, ts - 4, ts - 4);
+    });
+
+    const e = emptyTile;
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.fillRect(e.c * ts, e.r * ts, ts, ts);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(`Ходы: ${moves}`, 10, 325);
+  }
+
+  img.onload = draw;
+
   function validMoves() {
     const e = emptyTile;
     return tiles.filter((t) => t !== e && (
@@ -58,53 +101,10 @@ export function startPuzzleGame(level = 1) {
   header.style.cssText = 'display:flex;justify-content:space-between;width:100%;padding:12px 16px;background:rgba(0,0,0,0.3);color:#fff;font-size:18px;';
   header.innerHTML = `<span>🧩 Пазл ${size}×${size}</span><span>Ходы: <b id="pm">0</b></span><button id="pc" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>`;
 
-  const canvas = document.createElement('canvas');
-  canvas.width = 300;
-  canvas.height = 340;
-  canvas.style.cssText = 'border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.4);cursor:pointer;';
-
   overlay.appendChild(header);
   overlay.appendChild(canvas);
   document.body.appendChild(overlay);
   document.body.classList.add('game-active');
-
-  const ctx = canvas.getContext('2d');
-  const ts = Math.floor(300 / size);
-  const img = new Image();
-  img.src = 'assets/images/avatar.png';
-  img.onload = draw;
-
-  function draw() {
-    ctx.fillStyle = '#DEB887';
-    ctx.fillRect(0, 0, 300, 300);
-
-    tiles.forEach((t) => {
-      if (t === emptyTile) return;
-      const x = t.c * ts;
-      const y = t.r * ts;
-      ctx.fillStyle = 'rgba(0,0,0,0.2)';
-      ctx.fillRect(x + 2, y + 2, ts - 2, ts - 2);
-
-      if (img.complete && img.naturalWidth > 0) {
-        ctx.drawImage(img, t.tc * (120 / size), t.tr * (120 / size), 120 / size, 120 / size, x, y, ts - 2, ts - 2);
-      } else {
-        ctx.fillStyle = `hsl(${(t.tr * size + t.tc) * 37},55%,55%)`;
-        ctx.fillRect(x, y, ts - 2, ts - 2);
-      }
-
-      ctx.strokeStyle = '#FFD700';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x + 1, y + 1, ts - 4, ts - 4);
-    });
-
-    const e = emptyTile;
-    ctx.fillStyle = 'rgba(0,0,0,0.1)';
-    ctx.fillRect(e.c * ts, e.r * ts, ts, ts);
-
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillText(`Ходы: ${moves}`, 10, 325);
-  }
 
   canvas.onclick = (ev) => {
     if (ended) return;
