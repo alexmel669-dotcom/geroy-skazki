@@ -64,8 +64,6 @@ export function startPuzzleGame(level = 1) {
     ctx.fillText(`Ходы: ${moves}`, 10, 325);
   }
 
-  img.onload = draw;
-
   function validMoves() {
     const e = emptyTile;
     return tiles.filter((t) => t !== e && (
@@ -84,14 +82,31 @@ export function startPuzzleGame(level = 1) {
       document.getElementById('pm').textContent = moves;
     }
     draw();
-    if (tiles.every((t) => t.r === t.tr && t.c === t.tc)) finish();
+    if (count && tiles.every((t) => t.r === t.tr && t.c === t.tc)) finish();
   }
 
-  for (let i = 0; i < 100; i++) {
-    const options = validMoves();
-    if (options.length) swap(options[Math.floor(Math.random() * options.length)], false);
+  let started = false;
+
+  function shuffleAndDraw() {
+    if (started) return;
+    started = true;
+    for (let i = 0; i < 100; i++) {
+      const m = validMoves();
+      if (m.length) swap(m[Math.floor(Math.random() * m.length)], false);
+    }
+    moves = 0;
+    draw();
   }
-  moves = 0;
+
+  img.onload = shuffleAndDraw;
+  img.onerror = shuffleAndDraw;
+  if (img.complete) shuffleAndDraw();
+
+  setTimeout(() => {
+    if (!started && tiles.every((t) => t.r === t.tr && t.c === t.tc)) {
+      shuffleAndDraw();
+    }
+  }, 2000);
 
   const overlay = document.createElement('div');
   overlay.className = 'game-fullscreen';
@@ -152,7 +167,6 @@ export function startPuzzleGame(level = 1) {
     overlay.remove();
   };
 
-  draw();
   trackEvent('puzzle_started', { level, size });
 }
 
