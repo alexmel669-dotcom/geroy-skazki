@@ -657,30 +657,14 @@ export function startRunnerGame(level = 1) {
       font-family: sans-serif;
     `;
     result.innerHTML = `
-      <div style="
-        background: linear-gradient(135deg, #fff, #f0f0f0);
-        border-radius: 20px;
-        padding: clamp(20px, 5vw, 40px);
-        text-align: center;
-        max-width: 90vw;
-        width: 320px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-      ">
-        <div style="font-size: clamp(40px, 10vw, 64px);">😅</div>
-        <h2 style="margin:12px 0;font-size:clamp(18px,4vw,24px);color:#333;">Почти получилось!</h2>
-        <p style="font-size:16px;color:#666;">🏃 Дистанция: <b>${Math.floor(distance)}м</b></p>
-        <p style="font-size:16px;color:#666;">⭐ Звёзд: ${score}</p>
-        <p style="font-size:16px;color:#666;">🏆 Рекорд: <b>${newBest}м</b></p>
-        <button id="restartRunner" style="
-          margin:8px;padding:clamp(10px,2vw,14px) clamp(20px,5vw,32px);
-          border-radius:12px;border:none;background:#FFD700;color:#333;
-          font-size:clamp(14px,3vw,18px);cursor:pointer;width:80%;
-        ">🔄 Ещё раз</button>
-        <button id="exitRunner" style="
-          margin:8px;padding:clamp(10px,2vw,14px) clamp(20px,5vw,32px);
-          border-radius:12px;border:2px solid #ddd;background:#fff;color:#666;
-          font-size:clamp(14px,3vw,18px);cursor:pointer;width:80%;
-        ">🚪 Выйти</button>
+      <div style="background:#fff;color:#222;border-radius:20px;padding:clamp(20px,5vw,40px);text-align:center;max-width:90vw;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <div style="font-size:clamp(40px,10vw,64px);">😅</div>
+        <h2 style="margin:12px 0;color:#222;font-size:22px;">Почти получилось!</h2>
+        <p style="color:#444;font-size:16px;">🏃 Дистанция: <b>${Math.floor(distance)}м</b></p>
+        <p style="color:#444;font-size:16px;">⭐ Звёзд: ${score}</p>
+        <p style="color:#444;font-size:16px;">🏆 Рекорд: <b>${newBest}м</b></p>
+        <button id="restartRunner" style="margin:8px;padding:14px 28px;border-radius:12px;border:none;background:#FFD700;color:#222;font-weight:bold;font-size:18px;cursor:pointer;width:80%;">🔄 Ещё раз</button>
+        <button id="exitRunner" style="margin:8px;padding:12px 24px;border-radius:12px;border:2px solid #ccc;background:#fff;color:#888;font-size:16px;cursor:pointer;width:80%;">🚪 Выйти</button>
       </div>
     `;
     document.body.appendChild(result);

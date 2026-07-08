@@ -221,13 +221,13 @@ export function startFishGame(level = 1) {
     const result = document.createElement('div');
     result.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:2000;display:flex;align-items:center;justify-content:center;';
     result.innerHTML = `
-      <div style="background:linear-gradient(135deg,#fff,#e8f4f8);border-radius:20px;padding:clamp(20px,5vw,40px);text-align:center;max-width:90vw;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+      <div style="background:#fff;color:#222;border-radius:20px;padding:clamp(20px,5vw,40px);text-align:center;max-width:90vw;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
         <div style="font-size:48px;">🎣</div>
-        <h2 style="margin:12px 0;">Улов!</h2>
-        <p style="font-size:clamp(24px,6vw,36px);">⭐ ${score}</p>
-        <p style="color:#666;">🏆 Рекорд: ${best}</p>
-        <button id="fr" style="margin:8px;padding:12px 24px;border-radius:12px;border:none;background:#1a5276;color:#fff;font-size:16px;cursor:pointer;width:80%;">🔄 Ещё раз</button>
-        <button id="fe" style="margin:8px;padding:12px 24px;border-radius:12px;border:2px solid #ddd;background:#fff;color:#666;font-size:16px;cursor:pointer;width:80%;">🚪 Выйти</button>
+        <h2 style="margin:12px 0;color:#222;font-size:22px;">Улов!</h2>
+        <p style="color:#444;font-size:16px;">⭐ ${score}</p>
+        <p style="color:#444;font-size:16px;">🏆 Рекорд: ${best}</p>
+        <button id="fr" style="margin:8px;padding:14px 28px;border-radius:12px;border:none;background:#FFD700;color:#222;font-weight:bold;font-size:18px;cursor:pointer;width:80%;">🔄 Ещё раз</button>
+        <button id="fe" style="margin:8px;padding:12px 24px;border-radius:12px;border:2px solid #ccc;background:#fff;color:#888;font-size:16px;cursor:pointer;width:80%;">🚪 Выйти</button>
       </div>
     `;
     document.body.appendChild(result);
