@@ -80,7 +80,8 @@ export function startPuzzleGame(level = 1) {
     emptyIdx = e.r * size + e.c;
     if (count) {
       moves++;
-      document.getElementById('pm')?.textContent = moves;
+      const pmEl = document.getElementById('pm');
+      if (pmEl) pmEl.textContent = moves;
     }
     draw();
     if (count && tiles.every((t) => t.r === t.tr && t.c === t.tc)) finish();
