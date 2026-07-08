@@ -1,5 +1,5 @@
 // ========================================
-// runner.js — Люцик-раннер (v5.5.8)
+// runner.js — Люцик-раннер (v5.5.10)
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
@@ -8,7 +8,6 @@ import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 
-const WIN_SCORE = 100;
 
 export function startRunnerGame(level = 1) {
   document.querySelectorAll('.game-fullscreen, .game-screen').forEach((el) => el.remove());
@@ -17,6 +16,7 @@ export function startRunnerGame(level = 1) {
 
   appState.gameActive = true;
   level = level || 1;
+  const WIN_DISTANCE = 1000 + level * 200;
 
   const overlay = document.createElement('div');
   overlay.className = 'game-fullscreen';
@@ -26,7 +26,7 @@ export function startRunnerGame(level = 1) {
   header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(0,0,0,0.4);color:#fff;z-index:10;';
   header.innerHTML = `
     <span style="font-size:18px;">🏃 Люцик-раннер</span>
-    <span>⭐ <b id="runnerScore">0</b></span>
+    <span>🏃 <b id="runnerDistance">0</b>м | ⭐ <b id="runnerScore">0</b></span>
     <button id="runnerMusic" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">🔊</button>
     <button id="runnerClose" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>
   `;
@@ -42,11 +42,12 @@ export function startRunnerGame(level = 1) {
   const ctx = canvas.getContext('2d');
 
   const groundY = () => canvas.height - 60;
-  const lucik = { x: 0, y: 0, w: 50, h: 50, vy: 0, jumping: false };
+  const lucik = { x: 0, y: 0, w: 70, h: 70, vy: 0, jumping: false };
   let obstacles = [];
   let stars = [];
   let score = 0;
-  let speed = 4;
+  let distance = 0;
+  let speed = 3;
   let frame = 0;
   let jumpCount = 0;
   let gameOver = false;
@@ -158,10 +159,34 @@ export function startRunnerGame(level = 1) {
 
   function spawnObstacle() {
     if (canvas.width <= 0) return;
+
+    const scale = 1 + distance * 0.0005;
+    const baseW = 25 + Math.random() * 15;
+    const baseH = 20 + Math.random() * 10;
+    const w = Math.floor(baseW * scale);
+    const h = Math.floor(baseH * scale);
+
     const types = [
-      { w: 30, h: 30, color: '#666', draw(ctx, x, y) { ctx.fillStyle = '#666'; ctx.beginPath(); ctx.arc(x + 15, y + 15, 15, 0, Math.PI * 2); ctx.fill(); } },
-      { w: 40, h: 25, color: '#8B4513', draw(ctx, x, y) { ctx.fillStyle = '#8B4513'; ctx.fillRect(x + 5, y + 5, 30, 20); ctx.fillStyle = '#A0522D'; ctx.beginPath(); ctx.arc(x + 20, y + 5, 15, Math.PI, 0); ctx.fill(); } }
+      { w, h, draw(ctx, x, y) {
+        ctx.fillStyle = '#666';
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + h / 2, w / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.beginPath();
+        ctx.arc(x + w * 0.4, y + h * 0.3, w * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+      } },
+      { w: Math.floor(w * 1.3), h, draw(ctx, x, y) {
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(x + w * 0.1, y + h * 0.2, w * 0.8, h * 0.8);
+        ctx.fillStyle = '#A0522D';
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + h * 0.2, w * 0.4, Math.PI, 0);
+        ctx.fill();
+      } }
     ];
+
     const t = types[Math.floor(Math.random() * types.length)];
     obstacles.push({ x: canvas.width, y: groundY() - t.h, w: t.w, h: t.h, draw: t.draw });
   }
@@ -182,6 +207,13 @@ export function startRunnerGame(level = 1) {
   function update() {
     if (gameOver) return;
     frame++;
+
+    distance += speed * 0.1;
+    document.getElementById('runnerDistance').textContent = Math.floor(distance);
+    if (distance >= WIN_DISTANCE) {
+      gameWon = true;
+      gameOver = true;
+    }
 
     lucik.vy += 0.6;
     lucik.y += lucik.vy;
@@ -205,18 +237,17 @@ export function startRunnerGame(level = 1) {
     }
 
     for (const s of [...stars]) {
-      if (Math.abs(lucik.x + 25 - s.x) < 28 && Math.abs(lucik.y + 25 - s.y) < 28) {
+      if (Math.abs(lucik.x + lucik.w / 2 - s.x) < 28 && Math.abs(lucik.y + lucik.h / 2 - s.y) < 28) {
         score += 10;
         stars = stars.filter((x) => x !== s);
         document.getElementById('runnerScore').textContent = score;
         playStarSound();
-        if (score >= WIN_SCORE) { gameWon = true; gameOver = true; }
       }
     }
 
     if (Math.random() < 0.02) spawnObstacle();
     if (Math.random() < 0.03) spawnStar();
-    speed = Math.min(3 + frame * 0.001, 10);
+    speed = 3 + distance * 0.002;
     groundOffset = (groundOffset + speed) % 40;
 
     if (lucik.jumping && lucik.vy < -3) animState = 'jump_up';
@@ -329,7 +360,7 @@ export function startRunnerGame(level = 1) {
     // ТЕНЬ ПОД ЛЮЦИКОМ
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath();
-    ctx.ellipse(lucik.x + 25, gy - 2, 22, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(lucik.x + lucik.w / 2, gy - 2, 28, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
     const frameImg = lucikFrames[currentFrame];
@@ -338,7 +369,7 @@ export function startRunnerGame(level = 1) {
     } else {
       ctx.fillStyle = '#FF8C00';
       ctx.beginPath();
-      ctx.arc(lucik.x + 25, lucik.y + 25, 25, 0, Math.PI * 2);
+      ctx.arc(lucik.x + lucik.w / 2, lucik.y + lucik.h / 2, lucik.w / 2, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -349,7 +380,7 @@ export function startRunnerGame(level = 1) {
       ctx.font = 'bold 28px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(gameWon ? '🎉 Победа!' : 'Игра окончена', canvas.width / 2, canvas.height / 2);
-      ctx.fillText(`⭐ ${score}`, canvas.width / 2, canvas.height / 2 + 36);
+      ctx.fillText(`🏃 ${Math.floor(distance)}м | ⭐ ${score}`, canvas.width / 2, canvas.height / 2 + 36);
       ctx.textAlign = 'left';
     }
   }
@@ -384,10 +415,10 @@ export function startRunnerGame(level = 1) {
       updateAchievement('runner_star');
       checkProgressAchievements();
     }
-    trackEvent(gameWon ? 'runner_won' : 'runner_lost', { level, score });
+    trackEvent(gameWon ? 'runner_won' : 'runner_lost', { level, score, distance: Math.floor(distance) });
     speak(gameWon ? 'Победа! Молодец!' : 'Попробуй ещё раз!');
 
-    const resultStars = gameWon ? 3 : 2;
+    const resultStars = distance >= WIN_DISTANCE ? 3 : (distance >= WIN_DISTANCE * 0.5 ? 2 : 1);
 
     const result = document.createElement('div');
     result.style.cssText = `
@@ -410,7 +441,7 @@ export function startRunnerGame(level = 1) {
         <div style="font-size: clamp(40px, 10vw, 64px);">${gameWon ? '🎉' : '😅'}</div>
         <h2 style="margin:12px 0;font-size:clamp(18px,4vw,24px);color:#333;">${gameWon ? 'Победа!' : 'Почти получилось!'}</h2>
         <div style="font-size:clamp(24px,6vw,36px);margin:8px 0;">${'⭐'.repeat(resultStars)}</div>
-        <p style="font-size:16px;color:#666;">Собрано ${score} очков</p>
+        <p style="font-size:16px;color:#666;">Дистанция: ${Math.floor(distance)}м | ⭐ ${score}</p>
         <button id="restartRunner" style="
           margin:8px;padding:clamp(10px,2vw,14px) clamp(20px,5vw,32px);
           border-radius:12px;border:none;background:#FFD700;color:#333;
@@ -428,7 +459,7 @@ export function startRunnerGame(level = 1) {
     result.querySelector('#restartRunner').onclick = () => { result.remove(); startRunnerGame(gameWon ? level + 1 : level); };
     result.querySelector('#exitRunner').onclick = () => { result.remove(); if (typeof showGamesMenu === 'function') showGamesMenu(); };
 
-    if (gameWon && window.leaderboard) window.leaderboard.submitScore('runner', score);
+    if (gameWon && window.leaderboard) window.leaderboard.submitScore('runner', Math.floor(distance));
   }
 
   document.getElementById('runnerMusic').onclick = function () {
