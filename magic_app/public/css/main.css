@@ -3371,6 +3371,11 @@ body.has-dev-panel {
 .mood-text { font-size: 11px; margin: 4px 0; }
 .mood-day-name { font-size: 12px; color: #888; }
 
+@keyframes fallDown {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+}
+
 @keyframes dirtShake {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-3px); }

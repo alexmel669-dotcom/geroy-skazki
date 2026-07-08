@@ -1,5 +1,5 @@
 // ========================================
-// runner.js — Люцик-раннер (v5.5.12)
+// runner.js — Люцик-раннер (v5.5.13)
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
@@ -12,7 +12,6 @@ import { updateAchievement, checkProgressAchievements } from '../achievements.js
 export function startRunnerGame(level = 1) {
   document.querySelectorAll('.game-fullscreen, .game-screen').forEach((el) => el.remove());
   document.body.classList.remove('game-active');
-  document.body.style.transform = '';
   appState.gameActive = false;
 
   appState.gameActive = true;
@@ -56,6 +55,9 @@ export function startRunnerGame(level = 1) {
   let finished = false;
   let groundOffset = 0;
   let worldFlipped = false;
+  let upsideDownParticles = [];
+  let particleInterval = null;
+  let shakeIntensity = 0;
 
   // Web Audio контекст
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -90,6 +92,75 @@ export function startRunnerGame(level = 1) {
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.2);
+  }
+
+  function playPortalSound() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+    osc.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 1.5);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 1.5);
+
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1200, audioCtx.currentTime);
+    osc2.frequency.linearRampToValueAtTime(2000, audioCtx.currentTime + 0.8);
+    gain2.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+    osc2.start();
+    osc2.stop(audioCtx.currentTime + 0.8);
+  }
+
+  function startUpsideDownParticles() {
+    stopUpsideDownParticles();
+    particleInterval = setInterval(() => {
+      const p = document.createElement('div');
+      p.className = 'upside-down-particle';
+      p.style.cssText = `
+        position: fixed;
+        left: ${Math.random() * 100}%;
+        top: -10px;
+        width: ${2 + Math.random() * 4}px;
+        height: ${2 + Math.random() * 4}px;
+        background: rgba(255,255,255,${0.3 + Math.random() * 0.5});
+        border-radius: 50%;
+        animation: fallDown ${2 + Math.random() * 4}s linear forwards;
+        z-index: 1500;
+        pointer-events: none;
+      `;
+      overlay.appendChild(p);
+      upsideDownParticles.push(p);
+      setTimeout(() => {
+        p.remove();
+        upsideDownParticles = upsideDownParticles.filter((x) => x !== p);
+      }, 6000);
+    }, 150);
+  }
+
+  function stopUpsideDownParticles() {
+    if (particleInterval) {
+      clearInterval(particleInterval);
+      particleInterval = null;
+    }
+    upsideDownParticles.forEach((p) => p.remove());
+    upsideDownParticles = [];
+  }
+
+  function cleanupWorldEffects() {
+    overlay.style.filter = 'none';
+    overlay.style.transform = '';
+    stopUpsideDownParticles();
   }
 
   function startMusic() {
@@ -212,34 +283,28 @@ export function startRunnerGame(level = 1) {
           ctx.fillRect(x + 2, y + h - 4, w - 4, 4);
         }
       },
-      // ЯМА
+      // ЯМА-БАТУТ
       {
-        w: Math.floor(60 * scale),
-        h: Math.floor(10 * scale),
+        type: 'pit',
+        w: 45,
+        h: 18,
         draw(ctx, x, y) {
-          const w = this.w;
-          const h = this.h;
-          const holeGrad = ctx.createLinearGradient(0, y, 0, y + h + 20);
-          holeGrad.addColorStop(0, 'rgba(0,0,0,0.7)');
-          holeGrad.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = holeGrad;
-          ctx.beginPath();
-          ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2 + 8, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = '#5D4037';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2 + 8, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-          ctx.lineWidth = 1;
-          for (let i = 0; i < 3; i++) {
-            ctx.beginPath();
-            const tx = x + w * (0.2 + i * 0.3);
-            ctx.moveTo(tx, y + h + 8);
-            ctx.lineTo(tx + (Math.random() - 0.5) * 15, y + h + 20);
-            ctx.stroke();
+          ctx.fillStyle = '#777';
+          for (let i = 0; i < 7; i++) {
+            ctx.fillRect(x + 2 + i * 6, y + 12, 3, 6);
           }
+          ctx.fillStyle = '#FFD700';
+          ctx.fillRect(x, y + 6, 45, 8);
+          ctx.fillStyle = '#FFA000';
+          ctx.fillRect(x, y + 4, 45, 4);
+          ctx.fillStyle = 'rgba(255,255,255,0.4)';
+          ctx.fillRect(x + 5, y + 5, 35, 2);
+        },
+        onHit() {
+          lucik.vy = -22;
+          lucik.jumping = true;
+          playJumpSound();
+          playJumpSound();
         }
       },
       // БАТУТ
@@ -264,29 +329,54 @@ export function startRunnerGame(level = 1) {
         },
         type: 'bonus'
       },
-      // ПОРТАЛ
+      // ПОРТАЛ (Stranger Things)
       {
+        type: 'portal',
         w: 50,
         h: 60,
         draw(ctx, x, y) {
-          const glow = ctx.createRadialGradient(x + 25, y + 30, 5, x + 25, y + 30, 35);
-          glow.addColorStop(0, 'rgba(180,130,255,0.8)');
-          glow.addColorStop(1, 'rgba(50,0,100,0)');
-          ctx.fillStyle = glow;
+          const portalGrad = ctx.createRadialGradient(x + 25, y + 30, 3, x + 25, y + 30, 28);
+          portalGrad.addColorStop(0, '#0a0015');
+          portalGrad.addColorStop(0.6, '#1a0533');
+          portalGrad.addColorStop(1, 'rgba(50,0,100,0)');
+          ctx.fillStyle = portalGrad;
           ctx.beginPath();
-          ctx.arc(x + 25, y + 30, 35, 0, Math.PI * 2);
+          ctx.ellipse(x + 25, y + 30, 28, 35, 0, 0, Math.PI * 2);
           ctx.fill();
-          ctx.strokeStyle = '#9B59B6';
-          ctx.lineWidth = 3;
+
+          ctx.strokeStyle = '#cc0000';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = '#cc0000';
+          ctx.shadowBlur = 15;
           ctx.beginPath();
-          ctx.arc(x + 25, y + 30, 25, 0, Math.PI * 2);
+          ctx.ellipse(x + 25, y + 30, 28, 35, 0, 0, Math.PI * 2);
           ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          for (let i = 0; i < 6; i++) {
+            const px = x + 10 + Math.sin(frame * 0.08 + i) * 18;
+            const py = y + 10 + Math.cos(frame * 0.06 + i) * 25;
+            ctx.fillStyle = `rgba(255,255,255,${0.4 + Math.sin(frame * 0.1 + i) * 0.3})`;
+            ctx.beginPath();
+            ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
         },
         onHit() {
           worldFlipped = !worldFlipped;
-          document.body.style.transform = worldFlipped ? 'rotate(180deg)' : 'rotate(0deg)';
-        },
-        type: 'portal'
+          shakeIntensity = worldFlipped ? 8 : 0;
+
+          if (worldFlipped) {
+            overlay.style.filter = 'invert(0.85) hue-rotate(200deg) brightness(0.7) saturate(0.5)';
+            overlay.style.transition = 'filter 0.8s ease';
+            startUpsideDownParticles();
+            playPortalSound();
+          } else {
+            overlay.style.filter = 'none';
+            overlay.style.transition = 'filter 1.2s ease';
+            stopUpsideDownParticles();
+          }
+        }
       }
     ];
 
@@ -355,7 +445,7 @@ export function startRunnerGame(level = 1) {
       const ow = o.w - margin;
       const oh = o.h < 20 ? o.h + 10 : o.h - margin;
 
-      if (o.type === 'bonus' || o.type === 'portal') {
+      if (o.type === 'bonus' || o.type === 'portal' || o.type === 'pit') {
         if (lx < ox + ow && lx + lw > ox && ly < oy + oh && ly + lh > oy) {
           o.onHit?.();
           obstacles = obstacles.filter((x) => x !== o);
@@ -385,6 +475,16 @@ export function startRunnerGame(level = 1) {
     if (Math.random() < 0.03) spawnStar();
     speed = 3 + distance * 0.002;
     groundOffset = (groundOffset + speed) % 40;
+
+    if (shakeIntensity > 0) {
+      const sx = (Math.random() - 0.5) * shakeIntensity;
+      const sy = (Math.random() - 0.5) * shakeIntensity;
+      overlay.style.transform = `translate(${sx}px, ${sy}px)`;
+      shakeIntensity *= 0.95;
+      if (shakeIntensity < 0.5) shakeIntensity = 0;
+    } else if (!worldFlipped) {
+      overlay.style.transform = '';
+    }
 
     if (lucik.jumping && lucik.vy < -3) animState = 'jump_up';
     else if (lucik.jumping && lucik.vy > 3) animState = 'land';
@@ -542,7 +642,7 @@ export function startRunnerGame(level = 1) {
     clearInterval(loop);
     window.removeEventListener('resize', resize);
     cleanupAudio();
-    document.body.style.transform = '';
+    cleanupWorldEffects();
     appState.gameActive = false;
     document.body.classList.remove('game-active');
     overlay.remove();
@@ -608,7 +708,7 @@ export function startRunnerGame(level = 1) {
     clearInterval(loop);
     window.removeEventListener('resize', resize);
     cleanupAudio();
-    document.body.style.transform = '';
+    cleanupWorldEffects();
     appState.gameActive = false;
     document.body.classList.remove('game-active');
     overlay.remove();
