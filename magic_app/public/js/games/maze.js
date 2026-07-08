@@ -76,20 +76,9 @@ export function startMazeGame(level = 1) {
   const ctx = canvas.getContext('2d');
   let cs;
 
-  function resize() {
-    const maxW = Math.min(gameArea.clientWidth - 20, 500);
-    const maxH = gameArea.clientHeight - 20;
-    cs = Math.floor(Math.min(maxW, maxH) / size);
-    canvas.width = cs * size; canvas.height = cs * size;
-    draw();
-  }
-  resize();
-  window.addEventListener('resize', resize);
-
-  // Факелы
   const torches = [];
   for (let i = 0; i < 8; i++) {
-    torches.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, flicker: Math.random() * Math.PI * 2 });
+    torches.push({ x: 0, y: 0, flicker: Math.random() * Math.PI * 2 });
   }
 
   function drawMiniMap() {
@@ -183,6 +172,21 @@ export function startMazeGame(level = 1) {
     drawMiniMap();
   }
 
+  function resize() {
+    const maxW = Math.min(gameArea.clientWidth - 20, 500);
+    const maxH = gameArea.clientHeight - 20;
+    cs = Math.floor(Math.min(maxW, maxH) / size);
+    canvas.width = cs * size;
+    canvas.height = cs * size;
+    for (let i = 0; i < torches.length; i++) {
+      torches[i].x = Math.random() * canvas.width;
+      torches[i].y = Math.random() * canvas.height;
+    }
+    draw();
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
   function move(dx, dy) {
     if (ended) return;
     const nx = px + dx, ny = py + dy;
@@ -240,7 +244,6 @@ export function startMazeGame(level = 1) {
     overlay.remove();
   };
 
-  draw();
   trackEvent('maze_started', { level, size });
 }
 
