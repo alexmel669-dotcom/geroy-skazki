@@ -1,33 +1,53 @@
-import { appState, showGamesMenu } from '../core.js';
+import { appState } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 
 export function startPuzzleGame(level = 1) {
-  document.querySelectorAll('.game-fullscreen').forEach((el) => el.remove());
+  document.querySelectorAll('.game-fullscreen').forEach(el => el.remove());
   document.body.classList.remove('game-active');
   appState.gameActive = false;
   appState.gameActive = true;
 
   const sizes = [3, 4, 6];
   const size = sizes[Math.min(level, 3) - 1] || 3;
-  let moves = 0;
-  let emptyIdx = size * size - 1;
-  let ended = false;
+  let moves = 0, emptyIdx = size * size - 1, ended = false;
 
-  const tiles = [];
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      tiles.push({ r, c, tr: r, tc: c });
-    }
+  let tiles = [];
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) tiles.push({ r, c, tr: r, tc: c });
+
+  function validMoves() {
+    const e = tiles[emptyIdx];
+    return tiles.filter(t => t !== e && ((Math.abs(t.r - e.r) === 1 && t.c === e.c) || (Math.abs(t.c - e.c) === 1 && t.r === e.r)));
   }
-  const emptyTile = tiles[tiles.length - 1];
+
+  function swap(tile, count = true) {
+    const e = tiles[emptyIdx];
+    const er = e.r, ec = e.c;
+    e.r = tile.r; e.c = tile.c;
+    tile.r = er; tile.c = ec;
+    emptyIdx = tiles.findIndex(t => t.r === er && t.c === ec);
+    if (count) moves++;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'game-fullscreen';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;display:flex;flex-direction:column;font-family:sans-serif;background:linear-gradient(180deg,#DEB887,#8B4513);align-items:center;justify-content:center;';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;justify-content:space-between;width:100%;padding:12px 16px;background:rgba(0,0,0,0.3);color:#fff;font-size:18px;';
+  header.innerHTML = '<span>🧩 Пазл ' + size + '×' + size + '</span><span>Ходы: <b id="pm">0</b></span><button id="pc" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>';
 
   const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = 300;
-  canvas.height = 340;
+  canvas.width = 300; canvas.height = 340;
   canvas.style.cssText = 'border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.4);cursor:pointer;';
+
+  overlay.appendChild(header);
+  overlay.appendChild(canvas);
+  document.body.appendChild(overlay);
+  document.body.classList.add('game-active');
+
+  const ctx = canvas.getContext('2d');
   const ts = Math.floor(300 / size);
   const img = new Image();
   let imgReady = false;
@@ -36,119 +56,36 @@ export function startPuzzleGame(level = 1) {
   function draw() {
     ctx.fillStyle = '#DEB887';
     ctx.fillRect(0, 0, 300, 300);
-
-    tiles.forEach((t) => {
-      if (t === emptyTile) return;
-      const x = t.c * ts;
-      const y = t.r * ts;
-      ctx.fillStyle = 'rgba(0,0,0,0.2)';
-      ctx.fillRect(x + 2, y + 2, ts - 2, ts - 2);
-
+    tiles.forEach(t => {
+      const idx = t.r * size + t.c;
+      if (idx === emptyIdx) return;
+      const x = t.c * ts, y = t.r * ts;
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x+2, y+2, ts-2, ts-2);
       if (imgReady && img.complete && img.naturalWidth > 0) {
-        ctx.drawImage(img, t.tc * (120 / size), t.tr * (120 / size), 120 / size, 120 / size, x, y, ts - 2, ts - 2);
+        ctx.drawImage(img, t.tc*(img.naturalWidth/size), t.tr*(img.naturalHeight/size), img.naturalWidth/size, img.naturalHeight/size, x, y, ts-2, ts-2);
       } else {
-        ctx.fillStyle = `hsl(${(t.tr * size + t.tc) * 37},55%,55%)`;
-        ctx.fillRect(x, y, ts - 2, ts - 2);
+        ctx.fillStyle = 'hsl('+((t.tr*size+t.tc)*37)+',55%,55%)'; ctx.fillRect(x, y, ts-2, ts-2);
       }
-
-      ctx.strokeStyle = '#FFD700';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x + 1, y + 1, ts - 4, ts - 4);
+      ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2; ctx.strokeRect(x+1, y+1, ts-4, ts-4);
     });
-
-    const e = emptyTile;
-    ctx.fillStyle = 'rgba(0,0,0,0.1)';
-    ctx.fillRect(e.c * ts, e.r * ts, ts, ts);
-
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillText(`Ходы: ${moves}`, 10, 325);
-  }
-
-  function validMoves() {
-    const e = emptyTile;
-    return tiles.filter((t) => t !== e && (
-      (Math.abs(t.r - e.r) === 1 && t.c === e.c)
-      || (Math.abs(t.c - e.c) === 1 && t.r === e.r)
-    ));
-  }
-
-  function swap(tile, count = true) {
-    const e = emptyTile;
-    [tile.r, e.r] = [e.r, tile.r];
-    [tile.c, e.c] = [e.c, tile.c];
-    emptyIdx = e.r * size + e.c;
-    if (count) {
-      moves++;
-      const pmEl = document.getElementById('pm');
-      if (pmEl) pmEl.textContent = moves;
-    }
-    draw();
-    if (count && tiles.every((t) => t.r === t.tr && t.c === t.tc)) finish();
+    const e = tiles[emptyIdx];
+    ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(e.c*ts, e.r*ts, ts, ts);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 18px sans-serif'; ctx.fillText('Ходы: '+moves, 10, 325);
   }
 
   function initGame() {
     if (gameInited) return;
     gameInited = true;
-    for (let i = 0; i < 100; i++) {
-      const m = validMoves();
-      if (m.length) swap(m[Math.floor(Math.random() * m.length)], false);
-    }
+    for (let i = 0; i < 100; i++) { const m = validMoves(); if (m.length) swap(m[Math.floor(Math.random()*m.length)], false); }
     moves = 0;
     draw();
   }
 
-  img.onload = () => {
-    imgReady = true;
-    initGame();
-  };
-
-  img.onerror = () => {
-    img.src = 'assets/images/kid1.png';
-    img.onerror = () => {
-      imgReady = true;
-      initGame();
-    };
-  };
-
+  img.onload = () => { imgReady = true; initGame(); };
+  img.onerror = () => { img.src = 'assets/images/kid1.png'; img.onerror = () => { imgReady = true; initGame(); }; };
   img.src = 'assets/images/avatar.png';
-
-  if (img.complete) {
-    imgReady = true;
-    initGame();
-  }
-
-  setTimeout(() => {
-    if (!imgReady) {
-      imgReady = true;
-      initGame();
-    }
-  }, 3000);
-
-  const overlay = document.createElement('div');
-  overlay.className = 'game-fullscreen';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;display:flex;flex-direction:column;font-family:sans-serif;background:linear-gradient(180deg,#DEB887,#8B4513);align-items:center;justify-content:center;';
-
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;justify-content:space-between;width:100%;padding:12px 16px;background:rgba(0,0,0,0.3);color:#fff;font-size:18px;';
-  header.innerHTML = `<span>🧩 Пазл ${size}×${size}</span><span>Ходы: <b id="pm">0</b></span><button id="pc" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>`;
-
-  overlay.appendChild(header);
-  overlay.appendChild(canvas);
-  document.body.appendChild(overlay);
-  document.body.classList.add('game-active');
-
-  canvas.onclick = (ev) => {
-    if (ended) return;
-    const r = canvas.getBoundingClientRect();
-    const mx = (ev.clientX - r.left) * (300 / r.width);
-    const my = (ev.clientY - r.top) * (300 / r.height);
-    if (my > 300) return;
-    const c = Math.floor(mx / ts);
-    const row = Math.floor(my / ts);
-    const tile = tiles.find((t) => t.r === row && t.c === c && t !== emptyTile);
-    if (tile && validMoves().includes(tile)) swap(tile);
-  };
+  if (img.complete) { imgReady = true; initGame(); }
+  setTimeout(() => { if (!imgReady) { imgReady = true; initGame(); } }, 3000);
 
   function finish() {
     if (ended) return;
@@ -156,29 +93,36 @@ export function startPuzzleGame(level = 1) {
     appState.gameActive = false;
     document.body.classList.remove('game-active');
     overlay.remove();
-
     recordGameResult('puzzle', true, level);
     updateAchievement('puzzle_solver');
     checkProgressAchievements();
     trackEvent('puzzle_end', { level, moves, size });
-
     const result = document.createElement('div');
     result.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:2000;display:flex;align-items:center;justify-content:center;';
-    result.innerHTML = `
-      <div style="background:#fff;border-radius:20px;padding:clamp(20px,5vw,40px);text-align:center;max-width:90vw;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
-        <div style="font-size:48px;">🧩</div>
-        <h2 style="margin:12px 0;color:#222;font-size:22px;">Пазл собран!</h2>
-        <p style="color:#444;font-size:16px;">За ${moves} ходов</p>
-        <button id="pr" style="margin:8px;padding:14px 28px;border-radius:12px;border:none;background:#FFD700;color:#222;font-weight:bold;font-size:18px;cursor:pointer;width:80%;">🔄 Ещё раз</button>
-        <button id="pe" style="margin:8px;padding:12px 24px;border-radius:12px;border:2px solid #ccc;background:#fff;color:#888;font-size:16px;cursor:pointer;width:80%;">🚪 Выйти</button>
-      </div>
-    `;
+    result.innerHTML = '<div style="background:#fff;border-radius:20px;padding:clamp(20px,5vw,40px);text-align:center;max-width:90vw;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.6);"><div style="font-size:48px;">🧩</div><h2 style="margin:12px 0;color:#222;font-size:22px;">Пазл собран!</h2><p style="color:#444;font-size:16px;">За '+moves+' ходов</p><button id="pr" style="margin:8px;padding:14px 28px;border-radius:12px;border:none;background:#FFD700;color:#222;font-weight:bold;font-size:18px;cursor:pointer;width:80%;">🔄 Ещё раз</button><button id="pe" style="margin:8px;padding:12px 24px;border-radius:12px;border:2px solid #ccc;background:#fff;color:#888;font-size:16px;cursor:pointer;width:80%;">🚪 Выйти</button></div>';
     document.body.appendChild(result);
-    result.querySelector('#pr').onclick = () => { result.remove(); startPuzzleGame(level + 1); };
-    result.querySelector('#pe').onclick = () => { result.remove(); showGamesMenu(); };
+    result.querySelector('#pr').onclick = () => { result.remove(); startPuzzleGame(level+1); };
+    result.querySelector('#pe').onclick = () => { result.remove(); if(typeof showGamesMenu==='function') showGamesMenu(); };
   }
 
-  document.getElementById('pc').onclick = () => {
+  canvas.onclick = function(e) {
+    if (ended || !gameInited) return;
+    var r = canvas.getBoundingClientRect();
+    var mx = (e.clientX - r.left) * (300 / r.width);
+    var my = (e.clientY - r.top) * (300 / r.height);
+    if (my > 300) return;
+    var c = Math.floor(mx / ts), row = Math.floor(my / ts);
+    var tile = tiles.find(function(t) { return t.r === row && t.c === c && (t.r*size+t.c) !== emptyIdx; });
+    if (tile && validMoves().includes(tile)) {
+      swap(tile);
+      draw();
+      var pmEl = document.getElementById('pm');
+      if (pmEl) pmEl.textContent = moves;
+      if (tiles.every(function(t) { return t.r === t.tr && t.c === t.tc; })) finish();
+    }
+  };
+
+  document.getElementById('pc').onclick = function() {
     appState.gameActive = false;
     document.body.classList.remove('game-active');
     overlay.remove();
