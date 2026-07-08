@@ -1,5 +1,5 @@
 // ========================================
-// runner.js — Люцик-раннер (v5.5.10)
+// runner.js — Люцик-раннер (v5.5.11)
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
@@ -161,30 +161,85 @@ export function startRunnerGame(level = 1) {
     if (canvas.width <= 0) return;
 
     const scale = 1 + distance * 0.0005;
-    const baseW = 25 + Math.random() * 15;
-    const baseH = 20 + Math.random() * 10;
-    const w = Math.floor(baseW * scale);
-    const h = Math.floor(baseH * scale);
 
     const types = [
-      { w, h, draw(ctx, x, y) {
-        ctx.fillStyle = '#666';
-        ctx.beginPath();
-        ctx.arc(x + w / 2, y + h / 2, w / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.beginPath();
-        ctx.arc(x + w * 0.4, y + h * 0.3, w * 0.15, 0, Math.PI * 2);
-        ctx.fill();
-      } },
-      { w: Math.floor(w * 1.3), h, draw(ctx, x, y) {
-        ctx.fillStyle = '#8B4513';
-        ctx.fillRect(x + w * 0.1, y + h * 0.2, w * 0.8, h * 0.8);
-        ctx.fillStyle = '#A0522D';
-        ctx.beginPath();
-        ctx.arc(x + w / 2, y + h * 0.2, w * 0.4, Math.PI, 0);
-        ctx.fill();
-      } }
+      // ЗАБОРЧИК
+      {
+        w: Math.floor(45 * scale),
+        h: Math.floor(40 * scale),
+        draw(ctx, x, y) {
+          const w = this.w;
+          const h = this.h;
+          ctx.fillStyle = '#8B4513';
+          ctx.fillRect(x + 2, y + 5, 6, h - 5);
+          ctx.fillRect(x + w - 8, y + 5, 6, h - 5);
+          ctx.fillStyle = '#A0522D';
+          ctx.fillRect(x, y + 10, w, 6);
+          ctx.fillRect(x, y + h - 12, w, 6);
+          ctx.fillStyle = '#555';
+          ctx.beginPath(); ctx.arc(x + 5, y + 13, 2, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(x + w - 5, y + 13, 2, 0, Math.PI * 2); ctx.fill();
+        }
+      },
+      // КАМЕНЬ
+      {
+        w: Math.floor(35 * scale),
+        h: Math.floor(30 * scale),
+        draw(ctx, x, y) {
+          const w = this.w;
+          const h = this.h;
+          const grad = ctx.createLinearGradient(x, y, x + w, y + h);
+          grad.addColorStop(0, '#999');
+          grad.addColorStop(0.5, '#777');
+          grad.addColorStop(1, '#555');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(x + 2, y + h);
+          ctx.lineTo(x, y + h * 0.4);
+          ctx.lineTo(x + w * 0.3, y);
+          ctx.lineTo(x + w * 0.7, y + 2);
+          ctx.lineTo(x + w, y + h * 0.3);
+          ctx.lineTo(x + w - 2, y + h);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.25)';
+          ctx.beginPath();
+          ctx.arc(x + w * 0.35, y + h * 0.35, w * 0.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+          ctx.fillRect(x + 2, y + h - 4, w - 4, 4);
+        }
+      },
+      // ЯМА
+      {
+        w: Math.floor(60 * scale),
+        h: Math.floor(10 * scale),
+        draw(ctx, x, y) {
+          const w = this.w;
+          const h = this.h;
+          const holeGrad = ctx.createLinearGradient(0, y, 0, y + h + 20);
+          holeGrad.addColorStop(0, 'rgba(0,0,0,0.7)');
+          holeGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = holeGrad;
+          ctx.beginPath();
+          ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2 + 8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#5D4037';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2 + 8, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+          ctx.lineWidth = 1;
+          for (let i = 0; i < 3; i++) {
+            ctx.beginPath();
+            const tx = x + w * (0.2 + i * 0.3);
+            ctx.moveTo(tx, y + h + 8);
+            ctx.lineTo(tx + (Math.random() - 0.5) * 15, y + h + 20);
+            ctx.stroke();
+          }
+        }
+      }
     ];
 
     const t = types[Math.floor(Math.random() * types.length)];
@@ -231,7 +286,20 @@ export function startRunnerGame(level = 1) {
     stars = stars.filter((s) => s.x > -20);
 
     for (const o of obstacles) {
-      if (o.x > 0 && lucik.x < o.x + o.w && lucik.x + lucik.w > o.x && lucik.y < o.y + o.h && lucik.y + lucik.h > o.y) {
+      if (o.x <= 0 || o.x > canvas.width) continue;
+
+      const margin = 8;
+      const lx = lucik.x + margin;
+      const ly = lucik.y + margin + 5;
+      const lw = lucik.w - margin * 2;
+      const lh = lucik.h - margin * 2 - 5;
+
+      const ox = o.x + margin / 2;
+      const oy = o.y + (o.h < 20 ? 0 : margin / 2);
+      const ow = o.w - margin;
+      const oh = o.h < 20 ? o.h + 10 : o.h - margin;
+
+      if (lx < ox + ow && lx + lw > ox && ly < oy + oh && ly + lh > oy) {
         gameOver = true;
       }
     }
