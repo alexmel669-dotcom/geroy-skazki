@@ -7,7 +7,7 @@ import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
-import { avatarUrl } from '../config.js';
+import { assetUrl } from '../config.js';
 
 const WIN_SCORE = 100;
 
@@ -52,9 +52,15 @@ export function startRunnerGame(level = 1) {
   resize();
   window.addEventListener('resize', resize);
 
-  const lucikImg = new Image();
-  lucikImg.src = avatarUrl('lucik', 'png');
-  lucikImg.onerror = function () { this.src = avatarUrl('lucik', 'svg'); };
+  const lucikFrames = [];
+  for (let i = 1; i <= 4; i++) {
+    const img = new Image();
+    img.src = assetUrl(`lucik-run-${i}.png`);
+    lucikFrames.push(img);
+  }
+  let currentFrame = 0;
+  let frameCounter = 0;
+  const FRAME_SPEED = 6;
 
   function spawnObstacle() {
     if (canvas.width <= 0) return;
@@ -115,6 +121,12 @@ export function startRunnerGame(level = 1) {
     if (Math.random() < 0.02) spawnObstacle();
     if (Math.random() < 0.03) spawnStar();
     speed = Math.min(3 + frame * 0.001, 10);
+
+    frameCounter++;
+    if (frameCounter >= FRAME_SPEED) {
+      frameCounter = 0;
+      currentFrame = (currentFrame + 1) % 4;
+    }
   }
 
   function draw() {
@@ -138,8 +150,9 @@ export function startRunnerGame(level = 1) {
       ctx.fill();
     });
 
-    if (lucikImg.complete && lucikImg.naturalWidth > 0) {
-      ctx.drawImage(lucikImg, lucik.x, lucik.y, lucik.w, lucik.h);
+    const frameImg = lucikFrames[currentFrame];
+    if (frameImg?.complete && frameImg.naturalWidth > 0) {
+      ctx.drawImage(frameImg, lucik.x, lucik.y, lucik.w, lucik.h);
     } else {
       ctx.fillStyle = '#FF8C00';
       ctx.beginPath();
