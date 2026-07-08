@@ -30,7 +30,8 @@ export function startPuzzleGame(level = 1) {
   canvas.style.cssText = 'border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.4);cursor:pointer;';
   const ts = Math.floor(300 / size);
   const img = new Image();
-  img.src = 'assets/images/avatar.png';
+  let imgFallbackTried = false;
+  let started = false;
 
   function draw() {
     ctx.fillStyle = '#DEB887';
@@ -85,8 +86,6 @@ export function startPuzzleGame(level = 1) {
     if (count && tiles.every((t) => t.r === t.tr && t.c === t.tc)) finish();
   }
 
-  let started = false;
-
   function shuffleAndDraw() {
     if (started) return;
     started = true;
@@ -99,7 +98,15 @@ export function startPuzzleGame(level = 1) {
   }
 
   img.onload = shuffleAndDraw;
-  img.onerror = shuffleAndDraw;
+  img.onerror = () => {
+    if (!imgFallbackTried) {
+      imgFallbackTried = true;
+      img.src = 'assets/images/kid1.png';
+    } else {
+      shuffleAndDraw();
+    }
+  };
+  img.src = 'assets/images/avatar.png';
   if (img.complete) shuffleAndDraw();
 
   setTimeout(() => {
