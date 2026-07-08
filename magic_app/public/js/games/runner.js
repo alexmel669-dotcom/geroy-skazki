@@ -37,24 +37,24 @@ export function startRunnerGame(level = 1) {
 
   const ctx = canvas.getContext('2d');
 
-  function resize() {
-    canvas.width = overlay.clientWidth;
-    canvas.height = overlay.clientHeight - header.offsetHeight;
-  }
-  resize();
-  window.addEventListener('resize', resize);
-
   const groundY = () => canvas.height - 60;
-  const lucik = { x: 60, y: 0, w: 50, h: 50, vy: 0, jumping: false };
+  const lucik = { x: 0, y: 0, w: 50, h: 50, vy: 0, jumping: false };
   let obstacles = []; let stars = [];
   let score = 0; let speed = 4; let frame = 0; let jumpCount = 0;
   let gameOver = false; let gameWon = false; let finished = false;
 
-  lucik.y = groundY() - lucik.h;
+  function resize() {
+    canvas.width = overlay.clientWidth;
+    canvas.height = overlay.clientHeight - header.offsetHeight;
+    lucik.x = canvas.width * 0.4;
+    lucik.y = groundY() - lucik.h;
+  }
+  resize();
+  window.addEventListener('resize', resize);
 
   const lucikImg = new Image();
-  lucikImg.src = avatarUrl('lucik', 'svg');
-  lucikImg.onerror = () => { lucikImg.src = avatarUrl('lucik', 'png'); };
+  lucikImg.src = avatarUrl('lucik', 'png');
+  lucikImg.onerror = function () { this.src = avatarUrl('lucik', 'svg'); };
 
   function spawnObstacle() {
     if (canvas.width <= 0) return;
