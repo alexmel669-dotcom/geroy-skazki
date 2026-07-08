@@ -11,7 +11,10 @@ export function startPuzzleGame(level = 1) {
 
   const sizes = [3, 4, 6];
   const size = sizes[Math.min(level, 3) - 1] || 3;
-  let moves = 0, emptyIdx = size * size - 1, ended = false;
+  const PUZZLE_IMAGES = ['avatar.png', 'mom.png', 'dad.png', 'kid1.png', 'kid2.png'];
+  let moves = 0, ended = false;
+  const totalTiles = size * size;
+  const emptyIdx = totalTiles - 1;
 
   let tiles = [];
   for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) tiles.push({ r, c, tr: r, tc: c });
@@ -26,7 +29,6 @@ export function startPuzzleGame(level = 1) {
     const er = e.r, ec = e.c;
     e.r = tile.r; e.c = tile.c;
     tile.r = er; tile.c = ec;
-    emptyIdx = tiles.findIndex(t => t.r === er && t.c === ec);
     if (count) moves++;
   }
 
@@ -50,8 +52,7 @@ export function startPuzzleGame(level = 1) {
   const ctx = canvas.getContext('2d');
   const ts = Math.floor(300 / size);
   const img = new Image();
-  let imgReady = false;
-  let gameInited = false;
+  let imgReady = false, gameInited = false;
 
   function draw() {
     ctx.fillStyle = '#DEB887';
@@ -83,7 +84,7 @@ export function startPuzzleGame(level = 1) {
 
   img.onload = () => { imgReady = true; initGame(); };
   img.onerror = () => { img.src = 'assets/images/kid1.png'; img.onerror = () => { imgReady = true; initGame(); }; };
-  img.src = 'assets/images/avatar.png';
+  img.src = 'assets/images/' + PUZZLE_IMAGES[(level-1) % 5];
   if (img.complete) { imgReady = true; initGame(); }
   setTimeout(() => { if (!imgReady) { imgReady = true; initGame(); } }, 3000);
 
