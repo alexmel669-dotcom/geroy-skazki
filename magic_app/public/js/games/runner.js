@@ -1,5 +1,5 @@
 // ========================================
-// runner.js — Люцик-раннер (v5.5.11)
+// runner.js — Люцик-раннер (v5.5.12)
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
@@ -12,6 +12,7 @@ import { updateAchievement, checkProgressAchievements } from '../achievements.js
 export function startRunnerGame(level = 1) {
   document.querySelectorAll('.game-fullscreen, .game-screen').forEach((el) => el.remove());
   document.body.classList.remove('game-active');
+  document.body.style.transform = '';
   appState.gameActive = false;
 
   appState.gameActive = true;
@@ -54,6 +55,7 @@ export function startRunnerGame(level = 1) {
   let gameWon = false;
   let finished = false;
   let groundOffset = 0;
+  let worldFlipped = false;
 
   // Web Audio контекст
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -239,11 +241,65 @@ export function startRunnerGame(level = 1) {
             ctx.stroke();
           }
         }
+      },
+      // БАТУТ
+      {
+        w: 40,
+        h: 15,
+        draw(ctx, x, y) {
+          ctx.fillStyle = '#888';
+          for (let i = 0; i < 6; i++) ctx.fillRect(x + 3 + i * 6, y + 10, 3, 5);
+          ctx.fillStyle = '#FFD700';
+          ctx.fillRect(x, y + 4, 40, 8);
+          ctx.fillStyle = '#FFA000';
+          ctx.fillRect(x, y + 2, 40, 4);
+          ctx.fillStyle = 'rgba(255,255,255,0.5)';
+          ctx.fillRect(x + 5, y + 3, 30, 2);
+        },
+        onHit() {
+          lucik.vy = -22;
+          lucik.jumping = true;
+          playJumpSound();
+          playJumpSound();
+        },
+        type: 'bonus'
+      },
+      // ПОРТАЛ
+      {
+        w: 50,
+        h: 60,
+        draw(ctx, x, y) {
+          const glow = ctx.createRadialGradient(x + 25, y + 30, 5, x + 25, y + 30, 35);
+          glow.addColorStop(0, 'rgba(180,130,255,0.8)');
+          glow.addColorStop(1, 'rgba(50,0,100,0)');
+          ctx.fillStyle = glow;
+          ctx.beginPath();
+          ctx.arc(x + 25, y + 30, 35, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#9B59B6';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(x + 25, y + 30, 25, 0, Math.PI * 2);
+          ctx.stroke();
+        },
+        onHit() {
+          worldFlipped = !worldFlipped;
+          document.body.style.transform = worldFlipped ? 'rotate(180deg)' : 'rotate(0deg)';
+        },
+        type: 'portal'
       }
     ];
 
     const t = types[Math.floor(Math.random() * types.length)];
-    obstacles.push({ x: canvas.width, y: groundY() - t.h, w: t.w, h: t.h, draw: t.draw });
+    obstacles.push({
+      x: canvas.width,
+      y: groundY() - t.h,
+      w: t.w,
+      h: t.h,
+      draw: t.draw,
+      type: t.type,
+      onHit: t.onHit
+    });
   }
 
   function spawnStar() {
@@ -299,6 +355,14 @@ export function startRunnerGame(level = 1) {
       const ow = o.w - margin;
       const oh = o.h < 20 ? o.h + 10 : o.h - margin;
 
+      if (o.type === 'bonus' || o.type === 'portal') {
+        if (lx < ox + ow && lx + lw > ox && ly < oy + oh && ly + lh > oy) {
+          o.onHit?.();
+          obstacles = obstacles.filter((x) => x !== o);
+        }
+        continue;
+      }
+
       if (lx < ox + ow && lx + lw > ox && ly < oy + oh && ly + lh > oy) {
         gameOver = true;
       }
@@ -313,7 +377,11 @@ export function startRunnerGame(level = 1) {
       }
     }
 
-    if (Math.random() < 0.02) spawnObstacle();
+    const minGap = 250;
+    const lastObstacle = obstacles[obstacles.length - 1];
+    if ((!lastObstacle || lastObstacle.x < canvas.width - minGap) && Math.random() < 0.012) {
+      spawnObstacle();
+    }
     if (Math.random() < 0.03) spawnStar();
     speed = 3 + distance * 0.002;
     groundOffset = (groundOffset + speed) % 40;
@@ -474,6 +542,7 @@ export function startRunnerGame(level = 1) {
     clearInterval(loop);
     window.removeEventListener('resize', resize);
     cleanupAudio();
+    document.body.style.transform = '';
     appState.gameActive = false;
     document.body.classList.remove('game-active');
     overlay.remove();
@@ -539,6 +608,7 @@ export function startRunnerGame(level = 1) {
     clearInterval(loop);
     window.removeEventListener('resize', resize);
     cleanupAudio();
+    document.body.style.transform = '';
     appState.gameActive = false;
     document.body.classList.remove('game-active');
     overlay.remove();
