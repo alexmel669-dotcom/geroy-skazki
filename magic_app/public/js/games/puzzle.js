@@ -30,8 +30,8 @@ export function startPuzzleGame(level = 1) {
   canvas.style.cssText = 'border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.4);cursor:pointer;';
   const ts = Math.floor(300 / size);
   const img = new Image();
-  let imgFallbackTried = false;
-  let started = false;
+  let imgReady = false;
+  let gameInited = false;
 
   function draw() {
     ctx.fillStyle = '#DEB887';
@@ -44,7 +44,7 @@ export function startPuzzleGame(level = 1) {
       ctx.fillStyle = 'rgba(0,0,0,0.2)';
       ctx.fillRect(x + 2, y + 2, ts - 2, ts - 2);
 
-      if (img.complete && img.naturalWidth > 0) {
+      if (imgReady && img.complete && img.naturalWidth > 0) {
         ctx.drawImage(img, t.tc * (120 / size), t.tr * (120 / size), 120 / size, 120 / size, x, y, ts - 2, ts - 2);
       } else {
         ctx.fillStyle = `hsl(${(t.tr * size + t.tc) * 37},55%,55%)`;
@@ -80,15 +80,15 @@ export function startPuzzleGame(level = 1) {
     emptyIdx = e.r * size + e.c;
     if (count) {
       moves++;
-      document.getElementById('pm').textContent = moves;
+      document.getElementById('pm')?.textContent = moves;
     }
     draw();
     if (count && tiles.every((t) => t.r === t.tr && t.c === t.tc)) finish();
   }
 
-  function shuffleAndDraw() {
-    if (started) return;
-    started = true;
+  function initGame() {
+    if (gameInited) return;
+    gameInited = true;
     for (let i = 0; i < 100; i++) {
       const m = validMoves();
       if (m.length) swap(m[Math.floor(Math.random() * m.length)], false);
@@ -97,23 +97,32 @@ export function startPuzzleGame(level = 1) {
     draw();
   }
 
-  img.onload = shuffleAndDraw;
-  img.onerror = () => {
-    if (!imgFallbackTried) {
-      imgFallbackTried = true;
-      img.src = 'assets/images/kid1.png';
-    } else {
-      shuffleAndDraw();
-    }
+  img.onload = () => {
+    imgReady = true;
+    initGame();
   };
+
+  img.onerror = () => {
+    img.src = 'assets/images/kid1.png';
+    img.onerror = () => {
+      imgReady = true;
+      initGame();
+    };
+  };
+
   img.src = 'assets/images/avatar.png';
-  if (img.complete) shuffleAndDraw();
+
+  if (img.complete) {
+    imgReady = true;
+    initGame();
+  }
 
   setTimeout(() => {
-    if (!started && tiles.every((t) => t.r === t.tr && t.c === t.tc)) {
-      shuffleAndDraw();
+    if (!imgReady) {
+      imgReady = true;
+      initGame();
     }
-  }, 2000);
+  }, 3000);
 
   const overlay = document.createElement('div');
   overlay.className = 'game-fullscreen';
