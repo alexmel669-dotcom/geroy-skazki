@@ -287,15 +287,19 @@ export default async function handler(req, res) {
 
   const started = Date.now();
   try {
-    const { message: msgField, text, childName, childAge, childGender, character, systemPrompt, history, topic, isFirstMessage, requestType, type, timeContext, isGuest, image } = req.body;
+    const { message: msgField, text, childName, childAge, childGender, character, history, topic, isFirstMessage, requestType, type, timeContext, isGuest, image } = req.body;
     const message = msgField || text;
     const reqType = requestType || type || 'chat';
     if (!message && !image) return res.status(400).json({ error: 'Message is required' });
 
     const gender = normalizeGender(childGender);
-    let sys = buildSystemPrompt({ childName, childAge, childGender: gender, character, systemPrompt, topic, isFirstMessage, requestType: reqType, timeContext, isGuest });
+    // Если клиент прислал systemPrompt — использовать его вместо дефолтного
+    let sys = req.body.systemPrompt || buildSystemPrompt({
+      childName, childAge, childGender: gender, character,
+      topic, isFirstMessage, requestType: reqType, timeContext, isGuest
+    });
 
-    if (reqType === 'draw_guess') {
+    if (reqType === 'draw_guess' && !req.body.systemPrompt) {
       sys = `Ты помогаешь ребёнку угадать рисунок. Посмотри на картинку и ответь ОДНИМ словом на русском — что нарисовано. Если не уверен — напиши "не знаю". Ответь ТОЛЬКО JSON: {"message":"слово"}`;
     }
 
