@@ -4,82 +4,78 @@ import { recordGameResult } from '../game-progress.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 import { getChildGender, formatChildText } from '../gender.js';
 
-const SCENES = {
-  start: {
-    text: '🗺️ Люцик потерял волшебный кристалл! Поможешь найти?\n\nВы стоите у лесной тропинки. Куда пойдёте?',
-    bg: 'linear-gradient(180deg, #2d5a27, #1a3a15)',
-    emoji: '🌲',
-    choices: [{ label: '⛰️ В горы', next: 'mountain' }, { label: '🌊 К реке', next: 'river' }]
-  },
-  mountain: {
-    text: '⛰️ В горах ветрено. На скале сидит мудрая сова.',
-    bg: 'linear-gradient(180deg, #4a4a4a, #2c2c2c)',
-    emoji: '🦉',
-    choices: [{ label: '🗣️ Спросить сову', next: 'owl' }, { label: '🕳️ Осмотреть пещеру', next: 'cave' }]
-  },
-  river: {
-    text: '🌊 У реки плещется рыбка. Она что-то знает!',
-    bg: 'linear-gradient(180deg, #1a5276, #0d1b2a)',
-    emoji: '🐟',
-    choices: [{ label: '💬 Поговорить с рыбкой', next: 'fish_talk' }, { label: '🌉 Перейти мост', next: 'bridge' }]
-  },
-  owl: {
-    text: '🦉 Сова шепчет: «Кристалл там, где светит луна и поют сверчки.»',
-    bg: 'linear-gradient(180deg, #2c1810, #1a0a05)',
-    emoji: '🌙',
-    choices: [{ label: '🌿 Идти к поляне', next: 'meadow' }, { label: '🏘️ Вернуться в деревню', next: 'village' }]
-  },
-  cave: {
-    text: '🕳️ В пещере темно, но ты {смелый}! Там светится что-то...',
-    bg: 'linear-gradient(180deg, #1a1a2e, #0a0a15)',
-    emoji: '💎',
-    choices: [{ label: '✨ Взять кристалл', next: 'win_cave' }, { label: '↩️ Назад', next: 'mountain' }]
-  },
-  fish_talk: {
-    text: '🐟 Рыбка говорит: «Кристалл спрятан под мостом, где растут цветы.»',
-    bg: 'linear-gradient(180deg, #1a5276, #0d1b2a)',
-    emoji: '🌸',
-    choices: [{ label: '🌉 К мосту', next: 'bridge' }]
-  },
-  bridge: {
-    text: '🌉 Под мостом блестит кристалл! Но его охраняет маленький дракончик.',
-    bg: 'linear-gradient(180deg, #5d4037, #3e2723)',
-    emoji: '🐉',
-    choices: [{ label: '🎁 Подарить яблоко', next: 'dragon_fight' }, { label: '🏃 Убежать', next: 'lose_run' }]
-  },
-  dragon_fight: {
-    text: '🐉 Дракончик хочет сыграть в камень-ножницы-бумагу! Выбери:',
-    bg: 'linear-gradient(180deg, #4a0030, #1a0010)',
-    emoji: '⚔️',
-    choices: [
-      { label: '🪨 Камень', next: 'dragon_result', value: 0 },
-      { label: '📄 Бумага', next: 'dragon_result', value: 1 },
-      { label: '✂️ Ножницы', next: 'dragon_result', value: 2 }
-    ],
-    isBattle: true
-  },
-  dragon_result: {
-    text: '', bg: 'linear-gradient(180deg, #4a0030, #1a0010)', emoji: '🎲', isResult: true
-  },
-  meadow: {
-    text: '🌿 На поляне сверчки поют. Кристалл лежит среди цветов!',
-    bg: 'linear-gradient(180deg, #4a7c3f, #2d5a27)',
-    emoji: '💎',
-    choices: [{ label: '🎉 Забрать кристалл', next: 'win_meadow' }]
-  },
-  village: {
-    text: '🏘️ В деревне старик даёт карту. Она ведёт к мосту!',
-    bg: 'linear-gradient(180deg, #8B4513, #5d2e0c)',
-    emoji: '🗺️',
-    choices: [{ label: '🌉 К мосту', next: 'bridge' }]
-  },
-  win_cave: { end: true, text: '🎉 Ты {нашёл} кристалл в пещере! Люцик сияет от радости!', emoji: '✨', win: true, bg: 'linear-gradient(180deg, #FFD700, #8B4513)' },
-  win_kind: { end: true, text: '🎉 Дракончик отдал кристалл за яблоко! Вы — настоящие друзья!', emoji: '💎', win: true, bg: 'linear-gradient(180deg, #FFD700, #8B4513)' },
-  win_meadow: { end: true, text: '🎉 Кристалл на поляне найден! Люцик может творить волшебство снова!', emoji: '🌟', win: true, bg: 'linear-gradient(180deg, #FFD700, #8B4513)' },
-  lose_run: { end: true, text: '😅 Дракончик спрятал кристалл. Но ты {смелый} — попробуй ещё раз!', emoji: '🐉', win: false, bg: 'linear-gradient(180deg, #8B0000, #4a0000)' }
-};
+const ELEMENTS = ['🔥', '🧊', '💧', '🌿'];
+const ELEMENT_NAMES = ['Огонь', 'Лёд', 'Вода', 'Природа'];
 
-const STARTS = { 1: 'start', 2: 'mountain', 3: 'river', 4: 'village', 5: 'bridge' };
+function battleResult(player, dragon) {
+  if (player === dragon) return 'draw';
+  if ((player === 0 && dragon === 1) || (player === 1 && dragon === 3) || (player === 3 && dragon === 2) || (player === 2 && dragon === 0)) return 'player';
+  return 'dragon';
+}
+
+const CHAPTERS = {
+  forest: {
+    start: {
+      text: '🌲 Люцик потерял кристалл в лесу. Поможешь найти?\n\nТы у лесной тропинки.',
+      bg: 'linear-gradient(180deg, #2d5a27, #1a3a15)', emoji: '🌲',
+      choices: [{ label: '🦉 К дубу совы', next: 'owl' }, { label: '🌊 К ручью', next: 'stream' }]
+    },
+    owl: {
+      text: '🦉 Сова: «Отгадай загадку — получишь кристалл! Зимой и летом одним цветом.»',
+      bg: 'linear-gradient(180deg, #1a3a15, #0d1a08)', emoji: '🦉', isRiddle: true, answer: 'ёлка', crystal: true,
+      choices: [{ label: '🎯 Ответить', next: 'owl_answer' }]
+    },
+    owl_answer: { text: '', bg: '', emoji: '🎯', isResult: true, nextOk: 'owl_win', nextFail: 'owl_fail' },
+    owl_win: {
+      text: '🦉 Сова: «Верно! Держи кристалл!» (+1💎)', bg: 'linear-gradient(180deg, #FFD700, #8B4513)', emoji: '💎', crystal: true,
+      choices: [{ label: '🌊 К ручью', next: 'stream' }, { label: '🏘️ В деревню', next: 'village' }]
+    },
+    owl_fail: {
+      text: '🦉 Сова: «Неверно. Приходи ещё.»', bg: 'linear-gradient(180deg, #8B0000, #4a0000)', emoji: '😿',
+      choices: [{ label: '🌊 К ручью', next: 'stream' }]
+    },
+    stream: {
+      text: '🐟 Рыбка запуталась в водорослях. Поможешь?',
+      bg: 'linear-gradient(180deg, #1a5276, #0d1b2a)', emoji: '🐟', crystal: true,
+      choices: [{ label: '🤝 Помочь (+1💎)', next: 'stream_help' }, { label: '🚶 Пройти мимо', next: 'bridge' }]
+    },
+    stream_help: {
+      text: '🐟 Рыбка: «Спасибо! Вот тебе ключ от моста!» (+1💎)', bg: 'linear-gradient(180deg, #FFD700, #1a5276)', emoji: '🔑', crystal: true,
+      choices: [{ label: '🌉 К мосту', next: 'bridge' }]
+    },
+    bridge: {
+      text: '🌉 Мост через реку. Впереди деревня.',
+      bg: 'linear-gradient(180deg, #5d4037, #3e2723)', emoji: '🌉',
+      choices: [{ label: '🏘️ В деревню', next: 'village' }]
+    },
+    village: {
+      text: '👴 Старик: «Я видел кристалл! Он у дракона в замке. Вот карта.»',
+      bg: 'linear-gradient(180deg, #8B4513, #5d2e0c)', emoji: '🗺️',
+      choices: [{ label: '🏰 В замок!', next: 'castle_enter' }]
+    },
+    castle_enter: {
+      text: '🏰 Ты у ворот замка. Дракон внутри!',
+      bg: 'linear-gradient(180deg, #4a0030, #1a0010)', emoji: '🏰',
+      choices: [{ label: '⚔️ Войти', next: 'dragon_battle' }]
+    },
+    dragon_battle: {
+      text: '🐉 Дракон: «Сразись со мной! Выбери стихию!» (3❤️ у дракона)',
+      bg: 'linear-gradient(180deg, #1a0010, #0a0005)', emoji: '🐉', isBattle: true,
+      choices: ELEMENTS.map((e, i) => ({ label: `${e} ${ELEMENT_NAMES[i]}`, next: 'battle_result', value: i }))
+    },
+    battle_result: { text: '', bg: '', emoji: '⚔️', isResult: true, nextOk: 'dragon_win', nextFail: 'dragon_lose' },
+    dragon_win: {
+      text: '🐉 Дракон повержен! Кристалл твой! (+3💎)', bg: 'linear-gradient(180deg, #FFD700, #8B4513)', emoji: '👑', crystal: true,
+      choices: [{ label: '🎉 Забрать кристалл', next: 'win_castle' }]
+    },
+    dragon_lose: {
+      text: '🐉 Дракон оказался сильнее... Но ты {смелый}!', bg: 'linear-gradient(180deg, #8B0000, #4a0000)', emoji: '😿',
+      choices: [{ label: '🏃 Бежать', next: 'lose_castle' }]
+    },
+    win_castle: { end: true, text: '', emoji: '👑', win: true, bg: 'linear-gradient(180deg, #FFD700, #8B4513)' },
+    lose_castle: { end: true, text: '', emoji: '😿', win: false, bg: 'linear-gradient(180deg, #8B0000, #4a0000)' }
+  }
+};
 
 export function startQuestGame(level = 1) {
   document.querySelectorAll('.game-fullscreen').forEach((el) => el.remove());
@@ -87,11 +83,13 @@ export function startQuestGame(level = 1) {
   appState.gameActive = false;
   appState.gameActive = true;
 
-  let step = STARTS[Math.min(level, 5)] || 'start';
+  let step = 'start';
   let moves = 0;
-  const maxMoves = 5 + level * 2;
+  const maxMoves = 8 + level;
   let ended = false;
   let crystals = 0;
+  let dragonHP = 3;
+  let lastAnswer = false;
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -108,6 +106,21 @@ export function startQuestGame(level = 1) {
     g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
     o.start();
     o.stop(audioCtx.currentTime + 0.2);
+  }
+
+  function playMagic() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(200, audioCtx.currentTime);
+    o.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.3);
+    g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    o.start();
+    o.stop(audioCtx.currentTime + 0.3);
   }
 
   function playWin() {
@@ -134,7 +147,7 @@ export function startQuestGame(level = 1) {
 
   const header = document.createElement('div');
   header.style.cssText = 'display:flex;justify-content:space-between;padding:10px 16px;background:rgba(0,0,0,0.5);color:#fff;font-size:16px;z-index:10;';
-  header.innerHTML = `<span>🗺️ Квест</span><span id="qm">Шагов: 0/${maxMoves}</span><button id="qc" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>`;
+  header.innerHTML = `<span>🗺️ Квест</span><span id="qi">💎 ${crystals} | Шаги: 0/${maxMoves}</span><button id="qc" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>`;
 
   const panel = document.createElement('div');
   panel.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;color:#fff;text-align:center;transition:opacity 0.3s;';
@@ -145,25 +158,41 @@ export function startQuestGame(level = 1) {
   const textEl = document.createElement('p');
   textEl.style.cssText = 'font-size:clamp(14px,4vw,18px);line-height:1.6;margin:0 0 20px;max-width:400px;';
 
+  const hpBar = document.createElement('div');
+  hpBar.style.cssText = 'display:none;margin-bottom:12px;font-size:18px;';
+
   const choicesEl = document.createElement('div');
   choicesEl.style.cssText = 'display:flex;flex-direction:column;gap:10px;width:100%;max-width:350px;';
 
-  panel.append(art, textEl, choicesEl);
+  panel.append(art, textEl, hpBar, choicesEl);
   overlay.appendChild(header);
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
   document.body.classList.add('game-active');
+
+  const SCENES = CHAPTERS.forest;
+
+  function checkRiddleAnswer(val, answer) {
+    const v = val.trim().toLowerCase();
+    const variants = [answer, answer.replace('ё', 'е')];
+    return variants.some((a) => v === a || v.includes(a));
+  }
 
   function render() {
     const node = SCENES[step];
     if (!node) return;
     panel.style.opacity = '0';
     setTimeout(() => {
-      overlay.style.background = node.bg;
+      if (node.bg) overlay.style.background = node.bg;
       art.textContent = node.emoji || '🗺️';
-      const gender = getChildGender(getActiveChild());
-      textEl.textContent = formatChildText(node.text, gender);
-      document.getElementById('qm').textContent = `Шагов: ${moves}/${maxMoves}`;
+      if (step === 'dragon_battle') {
+        textEl.textContent = `🐉 Дракон: «Выбери стихию!» (${'❤️'.repeat(dragonHP)})`;
+      } else if (node.text) {
+        const gender = getChildGender(getActiveChild());
+        textEl.textContent = formatChildText(node.text, gender);
+      }
+      document.getElementById('qi').textContent = `💎 ${crystals} | Шаги: ${moves}/${maxMoves}`;
+      hpBar.style.display = step === 'dragon_battle' ? 'block' : 'none';
       choicesEl.innerHTML = '';
 
       if (node.isBattle) {
@@ -172,40 +201,81 @@ export function startQuestGame(level = 1) {
           btn.textContent = c.label;
           btn.style.cssText = 'padding:14px;border-radius:12px;border:2px solid #FFD700;background:rgba(255,215,0,0.15);color:#FFD700;font-size:clamp(14px,4vw,18px);cursor:pointer;';
           btn.onclick = () => {
-            const dragonChoice = Math.floor(Math.random() * 3);
-            const playerChoice = c.value;
-            let win;
-            if (playerChoice === dragonChoice) win = 'draw';
-            else if ((playerChoice === 0 && dragonChoice === 2) || (playerChoice === 1 && dragonChoice === 0) || (playerChoice === 2 && dragonChoice === 1)) win = 'player';
-            else win = 'dragon';
-            if (win === 'player' || win === 'draw') { crystals++; step = 'win_kind'; }
-            else step = 'lose_run';
-            playStep();
-            render();
+            playMagic();
+            const dragonChoice = Math.floor(Math.random() * 4);
+            const result = battleResult(c.value, dragonChoice);
+            if (result === 'player') {
+              dragonHP--;
+              textEl.textContent = `🎯 Попал! (${'❤️'.repeat(Math.max(0, dragonHP))})`;
+            } else if (result === 'dragon') {
+              textEl.textContent = '😱 Дракон попал в тебя!';
+            } else {
+              textEl.textContent = '🤝 Ничья!';
+            }
+            if (dragonHP <= 0) {
+              crystals += 3;
+              step = 'dragon_win';
+            }
+            setTimeout(render, 800);
           };
           choicesEl.appendChild(btn);
         });
+      } else if (node.isRiddle) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Твой ответ...';
+        input.style.cssText = 'width:100%;padding:12px;border-radius:8px;border:2px solid #FFD700;background:rgba(255,215,0,0.1);color:#FFD700;font-size:16px;text-align:center;';
+        const btn = document.createElement('button');
+        btn.textContent = '🎯 Ответить';
+        btn.style.cssText = 'padding:14px;border-radius:12px;border:none;background:#FFD700;color:#333;font-size:18px;cursor:pointer;';
+        btn.onclick = () => {
+          if (checkRiddleAnswer(input.value, node.answer)) {
+            crystals++;
+            lastAnswer = true;
+            step = 'owl_win';
+            playStep();
+          } else {
+            lastAnswer = false;
+            step = 'owl_fail';
+          }
+          render();
+        };
+        choicesEl.append(input, btn);
+        input.onkeydown = (e) => { if (e.key === 'Enter') btn.click(); };
+        input.focus();
       } else if (node.isResult) {
-        step = 'win_kind';
+        step = lastAnswer ? node.nextOk : node.nextFail;
+        if (lastAnswer && SCENES[step]?.crystal) crystals++;
+        lastAnswer = false;
         render();
       } else if (node.end) {
+        const ending = crystals >= 6 ? '👑 Легендарная концовка! Люцик — король!' :
+          crystals >= 4 ? '🎉 Кристалл сияет! Люцик счастлив!' :
+            crystals >= 2 ? '🙂 Кристалл найден, но не весь.' :
+              '😿 Кристалл потерян...';
         const btn = document.createElement('button');
         btn.textContent = node.win ? '🎉 Ура!' : '🔄 Ещё раз';
         btn.style.cssText = 'padding:14px 32px;border-radius:12px;border:none;background:#FFD700;color:#333;font-size:18px;cursor:pointer;';
-        btn.onclick = () => endGame(node.win);
+        btn.onclick = () => endGame(node.win, ending);
         choicesEl.appendChild(btn);
       } else if (moves >= maxMoves) {
         const btn = document.createElement('button');
         btn.textContent = '⏱ Время вышло';
         btn.style.cssText = 'padding:14px 32px;border-radius:12px;border:none;background:#c0392b;color:#fff;font-size:18px;cursor:pointer;';
-        btn.onclick = () => endGame(false);
+        btn.onclick = () => endGame(false, '⏱ Время вышло!');
         choicesEl.appendChild(btn);
       } else {
         node.choices.forEach((c) => {
           const btn = document.createElement('button');
           btn.textContent = c.label;
           btn.style.cssText = 'padding:14px;border-radius:12px;border:2px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.1);color:#fff;font-size:clamp(14px,4vw,18px);cursor:pointer;';
-          btn.onclick = () => { moves++; step = c.next; playStep(); render(); };
+          btn.onclick = () => {
+            moves++;
+            if (node.crystal) crystals++;
+            step = c.next;
+            playStep();
+            render();
+          };
           choicesEl.appendChild(btn);
         });
       }
@@ -213,7 +283,7 @@ export function startQuestGame(level = 1) {
     }, 300);
   }
 
-  function endGame(won) {
+  function endGame(won, endingText) {
     if (ended) return;
     ended = true;
     if (won) playWin();
@@ -227,18 +297,19 @@ export function startQuestGame(level = 1) {
       updateAchievement('quest_hero');
       checkProgressAchievements();
     }
-    trackEvent(won ? 'quest_won' : 'quest_lost', { level, moves, crystals });
+    trackEvent(won ? 'quest_won' : 'quest_lost', { level, crystals });
 
     const best = Math.max(+(localStorage.getItem('quest-best') || 0), crystals);
     localStorage.setItem('quest-best', String(best));
     window.leaderboard?.submitScore('quest', crystals);
 
+    const emoji = SCENES[step]?.emoji || (won ? '🗺️' : '😅');
     const result = document.createElement('div');
     result.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:2000;display:flex;align-items:center;justify-content:center;';
     result.innerHTML = `
-      <div style="background:#fff;border-radius:20px;padding:clamp(20px,5vw,40px);text-align:center;max-width:90vw;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
-        <div style="font-size:48px;">${won ? '🗺️' : '😅'}</div>
-        <h2 style="margin:12px 0;color:#222;font-size:22px;">${won ? 'Приключение завершено!' : 'Попробуй другой путь!'}</h2>
+      <div style="background:#fff;border-radius:20px;padding:clamp(20px,5vw,40px);text-align:center;max-width:90vw;width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <div style="font-size:48px;">${emoji}</div>
+        <h2 style="margin:12px 0;color:#222;font-size:20px;">${endingText}</h2>
         <p style="color:#444;font-size:16px;">💎 Кристаллов: ${crystals}</p>
         <p style="color:#666;">🏆 Лучший: ${best}</p>
         <button id="qr" style="margin:8px;padding:14px 28px;border-radius:12px;border:none;background:#FFD700;color:#222;font-weight:bold;font-size:18px;cursor:pointer;width:80%;">🔄 ${won ? 'Дальше' : 'Ещё раз'}</button>
