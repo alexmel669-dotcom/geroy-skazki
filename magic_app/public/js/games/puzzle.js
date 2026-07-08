@@ -98,8 +98,13 @@ export function startPuzzleGame(level = 1) {
       ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2; ctx.strokeRect(x+1, y+1, ts-4, ts-4);
     });
     const e = tiles[emptyIdx];
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(e.c * ts, e.r * ts, ts, ts);
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(e.c * ts + 2, e.r * ts + 2, ts - 4, ts - 4);
+    ctx.setLineDash([]);
     ctx.fillStyle = '#fff'; ctx.font = 'bold 18px sans-serif'; ctx.fillText('Ходы: '+moves, 10, 325);
   }
 
