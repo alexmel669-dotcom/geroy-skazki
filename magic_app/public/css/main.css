@@ -3391,6 +3391,41 @@ body.has-dev-panel {
   100% { opacity: 0; transform: translate(-50%, -120%) scale(1.2); }
 }
 
+@keyframes fishSwim {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(15px); }
+}
+
+@keyframes tailWiggle {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(8deg); }
+}
+
+@keyframes shineMove {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes seaweedSway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+@keyframes rise {
+  0% { transform: translateY(0) scale(1); opacity: 0.8; }
+  100% { transform: translateY(-400px) scale(0.5); opacity: 0; }
+}
+
+@keyframes splashDrop {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx, 10px), var(--dy, -20px)) scale(0); opacity: 0; }
+}
+
+@keyframes lightning {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.5); }
+}
+
 @keyframes dirtShake {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-3px); }
