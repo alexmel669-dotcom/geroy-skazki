@@ -90,16 +90,16 @@ export function startMazeGame(level = 1) {
   gameArea.style.cssText = 'flex:1;position:relative;display:flex;align-items:center;justify-content:center;';
 
   const canvas = document.createElement('canvas');
-  canvas.style.cssText = 'border-radius:12px;box-shadow:0 0 40px rgba(0,0,0,0.6);cursor:pointer;';
+  canvas.style.cssText = 'border-radius:12px;box-shadow:0 0 40px rgba(0,0,0,0.6);cursor:pointer;pointer-events:auto;touch-action:none;';
 
   const miniCanvas = document.createElement('canvas');
-  miniCanvas.width = 130;
-  miniCanvas.height = 130;
-  miniCanvas.style.cssText = 'position:absolute;bottom:80px;right:8px;border-radius:4px;border:2px solid #8B4513;box-shadow:0 0 20px rgba(0,0,0,0.6),inset 0 0 10px rgba(0,0,0,0.3);z-index:5;background:#f4e4c1;';
+  miniCanvas.width = 150;
+  miniCanvas.height = 150;
+  miniCanvas.style.cssText = 'position:absolute;bottom:80px;right:8px;width:150px;height:150px;border-radius:4px;border:2px solid #8B4513;box-shadow:0 0 20px rgba(0,0,0,0.6),inset 0 0 10px rgba(0,0,0,0.3);z-index:5;background:#f4e4c1;';
   const miniCtx = miniCanvas.getContext('2d');
 
   const joystick = document.createElement('div');
-  joystick.style.cssText = 'position:absolute;bottom:20px;left:20px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.3);z-index:10;display:flex;align-items:center;justify-content:center;';
+  joystick.style.cssText = 'position:absolute;bottom:20px;left:20px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.3);z-index:20;display:flex;align-items:center;justify-content:center;touch-action:none;';
   joystick.innerHTML = '<div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.2);"></div>';
 
   gameArea.appendChild(canvas);
@@ -121,21 +121,21 @@ export function startMazeGame(level = 1) {
   function drawMiniMap() {
     const mcs = 120 / size;
     miniCtx.fillStyle = '#f4e4c1';
-    miniCtx.fillRect(0, 0, 130, 130);
+    miniCtx.fillRect(0, 0, 150, 150);
 
     miniCtx.strokeStyle = 'rgba(139,69,19,0.2)';
-    for (let i = 0; i < 130; i += 6) {
+    for (let i = 0; i < 150; i += 6) {
       miniCtx.beginPath();
       miniCtx.moveTo(i, 0);
-      miniCtx.lineTo(i + 2, 130);
+      miniCtx.lineTo(i + 2, 150);
       miniCtx.stroke();
     }
 
     miniCtx.fillStyle = '#3e2723';
-    miniCtx.font = 'italic 6px serif';
+    miniCtx.font = 'bold 8px serif';
     miniCtx.textAlign = 'center';
-    miniCtx.fillText('Торжественно клянусь, что', 65, 8);
-    miniCtx.fillText('замышляю шалость!', 65, 16);
+    miniCtx.fillText('Торжественно клянусь, что', 75, 10);
+    miniCtx.fillText('замышляю шалость!', 75, 20);
 
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
@@ -349,6 +349,7 @@ export function startMazeGame(level = 1) {
   canvas.onpointerdown = (e) => { touchX = e.clientX; touchY = e.clientY; };
   canvas.onpointerup = (e) => {
     const dx = e.clientX - touchX; const dy = e.clientY - touchY;
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
     if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1, 0);
     else move(0, dy > 0 ? 1 : -1);
   };
