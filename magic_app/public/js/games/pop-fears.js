@@ -1,5 +1,5 @@
 // ========================================
-// pop-fears.js — Лопни страхи (v5.7.0)
+// pop-fears.js — Лопни страхи (v5.7.2)
 // ========================================
 
 import { appState, getActiveChild } from '../core.js';
@@ -41,6 +41,22 @@ const BASE_FEARS = [
 // Редкий дракон
 const DRAGON = { name: 'Дракон', emoji: '🐉', msg: 'Даже драконы бывают добрыми! Ты только что победил самого редкого страха! +3 храбрости!', rare: true };
 
+const ttsQueue = [];
+let ttsSpeaking = false;
+
+function speakOne(msg) {
+  ttsQueue.push(msg);
+  if (!ttsSpeaking) processTTS();
+}
+
+function processTTS() {
+  if (ttsQueue.length === 0) { ttsSpeaking = false; return; }
+  ttsSpeaking = true;
+  const msg = ttsQueue.shift();
+  window.ttsEngine?.speak(msg);
+  setTimeout(() => processTTS(), 3000);
+}
+
 export function startPopFearsGame(level = 1) {
   document.querySelectorAll('.game-fullscreen').forEach(el => el.remove());
   document.body.classList.remove('game-active');
@@ -49,6 +65,7 @@ export function startPopFearsGame(level = 1) {
 
   // Страхи из профиля ребёнка
   const child = getActiveChild();
+  const age = parseInt(child?.age, 10) || 7;
   const profileFears = child?.concerns || [];
   const customFears = profileFears
     .filter(f => !BASE_FEARS.some(bf => bf.name.toLowerCase().includes(f.toLowerCase())))
@@ -94,7 +111,7 @@ export function startPopFearsGame(level = 1) {
   function spawnBubble() {
     if (ended) return;
     const fear = fears[Math.floor(Math.random() * fears.length)];
-    const size = fear.rare ? 100 : 70 + Math.random() * 20;
+    const size = fear.rare ? 100 : age <= 7 ? 90 + Math.random() * 30 : 70 + Math.random() * 20;
 
     const bubble = document.createElement('div');
     bubble.style.cssText = `
@@ -131,11 +148,16 @@ export function startPopFearsGame(level = 1) {
 
       document.getElementById('pf').textContent = '💪 '+bravery+' | 🫧 '+popped+'/'+total;
 
-      const storyEl = document.createElement('div');
-      storyEl.style.cssText = 'position:fixed;left:50%;bottom:80px;transform:translateX(-50%);max-width:90vw;width:320px;padding:14px 18px;background:rgba(255,255,255,0.95);color:#333;border-radius:16px;font-size:15px;line-height:1.5;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);z-index:1600;pointer-events:none;animation:fadeInUp 0.3s ease;';
-      storyEl.textContent = `${fear.emoji} ${fear.msg}`;
-      document.body.appendChild(storyEl);
-      setTimeout(() => storyEl.remove(), 4000);
+      if (age <= 7) {
+        speakOne(fear.msg);
+      } else {
+        speakOne(fear.msg);
+        const card = document.createElement('div');
+        card.style.cssText = 'position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;max-width:90%;text-align:center;z-index:20;animation:fadeInUp 0.3s ease;';
+        card.innerHTML = `<span style="font-size:24px;">${fear.emoji}</span><p>${fear.msg}</p>`;
+        container.appendChild(card);
+        setTimeout(() => card.remove(), 4000);
+      }
 
       // Вспышка
       const rect = bubble.getBoundingClientRect();
@@ -143,6 +165,14 @@ export function startPopFearsGame(level = 1) {
       flash.style.cssText = 'position:fixed;left:'+(rect.left-30)+'px;top:'+(rect.top-30)+'px;width:'+(rect.width+60)+'px;height:'+(rect.height+60)+'px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.8),transparent);animation:popFlash 0.4s ease-out forwards;pointer-events:none;z-index:1500;';
       document.body.appendChild(flash);
       setTimeout(() => flash.remove(), 400);
+
+      for (let i = 0; i < 5; i++) {
+        const star = document.createElement('div');
+        star.textContent = '⭐';
+        star.style.cssText = 'position:fixed;left:'+(rect.left+Math.random()*rect.width)+'px;top:'+(rect.top+Math.random()*rect.height)+'px;font-size:16px;animation:starUp 1s ease forwards;pointer-events:none;z-index:1500;';
+        document.body.appendChild(star);
+        setTimeout(() => star.remove(), 1000);
+      }
 
       // Частицы
       for (let i = 0; i < 8; i++) {
