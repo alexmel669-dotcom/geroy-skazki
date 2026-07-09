@@ -42,6 +42,7 @@ import { setAvatarState, playPurrSound, switchCharacter, showMicHint, showGamesH
 import { getTimeContext } from './context.js';
 import { detectRequestType, getDictionaryFallback, learnFromResponse, isBedtimeStoryRequest } from './dictionary.js';
 import { checkDailyStreak, updateStreakUI } from './retention.js';
+import { addXP, updateXPBar } from './progression.js';
 import {
   getTamagotchi, applyTamagotchiTick, onChat, onGame, onFeed, onClean, onFearTalk,
   getTamagotchiNeedsMessage
@@ -870,6 +871,7 @@ export function initCore() {
   setChatChild(getActiveChildName());
   loadChatHistory(getActiveChildName());
   updateStatsDisplay();
+  updateXPBar();
   updateTextInputVisibility();
   resetDailyCounters();
   if (getStoriesRemaining() <= 0) showPlanLimitUI(true);
@@ -991,6 +993,8 @@ export function setActiveChild(index, options = {}) {
     const gender = getChildGender(child);
     synthesizeSpeech(`Привет, ${child.name}! ${gladToSeePhrase(gender)}`, getCharacter()).catch(() => {});
   }
+
+  updateXPBar();
 }
 
 function checkChildSelection() {
@@ -1151,6 +1155,7 @@ export function updateStatsDisplay() {
   if (hunger) hunger.style.width = `${t.hunger ?? 60}%`;
   if (energy) energy.style.width = `${t.energy ?? 50}%`;
   if (bravery) bravery.style.width = `${Math.max(5, Math.min(100, t.courage ?? 10))}%`;
+  updateXPBar();
 }
 
 // ========================================
@@ -1853,6 +1858,7 @@ async function handleUserMessage(text, options = {}) {
   const stats = getChildStats();
   onChat(stats);
   saveChildStats(stats);
+  addXP('dialog');
 
   setAvatarState('speaking');
   await synthesizeSpeech(reply, getCharacter());

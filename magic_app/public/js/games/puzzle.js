@@ -1,6 +1,7 @@
 import { appState } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 
 export function startPuzzleGame(level = 1) {
@@ -129,6 +130,7 @@ export function startPuzzleGame(level = 1) {
     document.body.classList.remove('game-active');
     overlay.remove();
     recordGameResult('puzzle', true, level);
+    addXP('game_win');
     updateAchievement('puzzle_solver');
     checkProgressAchievements();
     trackEvent('puzzle_end', { level, moves, size });

@@ -1,6 +1,7 @@
 import { appState, showGamesMenu } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 
 const ITEMS = [
@@ -210,6 +211,7 @@ export function startFishGame(level = 1) {
     overlay.remove();
 
     recordGameResult('fish', true, level);
+    addXP('game_win');
     updateAchievement('fish_master');
     checkProgressAchievements();
     trackEvent('fish_end', { level, score });

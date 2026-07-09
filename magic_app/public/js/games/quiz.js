@@ -5,6 +5,7 @@
 import { appState } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 
 const ALL_QUESTIONS = [
@@ -153,7 +154,7 @@ export function startQuizGame(level = 1) {
     overlay.remove();
     setTimeout(() => audioCtx.close(), 2000);
     recordGameResult('quiz', won, level);
-    if (won) { updateAchievement('quiz_genius'); checkProgressAchievements(); }
+    if (won) { addXP('game_win'); updateAchievement('quiz_genius'); checkProgressAchievements(); }
     trackEvent(won?'quiz_won':'quiz_lost', { level, score });
     const best = Math.max(+(localStorage.getItem('quiz-best')||0), score);
     localStorage.setItem('quiz-best', best);

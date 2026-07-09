@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geroy-skazki-v5.7.4';
+const CACHE_NAME = 'geroy-skazki-v5.8.0';
 const ASSETS = [
   '/',
   '/app.html',
@@ -63,6 +63,7 @@ const ASSETS = [
   '/js/child-mode.js',
   '/js/child-swipe.js',
   '/js/game-progress.js',
+  '/js/progression.js',
   '/js/games/game-ui.js',
   '/js/games/fish.js',
   '/js/games/memory.js',

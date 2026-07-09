@@ -1,6 +1,7 @@
 import { appState } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 
 const RIDDLES = [
@@ -145,7 +146,7 @@ export function startRiddlesGame(level = 1) {
     document.body.classList.remove('game-active');
     overlay.remove();
     recordGameResult('riddles', won, level);
-    if (won) { updateAchievement('riddle_master'); checkProgressAchievements(); }
+    if (won) { addXP('game_win'); updateAchievement('riddle_master'); checkProgressAchievements(); }
     trackEvent(won?'riddles_won':'riddles_lost', { level, score });
     const best = Math.max(+(localStorage.getItem('riddles-best')||0), score);
     localStorage.setItem('riddles-best', best);

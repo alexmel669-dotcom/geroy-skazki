@@ -1,10 +1,13 @@
 import { showNotification } from './ui.js';
+import { addXP } from './progression.js';
 
 export function checkDailyStreak() {
   const today = new Date().toISOString().split('T')[0];
   const streak = JSON.parse(localStorage.getItem('geroy-streak') || '{}');
 
   if (streak.lastDate === today) return streak;
+
+  addXP('daily_login');
 
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 

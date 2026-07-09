@@ -5,6 +5,7 @@
 import { appState, getActiveChild } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 import { avatarUrl } from '../config.js';
 
@@ -399,6 +400,7 @@ export function startMusicCatGame(level = 1) {
     cleanup();
     overlay.remove();
     recordGameResult('musicCat', true, level);
+    addXP('game_win');
     updateAchievement('music_master');
     checkProgressAchievements();
     trackEvent('musicCat_won', { level });

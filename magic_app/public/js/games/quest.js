@@ -1,6 +1,7 @@
 import { appState, getActiveChild, showGamesMenu } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 import { getChildGender, formatChildText } from '../gender.js';
 
@@ -294,6 +295,7 @@ export function startQuestGame(level = 1) {
 
     recordGameResult('quest', won, level);
     if (won) {
+      addXP('game_win');
       updateAchievement('quest_hero');
       checkProgressAchievements();
     }

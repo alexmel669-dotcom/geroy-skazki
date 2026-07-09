@@ -5,6 +5,7 @@
 import { appState } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 
 const TASKS = {
@@ -216,6 +217,7 @@ export function startDrawAIGame(level = 1) {
           overlay.remove();
           document.body.classList.remove('game-active');
           recordGameResult('drawAi', true, level);
+          addXP('game_win');
           updateAchievement('artist');
           checkProgressAchievements();
           trackEvent('drawAi_won', { level });

@@ -5,6 +5,7 @@
 import { appState, getActiveChild } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 
 const FEAR_STORIES = {
@@ -151,6 +152,7 @@ export function startPopFearsGame(level = 1) {
       popped++;
       if (fear.rare) bravery += 3;
       else bravery++;
+      addXP('fear_pop');
 
       document.getElementById('pf').textContent = '💪 '+bravery+' | 🫧 '+popped+'/'+total;
 
@@ -212,6 +214,7 @@ export function startPopFearsGame(level = 1) {
     setTimeout(() => audioCtx.close(), 2000);
 
     recordGameResult('popFears', true, level);
+    addXP('game_win');
     updateAchievement('brave_child');
     checkProgressAchievements();
     trackEvent('popFears_won', { level, popped, bravery });

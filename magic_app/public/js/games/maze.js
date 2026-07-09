@@ -3,6 +3,7 @@
 import { appState, showGamesMenu } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 
 const SIZES = [7, 11, 15];
@@ -376,6 +377,7 @@ export function startMazeGame(level = 1) {
 
     recordGameResult('maze', won, level);
     if (won) {
+      addXP('game_win');
       updateAchievement('maze_runner');
       checkProgressAchievements();
     }

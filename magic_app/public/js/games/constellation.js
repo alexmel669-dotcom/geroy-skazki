@@ -6,6 +6,7 @@ import { appState } from '../core.js';
 import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 
 const ALL = [
@@ -180,6 +181,7 @@ export function startConstellationGame(level = 1) {
           cleanup();
           overlay.remove();
           recordGameResult('constellation', true, level);
+          addXP('game_win');
           updateAchievement('stargazer');
           checkProgressAchievements();
           trackEvent('constellation_won', { level });

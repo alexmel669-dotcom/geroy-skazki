@@ -6,6 +6,7 @@
 import { appState } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
 
 export function startMemoryGame(level = 1) {
@@ -117,6 +118,7 @@ export function startMemoryGame(level = 1) {
     overlay.remove();
 
     recordGameResult('memory', true, level);
+    addXP('game_win');
     updateAchievement('memory_champion');
     checkProgressAchievements();
     trackEvent('memory_end', { level, attempts });
