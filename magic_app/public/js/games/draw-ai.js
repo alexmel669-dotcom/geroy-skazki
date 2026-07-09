@@ -149,16 +149,42 @@ export function startDrawAIGame(level = 1) {
     const c = canvas.getContext('2d');
     const data = c.getImageData(0, 0, canvas.width, canvas.height).data;
     let r = 0; let g = 0; let b = 0; let count = 0;
+
+    const quads = [0, 0, 0, 0];
+    const quadColors = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    const half = canvas.width / 2;
+
     for (let i = 0; i < data.length; i += 4) {
+      const px = (i / 4) % canvas.width;
+      const py = Math.floor((i / 4) / canvas.width);
+
       if (data[i] + data[i + 1] + data[i + 2] < 700) {
         r += data[i]; g += data[i + 1]; b += data[i + 2]; count++;
+
+        const qx = px < half ? 0 : 1;
+        const qy = py < half ? 0 : 1;
+        const qi = qy * 2 + qx;
+        quads[qi]++;
+        quadColors[qi][0] += data[i];
+        quadColors[qi][1] += data[i + 1];
+        quadColors[qi][2] += data[i + 2];
       }
     }
+
     if (count === 0) return 'пустой холст';
+
     const avgR = Math.round(r / count); const avgG = Math.round(g / count); const avgB = Math.round(b / count);
+
+    const total = quads.reduce((a, b) => a + b, 1);
+    const top = (quads[0] + quads[1]) / total;
+    const center = quads[1] > quads[0] * 1.5 && quads[2] > quads[0] * 1.5 ? 'смещено вправо-вниз' :
+      quads[0] > quads[1] * 1.5 && quads[0] > quads[2] * 1.5 ? 'в левом верхнем углу' :
+        top > 0.7 ? 'в верхней части' : top < 0.3 ? 'в нижней части' : 'по центру';
+
     const color = avgR > avgG && avgR > avgB ? 'красный' : avgG > avgR && avgG > avgB ? 'зелёный' : avgB > avgR && avgB > avgG ? 'синий' : 'смешанный';
     const fill = Math.round((count / (canvas.width * canvas.height)) * 100);
-    return `закрашено ${fill}%, преобладает ${color} цвет`;
+
+    return `закрашено ${fill}%, ${color} цвет, рисунок ${center}`;
   }
 
   guessBtn.onclick = async () => {
