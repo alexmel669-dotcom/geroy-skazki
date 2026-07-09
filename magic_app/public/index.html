@@ -30,7 +30,15 @@
       <div class="counter-label">детей уже общаются с Люциком</div>
     </div>
 
-    <p class="hero-cta-text">🎁 Бонус для первых 1000: <strong>Premium 30 дней</strong> по коду <code>FOUNDERS</code></p>
+    <div class="promo-counter" id="promoBlock">
+      <h3>🎁 Промокод для первых</h3>
+      <div class="promo-bar-wrap">
+        <div class="promo-bar" id="promoBar"></div>
+      </div>
+      <p>Осталось: <b id="promoRemaining">...</b> из <b>100</b> мест</p>
+      <p>Код: <code>FOUNDERS</code> — <strong>Premium 30 дней</strong></p>
+      <p style="font-size:14px;color:#ff9f4a;">Успейте зарегистрироваться!</p>
+    </div>
   </div>
 
   <div class="landing-btns">
@@ -215,6 +223,22 @@
     e.preventDefault();
     openFeedbackModal();
   });
+
+  fetch('/api/promocode-stats?code=FOUNDERS')
+    .then((r) => r.json())
+    .then((d) => {
+      const remainingEl = document.getElementById('promoRemaining');
+      const barEl = document.getElementById('promoBar');
+      if (remainingEl) remainingEl.textContent = d.remaining;
+      if (barEl) barEl.style.width = ((d.used / d.limit) * 100) + '%';
+      if (d.remaining <= 10 && remainingEl) {
+        remainingEl.style.color = '#F44336';
+      }
+    })
+    .catch(() => {
+      const remainingEl = document.getElementById('promoRemaining');
+      if (remainingEl) remainingEl.textContent = '100';
+    });
 
   fetch('/api/admin-stats?public=1')
     .then((r) => r.json())

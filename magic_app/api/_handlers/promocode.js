@@ -1,7 +1,10 @@
 import { setCors } from '../_middleware/cors.js';
 import { validatePromocode } from '../_lib/promocodes.js';
+import { getPromoUsage, incrementPromoUsage, PROMO_LIMIT } from '../_lib/promo-counter.js';
 
 const PLAN_NAMES = { basic: 'Базовый', family: 'Семейный', free: 'Бесплатный' };
+
+export { incrementPromoUsage };
 
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
@@ -15,6 +18,13 @@ export default async function handler(req, res) {
 
   if (!promo) {
     return res.status(200).json({ valid: false, message: 'Промокод не найден' });
+  }
+
+  if (promo.code === 'FOUNDERS') {
+    const used = await getPromoUsage(promo.code);
+    if (used >= PROMO_LIMIT) {
+      return res.status(200).json({ valid: false, message: 'Все 100 мест по промокоду заняты' });
+    }
   }
 
   const planLabel = PLAN_NAMES[promo.plan] || promo.plan;

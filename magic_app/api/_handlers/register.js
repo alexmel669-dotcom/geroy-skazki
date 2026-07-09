@@ -7,6 +7,7 @@ import { logError } from '../_lib/auth-log.js';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '../_middleware/auth.js';
 import { validatePromocode, buildPlanFromPromo, getEffectivePlan } from '../_lib/promocodes.js';
+import { getPromoUsage, incrementPromoUsage, PROMO_LIMIT } from '../_lib/promo-counter.js';
 import { isValidSecretQuestionKey, normalizeSecretAnswer } from '../_lib/secret-questions.js';
 
 const MIN_AGE = 3;
@@ -126,11 +127,18 @@ export default async function handler(req, res) {
 
     const promo = validatePromocode(promocode);
     if (promo) {
+      if (promo.code === 'FOUNDERS') {
+        const used = await getPromoUsage(promo.code);
+        if (used >= PROMO_LIMIT) {
+          return res.status(400).json({ error: 'Все 100 мест по промокоду FOUNDERS заняты' });
+        }
+      }
       const applied = buildPlanFromPromo(promo);
       plan = applied.plan;
       planExpiry = applied.planExpiry;
       promocodeUsed = applied.promocodeUsed;
       promoMessage = `Активирован тариф «${plan}» на ${promo.days} дней!`;
+      await incrementPromoUsage(promo.code);
     }
 
     const user = {
