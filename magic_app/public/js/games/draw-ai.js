@@ -145,22 +145,37 @@ export function startDrawAIGame(level = 1) {
   canvas.ontouchend = () => drawing = false;
   canvas.ontouchmove = (e) => { if (drawing) { const t = e.touches[0]; drawAt(t.clientX, t.clientY); } };
 
+  function analyzePixels(canvas) {
+    const c = canvas.getContext('2d');
+    const data = c.getImageData(0, 0, canvas.width, canvas.height).data;
+    let r = 0; let g = 0; let b = 0; let count = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] + data[i + 1] + data[i + 2] < 700) {
+        r += data[i]; g += data[i + 1]; b += data[i + 2]; count++;
+      }
+    }
+    if (count === 0) return 'пустой холст';
+    const avgR = Math.round(r / count); const avgG = Math.round(g / count); const avgB = Math.round(b / count);
+    const color = avgR > avgG && avgR > avgB ? 'красный' : avgG > avgR && avgG > avgB ? 'зелёный' : avgB > avgR && avgB > avgG ? 'синий' : 'смешанный';
+    const fill = Math.round((count / (canvas.width * canvas.height)) * 100);
+    return `закрашено ${fill}%, преобладает ${color} цвет`;
+  }
+
   guessBtn.onclick = async () => {
     if (ended || guessing) return;
     guessing = true;
     guessBtn.disabled = true;
     resultEl.textContent = '🤔 Думаю...';
-    const dataUrl = canvas.toDataURL('image/png');
+    const desc = analyzePixels(canvas);
 
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: 'Посмотри на рисунок. Ответь ОДНИМ словом — что нарисовано. Только существительное в именительном падеже. Не говори "мурр", "мяу", "привет", "не знаю", "задумался", "думаю". Если не можешь определить — ответь "непонятно".',
+          message: `Ребёнок нарисовал картинку. Анализ пикселей: ${desc}. Угадай ОДНИМ словом что это.`,
           type: 'chat',
-          image: dataUrl,
-          systemPrompt: 'Ты — программа распознавания изображений. Ты не кот. Ты не Люцик. Ты просто алгоритм компьютерного зрения. Отвечай одним словом без эмоций.'
+          systemPrompt: 'Ты — программа распознавания рисунков. Отвечай одним словом.'
         })
       });
       const data = await res.json();
