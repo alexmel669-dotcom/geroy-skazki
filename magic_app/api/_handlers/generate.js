@@ -293,18 +293,19 @@ export default async function handler(req, res) {
     if (!message && !image) return res.status(400).json({ error: 'Message is required' });
 
     const gender = normalizeGender(childGender);
-    // Если клиент прислал systemPrompt — использовать его вместо дефолтного
-    let sys = req.body.systemPrompt || buildSystemPrompt({
+    // Если клиент прислал systemPrompt — использовать его вместо дефолтного (без промпта Люцика)
+    const systemPrompt = req.body.systemPrompt || buildSystemPrompt({
       childName, childAge, childGender: gender, character,
       topic, isFirstMessage, requestType: reqType, timeContext, isGuest
     });
+    let sys = systemPrompt;
 
     if (reqType === 'draw_guess' && !req.body.systemPrompt) {
       sys = `Ты помогаешь ребёнку угадать рисунок. Посмотри на картинку и ответь ОДНИМ словом на русском — что нарисовано. Если не уверен — напиши "не знаю". Ответь ТОЛЬКО JSON: {"message":"слово"}`;
     }
 
     if (!process.env.DEEPSEEK_API_KEY) {
-      const devReply = reqType === 'draw_guess'
+      const devReply = (image || reqType === 'draw_guess')
         ? 'котик'
         : childName
         ? (gender === 'female'
@@ -344,7 +345,7 @@ export default async function handler(req, res) {
         }
       : { role: 'user', content: message });
 
-    const maxTokens = reqType === 'draw_guess' ? 40 : reqType === 'bedtime_story' ? 550 : reqType === 'story' ? 400 : 100;
+    const maxTokens = (reqType === 'draw_guess' || (image && req.body.systemPrompt)) ? 40 : reqType === 'bedtime_story' ? 550 : reqType === 'story' ? 400 : 100;
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -367,7 +368,9 @@ export default async function handler(req, res) {
 
     const parsed = parseAiJson(raw);
     const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : 7;
-    const safeMessage = applyGrammarFixes(applyGenderToText(sanitizeAIText(parsed.message, age), gender));
+    const safeMessage = req.body.systemPrompt
+      ? String(parsed.message || raw).trim().split(/\s+/)[0].replace(/[^а-яё-]/gi, '')
+      : applyGrammarFixes(applyGenderToText(sanitizeAIText(parsed.message, age), gender));
     return res.status(200).json({
       reply: safeMessage,
       type: parsed.type || (requestType === 'bedtime_story' ? 'bedtime_story' : requestType) || 'chat',
@@ -381,7 +384,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Generate error:', error);
     return res.status(200).json({
-      reply: 'Мурр... Я немного задумался. Давай попробуем ещё раз? 🐱',
+      reply: req.body?.image ? 'непонятно' : 'Мурр... Я немного задумался. Давай попробуем ещё раз? 🐱',
       concerns: null,
       mood: 'neutral',
       ms: Date.now() - started
