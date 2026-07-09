@@ -104,6 +104,14 @@
   window.skipSplash = skipSplash;
 
   document.getElementById('splashOverlay').addEventListener('click', skipSplash);
+
+  // Страховка: скрыть splash через 3 секунды в любом случае
+  setTimeout(() => {
+    const splash = document.getElementById('splashOverlay');
+    if (splash && splash.style.display !== 'none') {
+      splash.style.display = 'none';
+    }
+  }, 3000);
 </script>
 
 <div class="container">

@@ -103,6 +103,14 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return;
   if (event.request.method !== 'GET') return;
 
+  // Корень — отдавать index.html
+  if (url.pathname === '/' || url.pathname === '') {
+    event.respondWith(
+      caches.match('/index.html').then((cached) => cached || fetch(event.request))
+    );
+    return;
+  }
+
   if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/assets/') || url.pathname.startsWith('/css/') || url.pathname.endsWith('.html') || url.pathname === '/manifest.json') {
     event.respondWith(
       fetch(event.request)
