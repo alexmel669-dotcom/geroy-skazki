@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geroy-skazki-v5.6.7';
+const CACHE_NAME = 'geroy-skazki-v5.6.8';
 const ASSETS = [
   '/',
   '/app.html',
@@ -12,6 +12,7 @@ const ASSETS = [
   '/terms.html',
   '/css/main.css',
   '/css/auth.css',
+  '/manifest.json',
   '/assets/images/parent-bg.png',
   '/assets/images/avatar.svg',
   '/assets/images/avatar.png',
@@ -78,9 +79,8 @@ const ASSETS = [
   '/js/games/constellation.js',
   '/js/games/pop-fears.js',
   '/js/parent-dashboard.js',
-  '/js/feedback.js',
   '/js/admin-dashboard.js',
-  '/manifest.json'
+  '/js/feedback.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -103,7 +103,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return;
   if (event.request.method !== 'GET') return;
 
-  if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/assets/')) {
+  if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/assets/') || url.pathname.startsWith('/css/') || url.pathname.endsWith('.html') || url.pathname === '/manifest.json') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
