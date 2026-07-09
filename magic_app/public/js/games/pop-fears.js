@@ -57,6 +57,12 @@ function processTTS() {
   setTimeout(() => processTTS(), 3000);
 }
 
+function stopAllTTS() {
+  ttsQueue.length = 0;
+  ttsSpeaking = false;
+  window.ttsEngine?.stop();
+}
+
 export function startPopFearsGame(level = 1) {
   document.querySelectorAll('.game-fullscreen').forEach(el => el.remove());
   document.body.classList.remove('game-active');
@@ -197,6 +203,7 @@ export function startPopFearsGame(level = 1) {
   function finish() {
     if (ended) return;
     ended = true;
+    stopAllTTS();
     clearInterval(spawnInterval);
     playWin();
     appState.gameActive = false;
@@ -221,6 +228,7 @@ export function startPopFearsGame(level = 1) {
   }
 
   document.getElementById('pc').onclick = () => {
+    stopAllTTS();
     clearInterval(spawnInterval);
     appState.gameActive = false;
     document.body.classList.remove('game-active');
