@@ -291,9 +291,10 @@ async function getWeekConcerns(childName) {
 }
 
 async function generateDetailedReport(childIndex = activeChild) {
-  const children = getChildren();
-  const child = children[childIndex] || children[0];
-  if (!child) return null;
+  const user = await getCurrentUser();
+  const children = user.children?.length ? user.children : getChildren();
+  const child = children[childIndex] || children[0] || user;
+  if (!child?.name && !child?.childName) return null;
 
   const childName = child.name || child.childName;
   const childGender = child.gender || child.childGender || 'male';
@@ -309,22 +310,23 @@ async function generateDetailedReport(childIndex = activeChild) {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({
-        message: `Составь короткий голосовой отчёт для родителя.
-Ребёнок: ${childName} (дательный: ${nameForms.dat}).
-За неделю говорил(а) о: ${topics || 'разных вещах'}.
+        text: `Составь короткий отчёт для родителя.
+Ребёнок: ${childName} (именительный), ${nameForms.dat} (дательный), ${nameForms.gen} (родительный).
+Пол: ${childGender === 'female' ? 'девочка' : 'мальчик'}.
+За неделю ${childName} ${childGender === 'female' ? 'общалась' : 'общался'} на темы: ${topics || 'разные'}.
 Настроение: ${moodSummary}.
-${concerns.length > 0 ? 'Переживания: ' + concerns.join(', ') + '.' : ''}
+${concerns.length > 0 ? 'Беспокойства: ' + concerns.join(', ') + '.' : ''}
 
-Формат: 3-4 предложения. Тёплый тон. Начни с обращения к родителю.`,
-        requestType: 'chat',
-        childName,
-        childAge: child.age,
-        childGender
+ВАЖНО: Используй правильные падежи. Обращайся к ребёнку "${childName}" в именительном,
+"${nameForms.dat}" в дательном, "${nameForms.gen}" в родительном.
+Пример: "Я рассказал ${nameForms.dat} сказку", "Настроение у ${nameForms.gen} хорошее".`,
+        type: 'chat',
+        systemPrompt: 'Ты — ассистент для родителей. Говори правильно, используй верные падежи имён.'
       })
     });
 
     const data = await res.json();
-    return data.reply || data.message || null;
+    return data.message || data.reply || null;
   } catch (e) {
     console.warn('generateDetailedReport failed:', e);
     return null;

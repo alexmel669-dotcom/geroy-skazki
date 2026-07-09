@@ -43,7 +43,7 @@
 
   <div class="landing-btns">
     <a href="app.html" class="btn btn-primary" id="playGuestLink">🎮 Играть с Люциком</a>
-    <a href="register.html" class="btn btn-secondary">✨ Попробовать бесплатно</a>
+    <a href="register.html" class="btn btn-secondary">Войти или зарегистрироваться</a>
     <a href="pricing.html" class="btn btn-accent">💎 Тарифы</a>
     <a href="#" class="btn btn-secondary" id="feedbackLandingBtn">💬 Оставить отзыв</a>
   </div>
@@ -97,6 +97,10 @@
   <section class="testimonials">
     <h2>💬 Что говорят родители</h2>
     <div id="testimonialsList" class="testimonials-grid"></div>
+    <div class="testimonials-cta">
+      <p>Уже попробовали? Расскажите о своём опыте!</p>
+      <button type="button" onclick="openFeedbackModal()" style="padding:12px 24px;border-radius:12px;border:none;background:#FFD700;color:#333;font-size:16px;cursor:pointer;font-weight:bold;">✍️ Написать отзыв</button>
+    </div>
   </section>
 
   <section class="for-whom">
@@ -219,6 +223,7 @@
   initAvatarImages();
   trackEvent('page_view', 'landing');
   initFeedbackButton();
+  window.openFeedbackModal = openFeedbackModal;
   document.getElementById('feedbackLandingBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
     openFeedbackModal();
