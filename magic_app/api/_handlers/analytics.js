@@ -14,7 +14,7 @@ export async function handler(req, res) {
   if (req.method === 'GET') {
     return res.json({
       ok: true,
-      version: '5.8.4',
+      version: '5.8.7',
       node: process.version,
       env: {
         jwt: !!process.env.JWT_SECRET,

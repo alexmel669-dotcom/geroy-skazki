@@ -257,6 +257,8 @@ async function loadAdminStats() {
 
     document.getElementById('totalUsers').textContent = stats.total ?? 0;
     document.getElementById('dau').textContent = stats.dau ?? 0;
+    document.getElementById('mau').textContent = stats.mau ?? 0;
+    document.getElementById('dialogsToday').textContent = stats.dialogsToday ?? 0;
     document.getElementById('newToday').textContent = stats.newToday ?? 0;
     document.getElementById('newThisWeek').textContent = stats.newThisWeek ?? 0;
     document.getElementById('totalChildren').textContent = stats.totalChildren ?? 0;
@@ -272,6 +274,15 @@ async function loadAdminStats() {
     renderStreakLeaders(stats.streakLeaders);
     renderChildrenTable(stats.children);
     renderGameUsage(stats.gameUsage);
+    const games = stats.gameUsage || {};
+    const popularEl = document.getElementById('popularGames');
+    if (popularEl) {
+      popularEl.innerHTML = Object.entries(games)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([g, c]) => `<div class="admin-list-row">🎮 ${escapeHtml(g)}: ${c}</div>`)
+        .join('') || '<div class="empty-state">Нет данных об играх</div>';
+    }
     renderTimeOfDay(stats.timeOfDay);
     renderFeedbacks(stats.feedbacks);
     loadThanks();

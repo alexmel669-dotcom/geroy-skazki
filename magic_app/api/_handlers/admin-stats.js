@@ -48,7 +48,17 @@ export async function buildFullStats() {
 
   const now = new Date();
   const today = dayKey(now);
+  const nowMs = now.getTime();
+  const dau = userList.filter((u) => u.lastLoginAt && new Date(u.lastLoginAt) > new Date(nowMs - 86400000)).length;
+  const mau = userList.filter((u) => u.lastLoginAt && new Date(u.lastLoginAt) > new Date(nowMs - 2592000000)).length;
   const newToday = userList.filter((u) => u.createdAt?.startsWith(today)).length;
+
+  let dialogsToday = 0;
+  try {
+    dialogsToday = Number(await redis.get('geroy:dialogs:count:' + today)) || 0;
+  } catch {
+    dialogsToday = 0;
+  }
 
   const children = [];
   userList.forEach((u) => {
@@ -70,15 +80,12 @@ export async function buildFullStats() {
   });
   children.sort((a, b) => (b.streak || 0) - (a.streak || 0));
 
-  const gameUsage = { ...base.gameUsage };
+  const gameUsage = {};
   userList.forEach((u) => {
-    (u.gameHistory || []).forEach((g) => {
-      const key = g.game || g.id || g.name || 'unknown';
+    if (u.gameHistory) u.gameHistory.forEach((g) => {
+      const key = typeof g === 'string' ? g : (g.game || g.id || g.name || 'unknown');
       gameUsage[key] = (gameUsage[key] || 0) + 1;
     });
-  });
-  (base.topGames || []).forEach(([name, count]) => {
-    gameUsage[name] = (gameUsage[name] || 0) + count;
   });
 
   const timeOfDay = { morning: 0, day: 0, evening: 0, night: 0 };
@@ -114,7 +121,9 @@ export async function buildFullStats() {
 
   return {
     total: userList.length,
-    dau: base.dau,
+    dau,
+    mau,
+    dialogsToday,
     newToday,
     newThisWeek: base.newThisWeek,
     plans: base.plans,

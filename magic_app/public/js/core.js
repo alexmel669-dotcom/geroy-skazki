@@ -1374,15 +1374,36 @@ function setupCharacterSwipe() {
   console.log('🔄 Child swipe ready');
 }
 
-function cycleActiveChild(direction) {
+function cycleActiveChild(direction = 1) {
   const children = getChildren();
-  if (children.length < 2) return;
+  const characters = [
+    ...children.map((c, i) => ({ ...c, childIndex: i })),
+    { name: 'Мама', gender: 'female', avatarRole: 'mom', characterId: 'mom' },
+    { name: 'Папа', gender: 'male', avatarRole: 'dad', characterId: 'dad' }
+  ];
+  if (characters.length < 2) return;
 
-  let idx = getActiveChildIndex();
-  if (idx < 0) idx = 0;
+  const currentChar = getCharacter();
+  let pos;
+  if (currentChar === 'mom') {
+    pos = children.length;
+  } else if (currentChar === 'dad') {
+    pos = children.length + 1;
+  } else {
+    const idx = getActiveChildIndex();
+    pos = idx >= 0 && idx < children.length ? idx : 0;
+  }
 
-  idx = (idx + direction + children.length) % children.length;
-  setActiveChild(idx, { greet: true });
+  pos = (pos + direction + characters.length) % characters.length;
+  const next = characters[pos];
+
+  if (next.characterId === 'mom' || next.characterId === 'dad') {
+    setCharacter(next.characterId);
+    switchCharacter(next.characterId);
+    synthesizeSpeech(`Привет! Я ${next.name}!`, next.characterId).catch(() => {});
+  } else if (typeof next.childIndex === 'number') {
+    setActiveChild(next.childIndex, { greet: true });
+  }
   playPurrSound();
 }
 

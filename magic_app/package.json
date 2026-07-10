@@ -1,6 +1,6 @@
 {
   "name": "geroy-skazki",
-  "version": "5.8.4",
+  "version": "5.8.7",
   "type": "module",
   "scripts": {
     "dev": "echo 'use npx vercel dev --listen 3000'",
