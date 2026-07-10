@@ -97,6 +97,22 @@
 
     .btn-voice:hover { background: #5A52E0; }
     .btn-voice:disabled { opacity: 0.6; cursor: wait; }
+    .child-devices { margin-top: 8px; }
+    .child-devices h3 { margin: 0 0 12px; font-size: 0.95rem; }
+    .child-device-item {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .child-device-item:last-child { border-bottom: none; }
+    .child-device-item > span { flex: 1 1 120px; font-weight: 600; }
+    .btn-sm {
+      padding: 6px 12px; border-radius: 12px; border: none;
+      background: rgba(108,99,255,0.35); color: #fff; font-size: 0.8rem;
+      cursor: pointer; font-weight: 600;
+    }
+    .btn-sm:hover { background: rgba(108,99,255,0.55); }
+    .qr-code { width: 100%; text-align: center; margin-top: 8px; }
+    .qr-code img { border-radius: 12px; background: #fff; padding: 8px; }
 
     .notification-settings label.notify-label {
       display: flex;
@@ -181,13 +197,11 @@
 
   <div class="card">
     <h2>📱 Телефон ребёнка</h2>
-    <p style="opacity:0.75;font-size:0.85rem;">Откройте эту ссылку или QR на втором телефоне — ребёнок увидит только приложение без родительского кабинета.</p>
-    <div class="child-connect" id="child-connect-0">
-      <img id="child-qr-0" src="" alt="QR-код" style="display:none;width:200px;height:200px;margin:12px auto;">
-      <div id="childLink"></div>
-      <button class="btn-save" id="connectChildDevice" type="button">📱 Показать QR</button>
+    <p style="opacity:0.75;font-size:0.85rem;">Откройте ссылку или QR на телефоне ребёнка — он увидит только приложение без родительского кабинета.</p>
+    <div class="child-devices">
+      <h3>📱 Подключить телефон ребёнка</h3>
+      <div id="childDeviceList"></div>
     </div>
-    <div id="childQrCode"></div>
   </div>
 
   <div class="card time-stats" id="timeStatsCard">
@@ -249,6 +263,7 @@
   </div>
 
   <div class="card">
+    <button onclick="openFeedbackModal()" class="btn" type="button">✍️ Оставить отзыв</button>
     <button class="btn-attention" id="weeklyDigestBtn" type="button" style="margin-top:0;">📧 Отправить недельный отчёт на email</button>
     <button class="btn-save" id="parentLogoutBtn" type="button" style="width:100%;margin-top:12px;background:rgba(255,255,255,0.15);">🚪 Выйти из аккаунта</button>
   </div>
@@ -265,8 +280,9 @@
 </div>
 
 <script type="module">
-  import { initFeedbackButton } from './js/feedback.js';
+  import { initFeedbackButton, openFeedbackModal } from './js/feedback.js';
   initFeedbackButton();
+  window.openFeedbackModal = openFeedbackModal;
 </script>
 <script type="module" src="js/parent-dashboard.js"></script>
 </body>

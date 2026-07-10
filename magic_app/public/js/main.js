@@ -16,6 +16,40 @@ import { startOnboarding } from './onboarding.js';
 
 var initializeApp;
 var tryBrowserSpeechRecognition;
+let installPrompt = null;
+
+function initPwaInstallBanner() {
+  const banner = document.getElementById('installBanner');
+  const installBtn = document.getElementById('installBtn');
+  const dismissBtn = document.getElementById('dismissBtn');
+  if (!banner || !installBtn || !dismissBtn) return;
+
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isStandalone || localStorage.getItem('pwa-dismissed') === 'true') return;
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    installPrompt = e;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('child_token')) {
+      banner.style.display = 'block';
+    }
+  });
+
+  installBtn.addEventListener('click', () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    installPrompt.userChoice.then(() => {
+      banner.style.display = 'none';
+      installPrompt = null;
+    });
+  });
+
+  dismissBtn.addEventListener('click', () => {
+    banner.style.display = 'none';
+    localStorage.setItem('pwa-dismissed', 'true');
+  });
+}
 
 try {
   tryBrowserSpeechRecognition = async function tryBrowserSpeechRecognition() {
@@ -29,6 +63,7 @@ try {
     initAvatarImages();
     initCore();
     setupAdditionalHandlers();
+    initPwaInstallBanner();
     updateUI();
     initAvatarImages();
     if (ENV.isDev || ENV.isStaging) initDevPanel();

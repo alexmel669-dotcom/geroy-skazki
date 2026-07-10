@@ -82,7 +82,7 @@ async function getCurrentUser() {
     username: localStorage.getItem('userEmail')?.split('@')[0] || 'Родитель',
     childName: child?.name || 'ребёнок'
   };
-  if (!token || localStorage.getItem('guestMode') === 'true') return fallback;
+  if (!token || localStorage.getItem('guestMode') === 'true') return { ...fallback, children };
 
   try {
     const res = await fetch('/api/profile-update', {
@@ -96,13 +96,75 @@ async function getCurrentUser() {
       return {
         parentName: u.parentName || u.username || fallback.parentName,
         username: u.username || fallback.username,
-        childName: child?.name || u.childName || u.children?.[0]?.name || fallback.childName
+        childName: child?.name || u.childName || u.children?.[0]?.name || fallback.childName,
+        children: u.children?.length ? u.children : children
       };
     }
   } catch {
     /* local fallback */
   }
-  return fallback;
+  return { ...fallback, children };
+}
+
+async function fetchChildToken(index) {
+  const res = await fetch(`/api/child-token?child=${index}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: authHeaders(),
+    body: JSON.stringify({ childIndex: index })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Не удалось создать ссылку');
+  return data;
+}
+
+function renderChildDevices() {
+  const children = getChildren();
+  const list = document.getElementById('childDeviceList');
+  if (!list) return;
+
+  if (!children.length) {
+    list.innerHTML = '<div class="empty-state">Добавьте детей в разделе ниже</div>';
+    return;
+  }
+
+  list.innerHTML = children.map((child, i) => `
+    <div class="child-device-item">
+      <span>${child.gender === 'female' ? '👧' : '👦'} ${child.name}</span>
+      <button type="button" onclick="generateChildLink(${i})" class="btn-sm">📱 Ссылка</button>
+      <button type="button" onclick="generateChildQR(${i})" class="btn-sm">🔳 QR</button>
+      <div id="qr-${i}" class="qr-code"></div>
+    </div>
+  `).join('');
+}
+
+async function generateChildLink(index) {
+  try {
+    const data = await fetchChildToken(index);
+    try {
+      await navigator.clipboard.writeText(data.url);
+      alert('Ссылка скопирована! Отправьте её на телефон ребёнка.');
+    } catch {
+      prompt('Скопируйте ссылку:', data.url);
+    }
+  } catch (err) {
+    alert(err.message || 'Не удалось создать ссылку');
+  }
+}
+
+async function generateChildQR(index) {
+  try {
+    const data = await fetchChildToken(index);
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.url)}`;
+    const el = document.getElementById(`qr-${index}`);
+    if (!el) return;
+    el.innerHTML = `
+      <img src="${qrUrl}" width="200" height="200" alt="QR">
+      <p><small>Наведите камеру телефона</small></p>
+    `;
+  } catch (err) {
+    alert(err.message || 'Не удалось создать QR');
+  }
 }
 
 async function updateParentGreeting() {
@@ -638,44 +700,6 @@ async function verifyPinSubmit() {
   }
 }
 
-async function connectChildDevice() {
-  const idx = currentChildIndex >= 0 ? currentChildIndex : 0;
-  const res = await fetch(`/api/child-token?child=${idx}`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: authHeaders(),
-    body: JSON.stringify({ childIndex: idx })
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    alert(data.error || 'Не удалось создать ссылку');
-    return;
-  }
-  const qrImg = document.getElementById('child-qr-0');
-  const qr = document.getElementById('childQrCode');
-  const link = document.getElementById('childLink');
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.url)}`;
-  if (qrImg) {
-    qrImg.src = qrUrl;
-    qrImg.style.display = 'block';
-  }
-  if (qr) {
-    qr.innerHTML = `<p style="font-size:0.85rem;opacity:0.8;text-align:center;">Сканируйте QR или откройте ссылку на телефоне ребёнка</p>`;
-  }
-  if (link) {
-    link.innerHTML = `<a id="child-link-0" href="${data.url}" style="color:var(--accent);word-break:break-all;display:block;margin:8px 0;" target="_blank">${data.url}</a>
-      <button type="button" class="btn-save" style="margin-top:10px;width:100%;" id="copyChildLinkBtn">📋 Скопировать ссылку</button>`;
-    document.getElementById('copyChildLinkBtn')?.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(data.url);
-        alert('Ссылка скопирована!');
-      } catch {
-        prompt('Скопируйте ссылку:', data.url);
-      }
-    });
-  }
-}
-
 function mapHistoryMood(moods) {
   if (!moods.length) return 'neutral';
   const positive = moods.filter((m) => m === 'positive' || m === 'happy').length;
@@ -1183,6 +1207,10 @@ function loadStorybook() {
     : '<p>Здесь будут сказки которые Люцик рассказывает вашему ребёнку.</p>';
 }
 
+function loadParentDashboard() {
+  loadAllData();
+}
+
 function loadAllData() {
   updateParentGreeting();
   renderPlanInfo();
@@ -1198,6 +1226,7 @@ function loadAllData() {
   if (children.length && currentChildIndex < 0) currentChildIndex = 0;
   loadChildStats(currentChildIndex >= 0 ? currentChildIndex : 0);
   renderChildSelector();
+  renderChildDevices();
 }
 
 function saveChildrenNames() {
@@ -1274,12 +1303,14 @@ function showAttentionModal() {
 window.selectChild = selectChild;
 window.saveChildrenNames = saveChildrenNames;
 window.showAttentionModal = showAttentionModal;
+window.generateChildLink = generateChildLink;
+window.generateChildQR = generateChildQR;
 
 document.getElementById('pinSubmitBtn')?.addEventListener('click', verifyPinSubmit);
 document.getElementById('pinInput')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') verifyPinSubmit();
 });
-document.getElementById('connectChildDevice')?.addEventListener('click', connectChildDevice);
+
 document.getElementById('speakReportBtn')?.addEventListener('click', speakReport);
 document.getElementById('parentLogoutBtn')?.addEventListener('click', () => logout());
 document.getElementById('weeklyDigestBtn')?.addEventListener('click', async () => {
