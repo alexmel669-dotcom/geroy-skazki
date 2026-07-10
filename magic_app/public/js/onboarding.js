@@ -59,11 +59,15 @@ export class OnboardingGuide {
     ttsEngine.speak(step.voice).catch(() => {});
 
     const tip = document.createElement('div');
-    tip.className = 'ob-tip';
-    tip.innerHTML = `<p>${step.text}</p><button type="button" id="obNext">Далее →</button>`;
+    tip.className = 'ob-tip onboarding-tooltip';
+    tip.innerHTML = `<p>${step.text}</p><button type="button" id="obNext">${i === this.steps.length - 1 ? 'Понятно' : 'Далее →'}</button>`;
 
     const r = el.getBoundingClientRect();
-    tip.style.cssText = `position:fixed;left:${Math.max(12, r.left)}px;top:${r.bottom + 10}px;z-index:3001;`;
+    tip.style.position = 'fixed';
+    tip.style.left = `${Math.max(12, Math.min(r.left, window.innerWidth - 280))}px`;
+    tip.style.top = '60px';
+    tip.style.bottom = 'auto';
+    tip.style.zIndex = '3001';
     document.body.appendChild(tip);
 
     tip.querySelector('#obNext').onclick = () => {
