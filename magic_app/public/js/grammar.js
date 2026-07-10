@@ -36,18 +36,17 @@ export function getCorrectNameForm(name, gender = 'male') {
   let dat;
   let gen;
   if (isFemale) {
+    // Женские имена
     if (last === 'а') { dat = n.slice(0, -1) + 'е'; gen = n.slice(0, -1) + 'и'; }
     else if (last === 'я') { dat = n.slice(0, -1) + 'е'; gen = n.slice(0, -1) + 'и'; }
+    else if (last === 'ь') { dat = n.slice(0, -1) + 'и'; gen = n.slice(0, -1) + 'и'; }
     else { dat = n + 'е'; gen = n + 'и'; }
-  } else if (last === 'а' || last === 'я') {
-    dat = n.slice(0, -1) + 'е';
-    gen = n.slice(0, -1) + 'и';
-  } else if (last === 'й') {
-    dat = n.slice(0, -1) + 'ю';
-    gen = n.slice(0, -1) + 'я';
   } else {
-    dat = n + 'у';
-    gen = n + 'а';
+    // Мужские имена
+    if (last === 'а' || last === 'я') { dat = n.slice(0, -1) + 'е'; gen = n.slice(0, -1) + 'и'; }
+    else if (last === 'й') { dat = n.slice(0, -1) + 'ю'; gen = n.slice(0, -1) + 'я'; }
+    else if (last === 'ь') { dat = n.slice(0, -1) + 'ю'; gen = n.slice(0, -1) + 'я'; }
+    else { dat = n + 'у'; gen = n + 'а'; }
   }
 
   return { nom: n, dat, gen, nominative: n, dative: dat, genitive: gen };
