@@ -2,7 +2,26 @@ import { getAgeBasedTone, sanitizeAIText } from '../_lib/content-filter.js';
 import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit } from '../_middleware/ai-rate-limit.js';
 import { buildGenderPrompt, applyGenderToText, normalizeGender } from '../_lib/gender-ru.js';
-import { GRAMMAR_RULES, getAgeWord, applyGrammarFixes, getCorrectNameForm } from '../_lib/grammar-ru.js';
+import { getAgeWord, applyGrammarFixes, getCorrectNameForm } from '../_lib/grammar-ru.js';
+
+const GRAMMAR_RULES = `
+ПРАВИЛА РУССКОГО ЯЗЫКА (соблюдай всегда):
+1. Склоняй имена правильно:
+   - Девочка Лиза → "Лизе", "у Лизы", "с Лизой", "для Лизы"
+   - Мальчик Лев → "Льву", "у Льва", "со Львом", "для Льва"
+   - Никогда не говори "о Лиза" или "о Лев"
+2. Используй правильный род:
+   - Девочка: "ты сказала", "ты была", "ты общалась"
+   - Мальчик: "ты сказал", "ты был", "ты общался"
+3. Говори грамотно:
+   - "как твои дела?" (не "твой дела")
+   - "я тебя люблю" (не "я тебе люблю")
+   - "скучаю по тебе" (не "скучаю тебе")
+   - "давай поиграем" (не "давай поиграть")
+   - "расскажи мне" (не "расскажи меня")
+   - "мы с тобой общались" (не "общался")
+4. Создавай ощущение живого общения — будь тёплым, но грамотным.
+`;
 
 const CHARACTER_PROMPTS = {
   lucik: 'Ты — Люцик, кот-психолог. Помогаешь советом, мягко выявляешь тревоги.',
@@ -127,8 +146,6 @@ ${CONVERSATION_GUIDE}
 
 ${SOFT_FEAR_PROMPT}
 
-${GRAMMAR_RULES}
-
 ${JSON_FORMAT_CHAT}`;
 }
 
@@ -158,8 +175,6 @@ ${nameFormsBlock(childName, childGender)}
 ${CONVERSATION_GUIDE}
 
 ${SOFT_FEAR_PROMPT}
-
-${GRAMMAR_RULES}
 
 Твоя задача — РАССКАЗАТЬ СКАЗКУ для ребёнка.
 - Длина: 3-5 минут чтения
@@ -192,8 +207,6 @@ ${CONVERSATION_GUIDE}
 
 ${SOFT_FEAR_PROMPT}
 
-${GRAMMAR_RULES}
-
 Твоя задача — РАССКАЗАТЬ СКАЗКУ НА НОЧЬ для засыпания.
 - Длина: минимум 400 символов, 5-8 абзацев, спокойный ритм
 - Тема: мягкое волшебство, уют, звёзды, луна, тёплый дом
@@ -224,8 +237,6 @@ function getGuestPrompt(childName, childAge) {
 5. БЫТЬ другом, а не психологом
 6. Говорить просто и тепло
 
-${GRAMMAR_RULES}
-
 ${JSON_FORMAT}`;
 }
 
@@ -233,36 +244,36 @@ function buildSystemPrompt({ childName, childAge, childGender, character, system
   if (systemPrompt) return systemPrompt;
   const charId = character || 'lucik';
   const needsGuestIntro = isGuest && (!childName || !childAge);
+  let prompt;
   if (needsGuestIntro && requestType !== 'story' && requestType !== 'bedtime_story') {
-    return getGuestPrompt(childName, childAge);
+    prompt = getGuestPrompt(childName, childAge);
+  } else if (requestType === 'bedtime_story') {
+    prompt = getBedtimeStoryPrompt(childName, childAge, timeContext, childGender, charId);
+  } else if (requestType === 'story') {
+    prompt = getStoryPrompt(childName, childAge, timeContext, topic, childGender, charId);
+  } else if (requestType === 'chat') {
+    prompt = getChatPrompt(childName, childAge, timeContext, childGender, charId);
+  } else {
+    const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : null;
+    const role = getCharacterPrompt(charId, childAge, childGender);
+    const tone = age ? getAgeBasedTone(age) : '';
+    const agePrompt = age ? getAgePrompt(age) : '';
+    const genderLine = buildGenderPrompt(childGender, childName);
+    const nameLine = childName
+      ? `${nameFormsBlock(childName, childGender)}${age ? `, ${age} ${getAgeWord(age)}` : ''}.`
+      : 'Имя ребёнка пока неизвестно.';
+    const topicLine = topic ? `\nТекущая тема: ${topic}` : '';
+    const firstLine = isFirstMessage ? '\nЭто первое сообщение в диалоге.' : '';
+    const continueHint = 'Если ребёнок говорит «давай», «расскажи ещё», «продолжай» — продолжай предыдущую тему.';
+    const toneLine = tone ? `\n\nСтиль общения:\n${tone}${agePrompt ? `\n${agePrompt}` : ''}` : (agePrompt ? `\n\n${agePrompt}` : '');
+    const genderHint = childGender === 'female'
+      ? 'Обращайся в женском роде: "ты сказала", "ты сделала", "как прошла твой день".'
+      : childGender === 'male'
+        ? 'Обращайся в мужском роде: "ты сказал", "ты сделал", "как прошёл твой день".'
+        : '';
+    prompt = `${role}\n\n${nameLine}\n\n${genderLine}\n\n${grammarBlock(childName)}\n\n${nameFormsBlock(childName, childGender)}\n\nВАЖНО: используй правильные падежи при обращении к ${childName || 'ребёнку'}.\n${genderHint}${topicLine}${firstLine}\n\n${CONVERSATION_GUIDE}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
   }
-  if (requestType === 'bedtime_story') {
-    return getBedtimeStoryPrompt(childName, childAge, timeContext, childGender, charId);
-  }
-  if (requestType === 'story') {
-    return getStoryPrompt(childName, childAge, timeContext, topic, childGender, charId);
-  }
-  if (requestType === 'chat') {
-    return getChatPrompt(childName, childAge, timeContext, childGender, charId);
-  }
-  const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : null;
-  const role = getCharacterPrompt(charId, childAge, childGender);
-  const tone = age ? getAgeBasedTone(age) : '';
-  const agePrompt = age ? getAgePrompt(age) : '';
-  const genderLine = buildGenderPrompt(childGender, childName);
-  const nameLine = childName
-    ? `${nameFormsBlock(childName, childGender)}${age ? `, ${age} ${getAgeWord(age)}` : ''}.`
-    : 'Имя ребёнка пока неизвестно.';
-  const topicLine = topic ? `\nТекущая тема: ${topic}` : '';
-  const firstLine = isFirstMessage ? '\nЭто первое сообщение в диалоге.' : '';
-  const continueHint = 'Если ребёнок говорит «давай», «расскажи ещё», «продолжай» — продолжай предыдущую тему.';
-  const toneLine = tone ? `\n\nСтиль общения:\n${tone}${agePrompt ? `\n${agePrompt}` : ''}` : (agePrompt ? `\n\n${agePrompt}` : '');
-  const genderHint = childGender === 'female'
-    ? 'Обращайся в женском роде: "ты сказала", "ты сделала", "как прошла твой день".'
-    : childGender === 'male'
-      ? 'Обращайся в мужском роде: "ты сказал", "ты сделал", "как прошёл твой день".'
-      : '';
-  return `${role}\n\n${nameLine}\n\n${genderLine}\n\n${grammarBlock(childName)}\n\n${nameFormsBlock(childName, childGender)}\n\nВАЖНО: используй правильные падежи при обращении к ${childName || 'ребёнку'}.\n${genderHint}${topicLine}${firstLine}\n\n${CONVERSATION_GUIDE}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
+  return `${GRAMMAR_RULES}\n\n${prompt}`;
 }
 
 function parseAiJson(raw) {

@@ -360,6 +360,7 @@ async function generateDetailedReport(childIndex = activeChild) {
 
   const childName = child.name || child.childName;
   const childGender = child.gender || child.childGender || 'male';
+  const childAge = child.age || child.childAge;
   const nameForms = getCorrectNameForm(childName, childGender);
 
   const dialogs = getWeekDialogs(childName);
@@ -372,18 +373,26 @@ async function generateDetailedReport(childIndex = activeChild) {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({
-        text: `Составь короткий отчёт для родителя.
-Ребёнок: ${childName} (именительный), ${nameForms.dat} (дательный), ${nameForms.gen} (родительный).
-Пол: ${childGender === 'female' ? 'девочка' : 'мальчик'}.
-За неделю ${childName} ${childGender === 'female' ? 'общалась' : 'общался'} на темы: ${topics || 'разные'}.
-Настроение: ${moodSummary}.
-${concerns.length > 0 ? 'Беспокойства: ' + concerns.join(', ') + '.' : ''}
+        text: `Составь отчёт из 3-4 предложений.
 
-ВАЖНО: Используй правильные падежи. Обращайся к ребёнку "${childName}" в именительном,
-"${nameForms.dat}" в дательном, "${nameForms.gen}" в родительном.
-Пример: "Я рассказал ${nameForms.dat} сказку", "Настроение у ${nameForms.gen} хорошее".`,
+Ребёнок: ${childName}, возраст: ${childAge} лет, пол: ${childGender === 'female' ? 'девочка' : 'мальчик'}.
+
+СТРОГИЕ ПРАВИЛА:
+1. Склоняй имя правильно:
+   - Для ${childName}: "у ${nameForms.gen}", "с ${nameForms.gen}", "для ${nameForms.gen}"
+   - Никогда не говори "отчет о Лиза" или "отчет о Лев" — только "отчёт о Лизе", "отчёт о Льве"
+2. Используй правильный род:
+   - ${childGender === 'female' ? 'ОНА общалась, у НЕЁ, ЕЙ, она сказала' : 'ОН общался, у НЕГО, ЕМУ, он сказал'}
+3. Говори грамотно:
+   - "мы с тобой общались" (не "общался")
+   - "я рассказал ${childGender === 'female' ? 'ей' : 'ему'} сказку"
+   - "настроение у ${nameForms.gen} хорошее"
+
+За неделю: ${topics || 'разные темы'}
+Настроение: ${moodSummary}
+${concerns.length > 0 ? 'Беспокойства: ' + concerns.join(', ') + '.' : ''}`,
         type: 'chat',
-        systemPrompt: 'Ты — ассистент. Склоняй имена правильно. Для девочек: "она", "ей", "у неё". Для мальчиков: "он", "ему", "у него".'
+        systemPrompt: 'Ты — ассистент для родителей. Говори грамотно. Склоняй имена по падежам. Используй правильный род. Никогда не говори "отчет о Лиза" — только "отчёт о Лизе".'
       })
     });
 
