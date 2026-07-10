@@ -185,6 +185,9 @@ function renderFeedbacks(feedbacks) {
 async function replyToFeedback(index) {
   const reply = prompt('Ваш ответ:');
   if (!reply) return;
+
+  const signedReply = reply + '\n\n🐱 С уважением, Люцик — ваш помощник и друг';
+
   try {
     await fetch('/api/admin/feedback-reply', {
       method: 'POST',
@@ -192,7 +195,7 @@ async function replyToFeedback(index) {
         'Content-Type': 'application/json',
         Authorization: getAdminToken()
       },
-      body: JSON.stringify({ index, reply })
+      body: JSON.stringify({ index, reply: signedReply })
     });
     loadAdminStats();
   } catch (e) {
