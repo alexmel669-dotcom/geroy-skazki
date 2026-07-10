@@ -1,5 +1,7 @@
-import { setCors } from '../_middleware/cors.js';
-import { appendEvents } from '../_lib/analytics-store.js';
+// ========================================
+// analytics.js — Логирование и health-check
+// ========================================
+
 import { Redis } from '@upstash/redis';
 
 const redis = new Redis({
@@ -7,123 +9,45 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN
 });
 
-async function sendAdminAlert(errors) {
-  const key = process.env.RESEND_API_KEY?.trim();
-  const adminEmail = (process.env.ADMIN_EMAILS || 'admin@geroy-skazki.local').split(',')[0]?.trim();
-  if (!key || !adminEmail) return;
-
-  const summary = errors.slice(0, 5).map((e) =>
-    `<li><b>${e.type}</b>: ${String(e.message || '').slice(0, 120)}</li>`
-  ).join('');
-
-  try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json'
+export async function handler(req, res) {
+  // Health check
+  if (req.method === 'GET') {
+    return res.json({
+      ok: true,
+      version: '5.8.4',
+      node: process.version,
+      env: {
+        jwt: !!process.env.JWT_SECRET,
+        kv: !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
+        yandexKey: !!process.env.YANDEX_API_KEY,
+        yandexFolder: !!process.env.YANDEX_FOLDER_ID,
+        deepseek: !!process.env.DEEPSEEK_API_KEY
       },
-      body: JSON.stringify({
-        from: 'Люцик <lucik.geroy.skazki@gmail.com>',
-        to: [adminEmail],
-        subject: `[Герой Сказок] Критическая ошибка клиента`,
-        html: `<p>Зафиксировано ${errors.length} критических ошибок:</p><ul>${summary}</ul>`
-      })
+      yandexKeyLength: (process.env.YANDEX_API_KEY || '').length,
+      timestamp: new Date().toISOString()
     });
-  } catch (err) {
-    console.error('Admin alert email failed:', err.message);
-  }
-}
-
-async function storeClientErrors(errors) {
-  const dateKey = new Date().toISOString().slice(0, 10);
-  const redisKey = `errors:${dateKey}`;
-  try {
-    const existing = (await redis.get(redisKey)) || [];
-    const merged = [...existing, ...errors].slice(-500);
-    await redis.set(redisKey, merged);
-  } catch (err) {
-    console.warn('Client errors Redis store failed:', err.message);
   }
 
-  const critical = errors.filter((e) => e.critical);
-  if (critical.length) await sendAdminAlert(critical);
-}
-
-async function handleHealth(req, res) {
-  const yandexKey = process.env.YANDEX_API_KEY?.trim();
-  const yandexFolder = process.env.YANDEX_FOLDER_ID?.trim();
-  return res.status(200).json({
-    ok: true,
-    version: '5.5.3',
-    node: process.version,
-    env: {
-      jwt: Boolean(process.env.JWT_SECRET?.trim()),
-      kv: Boolean(process.env.KV_REST_API_URL?.trim() && process.env.KV_REST_API_TOKEN?.trim()),
-      yandexKey: Boolean(yandexKey),
-      yandexFolder: Boolean(yandexFolder),
-      deepseek: Boolean(process.env.DEEPSEEK_API_KEY?.trim())
-    },
-    yandexKeyLength: yandexKey ? yandexKey.length : 0,
-    timestamp: new Date().toISOString()
-  });
-}
-
-async function handleLogError(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-  try {
-    const { context, message, timestamp, appVersion } = req.body || {};
-    console.error(`📋 [ERROR LOG] ${timestamp} | ${context} | v${appVersion}`);
-    console.error(`   ${message}`);
-    return res.status(200).json({ success: true });
-  } catch (error) {
-    console.error('Log error handler failed:', error);
-    return res.status(500).json({ error: 'Logging failed' });
-  }
-}
-
-async function handleAnalyticsPost(req, res) {
-  const { events } = req.body || {};
-  if (!events || !Array.isArray(events)) {
-    return res.status(400).json({ error: 'Events array required' });
-  }
-
-  const clientErrorEvents = events.filter((e) => e.name === 'client_errors');
-  for (const evt of clientErrorEvents) {
-    const batch = evt.data?.errors;
-    if (Array.isArray(batch) && batch.length) {
-      await storeClientErrors(batch);
-    }
-  }
-
-  const hasLandingView = events.some((e) => e.name === 'page_view' || e.name === 'landing_view');
-  if (hasLandingView) {
+  // Сохранение событий
+  if (req.method === 'POST') {
     try {
-      await redis.incr('geroy:analytics:visitors');
-    } catch (err) {
-      console.warn('Visitor counter failed:', err.message);
+      const body = req.body || {};
+      const key = 'geroy:analytics:events';
+      const events = await redis.get(key) || [];
+      events.push({
+        ...body,
+        timestamp: new Date().toISOString()
+      });
+      if (events.length > 1000) events.shift();
+      await redis.set(key, events);
+      return res.json({ stored: true, count: events.length });
+    } catch (e) {
+      console.error('Analytics error:', e.message);
+      return res.status(500).json({ error: 'Storage error' });
     }
   }
 
-  appendEvents(events);
-  console.log(`📊 Analytics: ${events.length} events stored`);
-  return res.status(200).json({ success: true, processed: events.length });
+  return res.status(405).json({ error: 'Method not allowed' });
 }
 
-export default async function handler(req, res) {
-  if (setCors(req, res)) return;
-
-  const route = req.apiRoute || 'analytics';
-
-  try {
-    if (route === 'health') return handleHealth(req, res);
-    if (route === 'log-error') return handleLogError(req, res);
-    if (req.method === 'POST') return handleAnalyticsPost(req, res);
-    return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error) {
-    console.error('Analytics error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-}
+export default handler;
