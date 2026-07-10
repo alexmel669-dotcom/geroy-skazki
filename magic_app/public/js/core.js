@@ -40,7 +40,7 @@ import { startPopFearsGame } from './games/pop-fears.js';
 import { getGameLevel, createConfetti, resetGameSession } from './games/game-ui.js';
 import { setAvatarState, playPurrSound, switchCharacter, showMicHint, showGamesHint, showSwipeHint } from './ui.js';
 import { getTimeContext } from './context.js';
-import { detectRequestType, getDictionaryFallback, learnFromResponse, isBedtimeStoryRequest } from './dictionary.js';
+import { detectRequestType, getDictionaryFallback, learnFromResponse, getLearnedDictionary, isBedtimeStoryRequest } from './dictionary.js';
 import { checkDailyStreak, updateStreakUI } from './retention.js';
 import { addXP, updateXPBar } from './progression.js';
 import {
@@ -1662,6 +1662,7 @@ async function runBedtimeStory(promptText) {
     let reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
     reply = applyGenderToText(sanitizeAIText(reply, child?.age || 7), gender);
     console.log('🐱 Ответ ИИ:', reply.slice(0, 100));
+    saveToLearnedDictionary(promptText, reply);
 
     saveToChildHistory({ role: 'child', text: promptText, timestamp: Date.now(), childName, type: 'bedtime_story' });
     addToContext('child', promptText);
@@ -1722,6 +1723,15 @@ function suggestFollowUp(aiResult, childAge) {
     const msg = options[Math.floor(Math.random() * options.length)];
     if (msg) setTimeout(() => window.ttsEngine?.speak(msg), 2000);
   }
+}
+
+function saveToLearnedDictionary(userMessage, aiResponse) {
+  if (!userMessage || !aiResponse) return;
+  Promise.resolve(learnFromResponse(userMessage, aiResponse))
+    .then(() => {
+      console.log('📚 Словарь обновлён. Ключей:', Object.keys(getLearnedDictionary()).length);
+    })
+    .catch(() => {});
 }
 
 async function handleUserMessage(text, options = {}) {
@@ -1818,8 +1828,6 @@ async function handleUserMessage(text, options = {}) {
     if (!aiResult.fromApi && dictFallback) {
       reply = dictFallback;
       console.log('📖 Словарь (API недоступен):', reply.slice(0, 100));
-    } else {
-      learnFromResponse(text, reply);
     }
   } finally {
     hideThinking();
@@ -1833,6 +1841,7 @@ async function handleUserMessage(text, options = {}) {
 
   if (globalThis.__lastAiMs) applyAiTiming();
   reply = applyGenderToText(sanitizeAIText(reply, child?.age || 7), getChildGender(child));
+  saveToLearnedDictionary(text, reply);
 
   const botAlerts = detectAlertWords(reply);
   const botPersonal = detectPersonalData(reply);
