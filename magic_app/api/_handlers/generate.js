@@ -240,8 +240,29 @@ function getGuestPrompt(childName, childAge) {
 ${JSON_FORMAT}`;
 }
 
-function buildSystemPrompt({ childName, childAge, childGender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext, isGuest }) {
+function getParentPrompt(parentName, children) {
+  const childNames = children?.map((c) => c.name).join(', ') || 'ребёнок';
+
+  return `
+Ты — ассистент для родителей. Родителя зовут ${parentName || 'родитель'}.
+Дети: ${childNames}.
+
+Твои задачи:
+1. Отвечать на вопросы о детях на основе статистики
+2. Рассказывать о настроении и темах разговоров
+3. Предупреждать о беспокойствах мягко
+4. Быть вежливым и профессиональным
+
+НЕ используй детский тон. НЕ говори «мяу» или «мурр».
+Обращайся к родителю по имени и на «вы».
+`;
+}
+
+function buildSystemPrompt({ childName, childAge, childGender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext, isGuest, isParent, parentName, children }) {
   if (systemPrompt) return systemPrompt;
+  if (isParent) {
+    return getParentPrompt(parentName, children);
+  }
   const charId = character || 'lucik';
   const needsGuestIntro = isGuest && (!childName || !childAge);
   let prompt;
@@ -298,7 +319,7 @@ export default async function handler(req, res) {
 
   const started = Date.now();
   try {
-    const { message: msgField, text, childName, childAge, childGender, character, history, topic, isFirstMessage, requestType, type, timeContext, isGuest, image } = req.body;
+    const { message: msgField, text, childName, childAge, childGender, character, history, topic, isFirstMessage, requestType, type, timeContext, isGuest, image, isParent, parentName, children } = req.body;
     const message = msgField || text;
     const reqType = requestType || type || 'chat';
     if (!message && !image) return res.status(400).json({ error: 'Message is required' });
@@ -307,7 +328,8 @@ export default async function handler(req, res) {
     // Если клиент прислал systemPrompt — использовать его вместо дефолтного (без промпта Люцика)
     const systemPrompt = req.body.systemPrompt || buildSystemPrompt({
       childName, childAge, childGender: gender, character,
-      topic, isFirstMessage, requestType: reqType, timeContext, isGuest
+      topic, isFirstMessage, requestType: reqType, timeContext, isGuest,
+      isParent, parentName, children
     });
     let sys = systemPrompt;
 

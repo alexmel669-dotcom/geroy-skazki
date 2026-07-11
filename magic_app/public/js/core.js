@@ -1408,6 +1408,17 @@ function cycleActiveChild(direction = 1) {
 }
 
 function loadState() {
+  const user = getCurrentUser();
+
+  if (user.role === 'parent' || user.isParent) {
+    const parentChar = (user.parentGender || user.gender) === 'female' ? 'mom' : 'dad';
+    setCharacter(parentChar);
+    localStorage.setItem('currentCharacter', parentChar);
+    switchCharacter(parentChar);
+    document.body.classList.add('parent-mode');
+    return;
+  }
+
   getUserCharacter(getCurrentUser());
 }
 
@@ -1832,11 +1843,49 @@ async function handleUserMessage(text, options = {}) {
   let aiResult = null;
   try {
     console.log('🤖 Отправлено в ИИ:', text);
-    aiResult = await generateResponse(text, {
-      ...getChildContextForAI(),
-      requestType,
-      timeContext
-    });
+    const isParent = document.body.classList.contains('parent-mode');
+    if (isParent) {
+      const children = getChildren();
+      const stats = children.map((c) => ({
+        name: c.name || c.childName,
+        dialogs: 0,
+        mood: 'хорошее'
+      }));
+      const token = localStorage.getItem('userToken');
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          message: text,
+          isParent: true,
+          parentName: localStorage.getItem('parentName') || localStorage.getItem('userEmail')?.split('@')[0] || 'Родитель',
+          children: stats,
+          requestType: 'chat',
+          character: getCharacter()
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.ms === 'number') globalThis.__lastAiMs = data.ms;
+        if (data.reply) {
+          aiResult = {
+            text: data.reply,
+            type: data.type || 'chat',
+            mood: data.mood || 'neutral',
+            fromApi: true
+          };
+        }
+      }
+    } else {
+      aiResult = await generateResponse(text, {
+        ...getChildContextForAI(),
+        requestType,
+        timeContext
+      });
+    }
     reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
     responseType = aiResult.type || requestType;
     aiMood = aiResult.mood || null;
