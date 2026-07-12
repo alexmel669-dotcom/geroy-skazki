@@ -1,9 +1,5 @@
 {
-  "redirects": [
-    {
-      "source": "/:path*",
-      "destination": "https://geroy-skazki.ru/:path*",
-      "permanent": true
-    }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
   ]
 }

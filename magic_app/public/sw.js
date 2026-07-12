@@ -1,6 +1,5 @@
-const CACHE_NAME = 'geroy-skazki-v5.8.4';
+const CACHE_NAME = 'geroy-skazki-v5.9.2';
 const ASSETS = [
-  '/',
   '/app.html',
   '/index.html',
   '/login.html',
@@ -104,17 +103,26 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return;
   if (event.request.method !== 'GET') return;
 
-  // Корень — отдавать index.html
+  // Корень — отдавать index.html (не fetch("/") — Pages может ответить 301/302)
   if (url.pathname === '/' || url.pathname === '') {
     event.respondWith(
-      caches.match('/index.html').then((cached) => cached || fetch(event.request))
+      caches.match('/index.html').then((cached) => {
+        if (cached) return cached;
+        return fetch('/index.html', { redirect: 'follow' }).then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone));
+          }
+          return response;
+        });
+      })
     );
     return;
   }
 
   if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/assets/') || url.pathname.startsWith('/css/') || url.pathname.endsWith('.html') || url.pathname === '/manifest.json') {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { redirect: 'follow' })
         .then((response) => {
           if (response.ok) {
             const clone = response.clone();
@@ -130,7 +138,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
-      return fetch(event.request).catch(() => new Response('Нет сети', { status: 503 }));
+      return fetch(event.request, { redirect: 'follow' }).catch(() => new Response('Нет сети', { status: 503 }));
     })
   );
 });
