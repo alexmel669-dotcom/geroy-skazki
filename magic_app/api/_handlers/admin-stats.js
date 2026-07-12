@@ -3,6 +3,7 @@ import { setCors } from '../_middleware/cors.js';
 import { verifyAdmin } from '../_middleware/auth.js';
 import { getAllUsers, findUser, getDialogs } from '../_lib/users.js';
 import { getEffectivePlan } from '../_lib/promocodes.js';
+import { getPromoStats, PROMO_LIMIT } from '../_lib/promo-counter.js';
 import { getAnalyticsStats } from '../_lib/analytics-store.js';
 import { getRecentFeedbacks } from '../_lib/feedbacks.js';
 
@@ -36,6 +37,15 @@ function maskEmail(email) {
   return `${local.slice(0, 3)}@...`;
 }
 
+async function getRedisEvents() {
+  try {
+    const events = await redis.get('geroy:analytics:events');
+    return Array.isArray(events) ? events : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function buildFullStats() {
   const base = await getDetailedStats();
   const usersIndex = await getAllUsers();
@@ -55,7 +65,15 @@ export async function buildFullStats() {
 
   let dialogsToday = 0;
   try {
-    dialogsToday = Number(await redis.get('geroy:dialogs:count:' + today)) || 0;
+    const redisEvents = await getRedisEvents();
+    dialogsToday = redisEvents.filter((e) => {
+      const ts = e.timestamp || '';
+      const day = ts.split('T')[0];
+      return day === today && (e.type === 'dialog' || e.name === 'dialog');
+    }).length;
+    if (!dialogsToday) {
+      dialogsToday = Number(await redis.get('geroy:dialogs:count:' + today)) || 0;
+    }
   } catch {
     dialogsToday = 0;
   }
@@ -80,12 +98,15 @@ export async function buildFullStats() {
   });
   children.sort((a, b) => (b.streak || 0) - (a.streak || 0));
 
-  const gameUsage = {};
+  const gameUsage = { ...base.gameUsage };
   userList.forEach((u) => {
     if (u.gameHistory) u.gameHistory.forEach((g) => {
       const key = typeof g === 'string' ? g : (g.game || g.id || g.name || 'unknown');
       gameUsage[key] = (gameUsage[key] || 0) + 1;
     });
+  });
+  (base.topGames || []).forEach(([name, count]) => {
+    gameUsage[name] = (gameUsage[name] || 0) + count;
   });
 
   const timeOfDay = { morning: 0, day: 0, evening: 0, night: 0 };
@@ -119,6 +140,26 @@ export async function buildFullStats() {
 
   const feedbacks = await getRecentFeedbacks(20);
 
+  const redisEvents = await getRedisEvents();
+  const lastActions = redisEvents.slice(-10).reverse().map((e) => ({
+    type: e.type || e.name || 'event',
+    child: e.child || e.data || '',
+    timestamp: e.timestamp || ''
+  }));
+
+  const foundersUsers = userList.filter((u) => String(u.promocodeUsed || '').toUpperCase() === 'FOUNDERS').length;
+  let promoConversion = 0;
+  try {
+    const promo = await getPromoStats('FOUNDERS');
+    promoConversion = PROMO_LIMIT > 0
+      ? Number(((promo.used / PROMO_LIMIT) * 100).toFixed(1))
+      : 0;
+  } catch {
+    promoConversion = userList.length > 0
+      ? Number(((foundersUsers / userList.length) * 100).toFixed(1))
+      : 0;
+  }
+
   return {
     total: userList.length,
     dau,
@@ -136,6 +177,8 @@ export async function buildFullStats() {
     suspiciousCount: suspicious.length,
     streakLeaders,
     feedbacks,
+    lastActions,
+    promoConversion,
     totalChildren: base.totalChildren,
     updatedAt: now.toISOString()
   };

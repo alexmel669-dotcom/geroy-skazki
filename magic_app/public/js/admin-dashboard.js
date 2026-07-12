@@ -267,6 +267,9 @@ async function loadAdminStats() {
     document.getElementById('totalChildren').textContent = stats.totalChildren ?? 0;
     document.getElementById('avgSession').textContent = `${stats.avgSessionMinutes ?? 12} мин`;
     document.getElementById('suspicious').textContent = stats.suspiciousCount ?? 0;
+    document.getElementById('promoConv').textContent = stats.promoConversion != null
+      ? `${stats.promoConversion}%`
+      : '-';
     document.getElementById('statsUpdated').textContent = stats.updatedAt
       ? `Обновлено: ${new Date(stats.updatedAt).toLocaleString('ru-RU')}`
       : '';
@@ -287,6 +290,18 @@ async function loadAdminStats() {
         .join('') || '<div class="empty-state">Нет данных об играх</div>';
     }
     renderTimeOfDay(stats.timeOfDay);
+    const lastActionsEl = document.getElementById('lastActions');
+    if (lastActionsEl) {
+      const actions = stats.lastActions || [];
+      lastActionsEl.innerHTML = actions.length
+        ? actions.map((a) => `
+          <div class="admin-list-row">
+            <span>${escapeHtml(a.type)}${a.child ? ` · ${escapeHtml(a.child)}` : ''}</span>
+            <span>${a.timestamp ? escapeHtml(new Date(a.timestamp).toLocaleString('ru-RU')) : '—'}</span>
+          </div>
+        `).join('')
+        : '<div class="empty-state">Нет данных о действиях</div>';
+    }
     renderFeedbacks(stats.feedbacks);
     loadThanks();
   } catch (error) {

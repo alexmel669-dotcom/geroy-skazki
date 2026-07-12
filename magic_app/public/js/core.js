@@ -1407,15 +1407,25 @@ function cycleActiveChild(direction = 1) {
   playPurrSound();
 }
 
+function switchToParentMode() {
+  const user = getCurrentUser();
+  const children = getChildren();
+  if (document.body.classList.contains('parent-mode')) return;
+  if (user.role !== 'parent' && children.length === 0) return;
+
+  const parentChar = (user.parentGender || user.gender) === 'female' ? 'mom' : 'dad';
+  setCharacter(parentChar);
+  localStorage.setItem('currentCharacter', parentChar);
+  switchCharacter(parentChar);
+  document.body.classList.add('parent-mode');
+}
+
 function loadState() {
   const user = getCurrentUser();
+  const children = getChildren();
 
-  if (user.role === 'parent' || user.isParent) {
-    const parentChar = (user.parentGender || user.gender) === 'female' ? 'mom' : 'dad';
-    setCharacter(parentChar);
-    localStorage.setItem('currentCharacter', parentChar);
-    switchCharacter(parentChar);
-    document.body.classList.add('parent-mode');
+  if (user.role === 'parent' || children.length > 0) {
+    switchToParentMode();
     return;
   }
 
@@ -1938,6 +1948,12 @@ async function handleUserMessage(text, options = {}) {
   onChat(stats);
   saveChildStats(stats);
   addXP('dialog');
+
+  fetch('/api/analytics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'dialog', child: getActiveChild()?.name })
+  }).catch(() => {});
 
   setAvatarState('speaking');
   await synthesizeSpeech(reply, getCharacter());
