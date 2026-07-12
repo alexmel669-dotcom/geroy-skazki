@@ -1,7 +1,8 @@
 # 🐱 Люцик — Герой Сказок
 
-**Версия:** 4.1.0  
-**Дата актуализации:** 23 июня 2026 г.
+**Версия:** 6.0.1  
+**Дата актуализации:** 12 июля 2026 г.  
+**Статус:** Stable
 
 ИИ-помощник для детей 3–14 лет: голосовое общение, терапевтические сказки, игры, родительский кабинет.
 
@@ -11,8 +12,9 @@
 
 | Параметр | Значение |
 |----------|----------|
-| Версия | **4.1.0** |
-| Стек | Vanilla JS (ES Modules), PWA, Vercel Serverless |
+| Версия | **6.0.1** (Stable) |
+| Хостинг | Cloudflare Pages (статика) + Worker `geroy-skazki-api2` (API) |
+| Домен | `geroy-skazki.ru` |
 | AI | DeepSeek Chat API (`/api/generate`) |
 | TTS | Yandex SpeechKit (`/api/tts`) — POST body |
 | STT | Yandex SpeechKit (`/api/speech-to-text`) — только голос, без текстового ввода |
