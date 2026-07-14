@@ -11,7 +11,9 @@ export function setCors(req, res) {
     'http://127.0.0.1:5500',
     'http://localhost:8080',
     'http://127.0.0.1:8080',
-    'https://geroy-skazki.vercel.app'
+    'https://geroy-skazki.vercel.app',
+    'https://geroy-skazki.ru',
+    'https://www.geroy-skazki.ru'
   ];
 
   if (process.env.VERCEL_URL) {
@@ -30,9 +32,7 @@ export function setCors(req, res) {
   } else if (requestOrigin && requestOrigin.endsWith('.up.railway.app')) {
     origin = requestOrigin;
   } else if (process.env.NODE_ENV === 'production') {
-    origin = process.env.RAILWAY_PUBLIC_DOMAIN
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-      : 'https://geroy-skazki.vercel.app';
+    origin = 'https://geroy-skazki.ru';
   }
 
   res.setHeader('Access-Control-Allow-Origin', origin);
