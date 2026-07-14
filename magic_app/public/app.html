@@ -204,32 +204,31 @@
 <script type="module" src="js/error-monitor.js"></script>
 <script type="module" src="js/main.js"></script>
 <script>
-  // Service Worker временно отключён
-  // if ('serviceWorker' in navigator) {
-  //   navigator.serviceWorker.register('/sw.js').then((reg) => {
-  //     reg.addEventListener('updatefound', () => {
-  //       const newWorker = reg.installing;
-  //       if (!newWorker) return;
-  //       newWorker.addEventListener('statechange', () => {
-  //         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-  //           newWorker.postMessage('skipWaiting');
-  //
-  //           const banner = document.createElement('div');
-  //           banner.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#6C63FF;color:#fff;padding:12px 24px;border-radius:24px;z-index:9999;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
-  //           banner.textContent = '🔄 Обновление готово. Нажмите чтобы обновить.';
-  //           banner.onclick = () => location.reload();
-  //           document.body.appendChild(banner);
-  //
-  //           setTimeout(() => {
-  //             location.reload();
-  //           }, 3000);
-  //         }
-  //       });
-  //     });
-  //
-  //     setInterval(() => reg.update(), 600000);
-  //   }).catch(() => {});
-  // }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            newWorker.postMessage('skipWaiting');
+
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#6C63FF;color:#fff;padding:12px 24px;border-radius:24px;z-index:9999;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+            banner.textContent = '🔄 Обновление готово. Нажмите чтобы обновить.';
+            banner.onclick = () => location.reload();
+            document.body.appendChild(banner);
+
+            setTimeout(() => {
+              location.reload();
+            }, 3000);
+          }
+        });
+      });
+
+      setInterval(() => reg.update(), 600000);
+    }).catch(() => {});
+  }
 </script>
 </body>
 </html>
