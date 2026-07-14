@@ -18,13 +18,21 @@ export function setCors(req, res) {
     allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
   }
 
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    allowedOrigins.push(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+  }
+
   let origin = allowedOrigins[0];
   if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
     origin = requestOrigin;
   } else if (requestOrigin && requestOrigin.endsWith('.vercel.app')) {
     origin = requestOrigin;
+  } else if (requestOrigin && requestOrigin.endsWith('.up.railway.app')) {
+    origin = requestOrigin;
   } else if (process.env.NODE_ENV === 'production') {
-    origin = 'https://geroy-skazki.vercel.app';
+    origin = process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : 'https://geroy-skazki.vercel.app';
   }
 
   res.setHeader('Access-Control-Allow-Origin', origin);
