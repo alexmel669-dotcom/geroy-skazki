@@ -3,6 +3,14 @@ import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit } from '../_middleware/ai-rate-limit.js';
 import { buildGenderPrompt, applyGenderToText, normalizeGender } from '../_lib/gender-ru.js';
 import { getAgeWord, applyGrammarFixes, getCorrectNameForm } from '../_lib/grammar-ru.js';
+import { verifyAuth } from '../_middleware/auth.js';
+import { findUser } from '../_lib/users.js';
+import { Redis } from '@upstash/redis';
+
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN
+});
 
 const GRAMMAR_RULES = `
 ПРАВИЛА РУССКОГО ЯЗЫКА (соблюдай всегда):
@@ -323,9 +331,35 @@ export default async function handler(req, res) {
   const started = Date.now();
   try {
     const { message: msgField, text, childName, childAge, childGender, character, history, topic, isFirstMessage, requestType, type, timeContext, isGuest, image, isParent, parentName, children } = req.body;
-    const message = msgField || text;
+    let message = msgField || text;
     const reqType = requestType || type || 'chat';
     if (!message && !image) return res.status(400).json({ error: 'Message is required' });
+
+    const charId = character || 'lucik';
+    const historyEmpty = !Array.isArray(history) || history.length === 0;
+
+    // Для родительских аватаров — подставляем реальную статистику
+    if ((charId === 'mom' || charId === 'dad') && historyEmpty) {
+      const auth = verifyAuth(req);
+      const email = (req.body.parentEmail || req.body.email || auth?.email || '').toLowerCase();
+      if (email) {
+        const today = new Date().toISOString().slice(0, 10);
+        const dialogsToday = Number(await redis.get(`geroy:dialogs:count:${today}`)) || 0;
+        const totalEvents = (await redis.get('geroy:stats:events')) || 0;
+        const user = await findUser(email);
+        const childrenList = user?.children || [];
+
+        const statsContext = `
+ВАЖНО: Отвечай на основе реальных данных. Не выдумывай.
+Сегодня диалогов: ${dialogsToday}
+Всего событий: ${totalEvents}
+Дети: ${childrenList.map((c) => `${c.name}, ${c.age} лет`).join('; ') || 'нет данных'}
+Если данных нет — скажи честно: "Пока недостаточно данных для статистики".
+`;
+
+        message = statsContext + '\nВопрос родителя: ' + message;
+      }
+    }
 
     const gender = normalizeGender(childGender);
     // Если клиент прислал systemPrompt — использовать его вместо дефолтного (без промпта Люцика)
