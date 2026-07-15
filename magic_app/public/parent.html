@@ -140,6 +140,15 @@
     .story-item:last-child { border-bottom: none; }
     .story-item p { opacity: 0.8; font-size: 0.85rem; margin: 6px 0; }
     .story-item small { opacity: 0.5; font-size: 0.75rem; }
+    .parent-hint-note {
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      padding: 14px 18px;
+      color: #24292f;
+      font-size: 14px;
+      margin: 12px 0 0;
+    }
   </style>
 </head>
 <body>
@@ -166,7 +175,7 @@
       <li>🎮 «В какие игры играли дети?»</li>
       <li>📅 «Статистика за последние 7 дней»</li>
     </ul>
-    <p style="font-size:14px;color:#666;">Вместо «дети» можно указать имя ребёнка, например «Какое настроение у Миши?»</p>
+    <p class="parent-hint-note">Вместо «дети» можно указать имя ребёнка, например «Какое настроение у Миши?»</p>
   </div>
   <h2 id="parentGreeting" class="parent-greeting">👋 Здравствуйте!</h2>
   <button id="speakReportBtn" class="btn-voice" type="button">🎤 Прослушать отчёт по всем детям</button>
