@@ -99,35 +99,7 @@ function renderPlans(plans) {
   }).join('');
 }
 
-function renderChildrenTable(children) {
-  const tbody = document.querySelector('#childrenTable tbody');
-  if (!tbody) return;
-  if (!children?.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">Нет данных</td></tr>';
-    return;
-  }
-  tbody.innerHTML = children.map((c) => {
-    const emailAttr = escapeHtml(c.parentEmail || '');
-    const emailJs = JSON.stringify(c.parentEmail || '');
-    return `
-    <tr>
-      <td>${escapeHtml(c.name)}</td>
-      <td>${escapeHtml(String(c.age))}</td>
-      <td>${escapeHtml(String(c.gender))}</td>
-      <td title="${emailAttr}">${emailAttr}${c.parentName && c.parentName !== '—' ? `<br><small>${escapeHtml(c.parentName)}</small>` : ''}</td>
-      <td>${escapeHtml(c.plan || 'free')}</td>
-      <td>${c.streak || 0}</td>
-      <td>${escapeHtml(c.lastLogin || '—')}</td>
-      <td class="admin-actions">
-        <button type="button" onclick="editUser(${emailJs})" title="Редактировать">✏️</button>
-        <button type="button" onclick="deleteUser(${emailJs})" title="Удалить">🗑️</button>
-      </td>
-    </tr>
-  `;
-  }).join('');
-}
-
-window.editUser = async function (email) {
+async function editUser(email) {
   const newName = prompt('Новое имя родителя:', '');
   if (!newName) return;
   const token = getAdminToken();
@@ -147,9 +119,9 @@ window.editUser = async function (email) {
     console.error('editUser error:', e);
     alert('Ошибка сети');
   }
-};
+}
 
-window.deleteUser = async function (email) {
+async function deleteUser(email) {
   if (!confirm('Удалить пользователя ' + email + '? Все данные будут потеряны.')) return;
   const token = getAdminToken();
   try {
@@ -168,7 +140,69 @@ window.deleteUser = async function (email) {
     console.error('deleteUser error:', e);
     alert('Ошибка сети');
   }
-};
+}
+
+function renderChildrenTable(children) {
+  const tbody = document.querySelector('#childrenTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (!children?.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">Нет данных</td></tr>';
+    return;
+  }
+
+  children.forEach((c) => {
+    const email = c.parentEmail || '';
+    const tr = document.createElement('tr');
+
+    const cells = [
+      c.name,
+      String(c.age),
+      String(c.gender),
+      null,
+      c.plan || 'free',
+      String(c.streak || 0),
+      c.lastLogin || '—'
+    ];
+
+    cells.forEach((val, i) => {
+      const td = document.createElement('td');
+      if (i === 3) {
+        td.title = email;
+        td.appendChild(document.createTextNode(email));
+        if (c.parentName && c.parentName !== '—') {
+          td.appendChild(document.createElement('br'));
+          const small = document.createElement('small');
+          small.textContent = c.parentName;
+          td.appendChild(small);
+        }
+      } else {
+        td.textContent = val;
+      }
+      tr.appendChild(td);
+    });
+
+    const actionsTd = document.createElement('td');
+    actionsTd.className = 'admin-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.textContent = '✏️';
+    editBtn.title = 'Редактировать';
+    editBtn.onclick = function () { editUser(email); };
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.textContent = '🗑️';
+    deleteBtn.title = 'Удалить';
+    deleteBtn.onclick = function () { deleteUser(email); };
+
+    actionsTd.appendChild(editBtn);
+    actionsTd.appendChild(deleteBtn);
+    tr.appendChild(actionsTd);
+    tbody.appendChild(tr);
+  });
+}
 
 function renderGameUsage(gameUsage) {
   const el = document.getElementById('gameUsage');
