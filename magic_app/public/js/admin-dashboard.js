@@ -103,21 +103,72 @@ function renderChildrenTable(children) {
   const tbody = document.querySelector('#childrenTable tbody');
   if (!tbody) return;
   if (!children?.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">Нет данных</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-cell">Нет данных</td></tr>';
     return;
   }
-  tbody.innerHTML = children.map((c) => `
+  tbody.innerHTML = children.map((c) => {
+    const emailAttr = escapeHtml(c.parentEmail || '');
+    const emailJs = JSON.stringify(c.parentEmail || '');
+    return `
     <tr>
       <td>${escapeHtml(c.name)}</td>
       <td>${escapeHtml(String(c.age))}</td>
       <td>${escapeHtml(String(c.gender))}</td>
-      <td>${escapeHtml(c.parentEmail)}</td>
+      <td title="${emailAttr}">${emailAttr}${c.parentName && c.parentName !== '—' ? `<br><small>${escapeHtml(c.parentName)}</small>` : ''}</td>
       <td>${escapeHtml(c.plan || 'free')}</td>
       <td>${c.streak || 0}</td>
       <td>${escapeHtml(c.lastLogin || '—')}</td>
+      <td class="admin-actions">
+        <button type="button" onclick="editUser(${emailJs})" title="Редактировать">✏️</button>
+        <button type="button" onclick="deleteUser(${emailJs})" title="Удалить">🗑️</button>
+      </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
+
+window.editUser = async function (email) {
+  const newName = prompt('Новое имя родителя:', '');
+  if (!newName) return;
+  const token = getAdminToken();
+  try {
+    const res = await fetch('/api/admin/user-edit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: token },
+      body: JSON.stringify({ email, parentName: newName })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Ошибка редактирования');
+      return;
+    }
+    loadAdminStats();
+  } catch (e) {
+    console.error('editUser error:', e);
+    alert('Ошибка сети');
+  }
+};
+
+window.deleteUser = async function (email) {
+  if (!confirm('Удалить пользователя ' + email + '? Все данные будут потеряны.')) return;
+  const token = getAdminToken();
+  try {
+    const res = await fetch('/api/admin/user-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: token },
+      body: JSON.stringify({ email })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Ошибка удаления');
+      return;
+    }
+    loadAdminStats();
+  } catch (e) {
+    console.error('deleteUser error:', e);
+    alert('Ошибка сети');
+  }
+};
 
 function renderGameUsage(gameUsage) {
   const el = document.getElementById('gameUsage');

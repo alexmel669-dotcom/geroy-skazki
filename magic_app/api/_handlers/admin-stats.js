@@ -31,12 +31,6 @@ function shortLabel(isoDate) {
   return d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' });
 }
 
-function maskEmail(email) {
-  if (!email) return '—';
-  const local = email.split('@')[0] || '';
-  return `${local.slice(0, 3)}@...`;
-}
-
 async function getRedisEvents() {
   try {
     const events = await redis.get('geroy:analytics:events');
@@ -89,7 +83,8 @@ export async function buildFullStats() {
         name: c.name || '—',
         age: c.age ?? '—',
         gender: c.gender || u.gender || '—',
-        parentEmail: maskEmail(u.email),
+        parentEmail: u.email || '—',
+        parentName: u.parentName || u.username || '—',
         plan: getEffectivePlan(u),
         lastLogin: u.lastLoginAt?.split('T')[0] || '—',
         streak: u.streak || u.retention?.count || 0

@@ -37,6 +37,8 @@ import notifyCreator from './_handlers/notify-creator.js';
 import adminThanks from './_handlers/admin-thanks.js';
 import feedbacks from './_handlers/feedbacks.js';
 import adminFeedbackReply from './_handlers/admin-feedback-reply.js';
+import adminUserDelete from './_handlers/admin-user-delete.js';
+import adminUserEdit from './_handlers/admin-user-edit.js';
 
 
 
@@ -108,7 +110,11 @@ const ROUTES = {
 
   feedbacks,
 
-  'admin/feedback-reply': adminFeedbackReply
+  'admin/feedback-reply': adminFeedbackReply,
+
+  'admin/user-delete': adminUserDelete,
+
+  'admin/user-edit': adminUserEdit
 
 };
 
