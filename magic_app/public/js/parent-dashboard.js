@@ -619,13 +619,6 @@ async function ensureParentAccess() {
 async function enterParentCabinet() {
   if (!(await ensureParentAccess())) return;
 
-  const sessionOk = sessionStorage.getItem('parentPinOk') === 'true';
-  if (sessionOk) {
-    document.getElementById('parentCabinet').style.display = 'block';
-    loadAllData();
-    return;
-  }
-
   if (Date.now() < pinLockedUntil) {
     alert('Слишком много попыток. Попробуйте через 5 минут.');
     window.location.href = 'app.html';
@@ -645,7 +638,6 @@ async function enterParentCabinet() {
     }
     const data = await check.json();
     if (data.noPin) {
-      sessionStorage.setItem('parentPinOk', 'true');
       document.getElementById('parentCabinet').style.display = 'block';
       loadAllData();
       return;
@@ -688,7 +680,6 @@ async function verifyPinSubmit() {
   }
 
   if (res.ok) {
-    sessionStorage.setItem('parentPinOk', 'true');
     pinAttempts = 0;
     document.getElementById('pinOverlay').style.display = 'none';
     document.getElementById('parentCabinet').style.display = 'block';
