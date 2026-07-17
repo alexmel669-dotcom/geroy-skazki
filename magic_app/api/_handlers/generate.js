@@ -374,7 +374,10 @@ export default async function handler(req, res) {
       sys = `Ты помогаешь ребёнку угадать рисунок. Посмотри на картинку и ответь ОДНИМ словом на русском — что нарисовано. Если не уверен — напиши "не знаю". Ответь ТОЛЬКО JSON: {"message":"слово"}`;
     }
 
-    if (!process.env.DEEPSEEK_API_KEY) {
+    const yandexKey = process.env.YANDEX_API_KEY;
+    const folderId = process.env.YANDEX_FOLDER_ID;
+
+    if (!yandexKey || !folderId) {
       const devReply = (image || reqType === 'draw_guess')
         ? 'котик'
         : childName
@@ -417,23 +420,34 @@ export default async function handler(req, res) {
 
     const maxTokens = (reqType === 'draw_guess' || (image && req.body.systemPrompt)) ? 40 : reqType === 'bedtime_story' ? 550 : reqType === 'story' ? 400 : 100;
 
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    const yandexRes = await fetch('https://llm.api.cloud.yandex.net/foundationModels/v1/completion', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`
+        'Authorization': `Api-Key ${yandexKey}`,
+        'x-folder-id': folderId
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages,
-        max_tokens: maxTokens,
-        temperature: 0.85
+        modelUri: `gpt://${folderId}/yandexgpt-lite`,
+        completionOptions: {
+          stream: false,
+          temperature: 0.7,
+          maxTokens
+        },
+        messages: messages.map((m) => ({
+          role: m.role === 'assistant' ? 'assistant' : m.role,
+          text: typeof m.content === 'string'
+            ? m.content
+            : (Array.isArray(m.content)
+              ? (m.content.find((c) => c.type === 'text')?.text || message || '')
+              : String(m.content || ''))
+        }))
       })
     });
 
-    if (!response.ok) throw new Error(`DeepSeek: ${response.status}`);
-    const data = await response.json();
-    const raw = data.choices?.[0]?.message?.content;
+    if (!yandexRes.ok) throw new Error(`YandexGPT: ${yandexRes.status}`);
+    const data = await yandexRes.json();
+    const raw = data.result?.alternatives?.[0]?.message?.text;
     if (!raw) throw new Error('Empty AI response');
 
     const parsed = parseAiJson(raw);
