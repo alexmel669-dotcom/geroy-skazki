@@ -271,28 +271,37 @@ function getParentPrompt(parentName, children) {
 
 function buildSystemPrompt({ childName, childAge, childGender, character, systemPrompt, topic, isFirstMessage, requestType, timeContext, isGuest, isParent, parentName, children }) {
   if (systemPrompt) return systemPrompt;
-  if (isParent) {
-    return getParentPrompt(parentName, children);
-  }
+
   const charId = character || 'lucik';
-  const needsGuestIntro = isGuest && (!childName || !childAge);
+  const isParentCharacter = charId === 'mom' || charId === 'dad';
+  const userName = isParentCharacter
+    ? (parentName || 'родитель')
+    : (childName || children?.[0]?.name || 'малыш');
+
+  // Родительские персонажи (mom/dad) — обращение к родителю; детские — к ребёнку
+  if (isParent && isParentCharacter) {
+    return getParentPrompt(userName, children);
+  }
+
+  const knownName = childName || (userName !== 'малыш' ? userName : null);
+  const needsGuestIntro = isGuest && (!knownName || !childAge);
   let prompt;
   if (needsGuestIntro && requestType !== 'story' && requestType !== 'bedtime_story') {
-    prompt = getGuestPrompt(childName, childAge);
+    prompt = getGuestPrompt(knownName, childAge);
   } else if (requestType === 'bedtime_story') {
-    prompt = getBedtimeStoryPrompt(childName, childAge, timeContext, childGender, charId);
+    prompt = getBedtimeStoryPrompt(userName, childAge, timeContext, childGender, charId);
   } else if (requestType === 'story') {
-    prompt = getStoryPrompt(childName, childAge, timeContext, topic, childGender, charId);
+    prompt = getStoryPrompt(userName, childAge, timeContext, topic, childGender, charId);
   } else if (requestType === 'chat') {
-    prompt = getChatPrompt(childName, childAge, timeContext, childGender, charId);
+    prompt = getChatPrompt(userName, childAge, timeContext, childGender, charId);
   } else {
     const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : null;
     const role = getCharacterPrompt(charId, childAge, childGender);
     const tone = age ? getAgeBasedTone(age) : '';
     const agePrompt = age ? getAgePrompt(age) : '';
-    const genderLine = buildGenderPrompt(childGender, childName);
-    const nameLine = childName
-      ? `${nameFormsBlock(childName, childGender)}${age ? `, ${age} ${getAgeWord(age)}` : ''}.`
+    const genderLine = buildGenderPrompt(childGender, userName);
+    const nameLine = userName && userName !== 'малыш'
+      ? `${nameFormsBlock(userName, childGender)}${age ? `, ${age} ${getAgeWord(age)}` : ''}.`
       : 'Имя ребёнка пока неизвестно.';
     const topicLine = topic ? `\nТекущая тема: ${topic}` : '';
     const firstLine = isFirstMessage ? '\nЭто первое сообщение в диалоге.' : '';
@@ -303,7 +312,7 @@ function buildSystemPrompt({ childName, childAge, childGender, character, system
       : childGender === 'male'
         ? 'Обращайся в мужском роде: "ты сказал", "ты сделал", "как прошёл твой день".'
         : '';
-    prompt = `${role}\n\n${nameLine}\n\n${genderLine}\n\n${grammarBlock(childName)}\n\n${nameFormsBlock(childName, childGender)}\n\nВАЖНО: используй правильные падежи при обращении к ${childName || 'ребёнку'}.\n${genderHint}${topicLine}${firstLine}\n\n${CONVERSATION_GUIDE}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
+    prompt = `${role}\n\n${nameLine}\n\n${genderLine}\n\n${grammarBlock(userName)}\n\n${nameFormsBlock(userName, childGender)}\n\nВАЖНО: используй правильные падежи при обращении к ${userName || 'ребёнку'}.\n${genderHint}${topicLine}${firstLine}\n\n${CONVERSATION_GUIDE}\n\n${SOFT_FEAR_PROMPT}\n\n${ONBOARDING_PROMPT}\n\n${continueHint}${toneLine}\n\n${JSON_FORMAT}\n\nОтвечай на русском, message — 2-5 предложений.`;
   }
   return `${GRAMMAR_RULES}\n\n${prompt}`;
 }

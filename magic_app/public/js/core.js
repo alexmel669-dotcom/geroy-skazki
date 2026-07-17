@@ -1872,6 +1872,7 @@ async function handleUserMessage(text, options = {}) {
           message: text,
           isParent: true,
           parentName: localStorage.getItem('parentName') || localStorage.getItem('userEmail')?.split('@')[0] || 'Родитель',
+          childName: getActiveChildName() !== 'Гость' ? getActiveChildName() : (children[0]?.name || null),
           children: stats,
           requestType: 'chat',
           character: getCharacter()
