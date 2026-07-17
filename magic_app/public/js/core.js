@@ -39,6 +39,7 @@ import { startConstellationGame } from './games/constellation.js';
 import { startPopFearsGame } from './games/pop-fears.js';
 import { getGameLevel, createConfetti, resetGameSession } from './games/game-ui.js';
 import { setAvatarState, playPurrSound, switchCharacter, showMicHint, showGamesHint, showSwipeHint } from './ui.js';
+import { detectVoiceCommand } from './voice-switcher.js';
 import { getTimeContext } from './context.js';
 import { detectRequestType, getDictionaryFallback, learnFromResponse, getLearnedDictionary, isBedtimeStoryRequest } from './dictionary.js';
 import { checkDailyStreak, updateStreakUI } from './retention.js';
@@ -995,6 +996,22 @@ export function setActiveChild(index, options = {}) {
   }
 
   updateXPBar();
+}
+
+/** Переключить профиль ребёнка по индексу или имени (голосовая команда). */
+function switchChildProfile(indexOrName) {
+  document.body.classList.remove('parent-mode');
+  if (typeof indexOrName === 'number' && indexOrName >= 0) {
+    setActiveChild(indexOrName, { greet: true });
+    return;
+  }
+  const name = String(indexOrName || '').trim();
+  if (!name) return;
+  const children = getChildren();
+  const idx = children.findIndex((c) => c.name?.toLowerCase() === name.toLowerCase());
+  if (idx >= 0) {
+    setActiveChild(idx, { greet: true });
+  }
 }
 
 function checkChildSelection() {
@@ -2007,6 +2024,34 @@ async function processAudio(audioBlob) {
 
     resetMicFailCount();
     onFirstMicSuccess();
+
+    const children = getChildren().map((c, i) => ({ ...c, index: i }));
+    const command = detectVoiceCommand(text, children);
+
+    if (command) {
+      if (command.action === 'switch_character') {
+        if (!canAccessCharacter(command.value)) {
+          await synthesizeSpeech('Этот персонаж доступен в полной версии. Попроси родителей открыть доступ!', getCharacter());
+          return;
+        }
+        setCharacter(command.value);
+        switchCharacter(command.value);
+        if (command.value === 'mom' || command.value === 'dad') {
+          document.body.classList.add('parent-mode');
+        } else {
+          document.body.classList.remove('parent-mode');
+        }
+        const charName = CHARACTERS[command.value]?.name || command.value;
+        console.log('🔄 Голос: переключили персонажа на', command.value);
+        await synthesizeSpeech(`Привет! Я ${charName}!`, command.value);
+        return;
+      }
+      if (command.action === 'switch_child' && command.index >= 0) {
+        switchChildProfile(command.index);
+        console.log('👤 Голос: переключили профиль на', command.value);
+        return;
+      }
+    }
 
     if (isBedtimeStoryRequest(text)) {
       console.log('🌙 Активирован режим сказки на ночь');
