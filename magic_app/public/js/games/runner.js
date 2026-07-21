@@ -276,7 +276,7 @@ export function startRunnerGame(level = 1) {
 
   const GRAVITY = 0.58;
   const JUMP_V0 = -14.2;
-  const JUMP_V1 = -9.5;
+  const JUMP_FRAME = 0; // один кадр прыжка (не смешивать с циклом бега)
 
   let phase = PHASE.VIDEO;
   let introT = 0;
@@ -314,7 +314,6 @@ export function startRunnerGame(level = 1) {
   let baseSpeed = speed;
   let speedMult = 1;
   let frame = 0;
-  let jumpCount = 0;
   let finished = false;
   let groundOffset = 0;
   let shakeIntensity = 0;
@@ -377,7 +376,7 @@ export function startRunnerGame(level = 1) {
     lucikFrames.push(img);
   }
   let currentFrame = 0;
-  let frameCounter = 0;
+  let runFrameCounter = 0;
   let animState = 'idle';
 
   // —— Web Audio synthwave ——
@@ -887,7 +886,6 @@ export function startRunnerGame(level = 1) {
     lucik.scale = 1;
     lucik.vy = 0;
     lucik.jumping = false;
-    jumpCount = 0;
     overlay.classList.add('runner-well');
     overlay.classList.add('runner-cinematic');
     overlay.classList.add('runner-heartbeat');
@@ -975,14 +973,14 @@ export function startRunnerGame(level = 1) {
     if (phase === PHASE.INTRO || phase === PHASE.WELL_FALL || phase === PHASE.WELL_INSIDE ||
         phase === PHASE.WELL_EXIT || phase === PHASE.LOST || phase === PHASE.WON ||
         phase === PHASE.WIN_SLOWMO) return;
-    if (jumpCount >= 2) return;
-    // парабола: сила прыжка чуть растёт со скоростью, время в воздухе короче при 2x
+    // только с земли — без двойного прыжка
+    if (lucik.jumping) return;
     const sm = Math.max(1, getSpeedMult());
-    const boost = jumpCount === 0 ? JUMP_V0 : JUMP_V1;
-    lucik.vy = boost * (0.92 + 0.08 * Math.min(2, sm));
+    lucik.vy = JUMP_V0 * (0.92 + 0.08 * Math.min(2, sm));
     lucik.jumping = true;
     wasAirborne = true;
-    jumpCount++;
+    currentFrame = JUMP_FRAME;
+    animState = 'jump';
     playJumpSound();
   }
 
@@ -1390,8 +1388,10 @@ export function startRunnerGame(level = 1) {
       lucik.y = gy - lucik.h;
       lucik.vy = 0;
       lucik.jumping = false;
-      jumpCount = 0;
       wasAirborne = false;
+      animState = 'run';
+      // сразу обратно к циклу бега
+      currentFrame = Math.floor(runFrameCounter) % 4;
     }
 
     // звёздная пыль за Люциком
@@ -1655,19 +1655,14 @@ export function startRunnerGame(level = 1) {
     }
     if (vhsGlitchT > 0) vhsGlitchT--;
 
-    if (lucik.jumping && lucik.vy < -3) animState = 'jump_up';
-    else if (lucik.jumping && lucik.vy > 3) animState = 'land';
-    else if (lucik.jumping) animState = 'fly';
-    else animState = (hunting || rainbow) ? 'glow' : 'run';
-
-    frameCounter++;
-    const animSpeed = Math.max(3, 7 - Math.floor(speedMult));
-    if (frameCounter >= (hunting ? 3 : animSpeed)) {
-      frameCounter = 0;
-      if (animState === 'run' || animState === 'glow') currentFrame = (currentFrame + 1) % 4;
-      else if (animState === 'jump_up') currentFrame = 0;
-      else if (animState === 'land') currentFrame = 1;
-      else if (animState === 'fly') currentFrame = 2;
+    // анимация: на земле только бег 0-1-2-3, в воздухе только кадр прыжка
+    if (lucik.jumping) {
+      animState = 'jump';
+      currentFrame = JUMP_FRAME;
+    } else {
+      animState = (hunting || rainbow) ? 'glow' : 'run';
+      runFrameCounter += Math.max(0.12, speed * 0.035);
+      currentFrame = Math.floor(runFrameCounter) % 4;
     }
 
     if (shakeIntensity > 0) {
@@ -1685,7 +1680,7 @@ export function startRunnerGame(level = 1) {
 
     updateParticles();
 
-    if (phase === PHASE.RUN && distance >= (isMindFlayer ? 580 : 520) && !boss) triggerWin();
+    if (phase === PHASE.RUN && distance >= (isMindFlayer ? 1000 : 900) && !boss) triggerWin();
   }
 
   function updateParticles() {
@@ -1938,27 +1933,6 @@ export function startRunnerGame(level = 1) {
       ctx.translate(sx + sw / 2, 0);
       ctx.scale(-1, 1);
       ctx.translate(-(sx + sw / 2), 0);
-    }
-
-    // хвост / шерсть
-    if (animState === 'run' || animState === 'glow' || animState === 'fly') {
-      const wag = Math.sin(frame * 0.35) * 10;
-      const tailX = sx + sw * 0.12;
-      const tailY = sy + sh * 0.55;
-      ctx.strokeStyle = rainbowT > 0
-        ? RAINBOW[frame % RAINBOW.length]
-        : (lucik.glow > 0 ? '#e8b840' : '#c87820');
-      ctx.lineWidth = 5;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(tailX, tailY);
-      ctx.quadraticCurveTo(
-        tailX - 18 + wag * 0.3,
-        tailY + 8 + Math.cos(frame * 0.3) * 4,
-        tailX - 28,
-        tailY - 4 + wag
-      );
-      ctx.stroke();
     }
 
     if (rainbowT > 0) {
