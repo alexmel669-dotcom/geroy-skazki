@@ -1,6 +1,5 @@
 /* ========================================
-   games.css — стили игр
-   Runner: «Люцик и Обратная сторона»
+   games.css — Runner v6 «Люцик и Обратная сторона»
    ======================================== */
 
 @keyframes runner-fall-particle {
@@ -28,16 +27,60 @@
   100% { transform: translate(-50%, -40px) scale(1); opacity: 0; }
 }
 
+@keyframes runner-heartbeat-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.018); }
+}
+
+@keyframes runner-blink-flash {
+  0%, 100% { opacity: 0; }
+  40%, 60% { opacity: 1; }
+}
+
+@keyframes runner-whisper-text {
+  0% { opacity: 0; transform: scale(0.9); }
+  20% { opacity: 0.85; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05); }
+}
+
 .runner-game {
   --runner-bg: #0a0e27;
   --runner-red: #cc0033;
   --runner-gold: #ffd700;
   --runner-cyan: #00e5ff;
   --runner-purple: #4a2c6a;
+  --letterbox-h: 0%;
   background: linear-gradient(180deg, #0a0e27 0%, #1a0533 45%, #2d0a1a 100%) !important;
   font-family: 'Segoe UI', Georgia, serif;
   position: relative;
+  overflow: hidden;
 }
+
+.runner-game.runner-cinematic {
+  --letterbox-h: 11%;
+}
+
+.runner-game.runner-well {
+  --letterbox-h: 13%;
+}
+
+.runner-game.runner-heartbeat {
+  animation: runner-heartbeat-pulse var(--hb-ms, 750ms) ease-in-out infinite;
+}
+
+.runner-letterbox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--letterbox-h);
+  background: #000;
+  z-index: 60;
+  transition: height 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.runner-letterbox.top { top: 0; }
+.runner-letterbox.bottom { bottom: 0; }
 
 .runner-game::after {
   content: '';
@@ -55,6 +98,91 @@
   background:
     radial-gradient(ellipse at 30% 70%, rgba(255, 200, 80, 0.08), transparent 45%),
     radial-gradient(ellipse at center, transparent 35%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+.runner-blink-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 55;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.runner-blink-overlay.active {
+  animation: runner-blink-flash 0.12s ease-out;
+}
+
+.runner-dont-look {
+  position: absolute;
+  z-index: 56;
+  color: rgba(255, 30, 50, 0.75);
+  font-family: Georgia, serif;
+  font-size: clamp(18px, 5vw, 28px);
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 12px rgba(255, 0, 40, 0.6);
+  pointer-events: none;
+  animation: runner-whisper-text 0.5s ease-out forwards;
+}
+
+.runner-video-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.runner-video-layer video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.runner-video-skip {
+  position: absolute;
+  right: 16px;
+  bottom: calc(var(--letterbox-h, 11%) + 16px);
+  z-index: 72;
+  background: rgba(0, 0, 0, 0.65);
+  color: #00e5ff;
+  border: 1px solid rgba(0, 229, 255, 0.45);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.runner-video-skip:hover {
+  background: rgba(0, 229, 255, 0.15);
+}
+
+.runner-film-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.35;
+}
+
+.runner-game.runner-well .runner-film-canvas {
+  opacity: 0.55;
+}
+
+.runner-game canvas#runnerGameCanvas {
+  flex: 1;
+  display: block;
+  width: 100%;
+  background: #0a0e27;
+  cursor: pointer;
+  touch-action: manipulation;
+  position: relative;
+  z-index: 1;
 }
 
 .runner-game canvas {
@@ -84,6 +212,7 @@
   z-index: 10;
   text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
   flex-wrap: wrap;
+  position: relative;
 }
 
 .runner-game .runner-header span {
@@ -201,6 +330,30 @@
   color: rgba(232, 244, 255, 0.9);
   font-size: 15px;
   margin: 6px 0;
+}
+
+.runner-result-box .rank {
+  display: inline-block;
+  margin: 8px 0 4px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  color: #00e5ff;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+
+.runner-result-box .compare {
+  color: rgba(255, 215, 0, 0.85);
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.runner-result-box .daily {
+  color: #00e676;
+  font-size: 13px;
+  margin: 4px 0 8px;
 }
 
 .runner-result-box .clock-ref {
