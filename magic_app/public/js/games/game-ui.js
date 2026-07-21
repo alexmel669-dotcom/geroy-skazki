@@ -15,7 +15,7 @@ const GAME_STYLE_THEMES = {
   quest: { bg: 'linear-gradient(180deg, #2d5a27, #1a3a15)', accent: '#FFD700', icon: '🗺️', starfield: true, lucikText: 'Выбирай путь!' },
   maze: { bg: 'linear-gradient(180deg, #1a1a2e, #0a0a15)', accent: '#FFD700', icon: '🌀', starfield: true, lucikText: 'Найди выход!' },
   quiz: { bg: 'linear-gradient(180deg, #2C003E, #1A0025)', accent: '#FF6B9D', icon: '❓', starfield: true, lucikText: 'Знаешь ответ?' },
-  runner: { bg: 'linear-gradient(180deg, #87CEEB, #2d5a27)', accent: '#FF8C00', icon: '🏃', starfield: false, lucikText: 'Беги, Люцик!' },
+  runner: { bg: 'linear-gradient(180deg, #0a0e27, #1a0533 50%, #2d0a1a)', accent: '#00e5ff', icon: '🐱', starfield: true, lucikText: 'Беги от Страха!' },
   drawAi: { bg: 'linear-gradient(180deg, #FFF8E1, #FFECB3)', accent: '#FF6B6B', icon: '🎨', starfield: false, lucikText: 'Рисуй красиво!' },
   musicCat: { bg: 'linear-gradient(180deg, #2C003E, #0A0015)', accent: '#FFD700', icon: '🎵', starfield: true, lucikText: 'Пой со мной!' },
   constellation: { bg: 'radial-gradient(circle, #1a0533, #000008)', accent: '#FFD700', icon: '🌟', starfield: true, lucikText: 'Соедини звёзды!' },
