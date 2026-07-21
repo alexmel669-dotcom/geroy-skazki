@@ -43,6 +43,11 @@
   100% { opacity: 0; transform: scale(1.05); }
 }
 
+@keyframes transitionParticle {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(3); }
+}
+
 .runner-game {
   --runner-bg: #0a0e27;
   --runner-red: #cc0033;

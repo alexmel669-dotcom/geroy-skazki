@@ -2358,8 +2358,6 @@ export function startRunnerGame(level = 1) {
   }
 
   function beginAfterVideo() {
-    const layer = overlay.querySelector('.runner-video-layer');
-    layer?.remove();
     expandLetterboxThen(() => {
       setLetterbox(false);
       startGameLoop();
@@ -2367,50 +2365,103 @@ export function startRunnerGame(level = 1) {
   }
 
   function playIntroVideo() {
-    const layer = document.createElement('div');
-    layer.className = 'runner-video-layer';
-    const video = document.createElement('video');
-    video.src = INTRO_VIDEO;
-    video.playsInline = true;
-    video.setAttribute('playsinline', '');
-    video.preload = 'auto';
-    video.muted = false;
-    const skip = document.createElement('button');
-    skip.type = 'button';
-    skip.className = 'runner-video-skip';
-    skip.textContent = 'Пропустить →';
-    layer.appendChild(video);
-    layer.appendChild(skip);
-    overlay.appendChild(layer);
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.src = INTRO_VIDEO;
+      video.muted = false;
+      video.playsInline = true;
+      video.setAttribute('playsinline', '');
+      video.preload = 'auto';
+      video.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:9999;background:#000;';
+      document.body.appendChild(video);
 
-    let done = false;
-    const finishVideo = () => {
-      if (done) return;
-      done = true;
-      try { video.pause(); } catch { /* */ }
-      beginAfterVideo();
-    };
+      const transitionOverlay = document.createElement('div');
+      transitionOverlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:10000;pointer-events:none;opacity:0;transition:opacity 0.5s;';
+      document.body.appendChild(transitionOverlay);
 
-    skip.onclick = (e) => {
-      e.stopPropagation();
-      finishVideo();
-    };
-    video.onended = finishVideo;
-    video.onerror = finishVideo;
+      const skipBtn = document.createElement('button');
+      skipBtn.type = 'button';
+      skipBtn.textContent = 'Пропустить →';
+      skipBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:10001;padding:8px 16px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.5);border-radius:8px;cursor:pointer;font-size:14px;';
 
-    const playPromise = video.play();
-    if (playPromise && typeof playPromise.catch === 'function') {
-      playPromise.catch(() => {
-        // автоплей с звуком может быть заблокирован — пробуем mute
-        video.muted = true;
-        video.play().catch(() => finishVideo());
-      });
-    }
+      let done = false;
+      const cleanup = () => {
+        if (done) return;
+        done = true;
+        try { video.pause(); } catch { /* */ }
+        video.remove();
+        transitionOverlay.remove();
+        skipBtn.remove();
+        resolve();
+      };
 
-    // страховка: если видео зависло
-    setTimeout(() => {
-      if (!done && video.readyState < 2) finishVideo();
-    }, 4000);
+      skipBtn.onclick = () => cleanup();
+      document.body.appendChild(skipBtn);
+
+      if (!document.getElementById('runner-transition-particles-style')) {
+        const style = document.createElement('style');
+        style.id = 'runner-transition-particles-style';
+        style.textContent = `
+          @keyframes transitionParticle {
+            0% { opacity:1; transform:scale(1); }
+            100% { opacity:0; transform:scale(3); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      video.ontimeupdate = () => {
+        if (!video.duration || Number.isNaN(video.duration)) return;
+        if (video.duration - video.currentTime < 0.5 && !transitionOverlay.dataset.transitioning) {
+          transitionOverlay.dataset.transitioning = 'true';
+          transitionOverlay.style.background = 'linear-gradient(180deg, #0a0a2e 0%, #1a0a2e 50%, #0a1a0a 100%)';
+          transitionOverlay.style.opacity = '1';
+          video.style.transform = 'scale(1.2)';
+          video.style.transition = 'transform 0.5s ease-in';
+
+          for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.style.cssText = `
+              position:fixed;
+              width:4px;height:4px;
+              background:gold;
+              border-radius:50%;
+              z-index:10001;
+              left:${Math.random() * 100}%;
+              top:${Math.random() * 100}%;
+              animation: transitionParticle ${0.5 + Math.random() * 0.5}s ease-out forwards;
+              animation-delay:${Math.random() * 0.3}s;
+            `;
+            transitionOverlay.appendChild(particle);
+          }
+        }
+      };
+
+      video.onended = () => {
+        const flash = document.createElement('div');
+        flash.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:white;z-index:10002;opacity:1;transition:opacity 0.3s;';
+        document.body.appendChild(flash);
+        setTimeout(() => { flash.style.opacity = '0'; }, 50);
+        setTimeout(() => {
+          flash.remove();
+          cleanup();
+        }, 350);
+      };
+
+      video.onerror = () => cleanup();
+
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {
+          video.muted = true;
+          video.play().catch(() => cleanup());
+        });
+      }
+
+      setTimeout(() => {
+        if (!done && video.readyState < 2) cleanup();
+      }, 4000);
+    });
   }
 
   document.getElementById('runnerMusic').onclick = function onMusic() {
@@ -2430,9 +2481,10 @@ export function startRunnerGame(level = 1) {
     appState.gameActive = false;
     document.body.classList.remove('game-active');
     overlay.remove();
+    document.querySelectorAll('video[src*="runner-intro"]').forEach((v) => v.remove());
   };
 
-  playIntroVideo();
+  playIntroVideo().then(() => beginAfterVideo());
 }
 
 export default { startRunnerGame };
