@@ -27,7 +27,7 @@ window.leaderboard = {
 };
 
 const LEADERBOARD_GAMES = [
-  { id: 'runner', name: '🐱 Люцик-раннер' },
+  { id: 'runner', name: '🐱 Обратная сторона' },
   { id: 'fish', name: '🎣 Рыбалка' },
   { id: 'quiz', name: '❓ Викторина' },
   { id: 'memory', name: '🧠 Мемори' }

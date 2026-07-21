@@ -15,7 +15,7 @@ const GAME_LABELS = {
   quest: { label: 'Квест', icon: '🗺️' },
   maze: { label: 'Лабиринт', icon: '🌀' },
   quiz: { label: 'Викторина', icon: '❓' },
-  runner: { label: 'Бегун', icon: '🐱' },
+  runner: { label: 'Обратная сторона', icon: '🐱' },
   drawAi: { label: 'Рисовалка', icon: '🎨' },
   musicCat: { label: 'DJ Люцик', icon: '🎵' },
   constellation: { label: 'Созвездия', icon: '🌟' },

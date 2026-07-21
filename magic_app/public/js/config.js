@@ -134,7 +134,7 @@ export const GAMES = {
   quest: { name: 'Квест', ages: [10, 14], icon: '🗺️' },
   maze: { name: 'Лабиринт', ages: [6, 14], icon: '🌀' },
   quiz: { name: 'Викторина', ages: [8, 14], icon: '❓' },
-  runner: { name: 'Люцик-раннер', ages: [4, 14], icon: '🏃', file: 'runner' },
+  runner: { name: 'Обратная сторона', ages: [4, 14], icon: '🐱', file: 'runner' },
   drawAi: { name: 'Рисовалка с ИИ', ages: [5, 14], icon: '🎨', file: 'draw-ai' },
   musicCat: { name: 'Музыкальный кот', ages: [3, 14], icon: '🎵', file: 'music-cat' },
   constellation: { name: 'Созвездия', ages: [6, 14], icon: '🌟', file: 'constellation' },
