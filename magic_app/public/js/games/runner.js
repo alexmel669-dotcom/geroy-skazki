@@ -76,8 +76,13 @@ export function startRunnerGame(level = 1) {
   const lucik = {
     x: 0, y: 0, w: 68, h: 68, vy: 0,
     jumping: false, scale: 1, glow: 0, peek: 0,
-    facing: 1, lookBack: false, lookBackT: 0
+    facing: 1, lookBack: false, lookBackT: 0,
+    breath: 0, breathCycles: 0, targetX: 0
   };
+
+  const GRAVITY = 0.58;
+  const JUMP_V0 = -14.2;
+  const JUMP_V1 = -9.5;
 
   let phase = PHASE.INTRO;
   let introT = 0;
@@ -94,6 +99,9 @@ export function startRunnerGame(level = 1) {
   let fireworks = [];
   let bgStars = [];
   let fireflies = [];
+  let leaves = [];
+  let fogLayers = [];
+  let trees = [];
   let cracks = [];
   let wellShadows = [];
   let score = 0;
@@ -105,6 +113,9 @@ export function startRunnerGame(level = 1) {
   let finished = false;
   let groundOffset = 0;
   let shakeIntensity = 0;
+  let camShakeX = 0;
+  let camShakeY = 0;
+  let wasAirborne = false;
   let well = null;
   let wellStarTaken = false;
   let wellEyeT = -1;
@@ -120,10 +131,14 @@ export function startRunnerGame(level = 1) {
   let comboTimer = 0;
   let starStreak = 0;
   let rainbowT = 0;
-  let clockMinute = 0; // 0 = 3:00, 1 = 3:01
+  let clockMinute = 0;
   let lastSmash = null;
   let masterGain = null;
   let musicVol = 0.04;
+  let vhsGlitchT = 0;
+  let nextVhsAt = 250 + Math.random() * 250;
+  let grainCanvas = null;
+  let grainCtx = null;
 
   const lucikImg = new Image();
   lucikImg.src = 'assets/images/avatar.png';
@@ -312,20 +327,49 @@ export function startRunnerGame(level = 1) {
   }
 
   function initDecor() {
+    const w = Math.max(100, canvas.width);
+    const h = Math.max(80, canvas.height);
     bgStars = Array.from({ length: isMindFlayer ? 30 : 52 }, () => ({
       x: Math.random(), y: Math.random() * 0.55,
       r: 0.5 + Math.random() * 1.8,
       tw: Math.random() * Math.PI * 2,
       sp: 0.02 + Math.random() * 0.04
     }));
-    fireflies = Array.from({ length: 18 }, () => ({
-      x: Math.random() * Math.max(100, canvas.width),
-      y: Math.random() * Math.max(80, canvas.height * 0.7),
-      vx: (Math.random() - 0.5) * 0.6,
-      vy: (Math.random() - 0.5) * 0.4,
+    fireflies = Array.from({ length: 28 }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h * 0.72,
+      vx: (Math.random() - 0.5) * 0.55,
+      vy: (Math.random() - 0.5) * 0.35,
       hue: Math.random() < 0.55 ? 'gold' : 'red',
-      ph: Math.random() * Math.PI * 2
+      ph: Math.random() * Math.PI * 2,
+      homeX: 0,
+      homeY: 0
     }));
+    fireflies.forEach((f) => { f.homeX = f.x; f.homeY = f.y; });
+    leaves = Array.from({ length: 8 }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h * 0.6,
+      rot: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.06,
+      vx: -0.4 - Math.random() * 0.6,
+      vy: 0.15 + Math.random() * 0.35,
+      size: 5 + Math.random() * 7,
+      color: Math.random() < 0.5 ? '#6a3a2a' : '#8a5020'
+    }));
+    fogLayers = [
+      { y: 0.25, h: 0.2, speed: 0.15, alpha: 0.08, offset: 0 },
+      { y: 0.45, h: 0.22, speed: 0.35, alpha: 0.12, offset: 40 },
+      { y: 0.65, h: 0.18, speed: 0.7, alpha: 0.1, offset: 90 }
+    ];
+    trees = Array.from({ length: 8 }, (_, i) => ({
+      base: i * 160 + Math.random() * 40,
+      h: 70 + (i % 3) * 25,
+      w: 34 + (i % 2) * 6
+    }));
+    grainCanvas = document.createElement('canvas');
+    grainCanvas.width = 64;
+    grainCanvas.height = 64;
+    grainCtx = grainCanvas.getContext('2d');
   }
 
   function resize() {
@@ -445,7 +489,7 @@ export function startRunnerGame(level = 1) {
     showComboText(pts);
     burst(o.x + o.w / 2, o.y + o.h / 2, o.eye || '#ff4466', 22);
     burst(o.x + o.w / 2, o.y + o.h / 2, '#FFD700', 10);
-    shakeIntensity = Math.min(16, 6 + combo * 1.5);
+    shakeIntensity = 8 + Math.random() * 4; // 8–12px
     playShatter();
     lastSmash = { x: o.x + o.w / 2, y: o.y + o.h / 2, color: o.eye, name: o.name };
   }
@@ -480,7 +524,10 @@ export function startRunnerGame(level = 1) {
     lucik.scale = 1;
     lucik.peek = 0;
     lucik.y = groundY() - lucik.h;
-    lucik.x = lucikHomeX();
+    lucik.targetX = lucikHomeX();
+    lucik.x = lucik.targetX;
+    lucik.breath = 0;
+    lucik.breathCycles = 3;
     well = null;
     overlay.classList.remove('runner-well');
     overlay.classList.add('runner-hunt');
@@ -491,7 +538,6 @@ export function startRunnerGame(level = 1) {
     startMusic('hunt');
     playHuntSound();
     burst(lucik.x + lucik.w / 2, lucik.y + lucik.h / 2, '#FFD700', 28);
-    // slow-mo after exit
     timeScale = 0.5;
     slowMoT = 25;
   }
@@ -536,8 +582,10 @@ export function startRunnerGame(level = 1) {
         phase === PHASE.WELL_EXIT || phase === PHASE.LOST || phase === PHASE.WON ||
         phase === PHASE.WIN_SLOWMO) return;
     if (jumpCount >= 2) return;
-    lucik.vy = jumpCount === 0 ? -13 : -9;
+    // парабола: v0 + g*t → естественная дуга
+    lucik.vy = jumpCount === 0 ? JUMP_V0 : JUMP_V1;
     lucik.jumping = true;
+    wasAirborne = true;
     jumpCount++;
     playJumpSound();
   }
@@ -772,14 +820,32 @@ export function startRunnerGame(level = 1) {
       setMusicVolume(0.03 + (speed / 14) * 0.08);
     }
 
-    lucik.vy += 0.62;
+    // инерция X — плавно к «дорожке»
+    lucik.targetX = lucikHomeX();
+    lucik.x += (lucik.targetX - lucik.x) * 0.12;
+
+    // дыхание после колодца (3 цикла пульсации)
+    if (lucik.breathCycles > 0) {
+      lucik.breath += 0.18;
+      if (lucik.breath >= Math.PI * 2) {
+        lucik.breath = 0;
+        lucik.breathCycles--;
+      }
+    }
+
+    // параболический прыжок
+    lucik.vy += GRAVITY;
     lucik.y += lucik.vy;
     const gy = groundY();
     if (lucik.y >= gy - lucik.h) {
+      if (wasAirborne && lucik.jumping) {
+        shakeIntensity = Math.max(shakeIntensity, 3 + Math.random() * 2); // 3–5px
+      }
       lucik.y = gy - lucik.h;
       lucik.vy = 0;
       lucik.jumping = false;
       jumpCount = 0;
+      wasAirborne = false;
     }
 
     const move = speed * (timeScale < 1 ? timeScale : 1);
@@ -868,13 +934,60 @@ export function startRunnerGame(level = 1) {
     // (handled: only increment on collect)
 
     groundOffset = (groundOffset + speed) % 48;
+
+    // светлячки разлетаются от Люцика
+    const lxMid = lucik.x + lucik.w / 2;
+    const lyMid = lucik.y + lucik.h / 2;
     fireflies.forEach((f) => {
-      f.x += f.vx; f.y += f.vy; f.ph += 0.05;
-      if (f.x < 0) f.x = canvas.width;
-      if (f.x > canvas.width) f.x = 0;
-      if (f.y < 0) f.y = canvas.height * 0.6;
-      if (f.y > canvas.height * 0.75) f.y = 20;
+      const dx = f.x - lxMid;
+      const dy = f.y - lyMid;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (dist < 70) {
+        const force = (70 - dist) / 70;
+        f.vx += (dx / dist) * force * 0.9;
+        f.vy += (dy / dist) * force * 0.9;
+      } else {
+        f.vx += (f.homeX - f.x) * 0.002;
+        f.vy += (f.homeY - f.y) * 0.002;
+      }
+      f.vx *= 0.96;
+      f.vy *= 0.96;
+      f.x += f.vx + (Math.random() - 0.5) * 0.15;
+      f.y += f.vy;
+      f.ph += 0.06;
+      f.homeX -= speed * 0.15;
+      if (f.homeX < -20) f.homeX = canvas.width + 20;
+      if (f.x < -30) f.x = canvas.width + 10;
+      if (f.x > canvas.width + 30) f.x = -10;
+      if (f.y < 10) f.y = 10;
+      if (f.y > gy - 10) f.y = gy - 10;
     });
+
+    // падающие листья
+    leaves.forEach((lf) => {
+      lf.x += lf.vx - speed * 0.2;
+      lf.y += lf.vy + Math.sin(frame * 0.04 + lf.rot) * 0.3;
+      lf.rot += lf.spin;
+      if (lf.x < -20) {
+        lf.x = canvas.width + 10;
+        lf.y = Math.random() * gy * 0.55;
+      }
+      if (lf.y > gy - 5) {
+        lf.y = 10 + Math.random() * 40;
+        lf.x = Math.random() * canvas.width;
+      }
+    });
+
+    fogLayers.forEach((fog) => {
+      fog.offset = (fog.offset + fog.speed * speed) % (canvas.width + 200);
+    });
+
+    // VHS-помехи раз в 5–10 сек
+    if (frame >= nextVhsAt) {
+      vhsGlitchT = 8 + Math.floor(Math.random() * 10);
+      nextVhsAt = frame + 250 + Math.random() * 250;
+    }
+    if (vhsGlitchT > 0) vhsGlitchT--;
 
     if (lucik.jumping && lucik.vy < -3) animState = 'jump_up';
     else if (lucik.jumping && lucik.vy > 3) animState = 'land';
@@ -890,12 +1003,14 @@ export function startRunnerGame(level = 1) {
     }
 
     if (shakeIntensity > 0) {
-      const sx = (Math.random() - 0.5) * shakeIntensity;
-      const sy = (Math.random() - 0.5) * shakeIntensity;
-      overlay.style.transform = `translate(${sx}px, ${sy}px)`;
-      shakeIntensity *= 0.9;
+      camShakeX = (Math.random() - 0.5) * shakeIntensity;
+      camShakeY = (Math.random() - 0.5) * shakeIntensity;
+      overlay.style.transform = `translate(${camShakeX}px, ${camShakeY}px)`;
+      shakeIntensity *= 0.88;
       if (shakeIntensity < 0.35) {
         shakeIntensity = 0;
+        camShakeX = 0;
+        camShakeY = 0;
         overlay.style.transform = '';
       }
     }
@@ -1039,16 +1154,72 @@ export function startRunnerGame(level = 1) {
   }
 
   function drawLucik() {
-    const sw = lucik.w * lucik.scale;
-    const sh = lucik.h * lucik.scale;
-    let sx = lucik.x + (lucik.w - sw) / 2;
+    const breathScale = lucik.breathCycles > 0
+      ? 1 + Math.sin(lucik.breath) * 0.045
+      : 1;
+    const sw = lucik.w * lucik.scale * breathScale;
+    const sh = lucik.h * lucik.scale * breathScale;
+    const sx = lucik.x + (lucik.w - sw) / 2;
     const sy = lucik.y + (lucik.h - sh);
+    const gy = groundY();
+    const hunting = phase === PHASE.HUNT;
+
+    // динамический свет от «Звезды» / охоты — круг на земле
+    const lightR = hunting || lucik.glow > 0.3 ? 95 + lucik.glow * 40 : 55;
+    const lightA = hunting ? 0.32 : (lucik.glow > 0 ? 0.22 : 0.1);
+    const lx = lucik.x + lucik.w / 2;
+    const light = ctx.createRadialGradient(lx, gy - 4, 4, lx, gy - 4, lightR);
+    light.addColorStop(0, `rgba(255, 220, 120, ${lightA})`);
+    light.addColorStop(0.45, `rgba(255, 180, 60, ${lightA * 0.35})`);
+    light.addColorStop(1, 'rgba(255, 180, 60, 0)');
+    ctx.fillStyle = light;
+    ctx.beginPath();
+    ctx.ellipse(lx, gy - 2, lightR, lightR * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // тень на земле (эллипс, зависит от высоты прыжка)
+    if (phase !== PHASE.WELL_INSIDE && phase !== PHASE.WELL_FALL) {
+      const air = Math.max(0, (gy - lucik.h - lucik.y) / 80);
+      const shadowW = 28 * lucik.scale * (1 - air * 0.4);
+      const shadowA = 0.4 * (1 - air * 0.6);
+      ctx.fillStyle = `rgba(0,0,0,${shadowA})`;
+      ctx.beginPath();
+      ctx.ellipse(lx, gy - 1, shadowW, 6 * (1 - air * 0.3), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.save();
     if (lucik.facing < 0) {
       ctx.translate(sx + sw / 2, 0);
       ctx.scale(-1, 1);
       ctx.translate(-(sx + sw / 2), 0);
+    }
+
+    // хвост / шерсть — слой, развевается на бегу
+    if (animState === 'run' || animState === 'glow' || animState === 'fly') {
+      const wag = Math.sin(frame * 0.35) * 10;
+      const tailX = sx + sw * 0.12;
+      const tailY = sy + sh * 0.55;
+      ctx.strokeStyle = rainbowT > 0
+        ? RAINBOW[frame % RAINBOW.length]
+        : (lucik.glow > 0 ? '#e8b840' : '#c87820');
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tailX, tailY);
+      ctx.quadraticCurveTo(
+        tailX - 18 + wag * 0.3,
+        tailY + 8 + Math.cos(frame * 0.3) * 4,
+        tailX - 28,
+        tailY - 4 + wag
+      );
+      ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,200,100,0.45)';
+      ctx.beginPath();
+      ctx.moveTo(tailX + 2, tailY - 6);
+      ctx.quadraticCurveTo(tailX - 8, tailY - 14 + wag * 0.2, tailX - 16, tailY - 8);
+      ctx.stroke();
     }
 
     if (rainbowT > 0) {
@@ -1067,13 +1238,6 @@ export function startRunnerGame(level = 1) {
       ctx.fillStyle = `rgba(255,215,0,${0.18 * lucik.glow})`;
       ctx.beginPath();
       ctx.arc(sx + sw / 2, sy + sh / 2, sw * 0.7, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    if (phase !== PHASE.WELL_INSIDE && phase !== PHASE.WELL_FALL) {
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath();
-      ctx.ellipse(lucik.x + lucik.w / 2, groundY() - 2, 26 * lucik.scale, 5, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -1183,27 +1347,33 @@ export function startRunnerGame(level = 1) {
     ctx.fillText(clockMinute === 0 ? '3:00' : '3:01', cx, cy + cr + 12);
     ctx.restore();
 
-    for (let i = 0; i < 7; i++) {
-      const tx = ((i * 160 - groundOffset * 0.3) % (canvas.width + 160)) - 40;
-      const th = 70 + (i % 3) * 25;
+    for (let i = 0; i < trees.length; i++) {
+      const t = trees[i];
+      const tx = ((t.base - groundOffset * 0.35) % (canvas.width + 160)) - 40;
+      const th = t.h;
+      // дерево
       ctx.fillStyle = '#0a120a';
       ctx.beginPath();
       ctx.moveTo(tx, gy);
-      ctx.lineTo(tx + 18, gy - th);
-      ctx.lineTo(tx + 36, gy);
+      ctx.lineTo(tx + t.w * 0.5, gy - th);
+      ctx.lineTo(tx + t.w, gy);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(200,30,50,0.35)';
+      ctx.strokeStyle = 'rgba(200, 30, 50, 0.35)';
       ctx.lineWidth = 2;
       ctx.stroke();
+      // тень от дерева на дорожке (двигается)
+      const shadowLen = 40 + th * 0.25;
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.beginPath();
+      ctx.moveTo(tx + 4, gy);
+      ctx.lineTo(tx + t.w - 4, gy);
+      ctx.lineTo(tx + t.w * 0.5 + shadowLen * 0.6, gy + 14);
+      ctx.lineTo(tx + t.w * 0.2 + shadowLen * 0.3, gy + 16);
+      ctx.closePath();
+      ctx.fill();
     }
 
-    fireflies.forEach((f) => {
-      const a = 0.4 + Math.sin(f.ph) * 0.4;
-      ctx.fillStyle = f.hue === 'gold' ? `rgba(255,220,100,${a})` : `rgba(255,60,60,${a * 0.85})`;
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, f.hue === 'gold' ? 2.2 : 1.6, 0, Math.PI * 2);
-      ctx.fill();
-    });
+    // светлячки рисуются в drawAtmosphere
   }
 
   function drawGround() {
@@ -1218,13 +1388,15 @@ export function startRunnerGame(level = 1) {
       ctx.fillStyle = 'rgba(120,80,180,0.2)';
       ctx.fillRect(x, gy + 8, 24, 2);
     }
+    // трава колышется (sin-волна)
     ctx.strokeStyle = '#5a3a7a';
     ctx.lineWidth = 1.5;
-    for (let x = 0; x < canvas.width; x += 14) {
-      const h = 6 + Math.sin(x * 0.25 + frame * 0.08) * 4;
+    for (let x = 0; x < canvas.width; x += 11) {
+      const sway = Math.sin(x * 0.22 + frame * 0.09) * 4;
+      const h = 7 + Math.sin(x * 0.31 + frame * 0.07) * 5;
       ctx.beginPath();
       ctx.moveTo(x, gy);
-      ctx.lineTo(x + 2, gy - h);
+      ctx.quadraticCurveTo(x + sway * 0.5, gy - h * 0.5, x + sway, gy - h);
       ctx.stroke();
     }
     cracks.forEach((c) => {
@@ -1239,6 +1411,120 @@ export function startRunnerGame(level = 1) {
       ctx.stroke();
       ctx.shadowBlur = 0;
     });
+  }
+
+  function drawAtmosphere() {
+    const gy = groundY();
+    // три слоя тумана
+    fogLayers.forEach((fog, i) => {
+      const fy = gy * fog.y;
+      const fh = gy * fog.h;
+      for (let k = -1; k <= 2; k++) {
+        const fx = -fog.offset + k * (canvas.width * 0.7) + i * 50;
+        const grd = ctx.createRadialGradient(fx + 120, fy + fh / 2, 10, fx + 120, fy + fh / 2, 160);
+        grd.addColorStop(0, `rgba(80, 60, 120, ${fog.alpha})`);
+        grd.addColorStop(1, 'rgba(80, 60, 120, 0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(fx, fy, 280, fh);
+      }
+    });
+
+    // светлячки
+    fireflies.forEach((f) => {
+      const a = 0.35 + Math.sin(f.ph) * 0.45;
+      ctx.fillStyle = f.hue === 'gold' ? `rgba(255,220,100,${a})` : `rgba(255,60,60,${a * 0.85})`;
+      ctx.shadowColor = f.hue === 'gold' ? '#ffcc66' : '#ff3344';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.hue === 'gold' ? 2.4 : 1.7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    // листья
+    leaves.forEach((lf) => {
+      ctx.save();
+      ctx.translate(lf.x, lf.y);
+      ctx.rotate(lf.rot);
+      ctx.fillStyle = lf.color;
+      ctx.globalAlpha = 0.75;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, lf.size, lf.size * 0.45, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  function drawPostProcess() {
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // виньетка
+    const vig = ctx.createRadialGradient(w / 2, h / 2, h * 0.25, w / 2, h / 2, h * 0.75);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(0.65, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, w, h);
+
+    // зернистость (шум каждый кадр)
+    if (grainCtx) {
+      const img = grainCtx.createImageData(64, 64);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = Math.random() * 255;
+        img.data[i] = v;
+        img.data[i + 1] = v;
+        img.data[i + 2] = v;
+        img.data[i + 3] = 28;
+      }
+      grainCtx.putImageData(img, 0, 0);
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      ctx.imageSmoothingEnabled = false;
+      for (let y = 0; y < h; y += 64) {
+        for (let x = 0; x < w; x += 64) {
+          ctx.drawImage(grainCanvas, 0, 0, 64, 64, x, y, 64, 64);
+        }
+      }
+      ctx.restore();
+    }
+
+    // хроматические аберрации по краям (1–2px)
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = '#ff0040';
+    ctx.fillRect(0, 0, 3, h);
+    ctx.fillRect(w - 3, 0, 3, h);
+    ctx.fillStyle = '#0040ff';
+    ctx.fillRect(1, 0, 2, h);
+    ctx.fillRect(w - 4, 0, 2, h);
+    ctx.restore();
+
+    // VHS-полосы
+    if (vhsGlitchT > 0) {
+      const bands = 2 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < bands; i++) {
+        const by = Math.random() * h;
+        const bh = 2 + Math.random() * 8;
+        ctx.fillStyle = `rgba(255,255,255,${0.08 + Math.random() * 0.12})`;
+        ctx.fillRect(0, by, w, bh);
+        ctx.fillStyle = `rgba(255,0,60,${0.05 + Math.random() * 0.08})`;
+        ctx.fillRect(0, by + 1, w, 1);
+        ctx.fillStyle = `rgba(0,100,255,${0.05})`;
+        ctx.fillRect(2, by, w, bh);
+      }
+      // горизонтальный сдвиг куска
+      if (Math.random() < 0.4) {
+        const sy = Math.random() * h;
+        const sh = 10 + Math.random() * 30;
+        try {
+          const slice = ctx.getImageData(0, sy, w, Math.min(sh, h - sy));
+          ctx.putImageData(slice, (Math.random() - 0.5) * 12, sy);
+        } catch { /* tainted canvas unlikely */ }
+      }
+    }
   }
 
   function drawWellInside() {
@@ -1439,10 +1725,12 @@ export function startRunnerGame(level = 1) {
     if (phase === PHASE.WELL_INSIDE) {
       drawWellInside();
       drawParticlesLayer();
+      drawPostProcess();
       return;
     }
 
     drawNightSky();
+    drawAtmosphere();
     drawGround();
 
     if (well && !well.used) {
@@ -1468,7 +1756,6 @@ export function startRunnerGame(level = 1) {
       if (o.type === 'fear' && !o.hit) drawFearShape(o);
     });
 
-    // speed lines (hunt)
     speedLines.forEach((l) => {
       ctx.strokeStyle = `rgba(255,255,255,${l.life / 14})`;
       ctx.lineWidth = 2;
@@ -1535,6 +1822,8 @@ export function startRunnerGame(level = 1) {
       ctx.font = '11px sans-serif';
       ctx.fillText('SLOW-MO', 12, canvas.height - 12);
     }
+
+    drawPostProcess();
   }
 
   function drawParticlesLayer() {
