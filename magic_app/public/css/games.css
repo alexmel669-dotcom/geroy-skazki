@@ -1,5 +1,5 @@
 /* ========================================
-   games.css — Runner v6 «Люцик и Обратная сторона»
+   games.css — Runner v7 «Люцик и Обратная сторона»
    ======================================== */
 
 @keyframes runner-fall-particle {
@@ -54,11 +54,13 @@
   --runner-gold: #ffd700;
   --runner-cyan: #00e5ff;
   --runner-purple: #4a2c6a;
+  --runner-blue: #1a2050;
   --letterbox-h: 0%;
-  background: linear-gradient(180deg, #0a0e27 0%, #1a0533 45%, #2d0a1a 100%) !important;
-  font-family: 'Segoe UI', Georgia, serif;
+  background: linear-gradient(180deg, #050814 0%, #0a0e27 25%, #1a0533 55%, #2d0a1a 100%) !important;
+  font-family: Georgia, 'Palatino Linotype', 'Book Antiqua', serif;
   position: relative;
   overflow: hidden;
+  filter: saturate(1.05) contrast(1.04);
 }
 
 .runner-game.runner-cinematic {
@@ -223,6 +225,22 @@
 .runner-game .runner-header span {
   font-size: clamp(12px, 3.2vw, 16px);
   white-space: nowrap;
+}
+
+#runnerComboHud {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.85);
+  min-width: 2.5em;
+}
+
+#runnerDashHud {
+  font-size: 18px;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+#runnerDashHud:not([style*="0.35"]) {
+  animation: runner-glow-pulse 1.4s ease-in-out infinite;
 }
 
 .runner-game .runner-header b {
