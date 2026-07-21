@@ -1,6 +1,6 @@
 // ========================================
 // runner.js — «Люцик и Обратная сторона»
-// Stranger Things × Subway Surfers × Mario
+// Max upgrade: intro, well, hunt, Mind Flayer, rainbow, photo
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
@@ -23,20 +23,33 @@ const PHASE = {
   WELL_INSIDE: 'well_inside',
   WELL_EXIT: 'well_exit',
   HUNT: 'hunt',
+  WIN_SLOWMO: 'win_slowmo',
   WON: 'won',
   LOST: 'lost'
 };
 
+const RAINBOW = ['#ff0040', '#ff8000', '#ffd700', '#00e676', '#00e5ff', '#a040ff'];
+
+function nextRunCount() {
+  const n = (parseInt(localStorage.getItem('runner-run-count') || '0', 10) || 0) + 1;
+  localStorage.setItem('runner-run-count', String(n));
+  return n;
+}
+
 export function startRunnerGame(level = 1) {
-  document.querySelectorAll('.game-fullscreen, .game-screen, .runner-result').forEach((el) => el.remove());
+  document.querySelectorAll('.game-fullscreen, .game-screen, .runner-result, .runner-share-sheet').forEach((el) => el.remove());
   document.body.classList.remove('game-active');
   appState.gameActive = true;
   level = Math.max(1, Math.min(5, level || 1));
 
-  const fear = FEARS[Math.min(level - 1, FEARS.length - 1)];
+  const runCount = nextRunCount();
+  const isMindFlayer = runCount % 5 === 0 || level >= 5;
+  const fear = isMindFlayer
+    ? FEARS[4]
+    : FEARS[Math.min(level - 1, 3)];
 
   const overlay = document.createElement('div');
-  overlay.className = 'game-fullscreen runner-game';
+  overlay.className = `game-fullscreen runner-game${isMindFlayer ? ' runner-mindflayer' : ''}`;
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;display:flex;flex-direction:column;';
 
   const header = document.createElement('div');
@@ -45,6 +58,7 @@ export function startRunnerGame(level = 1) {
     <span>🐱 Обратная сторона</span>
     <span>🏃 <b id="runnerDistance">0</b>м · ⭐ <b id="runnerScore">0</b></span>
     <span id="runnerFearLabel">${fear.emoji} ${fear.name}</span>
+    <button type="button" id="runnerPhoto" aria-label="Фото">📸</button>
     <button type="button" id="runnerMusic" aria-label="Музыка">🔊</button>
     <button type="button" id="runnerClose" aria-label="Закрыть">✕</button>
   `;
@@ -57,28 +71,35 @@ export function startRunnerGame(level = 1) {
 
   const ctx = canvas.getContext('2d');
 
-  // —— state ——
   const groundY = () => canvas.height - 58;
+  const lucikHomeX = () => canvas.width * 0.28;
   const lucik = {
     x: 0, y: 0, w: 68, h: 68, vy: 0,
-    jumping: false, scale: 1, glow: 0, peek: 0
+    jumping: false, scale: 1, glow: 0, peek: 0,
+    facing: 1, lookBack: false, lookBackT: 0
   };
 
   let phase = PHASE.INTRO;
   let introT = 0;
   let wellT = 0;
   let huntT = 0;
+  let winSlowT = 0;
   let obstacles = [];
+  let trackStars = [];
   let trailStars = [];
   let particles = [];
+  let dirtParticles = [];
+  let comboFloats = [];
+  let speedLines = [];
+  let fireworks = [];
   let bgStars = [];
   let fireflies = [];
   let cracks = [];
   let wellShadows = [];
   let score = 0;
   let distance = 0;
-  let speed = 3.2;
-  let baseSpeed = 3.2;
+  let speed = isMindFlayer ? 3.8 : 3.2;
+  let baseSpeed = speed;
   let frame = 0;
   let jumpCount = 0;
   let finished = false;
@@ -86,12 +107,24 @@ export function startRunnerGame(level = 1) {
   let shakeIntensity = 0;
   let well = null;
   let wellStarTaken = false;
+  let wellEyeT = -1;
+  let wellParallax = 0;
   let invuln = 0;
   let chaseFear = null;
   let won = false;
-  let musicMode = 'flee'; // flee | well | hunt | win
+  let closedPortal = false;
+  let musicMode = 'flee';
+  let timeScale = 1;
+  let slowMoT = 0;
+  let combo = 0;
+  let comboTimer = 0;
+  let starStreak = 0;
+  let rainbowT = 0;
+  let clockMinute = 0; // 0 = 3:00, 1 = 3:01
+  let lastSmash = null;
+  let masterGain = null;
+  let musicVol = 0.04;
 
-  // sprites
   const lucikImg = new Image();
   lucikImg.src = 'assets/images/avatar.png';
   lucikImg.onerror = () => { lucikImg.src = 'assets/images/avatar.svg'; };
@@ -106,66 +139,88 @@ export function startRunnerGame(level = 1) {
   let frameCounter = 0;
   let animState = 'idle';
 
-  // —— audio ——
+  // —— Web Audio synthwave ——
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   let musicOn = true;
   let musicInterval = null;
   let droneNodes = [];
+  let echoDelay = null;
+  let echoGain = null;
 
   function resumeAudio() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
   }
 
+  function ensureMaster() {
+    if (masterGain) return masterGain;
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 1;
+    masterGain.connect(audioCtx.destination);
+    echoDelay = audioCtx.createDelay(1.0);
+    echoDelay.delayTime.value = 0.28;
+    echoGain = audioCtx.createGain();
+    echoGain.gain.value = 0;
+    echoDelay.connect(echoGain);
+    echoGain.connect(masterGain);
+    return masterGain;
+  }
+
+  function setWellEcho(on) {
+    if (!echoGain) ensureMaster();
+    echoGain.gain.setTargetAtTime(on ? 0.45 : 0, audioCtx.currentTime, 0.05);
+  }
+
+  function setMusicVolume(v) {
+    musicVol = v;
+    if (masterGain) masterGain.gain.setTargetAtTime(musicOn ? Math.min(1.4, 0.7 + v * 8) : 0, audioCtx.currentTime, 0.1);
+  }
+
   function beep(freq, dur, type = 'sine', vol = 0.12, slideTo = null) {
     if (!musicOn) return;
     resumeAudio();
+    ensureMaster();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(masterGain);
+    if (echoGain?.gain.value > 0.01) gain.connect(echoDelay);
     osc.type = type;
     osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
     if (slideTo != null) osc.frequency.linearRampToValueAtTime(slideTo, audioCtx.currentTime + dur);
-    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    const v = vol * (0.6 + musicVol * 6);
+    gain.gain.setValueAtTime(v, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
     osc.start();
     osc.stop(audioCtx.currentTime + dur);
   }
 
   function playHeartbeat() {
-    beep(55, 0.12, 'sine', 0.2);
-    setTimeout(() => beep(45, 0.18, 'sine', 0.18), 180);
+    beep(55, 0.12, 'sine', 0.22);
+    setTimeout(() => beep(42, 0.2, 'sine', 0.2), 180);
   }
 
-  function playJumpSound() {
-    beep(280, 0.18, 'square', 0.08, 520);
-  }
-
+  function playJumpSound() { beep(280, 0.18, 'square', 0.08, 520); }
   function playStarSound() {
     beep(880, 0.12, 'sine', 0.14, 1320);
     setTimeout(() => beep(1320, 0.2, 'triangle', 0.1), 80);
   }
-
   function playHuntSound() {
     beep(220, 0.4, 'sawtooth', 0.08, 660);
     setTimeout(() => beep(440, 0.5, 'triangle', 0.1, 880), 120);
   }
-
   function playShatter() {
-    beep(180, 0.15, 'sawtooth', 0.1, 40);
-    beep(600, 0.2, 'square', 0.05, 1200);
+    beep(180, 0.15, 'sawtooth', 0.12, 40);
+    beep(600, 0.2, 'square', 0.06, 1200);
   }
-
+  function playRainbow() {
+    [523, 659, 784, 988, 1175].forEach((f, i) => setTimeout(() => beep(f, 0.25, 'triangle', 0.09), i * 70));
+  }
   function playWinChime() {
-    [523, 659, 784, 1047].forEach((f, i) => {
-      setTimeout(() => beep(f, 0.35, 'sine', 0.1), i * 120);
-    });
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.35, 'sine', 0.1), i * 120));
   }
 
   function stopDrone() {
-    droneNodes.forEach((n) => {
-      try { n.stop(); } catch { /* */ }
-    });
+    droneNodes.forEach((n) => { try { n.stop(); } catch { /* */ } });
     droneNodes = [];
   }
 
@@ -173,40 +228,52 @@ export function startRunnerGame(level = 1) {
     stopDrone();
     if (!musicOn) return;
     resumeAudio();
+    ensureMaster();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
+    const lfo = audioCtx.createOscillator();
+    const lfoGain = audioCtx.createGain();
     osc.type = 'sawtooth';
     osc.frequency.value = freq;
-    gain.gain.value = vol;
+    lfo.frequency.value = isMindFlayer ? 1.8 : 3.5;
+    lfoGain.gain.value = freq * 0.02;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    gain.gain.value = vol * (isMindFlayer ? 1.6 : 1);
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(masterGain);
+    if (echoGain?.gain.value > 0.01) gain.connect(echoDelay);
     osc.start();
-    droneNodes.push(osc);
+    lfo.start();
+    droneNodes.push(osc, lfo);
   }
 
   function startMusic(mode = 'flee') {
     musicMode = mode;
-    if (musicInterval) {
-      clearInterval(musicInterval);
-      musicInterval = null;
-    }
+    if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
     stopDrone();
     if (!musicOn) return;
+    setWellEcho(mode === 'well');
 
     if (mode === 'well') {
-      startDrone(36, 0.025);
+      startDrone(32, 0.02);
+      setMusicVolume(0.02);
       return;
     }
     if (mode === 'win') {
+      setWellEcho(false);
       playWinChime();
+      setMusicVolume(0.06);
       return;
     }
 
-    const fleeNotes = [110, 130, 146, 110, 98, 130, 164, 146];
-    const huntNotes = [220, 277, 330, 370, 440, 370, 330, 277];
-    const notes = mode === 'hunt' ? huntNotes : fleeNotes;
+    const fleeBass = isMindFlayer
+      ? [55, 55, 65, 49, 55, 73, 65, 49]
+      : [110, 130, 146, 110, 98, 130, 164, 146];
+    const huntLead = [220, 277, 330, 370, 440, 370, 330, 277];
+    const notes = mode === 'hunt' ? huntLead : fleeBass;
     let i = 0;
-    startDrone(mode === 'hunt' ? 55 : 42, mode === 'hunt' ? 0.03 : 0.045);
+    startDrone(mode === 'hunt' ? 55 : (isMindFlayer ? 28 : 42), mode === 'hunt' ? 0.03 : (isMindFlayer ? 0.07 : 0.04));
 
     musicInterval = setInterval(() => {
       if (!musicOn || phase === PHASE.LOST || phase === PHASE.WON) {
@@ -215,10 +282,12 @@ export function startRunnerGame(level = 1) {
         return;
       }
       const f = notes[i % notes.length];
-      beep(f, mode === 'hunt' ? 0.22 : 0.28, mode === 'hunt' ? 'square' : 'sawtooth', mode === 'hunt' ? 0.045 : 0.035);
-      if (mode === 'hunt' && i % 4 === 0) beep(f * 2, 0.12, 'triangle', 0.03);
+      const type = mode === 'hunt' ? 'square' : (isMindFlayer ? 'sawtooth' : 'sawtooth');
+      beep(f, mode === 'hunt' ? 0.2 : 0.28, type, mode === 'hunt' ? 0.045 : 0.038);
+      if (mode === 'hunt' && i % 4 === 0) beep(f * 2, 0.1, 'triangle', 0.028);
+      if (isMindFlayer && mode === 'flee' && i % 2 === 0) beep(f / 2, 0.35, 'sine', 0.05);
       i++;
-    }, mode === 'hunt' ? 220 : 320);
+    }, mode === 'hunt' ? 200 : (isMindFlayer ? 280 : 320));
   }
 
   function toggleMusic() {
@@ -227,7 +296,9 @@ export function startRunnerGame(level = 1) {
       if (musicInterval) clearInterval(musicInterval);
       musicInterval = null;
       stopDrone();
+      if (masterGain) masterGain.gain.value = 0;
     } else if (phase !== PHASE.LOST && phase !== PHASE.WON && phase !== PHASE.INTRO) {
+      if (masterGain) masterGain.gain.value = 1;
       startMusic(musicMode);
     }
     return musicOn;
@@ -240,18 +311,16 @@ export function startRunnerGame(level = 1) {
     try { audioCtx.close(); } catch { /* */ }
   }
 
-  // —— setup bg ——
   function initDecor() {
-    bgStars = Array.from({ length: 48 }, () => ({
-      x: Math.random(),
-      y: Math.random() * 0.55,
+    bgStars = Array.from({ length: isMindFlayer ? 30 : 52 }, () => ({
+      x: Math.random(), y: Math.random() * 0.55,
       r: 0.5 + Math.random() * 1.8,
       tw: Math.random() * Math.PI * 2,
       sp: 0.02 + Math.random() * 0.04
     }));
     fireflies = Array.from({ length: 18 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height * 0.7,
+      x: Math.random() * Math.max(100, canvas.width),
+      y: Math.random() * Math.max(80, canvas.height * 0.7),
       vx: (Math.random() - 0.5) * 0.6,
       vy: (Math.random() - 0.5) * 0.4,
       hue: Math.random() < 0.55 ? 'gold' : 'red',
@@ -262,19 +331,52 @@ export function startRunnerGame(level = 1) {
   function resize() {
     canvas.width = overlay.clientWidth;
     canvas.height = Math.max(200, overlay.clientHeight - header.offsetHeight);
-    lucik.x = canvas.width * 0.28;
-    if (phase === PHASE.INTRO || phase === PHASE.RUN || phase === PHASE.HUNT) {
-      lucik.y = groundY() - lucik.h;
+    if (phase === PHASE.INTRO) lucik.x = lucikHomeX();
+    else if (phase === PHASE.RUN || phase === PHASE.HUNT) {
+      lucik.x = lucik.x || lucikHomeX();
+      lucik.y = Math.min(lucik.y, groundY() - lucik.h);
     }
     if (!bgStars.length) initDecor();
   }
   resize();
   window.addEventListener('resize', resize);
 
-  // —— spawn helpers ——
-  function spawnFearObstacle(kind = 'chase') {
+  function burst(x, y, color, n = 14) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 1.5 + Math.random() * 4.5;
+      particles.push({
+        x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1.2,
+        life: 22 + Math.random() * 22, color, r: 2 + Math.random() * 3.5
+      });
+    }
+  }
+
+  function spawnDirt(x, y, n = 10) {
+    for (let i = 0; i < n; i++) {
+      dirtParticles.push({
+        x: x + (Math.random() - 0.5) * 30,
+        y,
+        vx: (Math.random() - 0.5) * 2.5,
+        vy: -1 - Math.random() * 3,
+        life: 25 + Math.random() * 20,
+        r: 2 + Math.random() * 3,
+        color: Math.random() < 0.5 ? '#5a4020' : '#3a2810'
+      });
+    }
+  }
+
+  function showComboText(pts) {
+    const el = document.createElement('div');
+    el.className = 'runner-combo-float';
+    el.textContent = `+${pts}`;
+    overlay.appendChild(el);
+    setTimeout(() => el.remove(), 900);
+  }
+
+  function spawnFearObstacle() {
     if (canvas.width <= 0) return;
-    const scale = 1 + Math.min(0.5, distance * 0.00025);
+    const scale = 1 + Math.min(0.55, distance * 0.0003);
     const variants = [
       { fearId: 'darkness', w: 50 * scale, h: 44 * scale },
       { fearId: 'height', w: 42 * scale, h: 52 * scale },
@@ -283,9 +385,9 @@ export function startRunnerGame(level = 1) {
     ];
     const v = variants[Math.floor(Math.random() * variants.length)];
     const meta = FEARS.find((f) => f.id === v.fearId) || fear;
+    const hunting = phase === PHASE.HUNT || rainbowT > 0;
     obstacles.push({
       type: 'fear',
-      kind,
       fearId: v.fearId,
       name: meta.name,
       color: meta.color,
@@ -295,42 +397,57 @@ export function startRunnerGame(level = 1) {
       y: groundY() - v.h,
       w: v.w,
       h: v.h,
-      fleeing: phase === PHASE.HUNT,
+      fleeing: hunting,
+      panicDir: Math.random() < 0.5 ? -1 : 1,
+      panicT: Math.random() * 40,
       hit: false
+    });
+  }
+
+  function spawnTrackStar() {
+    if (canvas.width <= 0) return;
+    trackStars.push({
+      x: canvas.width + 10,
+      y: groundY() - 70 - Math.random() * 50,
+      r: 11,
+      taken: false
     });
   }
 
   function spawnWell() {
     if (well || canvas.width <= 0) return;
-    well = {
-      x: canvas.width + 40,
-      y: groundY() - 8,
-      w: 72,
-      h: 52,
-      used: false
-    };
+    well = { x: canvas.width + 40, y: groundY() - 8, w: 72, h: 52, used: false };
   }
 
-  function spawnCrack() {
-    cracks.push({
-      x: canvas.width,
-      life: 40 + Math.random() * 30
-    });
-  }
-
-  function burst(x, y, color, n = 14) {
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 1.5 + Math.random() * 4;
-      particles.push({
-        x, y,
-        vx: Math.cos(a) * sp,
-        vy: Math.sin(a) * sp - 1,
-        life: 20 + Math.random() * 20,
-        color,
-        r: 2 + Math.random() * 3
-      });
+  function collectStar(bonus = 10) {
+    score += bonus;
+    starStreak++;
+    const el = document.getElementById('runnerScore');
+    if (el) el.textContent = score;
+    playStarSound();
+    if (starStreak >= 3 && rainbowT <= 0) {
+      rainbowT = 500; // ~10s
+      overlay.classList.add('runner-rainbow');
+      playRainbow();
+      speak('Радужный Люцик!');
+      obstacles.forEach((o) => { if (o.type === 'fear') o.fleeing = true; });
     }
+  }
+
+  function smashFear(o) {
+    o.hit = true;
+    comboTimer = 90;
+    combo++;
+    const pts = Math.min(50, 10 * combo);
+    score += pts;
+    const el = document.getElementById('runnerScore');
+    if (el) el.textContent = score;
+    showComboText(pts);
+    burst(o.x + o.w / 2, o.y + o.h / 2, o.eye || '#ff4466', 22);
+    burst(o.x + o.w / 2, o.y + o.h / 2, '#FFD700', 10);
+    shakeIntensity = Math.min(16, 6 + combo * 1.5);
+    playShatter();
+    lastSmash = { x: o.x + o.w / 2, y: o.y + o.h / 2, color: o.eye, name: o.name };
   }
 
   function enterWell() {
@@ -345,32 +462,79 @@ export function startRunnerGame(level = 1) {
     overlay.classList.add('runner-well');
     startMusic('well');
     shakeIntensity = 6;
-    wellShadows = [];
+    wellShadows = [
+      { name: 'Темнота', x: -80, speed: 4.2, y: 0.22 },
+      { name: 'Высота', x: -220, speed: 3.6, y: 0.4 },
+      { name: 'Одиночество', x: -380, speed: 5.0, y: 0.3 }
+    ];
+    wellEyeT = -1;
     wellStarTaken = false;
+    wellParallax = 0;
   }
 
   function startHunt() {
     phase = PHASE.HUNT;
     huntT = 0;
-    invuln = 250; // ~5s at 20ms
+    invuln = 250;
     lucik.glow = 1;
     lucik.scale = 1;
     lucik.peek = 0;
     lucik.y = groundY() - lucik.h;
+    lucik.x = lucikHomeX();
     well = null;
     overlay.classList.remove('runner-well');
     overlay.classList.add('runner-hunt');
     baseSpeed = speed;
     speed = baseSpeed * 1.5;
+    setMusicVolume(0.07);
     obstacles.forEach((o) => { if (o.type === 'fear') o.fleeing = true; });
     startMusic('hunt');
     playHuntSound();
-    burst(lucik.x + lucik.w / 2, lucik.y + lucik.h / 2, '#FFD700', 24);
+    burst(lucik.x + lucik.w / 2, lucik.y + lucik.h / 2, '#FFD700', 28);
+    // slow-mo after exit
+    timeScale = 0.5;
+    slowMoT = 25;
+  }
+
+  function triggerWin() {
+    if (phase === PHASE.WON || phase === PHASE.WIN_SLOWMO) return;
+    won = true;
+    closedPortal = isMindFlayer;
+    clockMinute = 1;
+    if (lastSmash) {
+      phase = PHASE.WIN_SLOWMO;
+      winSlowT = 0;
+      timeScale = 0.35;
+      for (let i = 0; i < 40; i++) {
+        fireworks.push({
+          x: canvas.width * (0.2 + Math.random() * 0.6),
+          y: canvas.height * (0.15 + Math.random() * 0.35),
+          vx: (Math.random() - 0.5) * 3,
+          vy: -2 - Math.random() * 3,
+          life: 40 + Math.random() * 40,
+          color: Math.random() < 0.5 ? '#FFD700' : '#ff2244',
+          r: 2 + Math.random() * 3
+        });
+      }
+    } else {
+      phase = PHASE.WON;
+      startMusic('win');
+      spawnVictoryFireworks();
+    }
+  }
+
+  function spawnVictoryFireworks() {
+    for (let i = 0; i < 60; i++) {
+      const cx = canvas.width * (0.25 + Math.random() * 0.5);
+      const cy = canvas.height * (0.2 + Math.random() * 0.3);
+      burst(cx, cy, Math.random() < 0.5 ? '#FFD700' : '#ff2244', 8);
+    }
   }
 
   function jump() {
     if (phase === PHASE.INTRO || phase === PHASE.WELL_FALL || phase === PHASE.WELL_INSIDE ||
-        phase === PHASE.WELL_EXIT || phase === PHASE.LOST || phase === PHASE.WON) return;
+        phase === PHASE.WELL_EXIT || phase === PHASE.LOST || phase === PHASE.WON ||
+        phase === PHASE.WIN_SLOWMO) return;
     if (jumpCount >= 2) return;
     lucik.vy = jumpCount === 0 ? -13 : -9;
     lucik.jumping = true;
@@ -378,79 +542,102 @@ export function startRunnerGame(level = 1) {
     playJumpSound();
   }
 
-  // —— intro ——
+  // —— intro: crawl from ground ——
   function updateIntro() {
     introT++;
-    lucik.y = groundY() - lucik.h;
-    animState = 'idle';
+    const gy = groundY();
 
     if (introT === 1) {
       resumeAudio();
-      startDrone(40, 0.03);
+      startDrone(isMindFlayer ? 28 : 40, isMindFlayer ? 0.06 : 0.03);
+      lucik.x = lucikHomeX();
+      lucik.y = gy - lucik.h;
     }
-    if (introT === 50) {
-      shakeIntensity = 10;
+
+    // fear crawls up from underground
+    if (introT === 40) {
+      chaseFear = {
+        x: canvas.width * 0.7,
+        y: gy,
+        h: 0,
+        maxH: 110,
+        crawl: true
+      };
+      spawnDirt(canvas.width * 0.7, gy, 16);
+    }
+
+    if (chaseFear && chaseFear.h < chaseFear.maxH) {
+      chaseFear.h += 1.8;
+      if (introT % 4 === 0) spawnDirt(chaseFear.x, gy, 3);
+    }
+
+    if (introT === 55) {
+      shakeIntensity = 12;
       playHeartbeat();
     }
-    if (introT === 70) playHeartbeat();
-    if (introT === 55) {
-      chaseFear = {
-        x: canvas.width * 0.72,
-        y: groundY() - 90,
-        h: 0,
-        maxH: 100,
-        eyes: true
-      };
+    if (introT === 75) playHeartbeat();
+
+    // Lucik jumps back in fright
+    if (introT === 80) {
+      lucik.vy = -10;
+      lucik.jumping = true;
+      lucik.facing = -1;
+      lucik.lookBack = true;
+      playJumpSound();
     }
-    if (chaseFear && chaseFear.h < chaseFear.maxH) {
-      chaseFear.h += 2.2;
+    if (introT >= 80 && introT < 110) {
+      lucik.x = Math.max(20, lucikHomeX() - (introT - 80) * 1.8);
+      lucik.vy += 0.55;
+      lucik.y += lucik.vy;
+      if (lucik.y >= gy - lucik.h) {
+        lucik.y = gy - lucik.h;
+        lucik.vy = 0;
+        lucik.jumping = false;
+      }
     }
-    if (introT === 120) {
+
+    if (introT === 125) {
+      lucik.facing = 1;
+      lucik.lookBack = false;
+      lucik.x = lucikHomeX();
       animState = 'run';
       phase = PHASE.RUN;
       stopDrone();
       startMusic('flee');
-      speak(`Беги от ${fear.name}!`);
+      setMusicVolume(0.04);
+      speak(isMindFlayer ? 'Mind Flayer рядом! Беги!' : `Беги от ${fear.name}!`);
     }
   }
 
-  // —— well phases ——
   function updateWellFall() {
     wellT++;
-    lucik.scale = Math.max(0.15, 1 - wellT / 35);
-    lucik.y += 2.5;
+    lucik.scale = Math.max(0.12, 1 - wellT / 32);
+    lucik.y += 2.8;
     animState = 'fall';
-    if (wellT >= 35) {
+    wellParallax += 2;
+    if (wellT >= 32) {
       phase = PHASE.WELL_INSIDE;
       wellT = 0;
       lucik.scale = 1;
       lucik.peek = 0;
-      wellShadows = [
-        { name: 'Темнота', x: -80, speed: 4.5, y: 0.22 },
-        { name: 'Высота', x: -200, speed: 3.8, y: 0.38 },
-        { name: 'Одиночество', x: -360, speed: 5.2, y: 0.3 }
-      ];
+      wellEyeT = 35; // eye peeks mid-scene
     }
   }
 
   function updateWellInside() {
     wellT++;
-    lucik.peek = Math.min(1, wellT / 25);
+    lucik.peek = Math.min(1, wellT / 22);
     animState = 'peek';
-
+    wellParallax += 0.8;
     wellShadows.forEach((s) => { s.x += s.speed; });
+    if (wellEyeT > 0) wellEyeT--;
 
-    // take star around mid, then exit
-    if (wellT === 55 && !wellStarTaken) {
+    if (wellT === 50 && !wellStarTaken) {
       wellStarTaken = true;
-      playStarSound();
-      score += 25;
-      const el = document.getElementById('runnerScore');
-      if (el) el.textContent = score;
-      burst(canvas.width / 2, canvas.height * 0.55, '#FFD700', 30);
+      collectStar(25);
+      burst(canvas.width / 2, canvas.height * 0.55, '#FFD700', 32);
     }
-
-    if (wellT >= 90) {
+    if (wellT >= 95) {
       phase = PHASE.WELL_EXIT;
       wellT = 0;
       lucik.peek = 0;
@@ -460,68 +647,131 @@ export function startRunnerGame(level = 1) {
   function updateWellExit() {
     wellT++;
     animState = 'jump_up';
-    lucik.glow = Math.min(1, wellT / 15);
-    if (wellT >= 20) startHunt();
+    lucik.glow = Math.min(1, wellT / 12);
+    if (wellT >= 18) startHunt();
   }
 
   function updateHunt() {
     huntT++;
     invuln = Math.max(0, invuln - 1);
-    lucik.glow = 0.7 + Math.sin(frame * 0.2) * 0.3;
+    lucik.glow = 0.65 + Math.sin(frame * 0.22) * 0.35;
 
+    if (frame % 2 === 0) {
+      speedLines.push({
+        x: Math.random() < 0.5 ? 8 + Math.random() * 28 : canvas.width - 36 - Math.random() * 28,
+        y: Math.random() * canvas.height,
+        len: 20 + Math.random() * 40,
+        life: 10 + Math.random() * 8
+      });
+    }
     if (frame % 3 === 0) {
       trailStars.push({
-        x: lucik.x + lucik.w * 0.3,
-        y: lucik.y + lucik.h * 0.5 + (Math.random() - 0.5) * 20,
-        life: 18
+        x: lucik.x + lucik.w * 0.25,
+        y: lucik.y + lucik.h * 0.45 + (Math.random() - 0.5) * 22,
+        life: 16
       });
     }
 
-    if (huntT >= 250) {
-      // end hunt → victory if survived far enough, else back to run
-      phase = PHASE.WON;
-      won = true;
-      startMusic('win');
-      overlay.classList.remove('runner-hunt');
-      speed = baseSpeed;
-      lucik.glow = 0.5;
-    }
+    // panic fears
+    obstacles.forEach((o) => {
+      if (o.type !== 'fear' || o.hit) return;
+      o.panicT++;
+      if (o.panicT % 18 === 0) o.panicDir *= -1;
+      o.x += o.panicDir * 1.8;
+      // collide with each other
+      for (const b of obstacles) {
+        if (b === o || b.hit || b.type !== 'fear') continue;
+        if (Math.abs(o.x - b.x) < (o.w + b.w) * 0.4) {
+          o.panicDir *= -1;
+          b.panicDir *= -1;
+          burst((o.x + b.x) / 2, o.y + o.h / 2, '#ffffff', 4);
+        }
+      }
+    });
+
+    if (huntT >= 250) triggerWin();
   }
 
-  // —— main update ——
   function update() {
     if (phase === PHASE.LOST || phase === PHASE.WON) return;
+
+    // slow-mo
+    if (slowMoT > 0) {
+      slowMoT--;
+      if (slowMoT <= 0) timeScale = 1;
+    }
+    // accumulate frames with timeScale (skip some updates when slow)
+    if (timeScale < 1 && frame % Math.round(1 / timeScale) !== 0 && phase !== PHASE.WIN_SLOWMO) {
+      // still draw, lighter update
+    }
+
     frame++;
+
+    if (phase === PHASE.WIN_SLOWMO) {
+      winSlowT++;
+      fireworks.forEach((f) => {
+        f.x += f.vx * 0.5;
+        f.y += f.vy * 0.5;
+        f.vy += 0.05;
+        f.life--;
+      });
+      fireworks = fireworks.filter((f) => f.life > 0);
+      updateParticles();
+      if (winSlowT >= 45) {
+        phase = PHASE.WON;
+        timeScale = 1;
+        startMusic('win');
+        spawnVictoryFireworks();
+      }
+      return;
+    }
 
     if (phase === PHASE.INTRO) {
       updateIntro();
       updateParticles();
       return;
     }
-    if (phase === PHASE.WELL_FALL) {
-      updateWellFall();
-      updateParticles();
-      return;
-    }
-    if (phase === PHASE.WELL_INSIDE) {
-      updateWellInside();
-      updateParticles();
-      return;
-    }
-    if (phase === PHASE.WELL_EXIT) {
-      updateWellExit();
-      updateParticles();
-      return;
-    }
+    if (phase === PHASE.WELL_FALL) { updateWellFall(); updateParticles(); return; }
+    if (phase === PHASE.WELL_INSIDE) { updateWellInside(); updateParticles(); return; }
+    if (phase === PHASE.WELL_EXIT) { updateWellExit(); updateParticles(); return; }
 
     const hunting = phase === PHASE.HUNT;
+    const rainbow = rainbowT > 0;
     if (hunting) updateHunt();
+    if (rainbow) {
+      rainbowT--;
+      if (rainbowT <= 0) overlay.classList.remove('runner-rainbow');
+    }
+    if (comboTimer > 0) {
+      comboTimer--;
+      if (comboTimer <= 0) combo = 0;
+    }
 
-    distance += speed * 0.12;
+    // look back every ~3s while running
+    if (phase === PHASE.RUN) {
+      lucik.lookBackT++;
+      if (lucik.lookBackT >= 150) {
+        lucik.lookBackT = 0;
+        lucik.lookBack = true;
+        lucik.facing = -1;
+        setTimeout(() => {
+          if (phase === PHASE.RUN) {
+            lucik.lookBack = false;
+            lucik.facing = 1;
+          }
+        }, 450);
+      }
+    }
+
+    distance += speed * 0.12 * (timeScale < 1 ? timeScale : 1);
     const distEl = document.getElementById('runnerDistance');
     if (distEl) distEl.textContent = Math.floor(distance);
 
-    // physics
+    // dynamic music volume from speed
+    if (phase === PHASE.RUN || phase === PHASE.HUNT) {
+      setMusicVolume(0.03 + (speed / 14) * 0.08);
+    }
+
     lucik.vy += 0.62;
     lucik.y += lucik.vy;
     const gy = groundY();
@@ -532,27 +782,46 @@ export function startRunnerGame(level = 1) {
       jumpCount = 0;
     }
 
-    // move world
-    const move = speed;
+    const move = speed * (timeScale < 1 ? timeScale : 1);
     obstacles.forEach((o) => {
-      o.x -= o.fleeing ? move * 1.35 : move;
+      o.x -= o.fleeing ? move * 1.4 : move;
     });
+    trackStars.forEach((s) => { s.x -= move; });
     if (well && !well.used) well.x -= move;
     cracks.forEach((c) => { c.x -= move; c.life--; });
     cracks = cracks.filter((c) => c.life > 0 && c.x > -40);
-    trailStars.forEach((t) => { t.x -= move * 0.4; t.life--; });
+    trailStars.forEach((t) => { t.x -= move * 0.35; t.life--; });
     trailStars = trailStars.filter((t) => t.life > 0);
+    speedLines.forEach((l) => { l.y += 8; l.life--; });
+    speedLines = speedLines.filter((l) => l.life > 0);
 
-    obstacles = obstacles.filter((o) => o.x > -80 && !o.hit);
+    // missed star breaks rainbow streak
+    for (const s of [...trackStars]) {
+      if (!s.taken && s.x + 20 < lucik.x) {
+        starStreak = 0;
+        s.taken = true; // mark so we don't double-count
+      }
+    }
 
-    // well proximity / enter
+    obstacles = obstacles.filter((o) => o.x > -90 && !o.hit);
+    trackStars = trackStars.filter((s) => s.x > -20 && !s.taken);
+
     if (well && !well.used && phase === PHASE.RUN) {
       const near = lucik.x + lucik.w > well.x + 8 && lucik.x < well.x + well.w - 8;
       const vertically = lucik.y + lucik.h > well.y - 40;
       if (near && vertically) enterWell();
     }
 
-    // collisions
+    // star pickup
+    for (const s of trackStars) {
+      if (s.taken) continue;
+      if (Math.abs(lucik.x + lucik.w / 2 - s.x) < 28 && Math.abs(lucik.y + lucik.h / 2 - s.y) < 28) {
+        s.taken = true;
+        collectStar(10);
+        burst(s.x, s.y, '#FFD700', 12);
+      }
+    }
+
     const margin = 10;
     const lx = lucik.x + margin;
     const ly = lucik.y + margin + 4;
@@ -566,56 +835,51 @@ export function startRunnerGame(level = 1) {
       const ow = o.w - 12;
       const oh = o.h - 10;
       if (lx < ox + ow && lx + lw > ox && ly < oy + oh && ly + lh > oy) {
-        if (hunting || invuln > 0) {
-          o.hit = true;
-          score += 10;
-          const el = document.getElementById('runnerScore');
-          if (el) el.textContent = score;
-          burst(o.x + o.w / 2, o.y + o.h / 2, o.eye || '#ff4466', 18);
-          playShatter();
+        if (hunting || rainbow || invuln > 0) {
+          smashFear(o);
         } else {
+          starStreak = 0;
           phase = PHASE.LOST;
-          shakeIntensity = 12;
+          shakeIntensity = 14;
           beep(80, 0.4, 'sawtooth', 0.12, 30);
         }
       }
     }
 
-    // spawns
     if (phase === PHASE.RUN || phase === PHASE.HUNT) {
-      const minGap = Math.max(160, 380 - distance * 0.12);
+      const minGap = Math.max(isMindFlayer ? 120 : 160, (isMindFlayer ? 280 : 380) - distance * 0.12);
       const last = obstacles[obstacles.length - 1];
-      const spawnRate = hunting ? 0.035 : 0.012 + distance * 0.000035;
+      const spawnRate = hunting
+        ? 0.04
+        : (isMindFlayer ? 0.022 : 0.012) + distance * 0.00004;
       if ((!last || last.x < canvas.width - minGap) && Math.random() < spawnRate) {
-        spawnFearObstacle(hunting ? 'flee' : 'chase');
+        spawnFearObstacle();
       }
-      // well once around mid-run
-      if (phase === PHASE.RUN && !well && distance > 55 && distance < 70) {
-        spawnWell();
+      if (phase === PHASE.RUN && !well && distance > 55 && distance < 70) spawnWell();
+      if (phase === PHASE.RUN && Math.random() < 0.018) spawnTrackStar();
+      if (Math.random() < (isMindFlayer ? 0.02 : 0.012)) {
+        cracks.push({ x: canvas.width, life: 40 + Math.random() * 30 });
       }
-      if (Math.random() < 0.012) spawnCrack();
-      if (!hunting) speed = Math.min(11, 3.2 + distance * 0.0028);
-      else speed = Math.min(14, baseSpeed * 1.5);
+      if (!hunting) speed = Math.min(isMindFlayer ? 13 : 11, baseSpeed + distance * 0.003);
+      else speed = Math.min(15, baseSpeed * 1.5);
     }
 
-    groundOffset = (groundOffset + speed) % 48;
+    // miss star → break streak if it goes off screen past lucik without collect
+    // (handled: only increment on collect)
 
-    // fireflies
+    groundOffset = (groundOffset + speed) % 48;
     fireflies.forEach((f) => {
-      f.x += f.vx;
-      f.y += f.vy;
-      f.ph += 0.05;
+      f.x += f.vx; f.y += f.vy; f.ph += 0.05;
       if (f.x < 0) f.x = canvas.width;
       if (f.x > canvas.width) f.x = 0;
       if (f.y < 0) f.y = canvas.height * 0.6;
       if (f.y > canvas.height * 0.75) f.y = 20;
     });
 
-    // anim
     if (lucik.jumping && lucik.vy < -3) animState = 'jump_up';
     else if (lucik.jumping && lucik.vy > 3) animState = 'land';
     else if (lucik.jumping) animState = 'fly';
-    else animState = hunting ? 'glow' : 'run';
+    else animState = (hunting || rainbow) ? 'glow' : 'run';
 
     frameCounter++;
     if (frameCounter >= (hunting ? 4 : 6)) {
@@ -629,8 +893,8 @@ export function startRunnerGame(level = 1) {
       const sx = (Math.random() - 0.5) * shakeIntensity;
       const sy = (Math.random() - 0.5) * shakeIntensity;
       overlay.style.transform = `translate(${sx}px, ${sy}px)`;
-      shakeIntensity *= 0.92;
-      if (shakeIntensity < 0.4) {
+      shakeIntensity *= 0.9;
+      if (shakeIntensity < 0.35) {
         shakeIntensity = 0;
         overlay.style.transform = '';
       }
@@ -638,25 +902,35 @@ export function startRunnerGame(level = 1) {
 
     updateParticles();
 
-    // win by distance without well (fallback)
-    if (phase === PHASE.RUN && distance >= 320) {
-      phase = PHASE.WON;
-      won = true;
-      startMusic('win');
-    }
+    if (phase === PHASE.RUN && distance >= (isMindFlayer ? 380 : 320)) triggerWin();
   }
 
   function updateParticles() {
     particles.forEach((p) => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 0.12;
-      p.life--;
+      p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.life--;
     });
     particles = particles.filter((p) => p.life > 0);
+    dirtParticles.forEach((p) => {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--;
+    });
+    dirtParticles = dirtParticles.filter((p) => p.life > 0);
   }
 
-  // —— draw helpers ——
+  // —— draw ——
+  function drawStarPath(x, y, spikes, outer, inner) {
+    let rot = Math.PI / 2 * 3;
+    const step = Math.PI / spikes;
+    ctx.beginPath();
+    ctx.moveTo(x, y - outer);
+    for (let i = 0; i < spikes; i++) {
+      ctx.lineTo(x + Math.cos(rot) * outer, y + Math.sin(rot) * outer);
+      rot += step;
+      ctx.lineTo(x + Math.cos(rot) * inner, y + Math.sin(rot) * inner);
+      rot += step;
+    }
+    ctx.closePath();
+  }
+
   function drawFearShape(o) {
     const { x, y, w, h, color, eye, shape, fleeing } = o;
     ctx.save();
@@ -666,7 +940,6 @@ export function startRunnerGame(level = 1) {
       ctx.translate(-(x + w / 2), -(y + h / 2));
     }
     ctx.globalAlpha = 0.92;
-
     if (shape === 'vortex') {
       for (let i = 4; i >= 0; i--) {
         ctx.strokeStyle = color;
@@ -685,18 +958,6 @@ export function startRunnerGame(level = 1) {
       ctx.lineTo(x, y + h * 0.35);
       ctx.closePath();
       ctx.fill();
-      // petals / petals like demogorgon
-      for (let i = 0; i < 5; i++) {
-        const a = -Math.PI / 2 + (i / 5) * Math.PI * 2;
-        ctx.fillStyle = '#3a0a5a';
-        ctx.beginPath();
-        ctx.ellipse(
-          x + w / 2 + Math.cos(a) * w * 0.22,
-          y + h * 0.28 + Math.sin(a) * h * 0.12,
-          w * 0.12, h * 0.18, a, 0, Math.PI * 2
-        );
-        ctx.fill();
-      }
     } else if (shape === 'flayer') {
       ctx.fillStyle = color;
       ctx.beginPath();
@@ -707,24 +968,17 @@ export function startRunnerGame(level = 1) {
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(x + w / 2, y + h * 0.55);
-        ctx.quadraticCurveTo(
-          x + w * (0.1 + i * 0.2), y + h * 0.8,
-          x + w * (0.05 + i * 0.22), y + h
-        );
+        ctx.quadraticCurveTo(x + w * (0.1 + i * 0.2), y + h * 0.8, x + w * (0.05 + i * 0.22), y + h);
         ctx.stroke();
       }
     } else {
-      // cloud / shadow
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(x + w * 0.3, y + h * 0.55, w * 0.28, 0, Math.PI * 2);
       ctx.arc(x + w * 0.55, y + h * 0.4, w * 0.32, 0, Math.PI * 2);
       ctx.arc(x + w * 0.75, y + h * 0.55, w * 0.26, 0, Math.PI * 2);
-      ctx.arc(x + w * 0.5, y + h * 0.7, w * 0.3, 0, Math.PI * 2);
       ctx.fill();
     }
-
-    // eyes
     ctx.fillStyle = eye;
     ctx.shadowColor = eye;
     ctx.shadowBlur = 10;
@@ -734,8 +988,6 @@ export function startRunnerGame(level = 1) {
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.restore();
-
-    // label
     ctx.fillStyle = 'rgba(0,229,255,0.85)';
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'center';
@@ -745,42 +997,40 @@ export function startRunnerGame(level = 1) {
 
   function drawWell(wObj, showHint) {
     const { x, y, w, h } = wObj;
-    // stone rim
-    const stone = ctx.createLinearGradient(x, y - h, x, y + 10);
-    stone.addColorStop(0, '#5a5a5a');
-    stone.addColorStop(0.5, '#3a3a42');
-    stone.addColorStop(1, '#1a1a22');
-    ctx.fillStyle = stone;
+    // 3D walls going down
+    ctx.fillStyle = '#2a2a32';
     ctx.beginPath();
-    ctx.ellipse(x + w / 2, y, w * 0.55, 12, 0, 0, Math.PI * 2);
+    ctx.moveTo(x + 8, y);
+    ctx.lineTo(x + w * 0.35, y + 40);
+    ctx.lineTo(x + w * 0.65, y + 40);
+    ctx.lineTo(x + w - 8, y);
+    ctx.closePath();
+    ctx.fill();
+    const deep = ctx.createLinearGradient(x, y, x, y + 50);
+    deep.addColorStop(0, 'rgba(255,40,40,0.55)');
+    deep.addColorStop(1, 'rgba(0,0,0,0.9)');
+    ctx.fillStyle = deep;
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + 8, w * 0.32, 10, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // red glow inside
-    const glow = ctx.createRadialGradient(x + w / 2, y, 2, x + w / 2, y, w * 0.4);
-    glow.addColorStop(0, 'rgba(255, 40, 40, 0.85)');
-    glow.addColorStop(0.5, 'rgba(120, 0, 40, 0.5)');
-    glow.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.ellipse(x + w / 2, y, w * 0.38, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // moss
+    ctx.fillStyle = '#4a4a55';
+    ctx.fillRect(x + 4, y - h + 6, w - 8, h - 6);
     ctx.fillStyle = '#2d5a2d';
-    ctx.fillRect(x + 4, y - 18, 8, 16);
-    ctx.fillRect(x + w - 14, y - 14, 10, 12);
-    ctx.fillStyle = '#3a6a3a';
-    ctx.fillRect(x + w * 0.4, y - 22, 12, 10);
+    ctx.fillRect(x + 6, y - 16, 8, 14);
+    ctx.fillRect(x + w - 16, y - 12, 10, 10);
 
-    // walls
-    ctx.fillStyle = '#44444e';
-    ctx.fillRect(x + 6, y - h + 8, w - 12, h - 8);
-    ctx.strokeStyle = '#666';
-    ctx.strokeRect(x + 6, y - h + 8, w - 12, h - 8);
+    const rim = ctx.createLinearGradient(x, y - 4, x, y + 8);
+    rim.addColorStop(0, '#777');
+    rim.addColorStop(1, '#333');
+    ctx.fillStyle = rim;
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y, w * 0.52, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     if (showHint) {
-      const pulse = 0.6 + Math.sin(frame * 0.15) * 0.4;
-      ctx.fillStyle = `rgba(0, 229, 255, ${pulse})`;
+      const pulse = 0.55 + Math.sin(frame * 0.15) * 0.4;
+      ctx.fillStyle = `rgba(0,229,255,${pulse})`;
       ctx.font = 'bold 14px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('В колодец!', x + w / 2, y - h - 8);
@@ -791,21 +1041,35 @@ export function startRunnerGame(level = 1) {
   function drawLucik() {
     const sw = lucik.w * lucik.scale;
     const sh = lucik.h * lucik.scale;
-    const sx = lucik.x + (lucik.w - sw) / 2;
+    let sx = lucik.x + (lucik.w - sw) / 2;
     const sy = lucik.y + (lucik.h - sh);
 
-    if (lucik.glow > 0) {
-      ctx.save();
+    ctx.save();
+    if (lucik.facing < 0) {
+      ctx.translate(sx + sw / 2, 0);
+      ctx.scale(-1, 1);
+      ctx.translate(-(sx + sw / 2), 0);
+    }
+
+    if (rainbowT > 0) {
+      const c = RAINBOW[Math.floor(frame / 4) % RAINBOW.length];
+      ctx.shadowColor = c;
+      ctx.shadowBlur = 28;
+      ctx.fillStyle = c;
+      ctx.globalAlpha = 0.35;
+      ctx.beginPath();
+      ctx.arc(sx + sw / 2, sy + sh / 2, sw * 0.72, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (lucik.glow > 0) {
       ctx.shadowColor = '#FFD700';
-      ctx.shadowBlur = 20 + lucik.glow * 25;
-      ctx.fillStyle = `rgba(255, 215, 0, ${0.15 * lucik.glow})`;
+      ctx.shadowBlur = 18 + lucik.glow * 24;
+      ctx.fillStyle = `rgba(255,215,0,${0.18 * lucik.glow})`;
       ctx.beginPath();
       ctx.arc(sx + sw / 2, sy + sh / 2, sw * 0.7, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
     }
 
-    // shadow
     if (phase !== PHASE.WELL_INSIDE && phase !== PHASE.WELL_FALL) {
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.beginPath();
@@ -818,64 +1082,107 @@ export function startRunnerGame(level = 1) {
       : (lucikImg.complete && lucikImg.naturalWidth > 0 ? lucikImg : null);
 
     if (img) {
+      if (rainbowT > 0) {
+        ctx.filter = `hue-rotate(${(frame * 8) % 360}deg) saturate(1.6)`;
+      }
       ctx.drawImage(img, sx, sy, sw, sh);
+      ctx.filter = 'none';
     } else {
-      ctx.fillStyle = lucik.glow > 0 ? '#FFD700' : '#FF8C00';
+      ctx.fillStyle = rainbowT > 0 ? RAINBOW[frame % RAINBOW.length] : (lucik.glow > 0 ? '#FFD700' : '#FF8C00');
       ctx.beginPath();
       ctx.arc(sx + sw / 2, sy + sh / 2, sw / 2.2, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#222';
+    }
+    ctx.restore();
+  }
+
+  function drawMindFlayerSky(gy) {
+    // huge tentacle silhouette
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(canvas.width * 0.5, gy * 0.15, canvas.width * 0.55, gy * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 7; i++) {
+      const tx = canvas.width * (0.15 + i * 0.12);
+      ctx.strokeStyle = 'rgba(20,0,10,0.7)';
+      ctx.lineWidth = 8 + (i % 3) * 3;
       ctx.beginPath();
-      ctx.arc(sx + sw * 0.38, sy + sh * 0.4, 3, 0, Math.PI * 2);
-      ctx.arc(sx + sw * 0.62, sy + sh * 0.4, 3, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(tx, gy * 0.25);
+      ctx.quadraticCurveTo(
+        tx + Math.sin(frame * 0.03 + i) * 40,
+        gy * 0.5,
+        tx + Math.sin(frame * 0.02 + i * 1.3) * 30,
+        gy * 0.85
+      );
+      ctx.stroke();
+    }
+    // red lightning
+    if (frame % 35 < 5) {
+      ctx.strokeStyle = 'rgba(255,30,50,0.85)';
+      ctx.lineWidth = 2;
+      let lx = canvas.width * (0.3 + Math.random() * 0.4);
+      let ly = 10;
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      for (let k = 0; k < 6; k++) {
+        lx += (Math.random() - 0.5) * 40;
+        ly += gy * 0.12;
+        ctx.lineTo(lx, ly);
+      }
+      ctx.stroke();
     }
   }
 
   function drawNightSky() {
     const gy = groundY();
     const sky = ctx.createLinearGradient(0, 0, 0, gy);
-    sky.addColorStop(0, '#050814');
-    sky.addColorStop(0.35, '#0a0e27');
-    sky.addColorStop(0.7, '#1a0533');
-    sky.addColorStop(1, '#2d0a1a');
+    if (isMindFlayer) {
+      sky.addColorStop(0, '#000005');
+      sky.addColorStop(0.4, '#0a0208');
+      sky.addColorStop(1, '#1a0508');
+    } else {
+      sky.addColorStop(0, '#050814');
+      sky.addColorStop(0.35, '#0a0e27');
+      sky.addColorStop(0.7, '#1a0533');
+      sky.addColorStop(1, '#2d0a1a');
+    }
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, canvas.width, gy);
 
-    // stars
     bgStars.forEach((s) => {
-      const a = 0.35 + Math.sin(frame * s.sp + s.tw) * 0.45;
-      ctx.fillStyle = `rgba(220, 240, 255, ${a})`;
+      const a = 0.3 + Math.sin(frame * s.sp + s.tw) * 0.4;
+      ctx.fillStyle = `rgba(220,240,255,${a * (isMindFlayer ? 0.5 : 1)})`;
       ctx.beginPath();
       ctx.arc(s.x * canvas.width, s.y * gy, s.r, 0, Math.PI * 2);
       ctx.fill();
     });
 
-    // giant clock (Stranger Things ref)
+    if (isMindFlayer) drawMindFlayerSky(gy);
+
+    // clock 3:00 / 3:01
     const cx = canvas.width * 0.82;
     const cy = gy * 0.28;
     const cr = Math.min(55, canvas.width * 0.08);
     ctx.save();
-    ctx.globalAlpha = 0.35;
+    ctx.globalAlpha = 0.4;
     ctx.strokeStyle = '#cc0033';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(cx, cy, cr, 0, Math.PI * 2);
     ctx.stroke();
+    const minuteAngle = clockMinute === 0 ? -Math.PI / 2 : (-Math.PI / 2 + Math.PI / 30);
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(-Math.PI / 2) * cr * 0.55, cy + Math.sin(-Math.PI / 2) * cr * 0.55);
+    ctx.lineTo(cx + Math.cos(minuteAngle) * cr * 0.55, cy + Math.sin(minuteAngle) * cr * 0.55);
     ctx.moveTo(cx, cy);
-    // 3:00 — hour hand to the right
-    ctx.lineTo(cx + Math.cos(0) * cr * 0.4, cy + Math.sin(0) * cr * 0.4);
+    ctx.lineTo(cx + Math.cos(0) * cr * 0.38, cy + Math.sin(0) * cr * 0.38);
     ctx.stroke();
     ctx.fillStyle = '#cc0033';
     ctx.font = '9px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('3:00', cx, cy + cr + 12);
+    ctx.fillText(clockMinute === 0 ? '3:00' : '3:01', cx, cy + cr + 12);
     ctx.restore();
 
-    // trees with red glow
     for (let i = 0; i < 7; i++) {
       const tx = ((i * 160 - groundOffset * 0.3) % (canvas.width + 160)) - 40;
       const th = 70 + (i % 3) * 25;
@@ -885,17 +1192,14 @@ export function startRunnerGame(level = 1) {
       ctx.lineTo(tx + 18, gy - th);
       ctx.lineTo(tx + 36, gy);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(200, 30, 50, 0.35)';
+      ctx.strokeStyle = 'rgba(200,30,50,0.35)';
       ctx.lineWidth = 2;
       ctx.stroke();
     }
 
-    // fireflies / sparks
     fireflies.forEach((f) => {
       const a = 0.4 + Math.sin(f.ph) * 0.4;
-      ctx.fillStyle = f.hue === 'gold'
-        ? `rgba(255, 220, 100, ${a})`
-        : `rgba(255, 60, 60, ${a * 0.85})`;
+      ctx.fillStyle = f.hue === 'gold' ? `rgba(255,220,100,${a})` : `rgba(255,60,60,${a * 0.85})`;
       ctx.beginPath();
       ctx.arc(f.x, f.y, f.hue === 'gold' ? 2.2 : 1.6, 0, Math.PI * 2);
       ctx.fill();
@@ -910,13 +1214,10 @@ export function startRunnerGame(level = 1) {
     g.addColorStop(1, '#120818');
     ctx.fillStyle = g;
     ctx.fillRect(0, gy, canvas.width, canvas.height - gy);
-
     for (let x = -groundOffset; x < canvas.width; x += 48) {
-      ctx.fillStyle = 'rgba(120, 80, 180, 0.2)';
+      ctx.fillStyle = 'rgba(120,80,180,0.2)';
       ctx.fillRect(x, gy + 8, 24, 2);
     }
-
-    // grass blades purple tint
     ctx.strokeStyle = '#5a3a7a';
     ctx.lineWidth = 1.5;
     for (let x = 0; x < canvas.width; x += 14) {
@@ -926,10 +1227,8 @@ export function startRunnerGame(level = 1) {
       ctx.lineTo(x + 2, gy - h);
       ctx.stroke();
     }
-
-    // cracks
     cracks.forEach((c) => {
-      ctx.strokeStyle = `rgba(255, 40, 40, ${Math.min(1, c.life / 20)})`;
+      ctx.strokeStyle = `rgba(255,40,40,${Math.min(1, c.life / 20)})`;
       ctx.lineWidth = 2;
       ctx.shadowColor = '#ff2244';
       ctx.shadowBlur = 8;
@@ -937,54 +1236,62 @@ export function startRunnerGame(level = 1) {
       ctx.moveTo(c.x, gy);
       ctx.lineTo(c.x + 8, gy + 10);
       ctx.lineTo(c.x - 4, gy + 18);
-      ctx.lineTo(c.x + 12, gy + 28);
       ctx.stroke();
       ctx.shadowBlur = 0;
     });
   }
 
   function drawWellInside() {
-    // dark fill
     ctx.fillStyle = '#050208';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // circular viewport
     const cx = canvas.width / 2;
     const cy = canvas.height * 0.42;
     const R = Math.min(canvas.width, canvas.height) * 0.38;
+    const par = wellParallax * 0.15;
 
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
     ctx.clip();
 
-    // upside sky with red lightning
-    const g = ctx.createLinearGradient(0, cy - R, 0, cy + R);
-    g.addColorStop(0, '#2a0510');
-    g.addColorStop(0.5, '#100818');
-    g.addColorStop(1, '#050208');
-    ctx.fillStyle = g;
+    // 3D tunnel walls
+    for (let i = 8; i >= 0; i--) {
+      const t = i / 8;
+      const rr = R * (0.35 + t * 0.65);
+      const yy = cy + (1 - t) * 30 - par * (1 - t);
+      ctx.strokeStyle = `rgba(${40 + i * 8},${20},${30},0.5)`;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.ellipse(cx, yy, rr, rr * 0.55, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // light from above
+    const light = ctx.createRadialGradient(cx, cy - R * 0.6, 4, cx, cy, R);
+    light.addColorStop(0, 'rgba(255,80,60,0.35)');
+    light.addColorStop(0.5, 'rgba(40,0,20,0.3)');
+    light.addColorStop(1, 'rgba(0,0,0,0.85)');
+    ctx.fillStyle = light;
     ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
 
-    // lightning
-    if (frame % 40 < 6) {
-      ctx.strokeStyle = 'rgba(255, 40, 60, 0.9)';
+    if (frame % 38 < 5) {
+      ctx.strokeStyle = 'rgba(255,40,60,0.9)';
       ctx.lineWidth = 2;
+      let lx = cx - 30 + Math.random() * 60;
+      let ly = cy - R + 8;
       ctx.beginPath();
-      let lx = cx - 40 + Math.random() * 80;
-      let ly = cy - R + 10;
       ctx.moveTo(lx, ly);
       for (let i = 0; i < 5; i++) {
-        lx += (Math.random() - 0.5) * 30;
-        ly += R * 0.15;
+        lx += (Math.random() - 0.5) * 28;
+        ly += R * 0.14;
         ctx.lineTo(lx, ly);
       }
       ctx.stroke();
     }
 
-    // fear shadows running above
     wellShadows.forEach((s) => {
-      const sy = cy - R * 0.55 + s.y * R;
+      const sy = cy - R * 0.5 + s.y * R;
       ctx.fillStyle = 'rgba(0,0,0,0.75)';
       ctx.beginPath();
       ctx.ellipse(s.x, sy, 36, 18, 0, 0, Math.PI * 2);
@@ -1000,30 +1307,51 @@ export function startRunnerGame(level = 1) {
       ctx.fillText(s.name, s.x, sy - 22);
     });
 
-    // star in well
+    // fear eye peeking into well (tension)
+    if (wellEyeT >= 0 && wellEyeT < 45) {
+      const eyeA = wellEyeT > 30 ? (45 - wellEyeT) / 15 : wellEyeT < 15 ? wellEyeT / 15 : 1;
+      ctx.globalAlpha = eyeA;
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - R + 8, 28, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = fear.eye;
+      ctx.shadowColor = fear.eye;
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.arc(cx, cy - R + 10, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(cx + 2, cy - R + 8, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+
+    // pulsing floating star
     if (!wellStarTaken) {
-      const pulse = 1 + Math.sin(frame * 0.2) * 0.15;
-      const sx = cx;
-      const sy = cy + R * 0.25;
+      const pulse = 1 + Math.sin(frame * 0.18) * 0.22;
+      const floatY = Math.sin(frame * 0.08) * 10;
       ctx.save();
-      ctx.translate(sx, sy);
+      ctx.translate(cx, cy + R * 0.2 + floatY);
       ctx.scale(pulse, pulse);
       ctx.fillStyle = '#FFD700';
       ctx.shadowColor = '#FFD700';
-      ctx.shadowBlur = 20;
-      drawStarPath(0, 0, 5, 14, 6);
+      ctx.shadowBlur = 24;
+      drawStarPath(0, 0, 5, 16, 7);
       ctx.fill();
       ctx.restore();
     } else {
-      ctx.fillStyle = 'rgba(255,215,0,0.5)';
+      ctx.fillStyle = 'rgba(255,215,0,0.55)';
       ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('★ Звезда!', cx, cy + R * 0.3);
+      ctx.fillText('★ Звезда!', cx, cy + R * 0.28);
     }
 
     ctx.restore();
 
-    // stone rim around circle
+    // stone rim
     ctx.strokeStyle = '#555';
     ctx.lineWidth = 14;
     ctx.beginPath();
@@ -1033,7 +1361,7 @@ export function startRunnerGame(level = 1) {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Lucik peeking over rim (bottom of circle)
+    // Lucik peeking
     const peekH = 28 + lucik.peek * 36;
     const px = cx - 30;
     const py = cy + R - peekH * 0.35;
@@ -1058,77 +1386,59 @@ export function startRunnerGame(level = 1) {
     ctx.textAlign = 'left';
   }
 
-  function drawStarPath(x, y, spikes, outer, inner) {
-    let rot = Math.PI / 2 * 3;
-    const step = Math.PI / spikes;
-    ctx.beginPath();
-    ctx.moveTo(x, y - outer);
-    for (let i = 0; i < spikes; i++) {
-      ctx.lineTo(x + Math.cos(rot) * outer, y + Math.sin(rot) * outer);
-      rot += step;
-      ctx.lineTo(x + Math.cos(rot) * inner, y + Math.sin(rot) * inner);
-      rot += step;
-    }
-    ctx.closePath();
-  }
-
   function drawIntroOverlay() {
-    if (introT < 50) {
+    if (introT < 45) {
       ctx.fillStyle = 'rgba(0,229,255,0.85)';
       ctx.font = 'bold 18px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('Люцик и Обратная сторона', canvas.width / 2, 40);
       ctx.font = '13px sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.6)';
-      ctx.fillText(`${fear.emoji} Страх: ${fear.name}`, canvas.width / 2, 64);
+      ctx.fillText(`${fear.emoji} ${fear.name}${isMindFlayer ? ' · 5-й забег' : ''}`, canvas.width / 2, 64);
       ctx.textAlign = 'left';
     }
 
     if (chaseFear) {
       const f = chaseFear;
-      ctx.fillStyle = 'rgba(0,0,0,0.85)';
+      const gy = groundY();
+      // body rising from ground
+      ctx.fillStyle = 'rgba(0,0,0,0.88)';
       ctx.beginPath();
-      ctx.ellipse(f.x, groundY() - f.h / 2, 40, f.h / 2, 0, 0, Math.PI * 2);
+      ctx.ellipse(f.x, gy - f.h / 2, 42, f.h / 2, 0, 0, Math.PI * 2);
       ctx.fill();
-      if (f.h > 30) {
+      // crack in ground
+      ctx.strokeStyle = 'rgba(255,40,40,0.7)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(f.x - 30, gy);
+      ctx.lineTo(f.x, gy + 6);
+      ctx.lineTo(f.x + 30, gy);
+      ctx.stroke();
+      if (f.h > 35) {
         ctx.fillStyle = fear.eye;
         ctx.shadowColor = fear.eye;
         ctx.shadowBlur = 14;
         ctx.beginPath();
-        ctx.arc(f.x - 12, groundY() - f.h * 0.65, 5, 0, Math.PI * 2);
-        ctx.arc(f.x + 12, groundY() - f.h * 0.65, 5, 0, Math.PI * 2);
+        ctx.arc(f.x - 12, gy - f.h * 0.65, 5, 0, Math.PI * 2);
+        ctx.arc(f.x + 12, gy - f.h * 0.65, 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
     }
 
-    if (introT > 50 && introT < 120) {
+    if (introT > 55 && introT < 120) {
       ctx.fillStyle = 'rgba(204,0,51,0.9)';
       ctx.font = 'bold 22px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Он рядом…', canvas.width / 2, canvas.height * 0.35);
+      ctx.fillText(isMindFlayer ? 'Он выползает…' : 'Он рядом…', canvas.width / 2, canvas.height * 0.32);
       ctx.textAlign = 'left';
     }
   }
 
   function draw() {
-    if (phase === PHASE.WELL_INSIDE || phase === PHASE.WELL_FALL && wellT > 20) {
-      if (phase === PHASE.WELL_INSIDE) {
-        drawWellInside();
-      } else {
-        drawNightSky();
-        drawGround();
-        if (well) drawWell(well, false);
-        drawLucik();
-      }
-      particles.forEach((p) => {
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = Math.min(1, p.life / 15);
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      });
+    if (phase === PHASE.WELL_INSIDE) {
+      drawWellInside();
+      drawParticlesLayer();
       return;
     }
 
@@ -1140,8 +1450,32 @@ export function startRunnerGame(level = 1) {
       drawWell(well, near && phase === PHASE.RUN);
     }
 
+    trackStars.forEach((s) => {
+      if (s.taken) return;
+      const pulse = 1 + Math.sin(frame * 0.2) * 0.15;
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.scale(pulse, pulse);
+      ctx.fillStyle = '#FFD700';
+      ctx.shadowColor = '#FFD700';
+      ctx.shadowBlur = 12;
+      drawStarPath(0, 0, 5, s.r, 4);
+      ctx.fill();
+      ctx.restore();
+    });
+
     obstacles.forEach((o) => {
       if (o.type === 'fear' && !o.hit) drawFearShape(o);
+    });
+
+    // speed lines (hunt)
+    speedLines.forEach((l) => {
+      ctx.strokeStyle = `rgba(255,255,255,${l.life / 14})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(l.x, l.y);
+      ctx.lineTo(l.x, l.y + l.len);
+      ctx.stroke();
     });
 
     trailStars.forEach((t) => {
@@ -1151,25 +1485,36 @@ export function startRunnerGame(level = 1) {
       ctx.fill();
     });
 
-    particles.forEach((p) => {
-      ctx.fillStyle = p.color;
-      ctx.globalAlpha = Math.min(1, p.life / 15);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    });
-
+    drawParticlesLayer();
     drawLucik();
 
     if (phase === PHASE.INTRO) drawIntroOverlay();
 
     if (phase === PHASE.HUNT) {
-      ctx.fillStyle = 'rgba(255,215,0,0.85)';
+      ctx.fillStyle = 'rgba(255,215,0,0.9)';
       ctx.font = 'bold 14px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`⚡ ОХОТА · ${Math.max(0, Math.ceil((250 - huntT) / 50))}с`, canvas.width / 2, 28);
+      ctx.fillText(`⚡ ОХОТА · ${Math.max(0, Math.ceil((250 - huntT) / 50))}с${combo > 1 ? ` · COMBO x${combo}` : ''}`, canvas.width / 2, 28);
       ctx.textAlign = 'left';
+    }
+
+    if (rainbowT > 0) {
+      ctx.fillStyle = RAINBOW[frame % RAINBOW.length];
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`🌈 РАДУГА · ${Math.ceil(rainbowT / 50)}с`, canvas.width / 2, phase === PHASE.HUNT ? 48 : 28);
+      ctx.textAlign = 'left';
+    }
+
+    if (phase === PHASE.WIN_SLOWMO || phase === PHASE.WON) {
+      fireworks.forEach((f) => {
+        ctx.fillStyle = f.color;
+        ctx.globalAlpha = Math.min(1, f.life / 20);
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
     }
 
     if (phase === PHASE.LOST) {
@@ -1184,40 +1529,142 @@ export function startRunnerGame(level = 1) {
       ctx.fillText(`${Math.floor(distance)}м · ⭐ ${score}`, canvas.width / 2, canvas.height / 2 + 32);
       ctx.textAlign = 'left';
     }
+
+    if (timeScale < 1 && (phase === PHASE.HUNT || phase === PHASE.WELL_EXIT || phase === PHASE.WIN_SLOWMO)) {
+      ctx.fillStyle = 'rgba(0,229,255,0.35)';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('SLOW-MO', 12, canvas.height - 12);
+    }
   }
 
-  // —— end screens ——
+  function drawParticlesLayer() {
+    particles.forEach((p) => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.min(1, p.life / 15);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+    dirtParticles.forEach((p) => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.min(1, p.life / 18);
+      ctx.fillRect(p.x, p.y, p.r, p.r);
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  // —— photo / share ——
+  function composeShareCanvas(extraLines = []) {
+    const out = document.createElement('canvas');
+    out.width = Math.max(480, canvas.width);
+    out.height = Math.max(320, canvas.height + 70);
+    const octx = out.getContext('2d');
+    octx.fillStyle = '#0a0e27';
+    octx.fillRect(0, 0, out.width, out.height);
+    octx.drawImage(canvas, 0, 50, out.width, canvas.height);
+    // frame
+    octx.strokeStyle = '#00e5ff';
+    octx.lineWidth = 4;
+    octx.strokeRect(6, 6, out.width - 12, out.height - 12);
+    octx.strokeStyle = '#cc0033';
+    octx.lineWidth = 2;
+    octx.strokeRect(12, 12, out.width - 24, out.height - 24);
+    octx.fillStyle = '#00e5ff';
+    octx.font = 'bold 20px Georgia, serif';
+    octx.textAlign = 'center';
+    octx.fillText('🐱 Люцик и Обратная сторона', out.width / 2, 34);
+    octx.font = '14px sans-serif';
+    octx.fillStyle = '#ffd700';
+    const lines = [
+      `${fear.emoji} ${fear.name} · ${Math.floor(distance)}м · ⭐ ${score}`,
+      ...extraLines
+    ];
+    lines.forEach((line, i) => {
+      octx.fillText(line, out.width / 2, out.height - 28 + i * 0);
+    });
+    octx.fillText(lines[0], out.width / 2, out.height - 22);
+    octx.textAlign = 'left';
+    return out;
+  }
+
+  function openShareSheet(dataUrl, title) {
+    const sheet = document.createElement('div');
+    sheet.className = 'runner-share-sheet';
+    sheet.innerHTML = `
+      <div style="text-align:center;">
+        <img src="${dataUrl}" alt="Скриншот">
+        <div class="runner-share-actions">
+          <button type="button" class="runner-btn share" id="shareVk">Поделиться в ВК</button>
+          <a class="runner-btn secondary" id="shareDl" download="lucik-upsidedown.png" href="${dataUrl}" style="text-decoration:none;text-align:center;">💾 Скачать</a>
+          <button type="button" class="runner-btn ghost" id="shareClose">Закрыть</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(sheet);
+    sheet.querySelector('#shareClose').onclick = () => sheet.remove();
+    sheet.querySelector('#shareVk').onclick = () => {
+      const text = encodeURIComponent(title || `Люцик и Обратная сторона — ${Math.floor(distance)}м, ⭐${score}`);
+      const url = encodeURIComponent(window.location.href.split('#')[0]);
+      window.open(`https://vk.com/share.php?url=${url}&title=${text}`, '_blank', 'noopener,width=600,height=400');
+    };
+  }
+
+  function takePhoto() {
+    try {
+      const shot = composeShareCanvas();
+      const dataUrl = shot.toDataURL('image/png');
+      const toast = document.createElement('div');
+      toast.className = 'runner-photo-toast';
+      toast.textContent = '📸 Снимок готов';
+      overlay.appendChild(toast);
+      setTimeout(() => toast.remove(), 1200);
+      openShareSheet(dataUrl, `Люцик против ${fear.name}! ${Math.floor(distance)}м`);
+      trackEvent('runner_photo', { distance: Math.floor(distance), score });
+    } catch (e) {
+      console.warn('photo failed', e);
+    }
+  }
+
   function showResult(didWin) {
     recordGameResult('runner', didWin, level);
-    trackEvent(didWin ? 'runner_won' : 'runner_lost', { level, score, distance: Math.floor(distance), fear: fear.id });
-    speak(didWin ? `Люцик прогнал ${fear.name}!` : 'Попробуй ещё раз!');
+    trackEvent(didWin ? 'runner_won' : 'runner_lost', {
+      level, score, distance: Math.floor(distance), fear: fear.id, mindflayer: isMindFlayer, portal: closedPortal
+    });
+
+    const title = didWin
+      ? (closedPortal ? 'Люцик закрыл портал!' : `Люцик прогнал ${fear.name}!`)
+      : 'Почти получилось!';
+    const sub = didWin
+      ? (closedPortal ? 'Обратная сторона запечатана. Ты герой.' : 'Сегодня он смелее. А ты?')
+      : 'Страх ещё рядом — но Люцик верит в тебя.';
+
+    speak(title);
 
     const prevBest = parseInt(localStorage.getItem('runner-best') || '0', 10);
     const newBest = Math.max(prevBest, Math.floor(distance));
     localStorage.setItem('runner-best', String(newBest));
 
     const result = document.createElement('div');
-    result.className = 'runner-result';
+    result.className = `runner-result${closedPortal ? ' mindflayer-win' : ''}`;
     result.innerHTML = `
       <div class="runner-result-box ${didWin ? 'win' : ''}">
-        <div class="emoji">${didWin ? '🌟' : '😅'}</div>
-        <h2>${didWin ? `Люцик прогнал ${fear.name}!` : 'Почти получилось!'}</h2>
-        <p class="sub">${didWin ? 'Сегодня он смелее. А ты?' : 'Страх ещё рядом — но Люцик верит в тебя.'}</p>
+        <div class="emoji">${didWin ? (closedPortal ? '🌀' : '🌟') : '😅'}</div>
+        <h2>${title}</h2>
+        <p class="sub">${sub}</p>
         <p class="stats">🏃 Дистанция: <b>${Math.floor(distance)}м</b></p>
         <p class="stats">⭐ Очки: <b>${score}</b></p>
         <p class="stats">🏆 Рекорд: <b>${newBest}м</b></p>
         <button type="button" class="runner-btn primary" id="restartRunner">🔄 Ещё забег</button>
         <button type="button" class="runner-btn secondary" id="otherFear">👻 Другой страх</button>
+        <button type="button" class="runner-btn share" id="shareResult">📤 Поделиться</button>
         <button type="button" class="runner-btn ghost" id="exitRunner">🚪 Выйти</button>
-        <p class="clock-ref">⏱ Часы показывают 3:00</p>
+        <p class="clock-ref">⏱ Часы показывают ${clockMinute === 1 ? '3:01' : '3:00'}</p>
       </div>
     `;
     document.body.appendChild(result);
 
-    result.querySelector('#restartRunner').onclick = () => {
-      result.remove();
-      startRunnerGame(level);
-    };
+    result.querySelector('#restartRunner').onclick = () => { result.remove(); startRunnerGame(level); };
     result.querySelector('#otherFear').onclick = () => {
       result.remove();
       startRunnerGame(level >= 5 ? 1 : level + 1);
@@ -1225,6 +1672,37 @@ export function startRunnerGame(level = 1) {
     result.querySelector('#exitRunner').onclick = () => {
       result.remove();
       if (typeof showGamesMenu === 'function') showGamesMenu();
+    };
+    result.querySelector('#shareResult').onclick = () => {
+      // recreate last frame visually on temp canvas
+      const shot = document.createElement('canvas');
+      shot.width = 640;
+      shot.height = 400;
+      const sctx = shot.getContext('2d');
+      const grd = sctx.createLinearGradient(0, 0, 0, 400);
+      grd.addColorStop(0, '#0a0e27');
+      grd.addColorStop(1, didWin ? '#1a3a2a' : '#2d0a1a');
+      sctx.fillStyle = grd;
+      sctx.fillRect(0, 0, 640, 400);
+      sctx.strokeStyle = '#00e5ff';
+      sctx.lineWidth = 4;
+      sctx.strokeRect(10, 10, 620, 380);
+      sctx.fillStyle = '#00e5ff';
+      sctx.font = 'bold 24px Georgia, serif';
+      sctx.textAlign = 'center';
+      sctx.fillText('🐱 Люцик и Обратная сторона', 320, 60);
+      sctx.fillStyle = '#ffd700';
+      sctx.font = 'bold 22px sans-serif';
+      sctx.fillText(title, 320, 140);
+      sctx.fillStyle = '#e8f4ff';
+      sctx.font = '16px sans-serif';
+      sctx.fillText(`${Math.floor(distance)}м · ⭐ ${score} · Рекорд ${newBest}м`, 320, 190);
+      sctx.fillStyle = '#cc0033';
+      sctx.fillText(`⏱ ${clockMinute === 1 ? '3:01' : '3:00'}`, 320, 240);
+      sctx.fillStyle = '#889';
+      sctx.font = '13px sans-serif';
+      sctx.fillText(sub, 320, 300);
+      openShareSheet(shot.toDataURL('image/png'), title);
     };
 
     window.leaderboard?.submitScore('runner', Math.floor(distance) + score);
@@ -1241,30 +1719,27 @@ export function startRunnerGame(level = 1) {
     showResult(didWin);
   }
 
-  // —— input / loop ——
   canvas.addEventListener('click', jump);
   canvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); }, { passive: false });
 
   const loop = setInterval(() => {
     update();
     draw();
-
     if ((phase === PHASE.LOST || phase === PHASE.WON) && !finished) {
       finished = true;
-      if (musicInterval) {
-        clearInterval(musicInterval);
-        musicInterval = null;
-      }
+      if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
       stopDrone();
-      setTimeout(() => finish(phase === PHASE.WON || won), phase === PHASE.WON ? 900 : 1600);
+      setTimeout(() => finish(phase === PHASE.WON || won), phase === PHASE.WON ? 1100 : 1600);
     }
   }, 20);
 
   document.getElementById('runnerMusic').onclick = function onMusic() {
-    const on = toggleMusic();
-    this.textContent = on ? '🔊' : '🔇';
+    this.textContent = toggleMusic() ? '🔊' : '🔇';
   };
-
+  document.getElementById('runnerPhoto').onclick = (e) => {
+    e.stopPropagation();
+    takePhoto();
+  };
   document.getElementById('runnerClose').onclick = () => {
     clearInterval(loop);
     window.removeEventListener('resize', resize);
@@ -1275,7 +1750,7 @@ export function startRunnerGame(level = 1) {
     overlay.remove();
   };
 
-  trackEvent('runner_started', { level, fear: fear.id });
+  trackEvent('runner_started', { level, fear: fear.id, mindflayer: isMindFlayer, run: runCount });
 }
 
 export default { startRunnerGame };
