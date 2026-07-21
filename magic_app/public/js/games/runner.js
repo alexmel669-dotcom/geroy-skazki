@@ -1,6 +1,6 @@
 // ========================================
-// runner.js — «Люцик и Обратная сторона» v6
-// Видео-заставка · давление · эпик · соцфичи
+// runner.js — «Люцик и Обратная сторона» v7
+// Динамика · физика · максимальный визуал · комбо/босс
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
@@ -84,7 +84,9 @@ export function startRunnerGame(level = 1) {
   header.innerHTML = `
     <span>🐱 Обратная сторона</span>
     <span>🏃 <b id="runnerDistance">0</b>м · ⭐ <b id="runnerScore">0</b></span>
+    <span id="runnerComboHud" style="color:#ffd700;min-width:4em;"></span>
     <span id="runnerFearLabel">${fear.emoji} ${fear.name}</span>
+    <span id="runnerDashHud" title="Двойной свайп вверх">⚡</span>
     <button type="button" id="runnerPhoto" aria-label="Фото">📸</button>
     <button type="button" id="runnerMusic" aria-label="Музыка">🔊</button>
     <button type="button" id="runnerClose" aria-label="Закрыть">✕</button>
@@ -107,13 +109,169 @@ export function startRunnerGame(level = 1) {
   const dailyBonus = claimDailyBonus();
   let fearsSmashed = 0;
 
+  function lucikHomeX() {
+    return canvas.width * 0.28 + lucik.lane * LANE_OFFSET;
+  }
+
+  function getSpeedMult() {
+    if (distance >= 500) return 2;
+    if (distance >= 300) return 1.6;
+    if (distance >= 100) return 1.3;
+    return 1;
+  }
+
+  function getComboMult() {
+    if (combo >= 10) return 10;
+    if (combo >= 5) return 5;
+    if (combo >= 2) return 2;
+    return 1;
+  }
+
+  function updateComboHud() {
+    const el = document.getElementById('runnerComboHud');
+    if (!el) return;
+    comboMult = getComboMult();
+    el.textContent = comboMult > 1 ? `×${comboMult}` : '';
+    const dashEl = document.getElementById('runnerDashHud');
+    if (dashEl) {
+      const ready = frame >= dashReadyAt && dashT <= 0;
+      dashEl.style.opacity = ready ? '1' : '0.35';
+      dashEl.textContent = ready ? '⚡' : '⏳';
+    }
+  }
+
+  function doDash() {
+    if (phase !== PHASE.RUN && phase !== PHASE.HUNT) return;
+    if (frame < dashReadyAt || dashT > 0) return;
+    dashT = 22;
+    dashReadyAt = frame + 500; // ~10s at 20ms
+    distance += 50;
+    lucik.dashTrail = 1;
+    shakeIntensity = Math.max(shakeIntensity, 6);
+    for (let i = 0; i < 16; i++) {
+      footSparks.push({
+        x: lucik.x + lucik.w * 0.3,
+        y: groundY() - 4,
+        vx: -2 - Math.random() * 4,
+        vy: -1 - Math.random() * 3,
+        life: 15 + Math.random() * 12,
+        color: '#ffd700'
+      });
+    }
+    beep(220, 0.2, 'sawtooth', 0.1, 880);
+    speak('Рывок!');
+    updateComboHud();
+  }
+
+  function setLane(dir) {
+    const next = Math.max(-1, Math.min(1, lucik.lane + dir));
+    if (next === lucik.lane) return;
+    lucik.lane = next;
+    lucik.tilt = dir * 0.35;
+  }
+
+  function spawnFearShards(cx, cy, color, n = 14) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 2 + Math.random() * 5;
+      shards.push({
+        x: cx, y: cy,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 2,
+        rot: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 0.3,
+        w: 4 + Math.random() * 8,
+        h: 3 + Math.random() * 6,
+        life: 40 + Math.random() * 30,
+        color
+      });
+    }
+  }
+
+  function spawnChest() {
+    if (canvas.width <= 0) return;
+    const kinds = ['stars', 'shield', 'boost', 'rainbow'];
+    chests.push({
+      x: canvas.width + 20,
+      y: groundY() - 48,
+      w: 36,
+      h: 32,
+      kind: kinds[Math.floor(Math.random() * kinds.length)],
+      taken: false,
+      bob: Math.random() * Math.PI * 2
+    });
+  }
+
+  function openChest(c) {
+    c.taken = true;
+    playStarSound();
+    if (c.kind === 'stars') {
+      score += 40;
+      burst(c.x, c.y, '#FFD700', 18);
+      showComboText(40);
+    } else if (c.kind === 'shield') {
+      shieldT = 250;
+      invuln = Math.max(invuln, 250);
+      showComboText('🛡');
+    } else if (c.kind === 'boost') {
+      boostT = 150;
+      showComboText('💨');
+    } else if (c.kind === 'rainbow') {
+      rainbowT = Math.max(rainbowT, 400);
+      overlay.classList.add('runner-rainbow');
+      playRainbow();
+      showComboText('🌈');
+    }
+    const el = document.getElementById('runnerScore');
+    if (el) el.textContent = score;
+  }
+
+  function spawnBoss() {
+    if (boss) return;
+    boss = {
+      x: canvas.width + 40,
+      y: groundY() - 110,
+      w: 90,
+      h: 110,
+      hp: 3,
+      hitFlash: 0,
+      wobble: 0
+    };
+    startMusic('boss');
+    speak('Босс Страха!');
+  }
+
+  function hitBoss() {
+    if (!boss) return;
+    boss.hp--;
+    boss.hitFlash = 12;
+    shakeIntensity = 12;
+    spawnFearShards(boss.x + boss.w / 2, boss.y + boss.h / 2, fear.eye, 20);
+    playShockwaveSound();
+    timeScale = 0.3;
+    slowMoT = 20;
+    if (boss.hp <= 0) {
+      score += 200;
+      fearsSmashed += 3;
+      showComboText(200);
+      spawnFearShards(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd700', 30);
+      localStorage.setItem('runner-boss-killed', '1');
+      speak('Босс повержен!');
+      boss = null;
+      startMusic(phase === PHASE.HUNT ? 'hunt' : 'flee');
+      const el = document.getElementById('runnerScore');
+      if (el) el.textContent = score;
+    }
+  }
+
   const groundY = () => canvas.height - 58;
-  const lucikHomeX = () => canvas.width * 0.28;
+  const LANE_OFFSET = 42;
   const lucik = {
     x: 0, y: 0, w: 68, h: 68, vy: 0,
     jumping: false, scale: 1, glow: 0, peek: 0,
     facing: 1, lookBack: false, lookBackT: 0,
-    breath: 0, breathCycles: 0, targetX: 0
+    breath: 0, breathCycles: 0, targetX: 0,
+    tilt: 0, blinkT: 0, dashTrail: 0, lane: 0
   };
 
   const GRAVITY = 0.58;
@@ -130,6 +288,14 @@ export function startRunnerGame(level = 1) {
   let trailStars = [];
   let particles = [];
   let dirtParticles = [];
+  let shards = [];
+  let footSparks = [];
+  let footTrails = [];
+  let cameraDrops = [];
+  let heatWaves = [];
+  let grassPress = [];
+  let chests = [];
+  let boss = null;
   let comboFloats = [];
   let speedLines = [];
   let fireworks = [];
@@ -146,6 +312,7 @@ export function startRunnerGame(level = 1) {
   let distance = 0;
   let speed = isMindFlayer ? 3.8 : 3.2;
   let baseSpeed = speed;
+  let speedMult = 1;
   let frame = 0;
   let jumpCount = 0;
   let finished = false;
@@ -159,6 +326,8 @@ export function startRunnerGame(level = 1) {
   let wellEyeT = -1;
   let wellParallax = 0;
   let invuln = 0;
+  let shieldT = 0;
+  let boostT = 0;
   let chaseFear = null;
   let won = false;
   let closedPortal = false;
@@ -167,12 +336,14 @@ export function startRunnerGame(level = 1) {
   let slowMoT = 0;
   let combo = 0;
   let comboTimer = 0;
+  let comboMult = 1;
   let starStreak = 0;
   let rainbowT = 0;
   let clockMinute = 0;
   let lastSmash = null;
   let masterGain = null;
   let musicVol = 0.04;
+  let musicIntervalMs = 320;
   let vhsGlitchT = 0;
   let nextVhsAt = 250 + Math.random() * 250;
   let grainCanvas = null;
@@ -184,6 +355,16 @@ export function startRunnerGame(level = 1) {
   let footstepAcc = 0;
   let gameStarted = false;
   let loop = null;
+  let dashReadyAt = 0;
+  let dashT = 0;
+  let lastChestAt = 0;
+  let lastBossAt = 0;
+  let lightningFlash = 0;
+  let moonRayPhase = 0;
+  let swipeY = null;
+  let swipeX = null;
+  let swipeTimes = [];
+  let surfaceType = 'grass'; // grass | dirt | stone
 
   const lucikImg = new Image();
   lucikImg.src = 'assets/images/avatar.png';
@@ -285,7 +466,15 @@ export function startRunnerGame(level = 1) {
   }
 
   function playFootstep() {
-    beep(90 + Math.random() * 30, 0.05, 'triangle', 0.025);
+    // шаги зависят от поверхности
+    if (surfaceType === 'stone') beep(70 + Math.random() * 20, 0.04, 'square', 0.02);
+    else if (surfaceType === 'dirt') beep(55 + Math.random() * 25, 0.06, 'triangle', 0.03);
+    else beep(100 + Math.random() * 35, 0.045, 'sine', 0.022);
+  }
+
+  function playComboDrum() {
+    beep(80, 0.06, 'square', 0.04);
+    setTimeout(() => beep(120, 0.05, 'square', 0.03), 40);
   }
 
   function playHeartbeatThump(vol = 0.12) {
@@ -390,7 +579,7 @@ export function startRunnerGame(level = 1) {
 
   function startMusic(mode = 'flee') {
     musicMode = mode;
-    if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+    if (musicInterval) { clearTimeout(musicInterval); clearInterval(musicInterval); musicInterval = null; }
     stopDrone();
     if (!musicOn) return;
     setWellEcho(mode === 'well');
@@ -411,29 +600,49 @@ export function startRunnerGame(level = 1) {
       ? [55, 55, 65, 49, 55, 73, 65, 49]
       : [110, 130, 146, 110, 98, 130, 164, 146];
     const huntLead = [220, 277, 330, 370, 440, 370, 330, 277];
-    const notes = mode === 'hunt' ? huntLead : fleeBass;
+    const bossLead = [82, 82, 98, 110, 98, 82, 73, 65, 98, 130, 110, 82];
+    const notes = mode === 'boss' ? bossLead : (mode === 'hunt' ? huntLead : fleeBass);
     let i = 0;
-    startDrone(mode === 'hunt' ? 55 : (isMindFlayer ? 28 : 42), mode === 'hunt' ? 0.03 : (isMindFlayer ? 0.07 : 0.04));
+    startDrone(
+      mode === 'boss' ? 36 : (mode === 'hunt' ? 55 : (isMindFlayer ? 28 : 42)),
+      mode === 'boss' ? 0.08 : (mode === 'hunt' ? 0.03 : (isMindFlayer ? 0.07 : 0.04))
+    );
 
-    musicInterval = setInterval(() => {
-      if (!musicOn || phase === PHASE.LOST || phase === PHASE.WON) {
-        clearInterval(musicInterval);
-        musicInterval = null;
-        return;
-      }
+    const baseMs = mode === 'boss' ? 160 : (mode === 'hunt' ? 200 : (isMindFlayer ? 280 : 320));
+    musicIntervalMs = baseMs;
+
+    const playNote = () => {
+      if (!musicOn || phase === PHASE.LOST || phase === PHASE.WON) return;
+      const sm = getSpeedMult();
+      musicIntervalMs = Math.max(110, Math.round(baseMs / sm));
       const f = notes[i % notes.length];
-      const type = mode === 'hunt' ? 'square' : (isMindFlayer ? 'sawtooth' : 'sawtooth');
-      beep(f, mode === 'hunt' ? 0.2 : 0.28, type, mode === 'hunt' ? 0.045 : 0.038);
-      if (mode === 'hunt' && i % 4 === 0) beep(f * 2, 0.1, 'triangle', 0.028);
+      const type = mode === 'hunt' || mode === 'boss' ? 'square' : 'sawtooth';
+      beep(f, mode === 'boss' ? 0.22 : (mode === 'hunt' ? 0.2 : 0.28), type, mode === 'boss' ? 0.055 : (mode === 'hunt' ? 0.045 : 0.038));
+      if ((mode === 'hunt' || comboMult >= 5) && i % 4 === 0) {
+        beep(f * 2, 0.1, 'triangle', 0.028);
+        if (comboMult >= 5) playComboDrum();
+      }
+      if (mode === 'boss' && i % 2 === 0) beep(f * 1.5, 0.12, 'sawtooth', 0.04);
       if (isMindFlayer && mode === 'flee' && i % 2 === 0) beep(f / 2, 0.35, 'sine', 0.05);
       i++;
-    }, mode === 'hunt' ? 200 : (isMindFlayer ? 280 : 320));
+    };
+
+    playNote();
+    const schedule = () => {
+      if (musicInterval) clearTimeout(musicInterval);
+      if (!musicOn || phase === PHASE.LOST || phase === PHASE.WON) return;
+      musicInterval = setTimeout(() => {
+        playNote();
+        schedule();
+      }, musicIntervalMs);
+    };
+    schedule();
   }
 
   function toggleMusic() {
     musicOn = !musicOn;
     if (!musicOn) {
-      if (musicInterval) clearInterval(musicInterval);
+      if (musicInterval) { clearTimeout(musicInterval); clearInterval(musicInterval); }
       musicInterval = null;
       stopDrone();
       if (masterGain) masterGain.gain.value = 0;
@@ -445,7 +654,7 @@ export function startRunnerGame(level = 1) {
   }
 
   function cleanupAudio() {
-    if (musicInterval) clearInterval(musicInterval);
+    if (musicInterval) { clearTimeout(musicInterval); clearInterval(musicInterval); }
     musicInterval = null;
     stopDrone();
     try { audioCtx.close(); } catch { /* */ }
@@ -486,10 +695,13 @@ export function startRunnerGame(level = 1) {
       { y: 0.45, h: 0.22, speed: 0.35, alpha: 0.12, offset: 40 },
       { y: 0.65, h: 0.18, speed: 0.7, alpha: 0.1, offset: 90 }
     ];
-    trees = Array.from({ length: 8 }, (_, i) => ({
-      base: i * 160 + Math.random() * 40,
+    trees = Array.from({ length: 10 }, (_, i) => ({
+      base: i * 140 + Math.random() * 40,
       h: 70 + (i % 3) * 25,
-      w: 34 + (i % 2) * 6
+      w: 34 + (i % 2) * 6,
+      near: i % 3 === 0,
+      scroll: Math.random() * 200,
+      web: Math.random() < 0.55
     }));
     grainCanvas = document.createElement('canvas');
     grainCanvas.width = 64;
@@ -538,9 +750,17 @@ export function startRunnerGame(level = 1) {
   function showComboText(pts) {
     const el = document.createElement('div');
     el.className = 'runner-combo-float';
-    el.textContent = `+${pts}`;
+    el.textContent = typeof pts === 'number' ? `+${pts}` : String(pts);
     overlay.appendChild(el);
     setTimeout(() => el.remove(), 900);
+  }
+
+  function nearFearRisk() {
+    return obstacles.some((o) => {
+      if (o.type !== 'fear' || o.hit) return false;
+      const dx = (o.x + o.w / 2) - (lucik.x + lucik.w / 2);
+      return dx > -20 && dx < 110;
+    });
   }
 
   function spawnFearObstacle() {
@@ -555,6 +775,7 @@ export function startRunnerGame(level = 1) {
     const v = variants[Math.floor(Math.random() * variants.length)];
     const meta = FEARS.find((f) => f.id === v.fearId) || fear;
     const hunting = phase === PHASE.HUNT || rainbowT > 0;
+    const fullH = v.h;
     obstacles.push({
       type: 'fear',
       fearId: v.fearId,
@@ -563,14 +784,19 @@ export function startRunnerGame(level = 1) {
       eye: meta.eye,
       shape: meta.shape,
       x: canvas.width + 20,
-      y: groundY() - v.h,
+      y: groundY() - fullH,
       w: v.w,
-      h: v.h,
+      h: fullH,
+      fullH,
+      growT: 0,
+      growMax: 18 + Math.floor(Math.random() * 10),
+      wavePh: Math.random() * Math.PI * 2,
       fleeing: hunting,
       panicDir: Math.random() < 0.5 ? -1 : 1,
       panicT: Math.random() * 40,
       hit: false
     });
+    spawnDirt(canvas.width + 20 + v.w / 2, groundY(), 8);
   }
 
   function spawnTrackStar() {
@@ -589,11 +815,18 @@ export function startRunnerGame(level = 1) {
   }
 
   function collectStar(bonus = 10) {
-    score += bonus;
+    comboTimer = 90;
+    combo++;
+    updateComboHud();
+    const risk = nearFearRisk() ? 3 : 1;
+    const pts = Math.round(bonus * getComboMult() * risk);
+    score += pts;
     starStreak++;
     const el = document.getElementById('runnerScore');
     if (el) el.textContent = score;
     playStarSound();
+    if (risk > 1) showComboText(`${pts} RISK`);
+    else if (getComboMult() > 1) showComboText(pts);
     // двойная радуга: 5 звёзд подряд → 15 сек
     if (starStreak >= 5 && rainbowT <= 0) {
       rainbowT = 750; // ~15s
@@ -608,19 +841,34 @@ export function startRunnerGame(level = 1) {
 
   function smashFear(o) {
     if (o.hit) return;
+    const risk = nearFearRisk() ? 3 : 1;
     o.hit = true;
     fearsSmashed++;
     comboTimer = 90;
     combo++;
-    const pts = Math.min(50, 10 * combo);
+    updateComboHud();
+    const pts = Math.round(Math.min(50, 10 * combo) * getComboMult() * risk);
     score += pts;
     const el = document.getElementById('runnerScore');
     if (el) el.textContent = score;
-    showComboText(pts);
+    showComboText(risk > 1 ? `${pts} ×3` : pts);
     const cx = o.x + o.w / 2;
     const cy = o.y + o.h / 2;
     burst(cx, cy, o.eye || '#ff4466', 22);
     burst(cx, cy, '#FFD700', 10);
+    spawnFearShards(cx, cy, o.eye || o.color || '#ff4466', 16);
+    if (isMindFlayer) {
+      for (let i = 0; i < 10; i++) {
+        particles.push({
+          x: cx, y: cy,
+          vx: (Math.random() - 0.5) * 6,
+          vy: (Math.random() - 0.5) * 6,
+          life: 20 + Math.random() * 15,
+          r: 2 + Math.random() * 2,
+          color: '#ff2244'
+        });
+      }
+    }
     shockwaves.push({ x: cx, y: cy, r: 8, max: 90, color: o.eye || o.color || '#ff4466', life: 28 });
     shakeIntensity = 8 + Math.random() * 4;
     playShatter();
@@ -728,8 +976,10 @@ export function startRunnerGame(level = 1) {
         phase === PHASE.WELL_EXIT || phase === PHASE.LOST || phase === PHASE.WON ||
         phase === PHASE.WIN_SLOWMO) return;
     if (jumpCount >= 2) return;
-    // парабола: v0 + g*t → естественная дуга
-    lucik.vy = jumpCount === 0 ? JUMP_V0 : JUMP_V1;
+    // парабола: сила прыжка чуть растёт со скоростью, время в воздухе короче при 2x
+    const sm = Math.max(1, getSpeedMult());
+    const boost = jumpCount === 0 ? JUMP_V0 : JUMP_V1;
+    lucik.vy = boost * (0.92 + 0.08 * Math.min(2, sm));
     lucik.jumping = true;
     wasAirborne = true;
     jumpCount++;
@@ -805,16 +1055,29 @@ export function startRunnerGame(level = 1) {
 
   function updateWellFall() {
     wellT++;
-    lucik.scale = Math.max(0.12, 1 - wellT / 32);
-    lucik.y += 2.8;
+    // ускоряющееся падение
+    const accel = 1.6 + wellT * 0.12;
+    lucik.scale = Math.max(0.12, 1 - wellT / 28);
+    lucik.y += accel;
     animState = 'fall';
-    wellParallax += 2;
-    if (wellT >= 32) {
+    wellParallax += 1.5 + wellT * 0.08;
+    if (wellT % 3 === 0) {
+      particles.push({
+        x: lucik.x + lucik.w / 2 + (Math.random() - 0.5) * 20,
+        y: lucik.y,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: -1 - Math.random(),
+        life: 20,
+        r: 1.5,
+        color: 'rgba(200,220,255,0.7)'
+      });
+    }
+    if (wellT >= 28) {
       phase = PHASE.WELL_INSIDE;
       wellT = 0;
       lucik.scale = 1;
       lucik.peek = 0;
-      wellEyeT = 35; // eye peeks mid-scene
+      wellEyeT = 35;
     }
   }
 
@@ -865,6 +1128,20 @@ export function startRunnerGame(level = 1) {
       v.life--;
     });
     vaporPuffs = vaporPuffs.filter((v) => v.life > 0);
+
+    // белые хлопья «как под водой»
+    if (wellT % 2 === 0) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.6,
+        vy: 0.4 + Math.random() * 0.8,
+        life: 40 + Math.random() * 30,
+        r: 1 + Math.random() * 2.5,
+        color: 'rgba(220,240,255,0.55)',
+        under: true
+      });
+    }
 
     if (wellT === 50 && !wellStarTaken) {
       wellStarTaken = true;
@@ -985,8 +1262,24 @@ export function startRunnerGame(level = 1) {
     }
     if (comboTimer > 0) {
       comboTimer--;
-      if (comboTimer <= 0) combo = 0;
+      if (comboTimer <= 0) {
+        combo = 0;
+        updateComboHud();
+      }
     }
+    if (shieldT > 0) shieldT--;
+    if (boostT > 0) boostT--;
+    if (dashT > 0) {
+      dashT--;
+      lucik.dashTrail = Math.max(0, lucik.dashTrail - 0.04);
+    } else {
+      lucik.dashTrail *= 0.92;
+    }
+    lucik.tilt *= 0.88;
+    if (lucik.blinkT > 0) lucik.blinkT--;
+    else if (Math.random() < 0.008) lucik.blinkT = 6;
+    if (lightningFlash > 0) lightningFlash--;
+    moonRayPhase += 0.01;
 
     // look back every ~3s while running
     if (phase === PHASE.RUN) {
@@ -1013,12 +1306,32 @@ export function startRunnerGame(level = 1) {
       }
     }
 
-    // шаги от скорости
+    // шаги от скорости + поверхности
     if ((phase === PHASE.RUN || phase === PHASE.HUNT) && !lucik.jumping) {
       footstepAcc += speed;
       if (footstepAcc > 28) {
         footstepAcc = 0;
+        surfaceType = distance > 200 && Math.random() < 0.3 ? 'dirt'
+          : (well && Math.abs(well.x - lucik.x) < 120 ? 'stone' : 'grass');
         playFootstep();
+        // искры / следы под лапами
+        if (dashT > 0 || speedMult >= 1.6) {
+          footSparks.push({
+            x: lucik.x + lucik.w * 0.35,
+            y: groundY() - 2,
+            vx: -1 - Math.random() * 2,
+            vy: -0.5 - Math.random() * 2,
+            life: 12,
+            color: '#ffcc66'
+          });
+        }
+        footTrails.push({
+          x: lucik.x + lucik.w * 0.3,
+          y: groundY() - 1,
+          life: 18,
+          a: 0.45
+        });
+        grassPress.push({ x: lucik.x + lucik.w * 0.4, life: 20, w: 18 });
       }
     }
 
@@ -1040,7 +1353,7 @@ export function startRunnerGame(level = 1) {
 
     // инерция X — плавно к «дорожке»
     lucik.targetX = lucikHomeX();
-    lucik.x += (lucik.targetX - lucik.x) * 0.12;
+    lucik.x += (lucik.targetX - lucik.x) * 0.18;
 
     // дыхание после колодца (3 цикла пульсации)
     if (lucik.breathCycles > 0) {
@@ -1049,15 +1362,30 @@ export function startRunnerGame(level = 1) {
         lucik.breath = 0;
         lucik.breathCycles--;
       }
+    } else {
+      lucik.breath += 0.06; // лёгкое дыхание всегда
     }
 
-    // параболический прыжок
-    lucik.vy += GRAVITY;
+    // параболический прыжок — g зависит от скорости
+    const gNow = GRAVITY * (0.85 + 0.25 * Math.min(2, getSpeedMult()));
+    lucik.vy += gNow;
     lucik.y += lucik.vy;
     const gy = groundY();
     if (lucik.y >= gy - lucik.h) {
       if (wasAirborne && lucik.jumping) {
-        shakeIntensity = Math.max(shakeIntensity, 3 + Math.random() * 2); // 3–5px
+        shakeIntensity = Math.max(shakeIntensity, 3 + Math.random() * 2);
+        spawnDirt(lucik.x + lucik.w / 2, gy, 12);
+        for (let i = 0; i < 8; i++) {
+          dirtParticles.push({
+            x: lucik.x + lucik.w * 0.3 + Math.random() * 20,
+            y: gy - 2,
+            vx: (Math.random() - 0.5) * 3,
+            vy: -0.5 - Math.random() * 2,
+            life: 18,
+            r: 2 + Math.random() * 2,
+            color: '#6a5030'
+          });
+        }
       }
       lucik.y = gy - lucik.h;
       lucik.vy = 0;
@@ -1066,11 +1394,60 @@ export function startRunnerGame(level = 1) {
       wasAirborne = false;
     }
 
+    // звёздная пыль за Люциком
+    if (frame % 2 === 0 && (phase === PHASE.RUN || phase === PHASE.HUNT)) {
+      trailStars.push({
+        x: lucik.x + 8,
+        y: lucik.y + lucik.h * 0.5 + (Math.random() - 0.5) * 20,
+        life: 16,
+        color: phase === PHASE.HUNT ? '#ffd700' : '#aaccff'
+      });
+      if (phase === PHASE.HUNT) {
+        particles.push({
+          x: lucik.x + 10,
+          y: lucik.y + lucik.h * 0.4,
+          vx: -2 - Math.random() * 2,
+          vy: (Math.random() - 0.5) * 2,
+          life: 18,
+          r: 2,
+          color: '#FFD700'
+        });
+      }
+    }
+
+    // редкие капли на «камере»
+    if (Math.random() < 0.008 && cameraDrops.length < 6) {
+      cameraDrops.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height * 0.5,
+        r: 3 + Math.random() * 5,
+        life: 80 + Math.random() * 60
+      });
+    }
+
     const move = speed * (timeScale < 1 ? timeScale : 1);
     obstacles.forEach((o) => {
       o.x -= o.fleeing ? move * 1.4 : move;
+      if (o.growT < o.growMax) {
+        o.growT++;
+        const t = o.growT / o.growMax;
+        o.h = o.fullH * Math.min(1, t * t * (3 - 2 * t));
+        o.y = gy - o.h;
+      }
+      o.wavePh = (o.wavePh || 0) + 0.12;
+      o.y = gy - o.h + Math.sin(o.wavePh) * 3;
     });
     trackStars.forEach((s) => { s.x -= move; });
+    chests.forEach((c) => {
+      c.x -= move;
+      c.bob += 0.1;
+    });
+    if (boss) {
+      boss.x -= move * 0.55;
+      boss.wobble += 0.08;
+      boss.y = gy - boss.h + Math.sin(boss.wobble) * 4;
+      if (boss.hitFlash > 0) boss.hitFlash--;
+    }
     if (well && !well.used) well.x -= move;
     cracks.forEach((c) => { c.x -= move; c.life--; });
     cracks = cracks.filter((c) => c.life > 0 && c.x > -40);
@@ -1079,16 +1456,32 @@ export function startRunnerGame(level = 1) {
     speedLines.forEach((l) => { l.y += 8; l.life--; });
     speedLines = speedLines.filter((l) => l.life > 0);
 
-    // missed star breaks rainbow streak
+    // missed star breaks rainbow streak + combo
     for (const s of [...trackStars]) {
       if (!s.taken && s.x + 20 < lucik.x) {
         starStreak = 0;
-        s.taken = true; // mark so we don't double-count
+        if (combo > 0) {
+          combo = 0;
+          comboTimer = 0;
+          updateComboHud();
+        }
+        s.taken = true;
       }
     }
 
-    obstacles = obstacles.filter((o) => o.x > -90 && !o.hit);
+    obstacles = obstacles.filter((o) => {
+      if (o.hit) return false;
+      if (o.x > -90) return true;
+      // пропуск страха в охоте сбрасывает комбо
+      if (o.fleeing && combo > 0) {
+        combo = 0;
+        comboTimer = 0;
+        updateComboHud();
+      }
+      return false;
+    });
     trackStars = trackStars.filter((s) => s.x > -20 && !s.taken);
+    chests = chests.filter((c) => c.x > -40 && !c.taken);
 
     if (well && !well.used && phase === PHASE.RUN) {
       const near = lucik.x + lucik.w > well.x + 8 && lucik.x < well.x + well.w - 8;
@@ -1106,6 +1499,15 @@ export function startRunnerGame(level = 1) {
       }
     }
 
+    // chests
+    for (const c of chests) {
+      if (c.taken) continue;
+      if (Math.abs(lucik.x + lucik.w / 2 - (c.x + c.w / 2)) < 36 &&
+          Math.abs(lucik.y + lucik.h / 2 - (c.y + c.h / 2)) < 40) {
+        openChest(c);
+      }
+    }
+
     const margin = 10;
     const lx = lucik.x + margin;
     const ly = lucik.y + margin + 4;
@@ -1119,14 +1521,31 @@ export function startRunnerGame(level = 1) {
       const ow = o.w - 12;
       const oh = o.h - 10;
       if (lx < ox + ow && lx + lw > ox && ly < oy + oh && ly + lh > oy) {
-        if (hunting || rainbow || invuln > 0) {
+        if (hunting || rainbow || invuln > 0 || shieldT > 0) {
           smashFear(o);
         } else {
           starStreak = 0;
+          combo = 0;
+          updateComboHud();
           phase = PHASE.LOST;
           shakeIntensity = 14;
           beep(80, 0.4, 'sawtooth', 0.12, 30);
         }
+      }
+    }
+
+    // босс хит
+    if (boss && (hunting || rainbow || invuln > 0 || shieldT > 0 || lucik.jumping)) {
+      if (lx < boss.x + boss.w && lx + lw > boss.x && ly < boss.y + boss.h && ly + lh > boss.y) {
+        if (boss.hitFlash <= 0) hitBoss();
+      }
+    } else if (boss && !(hunting || rainbow || invuln > 0 || shieldT > 0)) {
+      if (lx < boss.x + boss.w * 0.7 && lx + lw > boss.x + 10 && ly < boss.y + boss.h && ly + lh > boss.y + 20) {
+        starStreak = 0;
+        combo = 0;
+        phase = PHASE.LOST;
+        shakeIntensity = 16;
+        beep(70, 0.45, 'sawtooth', 0.14, 25);
       }
     }
 
@@ -1144,12 +1563,36 @@ export function startRunnerGame(level = 1) {
       if (Math.random() < (isMindFlayer ? 0.02 : 0.012)) {
         cracks.push({ x: canvas.width, life: 40 + Math.random() * 30 });
       }
-      if (!hunting) speed = Math.min(isMindFlayer ? 13 : 11, baseSpeed + distance * 0.003);
-      else speed = Math.min(15, baseSpeed * 1.5);
-    }
 
-    // miss star → break streak if it goes off screen past lucik without collect
-    // (handled: only increment on collect)
+      // сундуки каждые 100м — 10%
+      const chestMark = Math.floor(distance / 100) * 100;
+      if (chestMark >= 100 && chestMark > lastChestAt) {
+        lastChestAt = chestMark;
+        if (Math.random() < 0.1) spawnChest();
+      }
+      // босс каждые 500м
+      const bossMark = Math.floor(distance / 500) * 500;
+      if (bossMark >= 500 && bossMark > lastBossAt && !boss) {
+        lastBossAt = bossMark;
+        spawnBoss();
+      }
+
+      // скорость: тиры дистанции × boost × dash
+      speedMult = getSpeedMult();
+      const boostF = boostT > 0 ? 1.35 : 1;
+      const dashF = dashT > 0 ? 1.8 : 1;
+      if (!hunting) {
+        speed = Math.min(isMindFlayer ? 16 : 14, baseSpeed * speedMult * boostF * dashF);
+      } else {
+        speed = Math.min(18, baseSpeed * 1.5 * speedMult * 0.85 * boostF * dashF);
+      }
+
+      // молнии Mind Flayer → flash + heat wave
+      if (isMindFlayer && frame % 40 === 0 && Math.random() < 0.45) {
+        lightningFlash = 10;
+        heatWaves.push({ life: 18, amp: 0.4 + Math.random() * 0.4 });
+      }
+    }
 
     groundOffset = (groundOffset + speed) % 48;
 
@@ -1200,6 +1643,11 @@ export function startRunnerGame(level = 1) {
       fog.offset = (fog.offset + fog.speed * speed) % (canvas.width + 200);
     });
 
+    // деревья — передний план ×2 параллакс (через base offset в draw)
+    trees.forEach((t) => {
+      t.scroll = ((t.scroll || 0) + speed * (t.near ? 1.1 : 0.45)) % 1600;
+    });
+
     // VHS-помехи раз в 5–10 сек
     if (frame >= nextVhsAt) {
       vhsGlitchT = 8 + Math.floor(Math.random() * 10);
@@ -1213,11 +1661,13 @@ export function startRunnerGame(level = 1) {
     else animState = (hunting || rainbow) ? 'glow' : 'run';
 
     frameCounter++;
-    if (frameCounter >= (hunting ? 4 : 6)) {
+    const animSpeed = Math.max(3, 7 - Math.floor(speedMult));
+    if (frameCounter >= (hunting ? 3 : animSpeed)) {
       frameCounter = 0;
-      if (animState === 'run' || animState === 'glow') currentFrame = currentFrame === 0 ? 1 : 0;
-      else if (animState === 'jump_up' || animState === 'land') currentFrame = 2;
-      else if (animState === 'fly') currentFrame = 3;
+      if (animState === 'run' || animState === 'glow') currentFrame = (currentFrame + 1) % 4;
+      else if (animState === 'jump_up') currentFrame = 0;
+      else if (animState === 'land') currentFrame = 1;
+      else if (animState === 'fly') currentFrame = 2;
     }
 
     if (shakeIntensity > 0) {
@@ -1235,18 +1685,52 @@ export function startRunnerGame(level = 1) {
 
     updateParticles();
 
-    if (phase === PHASE.RUN && distance >= (isMindFlayer ? 380 : 320)) triggerWin();
+    if (phase === PHASE.RUN && distance >= (isMindFlayer ? 580 : 520) && !boss) triggerWin();
   }
 
   function updateParticles() {
     particles.forEach((p) => {
-      p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.life--;
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.under) {
+        p.vy += 0.02;
+        p.vx += Math.sin(frame * 0.05 + p.x) * 0.02;
+      } else {
+        p.vy += 0.12;
+      }
+      p.life--;
     });
     particles = particles.filter((p) => p.life > 0);
     dirtParticles.forEach((p) => {
       p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--;
     });
     dirtParticles = dirtParticles.filter((p) => p.life > 0);
+    shards.forEach((s) => {
+      s.vy += 0.35;
+      s.vx *= 0.985;
+      s.x += s.vx;
+      s.y += s.vy;
+      s.rot += s.spin;
+      s.life--;
+      if (s.y > groundY() - 2) {
+        s.y = groundY() - 2;
+        s.vy *= -0.25;
+        s.vx *= 0.7;
+      }
+    });
+    shards = shards.filter((s) => s.life > 0);
+    footSparks.forEach((p) => {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life--;
+    });
+    footSparks = footSparks.filter((p) => p.life > 0);
+    footTrails.forEach((t) => { t.life--; t.a *= 0.92; });
+    footTrails = footTrails.filter((t) => t.life > 0);
+    grassPress.forEach((g) => { g.life--; });
+    grassPress = grassPress.filter((g) => g.life > 0);
+    cameraDrops.forEach((d) => { d.life--; d.y += 0.15; });
+    cameraDrops = cameraDrops.filter((d) => d.life > 0);
+    heatWaves.forEach((h) => { h.life--; });
+    heatWaves = heatWaves.filter((h) => h.life > 0);
   }
 
   // —— draw ——
@@ -1265,67 +1749,85 @@ export function startRunnerGame(level = 1) {
   }
 
   function drawFearShape(o) {
-    const { x, y, w, h, color, eye, shape, fleeing } = o;
+    const grow = o.growMax ? Math.min(1, o.growT / o.growMax) : 1;
+    const waveY = Math.sin(o.wavePh || 0) * 2;
+    const { x, w, color, eye, shape, fleeing } = o;
+    const h = o.h;
+    const y = o.y;
     ctx.save();
+    ctx.translate(x + w / 2, y + h);
+    ctx.scale(0.85 + grow * 0.15, grow);
+    ctx.translate(-(x + w / 2), -(y + h));
     if (fleeing) {
       ctx.translate(x + w / 2, y + h / 2);
       ctx.scale(-1, 1);
       ctx.translate(-(x + w / 2), -(y + h / 2));
     }
-    ctx.globalAlpha = 0.92;
+    ctx.globalAlpha = 0.55 + grow * 0.37;
+    const yy = y + waveY;
     if (shape === 'vortex') {
       for (let i = 4; i >= 0; i--) {
         ctx.strokeStyle = color;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.ellipse(x + w / 2, y + h / 2, w * 0.2 * (i + 1), h * 0.15 * (i + 1), frame * 0.05 + i, 0, Math.PI * 2);
+        ctx.ellipse(x + w / 2, yy + h / 2, w * 0.2 * (i + 1), h * 0.15 * (i + 1), frame * 0.05 + i, 0, Math.PI * 2);
         ctx.stroke();
       }
     } else if (shape === 'demo') {
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.moveTo(x + w * 0.5, y);
-      ctx.lineTo(x + w, y + h * 0.35);
-      ctx.lineTo(x + w * 0.85, y + h);
-      ctx.lineTo(x + w * 0.15, y + h);
-      ctx.lineTo(x, y + h * 0.35);
+      ctx.moveTo(x + w * 0.5, yy);
+      ctx.lineTo(x + w, yy + h * 0.35);
+      ctx.lineTo(x + w * 0.85, yy + h);
+      ctx.lineTo(x + w * 0.15, yy + h);
+      ctx.lineTo(x, yy + h * 0.35);
       ctx.closePath();
       ctx.fill();
     } else if (shape === 'flayer') {
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.ellipse(x + w / 2, y + h * 0.4, w * 0.45, h * 0.35, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + w / 2, yy + h * 0.4, w * 0.45, h * 0.35, 0, 0, Math.PI * 2);
       ctx.fill();
       for (let i = 0; i < 5; i++) {
         ctx.strokeStyle = '#222';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(x + w / 2, y + h * 0.55);
-        ctx.quadraticCurveTo(x + w * (0.1 + i * 0.2), y + h * 0.8, x + w * (0.05 + i * 0.22), y + h);
+        ctx.moveTo(x + w / 2, yy + h * 0.55);
+        ctx.quadraticCurveTo(x + w * (0.1 + i * 0.2), yy + h * 0.8, x + w * (0.05 + i * 0.22), yy + h);
         ctx.stroke();
       }
     } else {
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(x + w * 0.3, y + h * 0.55, w * 0.28, 0, Math.PI * 2);
-      ctx.arc(x + w * 0.55, y + h * 0.4, w * 0.32, 0, Math.PI * 2);
-      ctx.arc(x + w * 0.75, y + h * 0.55, w * 0.26, 0, Math.PI * 2);
+      ctx.arc(x + w * 0.3, yy + h * 0.55, w * 0.28, 0, Math.PI * 2);
+      ctx.arc(x + w * 0.55, yy + h * 0.4, w * 0.32, 0, Math.PI * 2);
+      ctx.arc(x + w * 0.75, yy + h * 0.55, w * 0.26, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.fillStyle = eye;
     ctx.shadowColor = eye;
     ctx.shadowBlur = 10;
     ctx.beginPath();
-    ctx.arc(x + w * 0.35, y + h * 0.42, 4, 0, Math.PI * 2);
-    ctx.arc(x + w * 0.62, y + h * 0.42, 4, 0, Math.PI * 2);
+    ctx.arc(x + w * 0.35, yy + h * 0.42, 4, 0, Math.PI * 2);
+    ctx.arc(x + w * 0.62, yy + h * 0.42, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.restore();
-    ctx.fillStyle = 'rgba(0,229,255,0.85)';
-    ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(o.name || '', x + w / 2, y - 4);
-    ctx.textAlign = 'left';
+    if (grow > 0.6) {
+      ctx.fillStyle = 'rgba(0,229,255,0.85)';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(o.name || '', x + w / 2, y - 4);
+      ctx.textAlign = 'left';
+    }
+    // зона риска — тонкое кольцо
+    if (nearFearRisk() && Math.abs((o.x + o.w / 2) - (lucik.x + lucik.w / 2)) < 110) {
+      ctx.strokeStyle = 'rgba(255,80,80,0.25)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(o.x + o.w / 2, o.y + o.h / 2, Math.max(o.w, o.h) * 0.7, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 
   function drawWell(wObj, showHint) {
@@ -1369,23 +1871,32 @@ export function startRunnerGame(level = 1) {
       ctx.fillText('В колодец!', x + w / 2, y - h - 8);
       ctx.textAlign = 'left';
     }
+    // паутина на колодце
+    ctx.strokeStyle = 'rgba(200,200,220,0.25)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.7, y - h);
+    ctx.lineTo(x + w * 0.95, y - h * 0.4);
+    ctx.lineTo(x + w * 0.75, y - 4);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x + w * 0.82, y - h * 0.55, 8, 0, Math.PI * 1.3);
+    ctx.stroke();
   }
 
   function drawLucik() {
-    const breathScale = lucik.breathCycles > 0
-      ? 1 + Math.sin(lucik.breath) * 0.045
-      : 1;
+    const breathScale = 1 + Math.sin(lucik.breath) * (lucik.breathCycles > 0 ? 0.045 : 0.015);
     const sw = lucik.w * lucik.scale * breathScale;
     const sh = lucik.h * lucik.scale * breathScale;
     const sx = lucik.x + (lucik.w - sw) / 2;
     const sy = lucik.y + (lucik.h - sh);
     const gy = groundY();
     const hunting = phase === PHASE.HUNT;
+    const lx = lucik.x + lucik.w / 2;
 
-    // динамический свет от «Звезды» / охоты — круг на земле
+    // динамический свет от «Звезды»
     const lightR = hunting || lucik.glow > 0.3 ? 95 + lucik.glow * 40 : 55;
     const lightA = hunting ? 0.32 : (lucik.glow > 0 ? 0.22 : 0.1);
-    const lx = lucik.x + lucik.w / 2;
     const light = ctx.createRadialGradient(lx, gy - 4, 4, lx, gy - 4, lightR);
     light.addColorStop(0, `rgba(255, 220, 120, ${lightA})`);
     light.addColorStop(0.45, `rgba(255, 180, 60, ${lightA * 0.35})`);
@@ -1395,25 +1906,41 @@ export function startRunnerGame(level = 1) {
     ctx.ellipse(lx, gy - 2, lightR, lightR * 0.28, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // тень на земле (эллипс, зависит от высоты прыжка)
+    // мягкая тень
     if (phase !== PHASE.WELL_INSIDE && phase !== PHASE.WELL_FALL) {
       const air = Math.max(0, (gy - lucik.h - lucik.y) / 80);
-      const shadowW = 28 * lucik.scale * (1 - air * 0.4);
-      const shadowA = 0.4 * (1 - air * 0.6);
-      ctx.fillStyle = `rgba(0,0,0,${shadowA})`;
+      const shadowW = 30 * lucik.scale * (1 - air * 0.4);
+      const shadowA = 0.35 * (1 - air * 0.6);
+      ctx.fillStyle = `rgba(10,5,25,${shadowA})`;
       ctx.beginPath();
-      ctx.ellipse(lx, gy - 1, shadowW, 6 * (1 - air * 0.3), 0, 0, Math.PI * 2);
+      ctx.ellipse(lx + lucik.tilt * 8, gy - 1, shadowW, 7 * (1 - air * 0.3), lucik.tilt * 0.3, 0, Math.PI * 2);
       ctx.fill();
     }
 
+    // шлейф рывка
+    if (lucik.dashTrail > 0.05) {
+      for (let i = 3; i >= 1; i--) {
+        ctx.globalAlpha = lucik.dashTrail * 0.2 * i;
+        ctx.fillStyle = '#88ccff';
+        ctx.beginPath();
+        ctx.ellipse(sx - i * 14, sy + sh * 0.55, sw * 0.35, sh * 0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     ctx.save();
+    ctx.translate(sx + sw / 2, sy + sh * 0.55);
+    ctx.rotate(lucik.tilt);
+    ctx.translate(-(sx + sw / 2), -(sy + sh * 0.55));
+
     if (lucik.facing < 0) {
       ctx.translate(sx + sw / 2, 0);
       ctx.scale(-1, 1);
       ctx.translate(-(sx + sw / 2), 0);
     }
 
-    // хвост / шерсть — слой, развевается на бегу
+    // хвост / шерсть
     if (animState === 'run' || animState === 'glow' || animState === 'fly') {
       const wag = Math.sin(frame * 0.35) * 10;
       const tailX = sx + sw * 0.12;
@@ -1431,12 +1958,6 @@ export function startRunnerGame(level = 1) {
         tailX - 28,
         tailY - 4 + wag
       );
-      ctx.stroke();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(255,200,100,0.45)';
-      ctx.beginPath();
-      ctx.moveTo(tailX + 2, tailY - 6);
-      ctx.quadraticCurveTo(tailX - 8, tailY - 14 + wag * 0.2, tailX - 16, tailY - 8);
       ctx.stroke();
     }
 
@@ -1469,6 +1990,11 @@ export function startRunnerGame(level = 1) {
       }
       ctx.drawImage(img, sx, sy, sw, sh);
       ctx.filter = 'none';
+      // моргание
+      if (lucik.blinkT > 0) {
+        ctx.fillStyle = 'rgba(20,10,30,0.85)';
+        ctx.fillRect(sx + sw * 0.28, sy + sh * 0.32, sw * 0.44, sh * 0.08);
+      }
     } else {
       ctx.fillStyle = rainbowT > 0 ? RAINBOW[frame % RAINBOW.length] : (lucik.glow > 0 ? '#FFD700' : '#FF8C00');
       ctx.beginPath();
@@ -1476,6 +2002,19 @@ export function startRunnerGame(level = 1) {
       ctx.fill();
     }
     ctx.restore();
+
+    // bloom-блик на ярких
+    if (hunting || rainbowT > 0 || lucik.glow > 0.5) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.12;
+      const bloom = ctx.createRadialGradient(lx, sy + sh * 0.4, 2, lx, sy + sh * 0.4, sw);
+      bloom.addColorStop(0, '#fff8d0');
+      bloom.addColorStop(1, 'transparent');
+      ctx.fillStyle = bloom;
+      ctx.fillRect(sx - 20, sy - 20, sw + 40, sh + 40);
+      ctx.restore();
+    }
   }
 
   function drawMindFlayerSky(gy) {
@@ -1565,28 +2104,71 @@ export function startRunnerGame(level = 1) {
     ctx.fillText(clockMinute === 0 ? '3:00' : '3:01', cx, cy + cr + 12);
     ctx.restore();
 
+    // луна + god rays
+    const moonX = canvas.width * 0.18;
+    const moonY = gy * 0.18;
+    ctx.fillStyle = 'rgba(200,210,255,0.85)';
+    ctx.shadowColor = '#aab8ff';
+    ctx.shadowBlur = 24;
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let r = 0; r < 7; r++) {
+      const ang = -0.4 + r * 0.18 + Math.sin(moonRayPhase + r) * 0.04;
+      const len = gy * (0.55 + (r % 3) * 0.08);
+      ctx.beginPath();
+      ctx.moveTo(moonX, moonY);
+      ctx.lineTo(moonX + Math.cos(ang) * len * 0.15, moonY + Math.sin(ang + 1.2) * 8);
+      ctx.lineTo(moonX + Math.sin(ang) * 40 + r * 18, gy);
+      ctx.lineTo(moonX + Math.sin(ang) * 40 + r * 18 + 28, gy);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(180,200,255,${0.03 + (r % 2) * 0.02})`;
+      ctx.fill();
+    }
+    ctx.restore();
+
     for (let i = 0; i < trees.length; i++) {
       const t = trees[i];
-      const tx = ((t.base - groundOffset * 0.35) % (canvas.width + 160)) - 40;
-      const th = t.h;
-      // дерево
-      ctx.fillStyle = '#0a120a';
+      const parallax = t.near ? (t.scroll || groundOffset * 1.1) : (groundOffset * 0.35 + (t.scroll || 0) * 0.2);
+      const span = canvas.width + (t.near ? 220 : 160);
+      const tx = ((t.base - parallax) % span + span) % span - 40;
+      const th = t.h * (t.near ? 1.35 : 1);
+      const tw = t.w * (t.near ? 1.25 : 1);
+      ctx.fillStyle = t.near ? '#061008' : '#0a120a';
       ctx.beginPath();
       ctx.moveTo(tx, gy);
-      ctx.lineTo(tx + t.w * 0.5, gy - th);
-      ctx.lineTo(tx + t.w, gy);
+      ctx.lineTo(tx + tw * 0.5, gy - th);
+      ctx.lineTo(tx + tw, gy);
       ctx.fill();
       ctx.strokeStyle = 'rgba(200, 30, 50, 0.35)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = t.near ? 2.5 : 2;
       ctx.stroke();
-      // тень от дерева на дорожке (двигается)
+      // паутина
+      if (t.web) {
+        ctx.strokeStyle = 'rgba(200,200,220,0.22)';
+        ctx.lineWidth = 0.8;
+        const wx = tx + tw * 0.55;
+        const wy = gy - th * 0.75;
+        for (let s = 0; s < 4; s++) {
+          ctx.beginPath();
+          ctx.moveTo(wx, wy);
+          ctx.lineTo(wx + 18 + s * 6, wy + 10 + s * 8);
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.arc(wx + 12, wy + 14, 10, 0.2, Math.PI * 1.2);
+        ctx.stroke();
+      }
       const shadowLen = 40 + th * 0.25;
       ctx.fillStyle = 'rgba(0,0,0,0.28)';
       ctx.beginPath();
       ctx.moveTo(tx + 4, gy);
-      ctx.lineTo(tx + t.w - 4, gy);
-      ctx.lineTo(tx + t.w * 0.5 + shadowLen * 0.6, gy + 14);
-      ctx.lineTo(tx + t.w * 0.2 + shadowLen * 0.3, gy + 16);
+      ctx.lineTo(tx + tw - 4, gy);
+      ctx.lineTo(tx + tw * 0.5 + shadowLen * 0.6, gy + 14);
+      ctx.lineTo(tx + tw * 0.2 + shadowLen * 0.3, gy + 16);
       ctx.closePath();
       ctx.fill();
     }
@@ -1606,15 +2188,19 @@ export function startRunnerGame(level = 1) {
       ctx.fillStyle = 'rgba(120,80,180,0.2)';
       ctx.fillRect(x, gy + 8, 24, 2);
     }
-    // трава колышется (sin-волна)
+    // трава колышется (sin-волна) + приминание
     ctx.strokeStyle = '#5a3a7a';
     ctx.lineWidth = 1.5;
     for (let x = 0; x < canvas.width; x += 11) {
-      const sway = Math.sin(x * 0.22 + frame * 0.09) * 4;
-      const h = 7 + Math.sin(x * 0.31 + frame * 0.07) * 5;
+      let press = 0;
+      for (const g of grassPress) {
+        if (Math.abs(g.x - x) < g.w) press = Math.max(press, g.life / 20);
+      }
+      const sway = Math.sin(x * 0.22 + frame * 0.09) * 4 * (1 - press * 0.7);
+      const h = (7 + Math.sin(x * 0.31 + frame * 0.07) * 5) * (1 - press * 0.85);
       ctx.beginPath();
       ctx.moveTo(x, gy);
-      ctx.quadraticCurveTo(x + sway * 0.5, gy - h * 0.5, x + sway, gy - h);
+      ctx.quadraticCurveTo(x + sway * 0.5, gy - h * 0.5, x + sway + press * 6, gy - h);
       ctx.stroke();
     }
     cracks.forEach((c) => {
@@ -1678,15 +2264,49 @@ export function startRunnerGame(level = 1) {
     const w = canvas.width;
     const h = canvas.height;
 
+    // цветокоррекция сине-фиолетовая
+    ctx.save();
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = 'rgba(40, 30, 90, 0.28)';
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+
+    // красная вспышка молнии
+    if (lightningFlash > 0) {
+      ctx.fillStyle = `rgba(255,40,60,${0.08 + lightningFlash * 0.04})`;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // волны тепла (искажение-полосы)
+    heatWaves.forEach((hw) => {
+      const a = (hw.life / 18) * hw.amp * 0.15;
+      for (let i = 0; i < 5; i++) {
+        const y = (h * 0.2) + i * (h * 0.12) + Math.sin(frame * 0.2 + i) * 8;
+        ctx.fillStyle = `rgba(255,80,60,${a})`;
+        ctx.fillRect(0, y, w, 3);
+      }
+    });
+
+    // капли на объективе
+    cameraDrops.forEach((d) => {
+      ctx.fillStyle = `rgba(180,200,255,${Math.min(0.35, d.life / 100)})`;
+      ctx.beginPath();
+      ctx.ellipse(d.x, d.y, d.r * 0.6, d.r, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255,255,255,${0.15})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
     // виньетка
     const vig = ctx.createRadialGradient(w / 2, h / 2, h * 0.25, w / 2, h / 2, h * 0.75);
     vig.addColorStop(0, 'rgba(0,0,0,0)');
     vig.addColorStop(0.65, 'rgba(0,0,0,0)');
-    vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.58)');
     ctx.fillStyle = vig;
     ctx.fillRect(0, 0, w, h);
 
-    // зернистость (шум каждый кадр)
+    // зернистость
     if (grainCtx) {
       const img = grainCtx.createImageData(64, 64);
       for (let i = 0; i < img.data.length; i += 4) {
@@ -1698,7 +2318,7 @@ export function startRunnerGame(level = 1) {
       }
       grainCtx.putImageData(img, 0, 0);
       ctx.save();
-      ctx.globalAlpha = 0.12;
+      ctx.globalAlpha = 0.14;
       ctx.imageSmoothingEnabled = false;
       for (let y = 0; y < h; y += 64) {
         for (let x = 0; x < w; x += 64) {
@@ -1708,16 +2328,16 @@ export function startRunnerGame(level = 1) {
       ctx.restore();
     }
 
-    // хроматические аберрации по краям (1–2px)
+    // хроматические аберрации
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = 0.08;
+    ctx.globalAlpha = 0.1;
     ctx.fillStyle = '#ff0040';
-    ctx.fillRect(0, 0, 3, h);
-    ctx.fillRect(w - 3, 0, 3, h);
+    ctx.fillRect(0, 0, 4, h);
+    ctx.fillRect(w - 4, 0, 4, h);
     ctx.fillStyle = '#0040ff';
-    ctx.fillRect(1, 0, 2, h);
-    ctx.fillRect(w - 4, 0, 2, h);
+    ctx.fillRect(2, 0, 3, h);
+    ctx.fillRect(w - 5, 0, 3, h);
     ctx.restore();
 
     // VHS-полосы
@@ -2035,9 +2655,66 @@ export function startRunnerGame(level = 1) {
       ctx.restore();
     });
 
+    // сундуки
+    chests.forEach((c) => {
+      if (c.taken) return;
+      const bob = Math.sin(c.bob) * 4;
+      ctx.save();
+      ctx.translate(c.x + c.w / 2, c.y + bob);
+      ctx.fillStyle = '#8B5A2B';
+      ctx.fillRect(-c.w / 2, 0, c.w, c.h);
+      ctx.fillStyle = '#FFD700';
+      ctx.fillRect(-c.w / 2, c.h * 0.35, c.w, 4);
+      ctx.fillStyle = '#c9a227';
+      ctx.beginPath();
+      ctx.arc(0, c.h * 0.55, 5, 0, Math.PI * 2);
+      ctx.fill();
+      const icons = { stars: '⭐', shield: '🛡', boost: '💨', rainbow: '🌈' };
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(icons[c.kind] || '📦', 0, -6);
+      ctx.restore();
+    });
+
     obstacles.forEach((o) => {
       if (o.type === 'fear' && !o.hit) drawFearShape(o);
     });
+
+    // босс
+    if (boss) {
+      ctx.save();
+      if (boss.hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(frame) * 0.3;
+      ctx.fillStyle = fear.color || '#1a0510';
+      ctx.shadowColor = fear.eye;
+      ctx.shadowBlur = 20;
+      ctx.beginPath();
+      ctx.ellipse(boss.x + boss.w / 2, boss.y + boss.h * 0.45, boss.w * 0.45, boss.h * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      for (let i = 0; i < 6; i++) {
+        ctx.strokeStyle = '#330010';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(boss.x + boss.w / 2, boss.y + boss.h * 0.55);
+        ctx.quadraticCurveTo(
+          boss.x + boss.w * (0.1 + i * 0.15),
+          boss.y + boss.h * 0.75 + Math.sin(frame * 0.1 + i) * 6,
+          boss.x + i * 14,
+          boss.y + boss.h
+        );
+        ctx.stroke();
+      }
+      ctx.fillStyle = fear.eye;
+      ctx.beginPath();
+      ctx.arc(boss.x + boss.w * 0.35, boss.y + boss.h * 0.35, 6, 0, Math.PI * 2);
+      ctx.arc(boss.x + boss.w * 0.65, boss.y + boss.h * 0.35, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#ffd700';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`BOSS · ${'❤'.repeat(boss.hp)}`, boss.x + boss.w / 2, boss.y - 8);
+      ctx.restore();
+    }
 
     speedLines.forEach((l) => {
       ctx.strokeStyle = `rgba(255,255,255,${l.life / 14})`;
@@ -2075,7 +2752,8 @@ export function startRunnerGame(level = 1) {
       ctx.fillStyle = 'rgba(255,215,0,0.9)';
       ctx.font = 'bold 14px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`⚡ ОХОТА · ${Math.max(0, Math.ceil((250 - huntT) / 50))}с${combo > 1 ? ` · COMBO x${combo}` : ''}`, canvas.width / 2, 28);
+      const cm = getComboMult();
+      ctx.fillText(`⚡ ОХОТА · ${Math.max(0, Math.ceil((250 - huntT) / 50))}с${cm > 1 ? ` · ×${cm}` : ''}`, canvas.width / 2, 28);
       ctx.textAlign = 'left';
     }
 
@@ -2121,6 +2799,12 @@ export function startRunnerGame(level = 1) {
   }
 
   function drawParticlesLayer() {
+    footTrails.forEach((t) => {
+      ctx.fillStyle = `rgba(180,220,255,${t.a})`;
+      ctx.beginPath();
+      ctx.ellipse(t.x, t.y, 10, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
     particles.forEach((p) => {
       ctx.fillStyle = p.color;
       ctx.globalAlpha = Math.min(1, p.life / 15);
@@ -2133,6 +2817,24 @@ export function startRunnerGame(level = 1) {
       ctx.fillStyle = p.color;
       ctx.globalAlpha = Math.min(1, p.life / 18);
       ctx.fillRect(p.x, p.y, p.r, p.r);
+      ctx.globalAlpha = 1;
+    });
+    shards.forEach((s) => {
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(s.rot);
+      ctx.globalAlpha = Math.min(1, s.life / 25);
+      ctx.fillStyle = s.color;
+      ctx.fillRect(-s.w / 2, -s.h / 2, s.w, s.h);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    });
+    footSparks.forEach((p) => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.min(1, p.life / 12);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+      ctx.fill();
       ctx.globalAlpha = 1;
     });
   }
@@ -2247,6 +2949,7 @@ export function startRunnerGame(level = 1) {
         <p class="stats">🏃 Дистанция: <b>${Math.floor(distance)}м</b></p>
         <p class="stats">⭐ Очки: <b>${score}</b> · 💥 Страхов: <b>${fearsSmashed}</b></p>
         <p class="stats">🏆 Рекорд: <b>${newBest}м</b></p>
+        ${localStorage.getItem('runner-boss-killed') === '1' ? '<p class="stats">🏅 Ачивка: Победитель Босса</p>' : ''}
         <button type="button" class="runner-btn primary" id="restartRunner">🔄 Ещё забег</button>
         <button type="button" class="runner-btn secondary" id="otherFear">👻 Другой страх</button>
         <button type="button" class="runner-btn share" id="shareResult">📤 Поделиться</button>
@@ -2331,8 +3034,63 @@ export function startRunnerGame(level = 1) {
     showResult(didWin);
   }
 
-  canvas.addEventListener('click', jump);
-  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); }, { passive: false });
+  function onPointerDown(e) {
+    const t = e.touches ? e.touches[0] : e;
+    swipeX = t.clientX;
+    swipeY = t.clientY;
+    swipeTimes.push(performance.now());
+    if (swipeTimes.length > 4) swipeTimes.shift();
+  }
+
+  function onPointerUp(e) {
+    if (swipeX == null || swipeY == null) {
+      jump();
+      return;
+    }
+    const t = e.changedTouches ? e.changedTouches[0] : e;
+    const dx = t.clientX - swipeX;
+    const dy = t.clientY - swipeY;
+    const now = performance.now();
+    swipeX = null;
+    swipeY = null;
+
+    // свайп влево/вправо — дорожки
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      setLane(dx > 0 ? 1 : -1);
+      return;
+    }
+    // свайп вверх — прыжок; двойной быстрый вверх — рывок
+    if (dy < -50 && Math.abs(dy) > Math.abs(dx)) {
+      const recent = swipeTimes.filter((tm) => now - tm < 350);
+      if (recent.length >= 2) {
+        doDash();
+      } else {
+        jump();
+      }
+      return;
+    }
+    jump();
+  }
+
+  canvas.addEventListener('mousedown', onPointerDown);
+  canvas.addEventListener('mouseup', onPointerUp);
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); onPointerDown(e); }, { passive: false });
+  canvas.addEventListener('touchend', (e) => { e.preventDefault(); onPointerUp(e); }, { passive: false });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w' || e.key === 'W') {
+      e.preventDefault();
+      const now = performance.now();
+      swipeTimes.push(now);
+      if (swipeTimes.length > 4) swipeTimes.shift();
+      const recent = swipeTimes.filter((tm) => now - tm < 350);
+      if (recent.length >= 2) doDash();
+      else jump();
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setLane(-1);
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') setLane(1);
+    if (e.key === 'Shift') doDash();
+  });
 
   function startGameLoop() {
     if (loop) return;
@@ -2349,7 +3107,7 @@ export function startRunnerGame(level = 1) {
       updateFilmLayer();
       if ((phase === PHASE.LOST || phase === PHASE.WON) && !finished) {
         finished = true;
-        if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+        if (musicInterval) { clearTimeout(musicInterval); clearInterval(musicInterval); musicInterval = null; }
         stopDrone();
         setTimeout(() => finish(phase === PHASE.WON || won), phase === PHASE.WON ? 1100 : 1600);
       }
