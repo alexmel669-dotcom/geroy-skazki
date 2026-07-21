@@ -1,6 +1,6 @@
 // ========================================
-// runner.js — «Люцик и Обратная сторона»
-// Max upgrade: intro, well, hunt, Mind Flayer, rainbow, photo
+// runner.js — «Люцик и Обратная сторона» v6
+// Видео-заставка · давление · эпик · соцфичи
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
@@ -17,6 +17,7 @@ const FEARS = [
 ];
 
 const PHASE = {
+  VIDEO: 'video',
   INTRO: 'intro',
   RUN: 'run',
   WELL_FALL: 'well_fall',
@@ -29,11 +30,28 @@ const PHASE = {
 };
 
 const RAINBOW = ['#ff0040', '#ff8000', '#ffd700', '#00e676', '#00e5ff', '#a040ff'];
+const WELL_WHISPERS = ['Люцик...', 'Не оглядывайся...', 'Он близко...', 'Слышишь?'];
+const INTRO_VIDEO = 'assets/video/runner-intro.mp4';
 
 function nextRunCount() {
   const n = (parseInt(localStorage.getItem('runner-run-count') || '0', 10) || 0) + 1;
   localStorage.setItem('runner-run-count', String(n));
   return n;
+}
+
+function getRunnerRank(wins, closedPortal, distance) {
+  if (closedPortal || wins >= 20) return { id: 'portal', title: 'Закрывающий Портал', emoji: '🌀' };
+  if (wins >= 10 || distance >= 400) return { id: 'keeper', title: 'Хранитель', emoji: '🛡️' };
+  if (wins >= 3 || distance >= 200) return { id: 'hunter', title: 'Охотник', emoji: '⚔️' };
+  return { id: 'newbie', title: 'Новичок', emoji: '🌱' };
+}
+
+function claimDailyBonus() {
+  const today = new Date().toISOString().slice(0, 10);
+  const key = 'runner-daily-claim';
+  if (localStorage.getItem(key) === today) return 0;
+  localStorage.setItem(key, today);
+  return 30;
 }
 
 export function startRunnerGame(level = 1) {
@@ -49,8 +67,17 @@ export function startRunnerGame(level = 1) {
     : FEARS[Math.min(level - 1, 3)];
 
   const overlay = document.createElement('div');
-  overlay.className = `game-fullscreen runner-game${isMindFlayer ? ' runner-mindflayer' : ''}`;
+  overlay.className = `game-fullscreen runner-game runner-cinematic${isMindFlayer ? ' runner-mindflayer' : ''}`;
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;display:flex;flex-direction:column;';
+
+  const letterTop = document.createElement('div');
+  letterTop.className = 'runner-letterbox top';
+  const letterBot = document.createElement('div');
+  letterBot.className = 'runner-letterbox bottom';
+  const blinkOverlay = document.createElement('div');
+  blinkOverlay.className = 'runner-blink-overlay';
+  const filmCanvas = document.createElement('canvas');
+  filmCanvas.className = 'runner-film-canvas';
 
   const header = document.createElement('div');
   header.className = 'runner-header';
@@ -64,12 +91,21 @@ export function startRunnerGame(level = 1) {
   `;
 
   const canvas = document.createElement('canvas');
+  canvas.id = 'runnerGameCanvas';
   overlay.appendChild(header);
   overlay.appendChild(canvas);
+  overlay.appendChild(filmCanvas);
+  overlay.appendChild(blinkOverlay);
+  overlay.appendChild(letterTop);
+  overlay.appendChild(letterBot);
   document.body.appendChild(overlay);
   document.body.classList.add('game-active');
 
   const ctx = canvas.getContext('2d');
+  const filmCtx = filmCanvas.getContext('2d');
+
+  const dailyBonus = claimDailyBonus();
+  let fearsSmashed = 0;
 
   const groundY = () => canvas.height - 58;
   const lucikHomeX = () => canvas.width * 0.28;
@@ -84,7 +120,7 @@ export function startRunnerGame(level = 1) {
   const JUMP_V0 = -14.2;
   const JUMP_V1 = -9.5;
 
-  let phase = PHASE.INTRO;
+  let phase = PHASE.VIDEO;
   let introT = 0;
   let wellT = 0;
   let huntT = 0;
@@ -97,6 +133,8 @@ export function startRunnerGame(level = 1) {
   let comboFloats = [];
   let speedLines = [];
   let fireworks = [];
+  let shockwaves = [];
+  let vaporPuffs = [];
   let bgStars = [];
   let fireflies = [];
   let leaves = [];
@@ -104,7 +142,7 @@ export function startRunnerGame(level = 1) {
   let trees = [];
   let cracks = [];
   let wellShadows = [];
-  let score = 0;
+  let score = dailyBonus;
   let distance = 0;
   let speed = isMindFlayer ? 3.8 : 3.2;
   let baseSpeed = speed;
@@ -139,6 +177,13 @@ export function startRunnerGame(level = 1) {
   let nextVhsAt = 250 + Math.random() * 250;
   let grainCanvas = null;
   let grainCtx = null;
+  let nextBlinkAt = 500 + Math.random() * 250;
+  let nextWhisperAt = 40;
+  let nextDontLookAt = 80;
+  let heartbeatBpm = 80;
+  let footstepAcc = 0;
+  let gameStarted = false;
+  let loop = null;
 
   const lucikImg = new Image();
   lucikImg.src = 'assets/images/avatar.png';
@@ -232,6 +277,86 @@ export function startRunnerGame(level = 1) {
   }
   function playWinChime() {
     [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.35, 'sine', 0.1), i * 120));
+  }
+
+  function playShockwaveSound() {
+    beep(90, 0.35, 'sawtooth', 0.14, 30);
+    beep(200, 0.2, 'square', 0.06, 80);
+  }
+
+  function playFootstep() {
+    beep(90 + Math.random() * 30, 0.05, 'triangle', 0.025);
+  }
+
+  function playHeartbeatThump(vol = 0.12) {
+    beep(48, 0.08, 'sine', vol);
+    setTimeout(() => beep(38, 0.12, 'sine', vol * 0.85), 90);
+  }
+
+  function playWhisperSpatial(text, side = 1) {
+    if (!musicOn) return;
+    resumeAudio();
+    ensureMaster();
+    try {
+      const panner = audioCtx.createPanner();
+      panner.panningModel = 'equalpower';
+      panner.setPosition(side * 2.5, 0, 0);
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 420 + Math.random() * 200;
+      filter.Q.value = 0.8;
+      osc.type = 'sawtooth';
+      osc.frequency.value = 140 + Math.random() * 80;
+      gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.4);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(panner);
+      panner.connect(masterGain);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 1.45);
+    } catch { /* */ }
+    // визуальный шёпот
+    const tip = document.createElement('div');
+    tip.className = 'runner-dont-look';
+    tip.textContent = text;
+    tip.style.left = side < 0 ? '12%' : '55%';
+    tip.style.top = `${30 + Math.random() * 30}%`;
+    tip.style.color = 'rgba(200,200,220,0.55)';
+    tip.style.fontSize = '14px';
+    overlay.appendChild(tip);
+    setTimeout(() => tip.remove(), 900);
+  }
+
+  function showDontLookText() {
+    const el = document.createElement('div');
+    el.className = 'runner-dont-look';
+    el.textContent = 'Не оглядывайся';
+    el.style.left = `${15 + Math.random() * 50}%`;
+    el.style.top = `${20 + Math.random() * 50}%`;
+    overlay.appendChild(el);
+    setTimeout(() => el.remove(), 500);
+  }
+
+  function triggerBlink() {
+    blinkOverlay.classList.remove('active');
+    void blinkOverlay.offsetWidth;
+    blinkOverlay.classList.add('active');
+    setTimeout(() => blinkOverlay.classList.remove('active'), 150);
+  }
+
+  function setLetterbox(on) {
+    if (on) overlay.classList.add('runner-cinematic');
+    else overlay.classList.remove('runner-cinematic');
+  }
+
+  function expandLetterboxThen(cb) {
+    overlay.classList.remove('runner-well');
+    overlay.classList.remove('runner-cinematic');
+    setTimeout(() => { if (typeof cb === 'function') cb(); }, 900);
   }
 
   function stopDrone() {
@@ -469,17 +594,22 @@ export function startRunnerGame(level = 1) {
     const el = document.getElementById('runnerScore');
     if (el) el.textContent = score;
     playStarSound();
-    if (starStreak >= 3 && rainbowT <= 0) {
-      rainbowT = 500; // ~10s
+    // двойная радуга: 5 звёзд подряд → 15 сек
+    if (starStreak >= 5 && rainbowT <= 0) {
+      rainbowT = 750; // ~15s
       overlay.classList.add('runner-rainbow');
       playRainbow();
-      speak('Радужный Люцик!');
-      obstacles.forEach((o) => { if (o.type === 'fear') o.fleeing = true; });
+      speak('Двойная радуга!');
+      obstacles.forEach((o) => {
+        if (o.type === 'fear' && !o.hit) smashFear(o);
+      });
     }
   }
 
   function smashFear(o) {
+    if (o.hit) return;
     o.hit = true;
+    fearsSmashed++;
     comboTimer = 90;
     combo++;
     const pts = Math.min(50, 10 * combo);
@@ -487,11 +617,18 @@ export function startRunnerGame(level = 1) {
     const el = document.getElementById('runnerScore');
     if (el) el.textContent = score;
     showComboText(pts);
-    burst(o.x + o.w / 2, o.y + o.h / 2, o.eye || '#ff4466', 22);
-    burst(o.x + o.w / 2, o.y + o.h / 2, '#FFD700', 10);
-    shakeIntensity = 8 + Math.random() * 4; // 8–12px
+    const cx = o.x + o.w / 2;
+    const cy = o.y + o.h / 2;
+    burst(cx, cy, o.eye || '#ff4466', 22);
+    burst(cx, cy, '#FFD700', 10);
+    shockwaves.push({ x: cx, y: cy, r: 8, max: 90, color: o.eye || o.color || '#ff4466', life: 28 });
+    shakeIntensity = 8 + Math.random() * 4;
     playShatter();
-    lastSmash = { x: o.x + o.w / 2, y: o.y + o.h / 2, color: o.eye, name: o.name };
+    playShockwaveSound();
+    // slow-mo 0.3x ~0.5 сек
+    timeScale = 0.3;
+    slowMoT = 25;
+    lastSmash = { x: cx, y: cy, color: o.eye, name: o.name };
   }
 
   function enterWell() {
@@ -504,6 +641,10 @@ export function startRunnerGame(level = 1) {
     lucik.jumping = false;
     jumpCount = 0;
     overlay.classList.add('runner-well');
+    overlay.classList.add('runner-cinematic');
+    overlay.classList.add('runner-heartbeat');
+    heartbeatBpm = 80;
+    overlay.style.setProperty('--hb-ms', `${Math.round(60000 / heartbeatBpm)}ms`);
     startMusic('well');
     shakeIntensity = 6;
     wellShadows = [
@@ -514,6 +655,9 @@ export function startRunnerGame(level = 1) {
     wellEyeT = -1;
     wellStarTaken = false;
     wellParallax = 0;
+    nextWhisperAt = 25;
+    nextDontLookAt = 50;
+    vaporPuffs = [];
   }
 
   function startHunt() {
@@ -530,7 +674,9 @@ export function startRunnerGame(level = 1) {
     lucik.breathCycles = 3;
     well = null;
     overlay.classList.remove('runner-well');
+    overlay.classList.remove('runner-heartbeat');
     overlay.classList.add('runner-hunt');
+    expandLetterboxThen(() => {});
     baseSpeed = speed;
     speed = baseSpeed * 1.5;
     setMusicVolume(0.07);
@@ -680,6 +826,46 @@ export function startRunnerGame(level = 1) {
     wellShadows.forEach((s) => { s.x += s.speed; });
     if (wellEyeT > 0) wellEyeT--;
 
+    // сердцебиение 80 → 120 BPM
+    heartbeatBpm = Math.min(120, 80 + wellT * 0.45);
+    overlay.style.setProperty('--hb-ms', `${Math.round(60000 / heartbeatBpm)}ms`);
+    if (wellT % Math.max(8, Math.round(50 / (heartbeatBpm / 60))) === 0) {
+      playHeartbeatThump(0.08 + (heartbeatBpm - 80) / 400);
+    }
+
+    // шёпот
+    if (wellT >= nextWhisperAt) {
+      const phrase = WELL_WHISPERS[Math.floor(Math.random() * WELL_WHISPERS.length)];
+      playWhisperSpatial(phrase, Math.random() < 0.5 ? -1 : 1);
+      nextWhisperAt = wellT + 35 + Math.floor(Math.random() * 40);
+    }
+    if (wellT >= nextDontLookAt) {
+      showDontLookText();
+      nextDontLookAt = wellT + 55 + Math.floor(Math.random() * 40);
+    }
+
+    // пар изо рта
+    if (wellT % 12 === 0) {
+      const cx = canvas.width / 2;
+      const cy = canvas.height * 0.42;
+      const R = Math.min(canvas.width, canvas.height) * 0.38;
+      vaporPuffs.push({
+        x: cx - 8 + Math.random() * 16,
+        y: cy + R - 20,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: -0.6 - Math.random() * 0.5,
+        r: 6 + Math.random() * 8,
+        life: 35 + Math.random() * 20
+      });
+    }
+    vaporPuffs.forEach((v) => {
+      v.x += v.vx;
+      v.y += v.vy;
+      v.r += 0.15;
+      v.life--;
+    });
+    vaporPuffs = vaporPuffs.filter((v) => v.life > 0);
+
     if (wellT === 50 && !wellStarTaken) {
       wellStarTaken = true;
       collectStar(25);
@@ -704,6 +890,15 @@ export function startRunnerGame(level = 1) {
     invuln = Math.max(0, invuln - 1);
     lucik.glow = 0.65 + Math.sin(frame * 0.22) * 0.35;
 
+    // последние ~2 сек охоты — slow-mo 0.5x
+    if (huntT >= 150 && huntT < 250) {
+      timeScale = 0.5;
+      if (huntT % 20 === 0) {
+        beep(110, 0.15, 'sawtooth', 0.06, 55);
+        playShockwaveSound();
+      }
+    }
+
     if (frame % 2 === 0) {
       speedLines.push({
         x: Math.random() < 0.5 ? 8 + Math.random() * 28 : canvas.width - 36 - Math.random() * 28,
@@ -720,13 +915,11 @@ export function startRunnerGame(level = 1) {
       });
     }
 
-    // panic fears
     obstacles.forEach((o) => {
       if (o.type !== 'fear' || o.hit) return;
       o.panicT++;
       if (o.panicT % 18 === 0) o.panicDir *= -1;
       o.x += o.panicDir * 1.8;
-      // collide with each other
       for (const b of obstacles) {
         if (b === o || b.hit || b.type !== 'fear') continue;
         if (Math.abs(o.x - b.x) < (o.w + b.w) * 0.4) {
@@ -741,7 +934,7 @@ export function startRunnerGame(level = 1) {
   }
 
   function update() {
-    if (phase === PHASE.LOST || phase === PHASE.WON) return;
+    if (phase === PHASE.VIDEO || phase === PHASE.LOST || phase === PHASE.WON) return;
 
     // slow-mo
     if (slowMoT > 0) {
@@ -809,7 +1002,32 @@ export function startRunnerGame(level = 1) {
           }
         }, 450);
       }
+      // моргание экрана раз в 10–15 сек
+      if (frame >= nextBlinkAt) {
+        triggerBlink();
+        nextBlinkAt = frame + 500 + Math.floor(Math.random() * 250);
+      }
+      if (frame >= nextDontLookAt && Math.random() < 0.4) {
+        showDontLookText();
+        nextDontLookAt = frame + 400 + Math.floor(Math.random() * 300);
+      }
     }
+
+    // шаги от скорости
+    if ((phase === PHASE.RUN || phase === PHASE.HUNT) && !lucik.jumping) {
+      footstepAcc += speed;
+      if (footstepAcc > 28) {
+        footstepAcc = 0;
+        playFootstep();
+      }
+    }
+
+    // ударные волны
+    shockwaves.forEach((sw) => {
+      sw.r += (sw.max - sw.r) * 0.18 + 2;
+      sw.life--;
+    });
+    shockwaves = shockwaves.filter((sw) => sw.life > 0);
 
     distance += speed * 0.12 * (timeScale < 1 ? timeScale : 1);
     const distEl = document.getElementById('runnerDistance');
@@ -1515,15 +1733,48 @@ export function startRunnerGame(level = 1) {
         ctx.fillStyle = `rgba(0,100,255,${0.05})`;
         ctx.fillRect(2, by, w, bh);
       }
-      // горизонтальный сдвиг куска
       if (Math.random() < 0.4) {
         const sy = Math.random() * h;
         const sh = 10 + Math.random() * 30;
         try {
           const slice = ctx.getImageData(0, sy, w, Math.min(sh, h - sy));
           ctx.putImageData(slice, (Math.random() - 0.5) * 12, sy);
-        } catch { /* tainted canvas unlikely */ }
+        } catch { /* */ }
       }
+    }
+  }
+
+  function updateFilmLayer() {
+    const fw = overlay.clientWidth;
+    const fh = overlay.clientHeight;
+    if (filmCanvas.width !== fw || filmCanvas.height !== fh) {
+      filmCanvas.width = fw;
+      filmCanvas.height = fh;
+    }
+    filmCtx.clearRect(0, 0, fw, fh);
+    const strong = phase === PHASE.WELL_INSIDE || phase === PHASE.WELL_FALL;
+    // пылинки
+    const dust = strong ? 40 : 22;
+    for (let i = 0; i < dust; i++) {
+      filmCtx.fillStyle = `rgba(255,255,255,${0.04 + Math.random() * 0.1})`;
+      filmCtx.fillRect(Math.random() * fw, Math.random() * fh, 1 + Math.random() * 2, 1);
+    }
+    // царапины
+    const scratches = strong ? 6 : 3;
+    for (let i = 0; i < scratches; i++) {
+      const x = Math.random() * fw;
+      filmCtx.strokeStyle = `rgba(255,255,255,${0.06 + Math.random() * 0.1})`;
+      filmCtx.lineWidth = 1;
+      filmCtx.beginPath();
+      filmCtx.moveTo(x, 0);
+      filmCtx.lineTo(x + (Math.random() - 0.5) * 8, fh);
+      filmCtx.stroke();
+    }
+    // горизонтальная «грязь» плёнки
+    if (Math.random() < (strong ? 0.35 : 0.12)) {
+      const y = Math.random() * fh;
+      filmCtx.fillStyle = 'rgba(0,0,0,0.15)';
+      filmCtx.fillRect(0, y, fw, 1 + Math.random() * 3);
     }
   }
 
@@ -1560,6 +1811,30 @@ export function startRunnerGame(level = 1) {
     light.addColorStop(1, 'rgba(0,0,0,0.85)');
     ctx.fillStyle = light;
     ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+
+    // луч фонарика (sin-волна)
+    const beamAngle = Math.sin(frame * 0.05) * 0.55;
+    const beamLen = R * 1.1;
+    const bx = cx - 10;
+    const by = cy + R * 0.55;
+    const tipX = bx + Math.sin(beamAngle) * beamLen;
+    const tipY = by - Math.cos(beamAngle) * beamLen * 0.75;
+    const beam = ctx.createRadialGradient(bx, by, 2, tipX, tipY, beamLen * 0.5);
+    beam.addColorStop(0, 'rgba(255, 230, 160, 0.45)');
+    beam.addColorStop(0.4, 'rgba(255, 200, 100, 0.18)');
+    beam.addColorStop(1, 'rgba(255, 180, 80, 0)');
+    ctx.fillStyle = beam;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(tipX + Math.cos(beamAngle) * 28, tipY + Math.sin(beamAngle) * 28);
+    ctx.lineTo(tipX - Math.cos(beamAngle) * 28, tipY - Math.sin(beamAngle) * 28);
+    ctx.closePath();
+    ctx.fill();
+    // пятно на стене
+    ctx.fillStyle = 'rgba(255, 220, 140, 0.2)';
+    ctx.beginPath();
+    ctx.ellipse(tipX, tipY, 22, 14, beamAngle, 0, Math.PI * 2);
+    ctx.fill();
 
     if (frame % 38 < 5) {
       ctx.strokeStyle = 'rgba(255,40,60,0.9)';
@@ -1670,6 +1945,14 @@ export function startRunnerGame(level = 1) {
     ctx.textAlign = 'center';
     ctx.fillText('Страхи не замечают тебя…', cx, cy + R + 28);
     ctx.textAlign = 'left';
+
+    // дыхание — клубы пара
+    vaporPuffs.forEach((v) => {
+      ctx.fillStyle = `rgba(220, 230, 255, ${Math.min(0.35, v.life / 50)})`;
+      ctx.beginPath();
+      ctx.ellipse(v.x, v.y, v.r, v.r * 0.65, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
   }
 
   function drawIntroOverlay() {
@@ -1770,6 +2053,17 @@ export function startRunnerGame(level = 1) {
       ctx.beginPath();
       drawStarPath(t.x, t.y, 5, 5, 2);
       ctx.fill();
+    });
+
+    // ударные волны
+    shockwaves.forEach((sw) => {
+      ctx.strokeStyle = sw.color;
+      ctx.globalAlpha = Math.max(0, sw.life / 28) * 0.7;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(sw.x, sw.y, sw.r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     });
 
     drawParticlesLayer();
@@ -1916,11 +2210,17 @@ export function startRunnerGame(level = 1) {
   }
 
   function showResult(didWin) {
+    const prevWins = parseInt(localStorage.getItem('runner-wins') || '0', 10) || 0;
+    const wins = didWin ? prevWins + 1 : prevWins;
+    if (didWin) localStorage.setItem('runner-wins', String(wins));
+
     recordGameResult('runner', didWin, level);
     trackEvent(didWin ? 'runner_won' : 'runner_lost', {
-      level, score, distance: Math.floor(distance), fear: fear.id, mindflayer: isMindFlayer, portal: closedPortal
+      level, score, distance: Math.floor(distance), fear: fear.id,
+      mindflayer: isMindFlayer, portal: closedPortal, smashed: fearsSmashed
     });
 
+    const rank = getRunnerRank(wins, closedPortal && didWin, Math.floor(distance));
     const title = didWin
       ? (closedPortal ? 'Люцик закрыл портал!' : `Люцик прогнал ${fear.name}!`)
       : 'Почти получилось!';
@@ -1935,14 +2235,17 @@ export function startRunnerGame(level = 1) {
     localStorage.setItem('runner-best', String(newBest));
 
     const result = document.createElement('div');
-    result.className = `runner-result${closedPortal ? ' mindflayer-win' : ''}`;
+    result.className = `runner-result${closedPortal && didWin ? ' mindflayer-win' : ''}`;
     result.innerHTML = `
       <div class="runner-result-box ${didWin ? 'win' : ''}">
         <div class="emoji">${didWin ? (closedPortal ? '🌀' : '🌟') : '😅'}</div>
         <h2>${title}</h2>
         <p class="sub">${sub}</p>
+        <div class="rank">${rank.emoji} Ранг: ${rank.title}</div>
+        <p class="compare" id="runnerCompare">Считаем место среди игроков…</p>
+        ${dailyBonus > 0 ? `<p class="daily">🎁 Ежедневная награда: +${dailyBonus}⭐</p>` : ''}
         <p class="stats">🏃 Дистанция: <b>${Math.floor(distance)}м</b></p>
-        <p class="stats">⭐ Очки: <b>${score}</b></p>
+        <p class="stats">⭐ Очки: <b>${score}</b> · 💥 Страхов: <b>${fearsSmashed}</b></p>
         <p class="stats">🏆 Рекорд: <b>${newBest}м</b></p>
         <button type="button" class="runner-btn primary" id="restartRunner">🔄 Ещё забег</button>
         <button type="button" class="runner-btn secondary" id="otherFear">👻 Другой страх</button>
@@ -1952,6 +2255,28 @@ export function startRunnerGame(level = 1) {
       </div>
     `;
     document.body.appendChild(result);
+
+    // сравнение с leaderboard
+    (async () => {
+      const compareEl = result.querySelector('#runnerCompare');
+      if (!compareEl) return;
+      try {
+        const myScore = Math.floor(distance) + score;
+        const res = await fetch(`/api/leaderboard?game=${encodeURIComponent('runner')}`);
+        const scores = await res.json();
+        if (!Array.isArray(scores) || !scores.length) {
+          compareEl.textContent = 'Ты среди первых героев Обратной стороны!';
+          return;
+        }
+        const beaten = scores.filter((s) => (s.score || 0) < myScore).length;
+        const pct = Math.max(1, Math.min(99, Math.round((beaten / scores.length) * 100)));
+        compareEl.textContent = didWin
+          ? `Ты победил больше Страхов, чем ${pct}% игроков!`
+          : `Твой результат выше, чем у ${pct}% игроков`;
+      } catch {
+        compareEl.textContent = 'Таблица лидеров пока недоступна';
+      }
+    })();
 
     result.querySelector('#restartRunner').onclick = () => { result.remove(); startRunnerGame(level); };
     result.querySelector('#otherFear').onclick = () => {
@@ -1963,34 +2288,31 @@ export function startRunnerGame(level = 1) {
       if (typeof showGamesMenu === 'function') showGamesMenu();
     };
     result.querySelector('#shareResult').onclick = () => {
-      // recreate last frame visually on temp canvas
       const shot = document.createElement('canvas');
       shot.width = 640;
-      shot.height = 400;
+      shot.height = 420;
       const sctx = shot.getContext('2d');
-      const grd = sctx.createLinearGradient(0, 0, 0, 400);
+      const grd = sctx.createLinearGradient(0, 0, 0, 420);
       grd.addColorStop(0, '#0a0e27');
       grd.addColorStop(1, didWin ? '#1a3a2a' : '#2d0a1a');
       sctx.fillStyle = grd;
-      sctx.fillRect(0, 0, 640, 400);
+      sctx.fillRect(0, 0, 640, 420);
       sctx.strokeStyle = '#00e5ff';
       sctx.lineWidth = 4;
-      sctx.strokeRect(10, 10, 620, 380);
+      sctx.strokeRect(10, 10, 620, 400);
       sctx.fillStyle = '#00e5ff';
-      sctx.font = 'bold 24px Georgia, serif';
+      sctx.font = 'bold 22px Georgia, serif';
       sctx.textAlign = 'center';
-      sctx.fillText('🐱 Люцик и Обратная сторона', 320, 60);
+      sctx.fillText('🐱 Люцик и Обратная сторона', 320, 55);
       sctx.fillStyle = '#ffd700';
-      sctx.font = 'bold 22px sans-serif';
-      sctx.fillText(title, 320, 140);
+      sctx.font = 'bold 20px sans-serif';
+      sctx.fillText(title, 320, 120);
       sctx.fillStyle = '#e8f4ff';
       sctx.font = '16px sans-serif';
-      sctx.fillText(`${Math.floor(distance)}м · ⭐ ${score} · Рекорд ${newBest}м`, 320, 190);
+      sctx.fillText(`${rank.emoji} ${rank.title}`, 320, 160);
+      sctx.fillText(`${Math.floor(distance)}м · ⭐ ${score} · Рекорд ${newBest}м`, 320, 200);
       sctx.fillStyle = '#cc0033';
-      sctx.fillText(`⏱ ${clockMinute === 1 ? '3:01' : '3:00'}`, 320, 240);
-      sctx.fillStyle = '#889';
-      sctx.font = '13px sans-serif';
-      sctx.fillText(sub, 320, 300);
+      sctx.fillText(`⏱ ${clockMinute === 1 ? '3:01' : '3:00'}`, 320, 250);
       openShareSheet(shot.toDataURL('image/png'), title);
     };
 
@@ -1998,7 +2320,8 @@ export function startRunnerGame(level = 1) {
   }
 
   function finish(didWin) {
-    clearInterval(loop);
+    if (loop) clearInterval(loop);
+    loop = null;
     window.removeEventListener('resize', resize);
     cleanupAudio();
     overlay.style.transform = '';
@@ -2011,26 +2334,96 @@ export function startRunnerGame(level = 1) {
   canvas.addEventListener('click', jump);
   canvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); }, { passive: false });
 
-  const loop = setInterval(() => {
-    update();
-    draw();
-    if ((phase === PHASE.LOST || phase === PHASE.WON) && !finished) {
-      finished = true;
-      if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
-      stopDrone();
-      setTimeout(() => finish(phase === PHASE.WON || won), phase === PHASE.WON ? 1100 : 1600);
+  function startGameLoop() {
+    if (loop) return;
+    gameStarted = true;
+    phase = PHASE.INTRO;
+    introT = 0;
+    if (dailyBonus > 0) {
+      const el = document.getElementById('runnerScore');
+      if (el) el.textContent = score;
     }
-  }, 20);
+    loop = setInterval(() => {
+      update();
+      draw();
+      updateFilmLayer();
+      if ((phase === PHASE.LOST || phase === PHASE.WON) && !finished) {
+        finished = true;
+        if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+        stopDrone();
+        setTimeout(() => finish(phase === PHASE.WON || won), phase === PHASE.WON ? 1100 : 1600);
+      }
+    }, 20);
+    trackEvent('runner_started', { level, fear: fear.id, mindflayer: isMindFlayer, run: runCount, daily: dailyBonus });
+  }
+
+  function beginAfterVideo() {
+    const layer = overlay.querySelector('.runner-video-layer');
+    layer?.remove();
+    expandLetterboxThen(() => {
+      setLetterbox(false);
+      startGameLoop();
+    });
+  }
+
+  function playIntroVideo() {
+    const layer = document.createElement('div');
+    layer.className = 'runner-video-layer';
+    const video = document.createElement('video');
+    video.src = INTRO_VIDEO;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.preload = 'auto';
+    video.muted = false;
+    const skip = document.createElement('button');
+    skip.type = 'button';
+    skip.className = 'runner-video-skip';
+    skip.textContent = 'Пропустить →';
+    layer.appendChild(video);
+    layer.appendChild(skip);
+    overlay.appendChild(layer);
+
+    let done = false;
+    const finishVideo = () => {
+      if (done) return;
+      done = true;
+      try { video.pause(); } catch { /* */ }
+      beginAfterVideo();
+    };
+
+    skip.onclick = (e) => {
+      e.stopPropagation();
+      finishVideo();
+    };
+    video.onended = finishVideo;
+    video.onerror = finishVideo;
+
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {
+        // автоплей с звуком может быть заблокирован — пробуем mute
+        video.muted = true;
+        video.play().catch(() => finishVideo());
+      });
+    }
+
+    // страховка: если видео зависло
+    setTimeout(() => {
+      if (!done && video.readyState < 2) finishVideo();
+    }, 4000);
+  }
 
   document.getElementById('runnerMusic').onclick = function onMusic() {
     this.textContent = toggleMusic() ? '🔊' : '🔇';
   };
   document.getElementById('runnerPhoto').onclick = (e) => {
     e.stopPropagation();
+    if (phase === PHASE.VIDEO) return;
     takePhoto();
   };
   document.getElementById('runnerClose').onclick = () => {
-    clearInterval(loop);
+    if (loop) clearInterval(loop);
+    loop = null;
     window.removeEventListener('resize', resize);
     cleanupAudio();
     overlay.style.transform = '';
@@ -2039,7 +2432,7 @@ export function startRunnerGame(level = 1) {
     overlay.remove();
   };
 
-  trackEvent('runner_started', { level, fear: fear.id, mindflayer: isMindFlayer, run: runCount });
+  playIntroVideo();
 }
 
 export default { startRunnerGame };
