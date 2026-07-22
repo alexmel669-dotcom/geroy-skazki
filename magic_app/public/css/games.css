@@ -562,3 +562,31 @@
 .runner-choice-btn:active {
   transform: scale(0.98);
 }
+
+.runner-ally-toast {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: rgba(10, 14, 40, 0.88);
+  border: 2px solid rgba(255, 215, 0, 0.55);
+  color: #ffd700;
+  font-family: 'Comic Sans MS', 'Segoe UI', cursive, sans-serif;
+  font-size: clamp(14px, 3.2vw, 18px);
+  font-weight: bold;
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: runner-ally-toast-pop 2.2s ease-out forwards;
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.25);
+}
+
+@keyframes runner-ally-toast-pop {
+  0% { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.92); }
+  12% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(1); }
+}

@@ -435,6 +435,10 @@ export function startRunnerGame(level = 1) {
   let speedMult = 1;
   let hasGlowingPillar = false;
   let hasDuckBuff = false;
+  let allies = [];
+  let allyArrows = [];
+  let miaLoaded = false;
+  let maxLoaded = false;
   const choiceState = {
     active: false,
     situation: null,
@@ -967,7 +971,7 @@ export function startRunnerGame(level = 1) {
     }
   }
 
-  function smashFear(o) {
+  function smashFear(o, opts = {}) {
     if (o.hit) return;
     const risk = nearFearRisk() ? 3 : 1;
     o.hit = true;
@@ -998,12 +1002,14 @@ export function startRunnerGame(level = 1) {
       }
     }
     shockwaves.push({ x: cx, y: cy, r: 8, max: 90, color: o.eye || o.color || '#ff4466', life: 28 });
-    shakeIntensity = 8 + Math.random() * 4;
+    shakeIntensity = opts.quiet ? Math.max(shakeIntensity, 4) : (8 + Math.random() * 4);
     playShatter();
-    playShockwaveSound();
+    if (!opts.quiet) playShockwaveSound();
     // slow-mo 0.3x ~0.5 сек
-    timeScale = 0.3;
-    slowMoT = 25;
+    if (!opts.quiet) {
+      timeScale = 0.3;
+      slowMoT = 25;
+    }
     lastSmash = { x: cx, y: cy, color: o.eye, name: o.name };
   }
 
@@ -1165,6 +1171,7 @@ export function startRunnerGame(level = 1) {
 
   function applyChoiceReward(situation, stepReached) {
     if (situation === 'mia') {
+      spawnMia();
       if (stepReached >= 3) {
         hasGlowingPillar = true;
         shieldT = Math.max(shieldT, 350);
@@ -1199,6 +1206,279 @@ export function startRunnerGame(level = 1) {
     }
     const scoreEl = document.getElementById('runnerScore');
     if (scoreEl) scoreEl.textContent = score;
+  }
+
+  function showAllyMessage(text) {
+    const el = document.createElement('div');
+    el.className = 'runner-ally-toast';
+    el.textContent = text;
+    overlay.appendChild(el);
+    setTimeout(() => el.remove(), 2200);
+  }
+
+  function allyHomeX(lane) {
+    return canvas.width * 0.28 + lane * LANE_OFFSET;
+  }
+
+  function pickAllyLane(preferRight) {
+    const base = lucik.lane;
+    if (preferRight) {
+      if (base < 1) return base + 1;
+      return base - 1;
+    }
+    if (base > -1) return base - 1;
+    return base + 1;
+  }
+
+  function spawnMia() {
+    if (miaLoaded) return;
+    miaLoaded = true;
+    const lane = pickAllyLane(true);
+    allies.push({
+      id: 'mia',
+      name: 'Мия',
+      lane,
+      x: lucik.x - 90,
+      y: groundY() - 60,
+      w: 50,
+      h: 60,
+      anim: 0,
+      shootTimer: 0,
+      shootCooldown: 250, // ~5с при 20мс
+      bob: 0
+    });
+    showAllyMessage('Мия присоединилась! 💫');
+    speak('Мия с нами!');
+    burst(lucik.x - 60, groundY() - 40, '#ff69b4', 18);
+  }
+
+  function spawnMax() {
+    if (maxLoaded) return;
+    maxLoaded = true;
+    const mia = allies.find((a) => a.id === 'mia');
+    let lane = pickAllyLane(false);
+    if (mia && mia.lane === lane) {
+      lane = mia.lane === 1 ? -1 : (mia.lane === -1 ? 1 : (lucik.lane >= 0 ? -1 : 1));
+    }
+    allies.push({
+      id: 'max',
+      name: 'Макс',
+      lane,
+      x: lucik.x - 140,
+      y: groundY() - 65,
+      w: 55,
+      h: 65,
+      anim: 0,
+      protectTimer: 0,
+      protectCooldown: 400, // ~8с
+      protectWindow: 0,
+      isProtecting: false,
+      knockX: 0,
+      knockT: 0,
+      bob: 0
+    });
+    showAllyMessage('Макс присоединился! 🛡️');
+    speak('Макс на защите!');
+    burst(lucik.x - 120, groundY() - 40, '#4169e1', 18);
+  }
+
+  function createArrowEffect(x1, y1, x2, y2) {
+    allyArrows.push({
+      x1, y1, x2, y2,
+      life: 14,
+      maxLife: 14
+    });
+    // вспышка у цели
+    burst(x2, y2, '#fff8b0', 14);
+    burst(x2, y2, '#ff69b4', 10);
+    shockwaves.push({ x: x2, y: y2, r: 6, max: 55, color: '#ffe566', life: 18 });
+  }
+
+  function shootArrow(ally) {
+    let closest = null;
+    let closestDist = Infinity;
+    for (const o of obstacles) {
+      if (o.type !== 'fear' || o.hit) continue;
+      const dist = (o.x + o.w / 2) - (ally.x + ally.w / 2);
+      if (dist > 20 && dist < closestDist && dist < canvas.width * 0.85) {
+        closest = o;
+        closestDist = dist;
+      }
+    }
+    if (!closest) return;
+    createArrowEffect(
+      ally.x + ally.w,
+      ally.y + ally.h * 0.4,
+      closest.x + closest.w / 2,
+      closest.y + closest.h * 0.4
+    );
+    smashFear(closest, { quiet: true });
+    beep(880, 0.08, 'sine', 0.05, 1400);
+  }
+
+  function maxCanProtect() {
+    const max = allies.find((a) => a.id === 'max');
+    return !!(max && max.isProtecting && max.knockT <= 0);
+  }
+
+  function maxInterceptFear(o) {
+    const max = allies.find((a) => a.id === 'max');
+    if (!max || !max.isProtecting) return false;
+    smashFear(o, { quiet: true });
+    max.isProtecting = false;
+    max.protectWindow = 0;
+    max.knockT = 28;
+    max.knockX = 0;
+    shakeIntensity = Math.max(shakeIntensity, 10);
+    showAllyMessage('Макс принял удар! 🛡️');
+    showComboText('🛡️ Макс!');
+    beep(120, 0.25, 'square', 0.08, 60);
+    return true;
+  }
+
+  function updateAllies() {
+    if (phase !== PHASE.RUN && phase !== PHASE.HUNT) return;
+    const gy = groundY();
+
+    allies.forEach((ally) => {
+      const targetX = allyHomeX(ally.lane) - (ally.id === 'mia' ? 70 : 120);
+      const knock = ally.knockT > 0 ? ally.knockX : 0;
+      ally.x += (targetX + knock - ally.x) * 0.14;
+      ally.y = gy - ally.h + Math.sin(frame * 0.15 + ally.bob) * 1.5;
+      ally.anim += Math.max(0.1, speed * 0.04);
+      ally.bob += 0.05;
+
+      if (ally.id === 'mia') {
+        ally.shootTimer++;
+        if (ally.shootTimer >= ally.shootCooldown) {
+          ally.shootTimer = 0;
+          shootArrow(ally);
+        }
+      }
+
+      if (ally.id === 'max') {
+        if (ally.knockT > 0) {
+          ally.knockT--;
+          ally.knockX = Math.sin((1 - ally.knockT / 28) * Math.PI) * -55;
+          if (ally.knockT <= 0) ally.knockX = 0;
+        } else {
+          ally.protectTimer++;
+          if (ally.protectTimer >= ally.protectCooldown) {
+            ally.protectTimer = 0;
+            ally.isProtecting = true;
+            ally.protectWindow = 100; // ~2с окно защиты
+          }
+        }
+        if (ally.protectWindow > 0) {
+          ally.protectWindow--;
+          if (ally.protectWindow <= 0) ally.isProtecting = false;
+        }
+      }
+    });
+
+    allyArrows.forEach((a) => { a.life--; });
+    allyArrows = allyArrows.filter((a) => a.life > 0);
+  }
+
+  function drawAllies() {
+    allies.forEach((ally) => {
+      const runFrame = Math.floor(ally.anim) % 2;
+      const bobY = runFrame === 0 ? 0 : -3;
+      const x = ally.x;
+      const y = ally.y + bobY;
+      const isMia = ally.id === 'mia';
+
+      ctx.save();
+      // тень
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(x + ally.w / 2, groundY() - 2, ally.w * 0.35, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // заглушка спрайта
+      ctx.fillStyle = isMia ? '#ff69b4' : '#4169e1';
+      ctx.strokeStyle = isMia ? '#ff1493' : '#1e3a8a';
+      ctx.lineWidth = 2;
+      const r = 8;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + ally.w - r, y);
+      ctx.quadraticCurveTo(x + ally.w, y, x + ally.w, y + r);
+      ctx.lineTo(x + ally.w, y + ally.h - r);
+      ctx.quadraticCurveTo(x + ally.w, y + ally.h, x + ally.w - r, y + ally.h);
+      ctx.lineTo(x + r, y + ally.h);
+      ctx.quadraticCurveTo(x, y + ally.h, x, y + ally.h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // «ноги» — 2 кадра бега
+      ctx.fillStyle = isMia ? '#c71585' : '#27408b';
+      if (runFrame === 0) {
+        ctx.fillRect(x + 10, y + ally.h - 4, 10, 6);
+        ctx.fillRect(x + ally.w - 20, y + ally.h - 2, 10, 4);
+      } else {
+        ctx.fillRect(x + 12, y + ally.h - 2, 10, 4);
+        ctx.fillRect(x + ally.w - 22, y + ally.h - 4, 10, 6);
+      }
+
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${isMia ? 22 : 16}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(isMia ? 'М' : 'МА', x + ally.w / 2, y + ally.h * 0.42);
+
+      // имя
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = isMia ? '#ffb6d9' : '#a8c4ff';
+      ctx.fillText(ally.name, x + ally.w / 2, y - 8);
+
+      // щит Макса
+      if (!isMia && ally.isProtecting) {
+        const pulse = 0.45 + Math.sin(frame * 0.25) * 0.2;
+        ctx.strokeStyle = `rgba(65,105,225,${pulse})`;
+        ctx.lineWidth = 4;
+        ctx.shadowColor = '#4169e1';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(x + ally.w / 2, y + ally.h / 2, 38 + Math.sin(frame * 0.2) * 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      // лук Мии (полоска)
+      if (isMia) {
+        ctx.strokeStyle = '#ffe566';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x + ally.w - 4, y + ally.h * 0.4, 12, -0.8, 0.8);
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+
+    // световые стрелы
+    allyArrows.forEach((a) => {
+      const t = 1 - a.life / a.maxLife;
+      const x = a.x1 + (a.x2 - a.x1) * Math.min(1, t * 1.4);
+      const y = a.y1 + (a.y2 - a.y1) * Math.min(1, t * 1.4);
+      ctx.save();
+      ctx.strokeStyle = `rgba(255,245,150,${a.life / a.maxLife})`;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(a.x1, a.y1);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
   }
 
   function closeChoice() {
@@ -1776,6 +2056,8 @@ export function startRunnerGame(level = 1) {
       if (lx < ox + ow && lx + lw > ox && ly < oy + oh && ly + lh > oy) {
         if (hunting || rainbow || invuln > 0 || shieldT > 0) {
           smashFear(o);
+        } else if (maxCanProtect() && maxInterceptFear(o)) {
+          // Макс перехватил удар
         } else {
           starStreak = 0;
           combo = 0;
@@ -1830,6 +2112,9 @@ export function startRunnerGame(level = 1) {
         spawnBoss();
       }
 
+      // Макс — начало Мира 3
+      if (distance >= 600 && !maxLoaded) spawnMax();
+
       // скорость: тиры дистанции × boost × dash
       speedMult = getSpeedMult();
       const boostF = boostT > 0 ? 1.35 : 1;
@@ -1846,6 +2131,8 @@ export function startRunnerGame(level = 1) {
         heatWaves.push({ life: 18, amp: 0.4 + Math.random() * 0.4 });
       }
     }
+
+    updateAllies();
 
     groundOffset = (groundOffset + speed) % 48;
 
@@ -2974,6 +3261,7 @@ export function startRunnerGame(level = 1) {
     });
 
     drawParticlesLayer();
+    drawAllies();
     drawLucik();
 
     if (phase === PHASE.INTRO) drawIntroOverlay();
@@ -2995,9 +3283,11 @@ export function startRunnerGame(level = 1) {
       ctx.textAlign = 'left';
     }
 
-    // баффы от развилок
-    if (hasGlowingPillar || hasDuckBuff) {
+    // баффы от развилок и союзники
+    if (hasGlowingPillar || hasDuckBuff || miaLoaded || maxLoaded) {
       const bits = [];
+      if (miaLoaded) bits.push('🏹 Мия');
+      if (maxLoaded) bits.push('🛡️ Макс');
       if (hasGlowingPillar) bits.push('🪄 Столб');
       if (hasDuckBuff) bits.push('🦆 Уточка');
       ctx.fillStyle = '#ffd700';
