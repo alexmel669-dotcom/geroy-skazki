@@ -1,6 +1,6 @@
 // ========================================
-// runner.js — «Люцик и Обратная сторона» v8
-// Динамика · физика · максимальный визуал · комбо/босс · выборы с троллингом
+// runner.js — «Люцик и Обратная сторона» v9
+// Сюжетный сериал · 5 эпизодов · выборы · союзники · пасхалки
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
@@ -151,6 +151,86 @@ const RAINBOW = ['#ff0040', '#ff8000', '#ffd700', '#00e676', '#00e5ff', '#a040ff
 const WELL_WHISPERS = ['Люцик...', 'Не оглядывайся...', 'Он близко...', 'Слышишь?'];
 const INTRO_VIDEO = 'assets/video/runner-intro.mp4';
 
+const EPISODES = [
+  { id: 1, name: 'Тревожный сон', desc: 'Добежать до первого колодца', goalDist: 500, situations: ['fear'], mia: false, max: false, mindFlayer: false, ending: false },
+  { id: 2, name: 'Лес теней', desc: 'Добежать до Забытого города', goalDist: 800, situations: ['fear', 'mia'], mia: true, max: false, mindFlayer: false, ending: false },
+  { id: 3, name: 'Забытый город', desc: 'Найти портал в центре', goalDist: 1000, situations: ['mia', 'portal'], mia: true, max: true, mindFlayer: false, ending: false },
+  { id: 4, name: 'Обратная сторона', desc: 'Добежать до логова', goalDist: 1200, situations: ['portal', 'boss'], mia: true, max: true, mindFlayer: true, ending: false },
+  { id: 5, name: 'Финальная битва', desc: 'Победить Короля Страхов', goalDist: 1500, situations: ['boss', 'ending'], mia: true, max: true, mindFlayer: true, ending: true }
+];
+
+const CHOICE_SCALE = { fear: 0.1, mia: 0.28, portal: 0.55, boss: 0.72, ending: 0.92 };
+
+const EPISODE_VIDEOS = {
+  '1_intro': 'assets/video/ep1-intro.mp4',
+  '1_end': 'assets/video/ep1-end.mp4',
+  '2_intro': 'assets/video/ep2-intro.mp4',
+  '2_end': 'assets/video/ep2-end.mp4',
+  '3_intro': 'assets/video/ep3-intro.mp4',
+  '3_end': 'assets/video/ep3-end.mp4',
+  '4_intro': 'assets/video/ep4-intro.mp4',
+  '4_end': 'assets/video/ep4-end.mp4',
+  '5_intro': 'assets/video/ep5-intro.mp4',
+  '5_end': 'assets/video/ep5-end.mp4'
+};
+
+const STRANGER_THINGS_EASTER_EGGS = [
+  { distance: 100, text: 'Часы показывают 3:00' },
+  { distance: 250, text: 'Люцик находит вафлю' },
+  { distance: 400, text: 'Макс: "Я отвлеку его!" — бежит не в ту сторону' },
+  { distance: 700, text: 'Где-то играет Running Up That Hill' },
+  { distance: 900, text: 'Люцик: "Я не боюсь, я тактически отдыхаю"' },
+  { distance: 1100, text: 'Мелькает старый телевизор с помехами' },
+  { distance: 1300, text: 'Мия: "У меня есть суперсила" — стреляет из лука' }
+];
+
+let unlockedEpisodes = [1];
+let completedEpisodes = [];
+let currentEpisode = 1;
+let totalStars = 0;
+
+function saveProgress() {
+  try {
+    localStorage.setItem('runner_progress', JSON.stringify({
+      unlockedEpisodes, completedEpisodes, totalStars
+    }));
+  } catch { /* */ }
+}
+
+function loadProgress() {
+  try {
+    const saved = localStorage.getItem('runner_progress');
+    if (!saved) return;
+    const data = JSON.parse(saved);
+    unlockedEpisodes = Array.isArray(data.unlockedEpisodes) && data.unlockedEpisodes.length
+      ? data.unlockedEpisodes : [1];
+    completedEpisodes = Array.isArray(data.completedEpisodes) ? data.completedEpisodes : [];
+    totalStars = data.totalStars || 0;
+    if (!unlockedEpisodes.includes(1)) unlockedEpisodes.unshift(1);
+  } catch {
+    unlockedEpisodes = [1];
+    completedEpisodes = [];
+    totalStars = 0;
+  }
+}
+
+function getEpisode(id) {
+  return EPISODES.find((e) => e.id === id) || EPISODES[0];
+}
+
+function buildEpisodeChoices(ep) {
+  const out = {};
+  for (const key of ep.situations) {
+    const base = CHOICES[key];
+    if (!base) continue;
+    out[key] = {
+      ...base,
+      trigger: Math.max(40, Math.floor(ep.goalDist * (CHOICE_SCALE[key] ?? 0.5)))
+    };
+  }
+  return out;
+}
+
 function nextRunCount() {
   const n = (parseInt(localStorage.getItem('runner-run-count') || '0', 10) || 0) + 1;
   localStorage.setItem('runner-run-count', String(n));
@@ -172,17 +252,188 @@ function claimDailyBonus() {
   return 30;
 }
 
-export function startRunnerGame(level = 1) {
-  document.querySelectorAll('.game-fullscreen, .game-screen, .runner-result, .runner-share-sheet, .runner-choice-overlay, #choice-overlay').forEach((el) => el.remove());
+function cleanupRunnerUi() {
+  document.querySelectorAll(
+    '.game-fullscreen, .game-screen, .runner-result, .runner-share-sheet, .runner-choice-overlay, #choice-overlay, #episode-select, .runner-break-modal, .runner-easter-toast, .runner-episode-video'
+  ).forEach((el) => el.remove());
   document.body.classList.remove('game-active');
-  appState.gameActive = true;
-  level = Math.max(1, Math.min(5, level || 1));
+}
 
+function playEpisodeVideo(key) {
+  return new Promise((resolve) => {
+    let path = EPISODE_VIDEOS[key];
+    if (key === '1_intro' && !path) path = INTRO_VIDEO;
+    // ep1 intro: пробуем сериальный файл, иначе старый intro
+    if (key === '1_intro') {
+      // оставляем path из EPISODE_VIDEOS; onerror/timeout спасёт
+    }
+    if (!path) { resolve(); return; }
+
+    const video = document.createElement('video');
+    video.className = 'runner-episode-video';
+    video.src = path;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.preload = 'auto';
+    document.body.appendChild(video);
+
+    const skipBtn = document.createElement('button');
+    skipBtn.type = 'button';
+    skipBtn.className = 'runner-video-skip';
+    skipBtn.textContent = 'Пропустить →';
+    document.body.appendChild(skipBtn);
+
+    let done = false;
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      try { video.pause(); } catch { /* */ }
+      video.remove();
+      skipBtn.remove();
+      resolve();
+    };
+    skipBtn.onclick = () => cleanup();
+    video.onended = () => cleanup();
+    video.onerror = () => {
+      if (key === '1_intro' && path !== INTRO_VIDEO) {
+        video.src = INTRO_VIDEO;
+        video.load();
+        video.play().catch(() => cleanup());
+        return;
+      }
+      cleanup();
+    };
+    const p = video.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        video.muted = true;
+        video.play().catch(() => cleanup());
+      });
+    }
+    setTimeout(() => { if (!done && video.readyState < 2) cleanup(); }, 2800);
+  });
+}
+
+function showEasterEgg(text) {
+  document.querySelectorAll('.runner-easter-toast').forEach((el) => el.remove());
+  const toast = document.createElement('div');
+  toast.className = 'runner-easter-toast';
+  toast.textContent = `🎲 ${text}`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function showEpisodeSelect() {
+  document.getElementById('episode-select')?.remove();
+  loadProgress();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'episode-select';
+  overlay.className = 'runner-episode-select';
+
+  const title = document.createElement('h1');
+  title.className = 'runner-episode-title';
+  title.textContent = '🐱 Люцик и Обратная сторона';
+  overlay.appendChild(title);
+
+  const sub = document.createElement('p');
+  sub.className = 'runner-episode-sub';
+  sub.textContent = `Прогресс: ${completedEpisodes.length}/5 эпизодов · ⭐ ${totalStars}`;
+  overlay.appendChild(sub);
+
+  const list = document.createElement('div');
+  list.className = 'runner-episode-list';
+
+  EPISODES.forEach((epItem) => {
+    const locked = !unlockedEpisodes.includes(epItem.id);
+    const done = completedEpisodes.includes(epItem.id);
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `runner-episode-card${locked ? ' locked' : ''}${done ? ' done' : ''}`;
+    card.disabled = locked;
+    card.innerHTML = `
+      <h3>${locked ? '🔒' : done ? '✅' : '▶️'} Эпизод ${epItem.id}: ${epItem.name}</h3>
+      <p>${epItem.desc}</p>
+      <small>🎯 ${epItem.goalDist}м</small>
+    `;
+    if (!locked) {
+      card.onclick = () => {
+        overlay.remove();
+        startEpisode(epItem.id);
+      };
+    }
+    list.appendChild(card);
+  });
+  overlay.appendChild(list);
+
+  const exitBtn = document.createElement('button');
+  exitBtn.type = 'button';
+  exitBtn.className = 'runner-btn ghost';
+  exitBtn.textContent = '🚪 В меню игр';
+  exitBtn.style.marginTop = '18px';
+  exitBtn.onclick = () => {
+    overlay.remove();
+    appState.gameActive = false;
+    document.body.classList.remove('game-active');
+    if (typeof showGamesMenu === 'function') showGamesMenu();
+  };
+  overlay.appendChild(exitBtn);
+
+  document.body.appendChild(overlay);
+  document.body.classList.add('game-active');
+  appState.gameActive = true;
+}
+
+async function completeEpisode(opts = {}) {
+  const fromBreak = !!opts.fromBreak;
+  if (!completedEpisodes.includes(currentEpisode)) {
+    completedEpisodes.push(currentEpisode);
+    totalStars += fromBreak ? 5 : 10;
+    const next = currentEpisode + 1;
+    if (next <= 5 && !unlockedEpisodes.includes(next)) unlockedEpisodes.push(next);
+  }
+  saveProgress();
+  trackEvent('runner_episode_complete', { episode: currentEpisode, stars: totalStars, break: fromBreak });
+  await playEpisodeVideo(`${currentEpisode}_end`);
+  cleanupRunnerUi();
+  showEpisodeSelect();
+}
+
+export async function startEpisode(id) {
+  loadProgress();
+  const ep = getEpisode(id);
+  if (!unlockedEpisodes.includes(ep.id)) {
+    showEpisodeSelect();
+    return;
+  }
+  currentEpisode = ep.id;
+  cleanupRunnerUi();
+  appState.gameActive = true;
+  document.body.classList.add('game-active');
+  await playEpisodeVideo(`${ep.id}_intro`);
+  launchRunnerEpisode(ep);
+}
+
+/** Точка входа из меню — экран выбора эпизода */
+export function startRunnerGame(_level = 1) {
+  cleanupRunnerUi();
+  loadProgress();
+  showEpisodeSelect();
+}
+
+function launchRunnerEpisode(ep) {
+  const level = ep.id;
   const runCount = nextRunCount();
-  const isMindFlayer = runCount % 5 === 0 || level >= 5;
+  const isMindFlayer = ep.mindFlayer;
   const fear = isMindFlayer
     ? FEARS[4]
     : FEARS[Math.min(level - 1, 3)];
+  const goalDist = ep.goalDist;
+  const activeChoices = buildEpisodeChoices(ep);
+  const easterEggs = STRANGER_THINGS_EASTER_EGGS.map((egg) => ({ ...egg, shown: false }));
+  const playSessionStart = performance.now();
+  let breakSuggested = false;
+  let breakActive = false;
 
   const overlay = document.createElement('div');
   overlay.className = `game-fullscreen runner-game runner-cinematic${isMindFlayer ? ' runner-mindflayer' : ''}`;
@@ -200,8 +451,8 @@ export function startRunnerGame(level = 1) {
   const header = document.createElement('div');
   header.className = 'runner-header';
   header.innerHTML = `
-    <span>🐱 Обратная сторона</span>
-    <span>🏃 <b id="runnerDistance">0</b>м · ⭐ <b id="runnerScore">0</b></span>
+    <span>🐱 Эп.${ep.id}: ${ep.name}</span>
+    <span>🏃 <b id="runnerDistance">0</b>/${goalDist}м · ⭐ <b id="runnerScore">0</b></span>
     <span id="runnerComboHud" style="color:#ffd700;min-width:4em;"></span>
     <span id="runnerFearLabel">${fear.emoji} ${fear.name}</span>
     <span id="runnerDashHud" title="Двойной свайп вверх">⚡</span>
@@ -220,6 +471,7 @@ export function startRunnerGame(level = 1) {
   overlay.appendChild(letterBot);
   document.body.appendChild(overlay);
   document.body.classList.add('game-active');
+  appState.gameActive = true;
 
   const ctx = canvas.getContext('2d');
   const filmCtx = filmCanvas.getContext('2d');
@@ -1105,7 +1357,7 @@ export function startRunnerGame(level = 1) {
   }
 
   function showChoice(situation) {
-    const data = CHOICES[situation];
+    const data = activeChoices[situation] || CHOICES[situation];
     if (!data) return;
     const steps = data.steps;
     const step = steps[Math.min(choiceState.step, steps.length - 1)];
@@ -1144,7 +1396,7 @@ export function startRunnerGame(level = 1) {
 
   function handleChoice(optionIndex) {
     const situation = choiceState.situation;
-    const steps = CHOICES[situation]?.steps;
+    const steps = (activeChoices[situation] || CHOICES[situation])?.steps;
     if (!steps) {
       closeChoice();
       return;
@@ -1226,6 +1478,46 @@ export function startRunnerGame(level = 1) {
     el.textContent = text;
     overlay.appendChild(el);
     setTimeout(() => el.remove(), 2200);
+  }
+
+  function showBreakSuggest() {
+    breakActive = true;
+    speed = 0;
+    document.querySelectorAll('.runner-break-modal').forEach((el) => el.remove());
+    const msg = document.createElement('div');
+    msg.className = 'runner-break-modal';
+    msg.innerHTML = `
+      <p class="runner-break-text">🐱 «Фух! Я устал. Давай отдохнём?»</p>
+      <p class="runner-break-sub">Приходи завтра — я расскажу, что было дальше!</p>
+    `;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'runner-btn primary';
+    btn.textContent = 'Хорошо, до завтра! 👋';
+    btn.onclick = () => {
+      msg.remove();
+      breakActive = false;
+      if (loop) { clearInterval(loop); loop = null; }
+      cleanupAudio();
+      overlay.remove();
+      completeEpisode({ fromBreak: true });
+    };
+    const cont = document.createElement('button');
+    cont.type = 'button';
+    cont.className = 'runner-btn secondary';
+    cont.textContent = 'Ещё чуть-чуть!';
+    cont.style.marginLeft = '10px';
+    cont.onclick = () => {
+      msg.remove();
+      breakActive = false;
+      speed = choiceState.gameSpeedBefore || baseSpeed;
+    };
+    const row = document.createElement('div');
+    row.style.marginTop = '18px';
+    row.appendChild(btn);
+    row.appendChild(cont);
+    msg.appendChild(row);
+    document.body.appendChild(msg);
   }
 
   function allyHomeX(lane) {
@@ -1687,6 +1979,9 @@ export function startRunnerGame(level = 1) {
       lucik.x = lucikHomeX();
       animState = 'run';
       phase = PHASE.RUN;
+      // в поздних эпизодах союзники уже в команде
+      if (ep.id >= 4 && ep.mia && !miaLoaded) spawnMia();
+      if (ep.id >= 4 && ep.max && !maxLoaded) spawnMax();
       stopDrone();
       startMusic('flee');
       setMusicVolume(0.04);
@@ -1853,7 +2148,7 @@ export function startRunnerGame(level = 1) {
 
   function update() {
     if (phase === PHASE.VIDEO || phase === PHASE.LOST || phase === PHASE.WON) return;
-    if (choiceState.active) return;
+    if (choiceState.active || breakActive) return;
 
     // slow-mo
     if (slowMoT > 0) {
@@ -1895,9 +2190,9 @@ export function startRunnerGame(level = 1) {
     if (phase === PHASE.WELL_INSIDE) { updateWellInside(); updateParticles(); return; }
     if (phase === PHASE.WELL_EXIT) { updateWellExit(); updateParticles(); return; }
 
-    // развилки с троллингом
+    // развилки с троллингом (только ситуации эпизода)
     if (phase === PHASE.RUN || phase === PHASE.HUNT) {
-      for (const [situation, data] of Object.entries(CHOICES)) {
+      for (const [situation, data] of Object.entries(activeChoices)) {
         if (distance >= data.trigger && !choiceState.triggered[situation]) {
           choiceState.triggered[situation] = true;
           choiceState.step = 0;
@@ -1906,22 +2201,43 @@ export function startRunnerGame(level = 1) {
         }
       }
 
-      // страховка: Мия на 350м, если выбор ещё не был / не появилась
-      if (distance >= 350 && !miaLoaded && !choiceState.active) {
-        if (!choiceState.triggered.mia) {
-          choiceState.triggered.mia = true;
-          choiceState.step = 0;
-          showChoice('mia');
-          return;
+      // страховка Мии
+      if (ep.mia) {
+        const miaGate = activeChoices.mia?.trigger || Math.floor(goalDist * 0.35);
+        if (distance >= Math.max(miaGate, Math.floor(goalDist * 0.4)) && !miaLoaded && !choiceState.active) {
+          if (activeChoices.mia && !choiceState.triggered.mia) {
+            choiceState.triggered.mia = true;
+            choiceState.step = 0;
+            showChoice('mia');
+            return;
+          }
+          spawnMia();
         }
-        // выбор уже был, но спавн не сработал — форс
-        spawnMia();
       }
 
-      // страховка: Макс на 600м
-      if (distance >= 600 && !maxLoaded) {
-        choiceState.triggered.max = true;
-        spawnMax();
+      // страховка Макса
+      if (ep.max) {
+        const maxGate = Math.floor(goalDist * 0.55);
+        if (distance >= maxGate && !maxLoaded) {
+          choiceState.triggered.max = true;
+          spawnMax();
+        }
+      }
+
+      // пасхалки Stranger Things
+      easterEggs.forEach((egg) => {
+        if (!egg.shown && distance >= egg.distance && egg.distance <= goalDist + 50) {
+          egg.shown = true;
+          showEasterEgg(egg.text);
+        }
+      });
+
+      // «Давай отдохнём!» — ~10 минут
+      const playSec = (performance.now() - playSessionStart) / 1000;
+      if (playSec > 600 && !breakSuggested && !choiceState.active) {
+        breakSuggested = true;
+        showBreakSuggest();
+        return;
       }
     }
 
@@ -2253,8 +2569,8 @@ export function startRunnerGame(level = 1) {
         spawnBoss();
       }
 
-      // Макс — начало Мира 3 (дубль-страховка)
-      if (distance >= 600 && !maxLoaded) spawnMax();
+      // Макс — по настройкам эпизода
+      if (ep.max && distance >= Math.floor(goalDist * 0.55) && !maxLoaded) spawnMax();
 
       // скорость: тиры дистанции × boost × dash
       speedMult = getSpeedMult();
@@ -2361,9 +2677,17 @@ export function startRunnerGame(level = 1) {
 
     updateParticles();
 
-    // победа после развилки ending (сама развилка тоже вызывает triggerWin)
-    if (phase === PHASE.RUN && distance >= 1000 && choiceState.triggered.ending && !choiceState.active && !boss) {
-      triggerWin();
+    // победа по цели эпизода
+    if (phase === PHASE.RUN && distance >= goalDist && !boss && !choiceState.active) {
+      if (ep.ending && !choiceState.triggered.ending && activeChoices.ending) {
+        choiceState.triggered.ending = true;
+        choiceState.step = 0;
+        showChoice('ending');
+        return;
+      }
+      if (!ep.ending || choiceState.triggered.ending) {
+        triggerWin();
+      }
     }
   }
 
@@ -3644,8 +3968,8 @@ export function startRunnerGame(level = 1) {
         <p class="stats">⭐ Очки: <b>${score}</b> · 💥 Страхов: <b>${fearsSmashed}</b></p>
         <p class="stats">🏆 Рекорд: <b>${newBest}м</b></p>
         ${localStorage.getItem('runner-boss-killed') === '1' ? '<p class="stats">🏅 Ачивка: Победитель Босса</p>' : ''}
-        <button type="button" class="runner-btn primary" id="restartRunner">🔄 Ещё забег</button>
-        <button type="button" class="runner-btn secondary" id="otherFear">👻 Другой страх</button>
+        <button type="button" class="runner-btn primary" id="restartRunner">🔄 Ещё раз эпизод</button>
+        <button type="button" class="runner-btn secondary" id="otherFear">📺 К эпизодам</button>
         <button type="button" class="runner-btn share" id="shareResult">📤 Поделиться</button>
         <button type="button" class="runner-btn ghost" id="exitRunner">🚪 Выйти</button>
         <p class="clock-ref">⏱ Часы показывают ${clockMinute === 1 ? '3:01' : '3:00'}</p>
@@ -3675,10 +3999,13 @@ export function startRunnerGame(level = 1) {
       }
     })();
 
-    result.querySelector('#restartRunner').onclick = () => { result.remove(); startRunnerGame(level); };
+    result.querySelector('#restartRunner').onclick = () => {
+      result.remove();
+      startEpisode(currentEpisode);
+    };
     result.querySelector('#otherFear').onclick = () => {
       result.remove();
-      startRunnerGame(level >= 5 ? 1 : level + 1);
+      showEpisodeSelect();
     };
     result.querySelector('#exitRunner').onclick = () => {
       result.remove();
@@ -3722,12 +4049,20 @@ export function startRunnerGame(level = 1) {
     window.removeEventListener('resize', resize);
     cleanupAudio();
     document.getElementById('choice-overlay')?.remove();
+    document.querySelectorAll('.runner-break-modal').forEach((el) => el.remove());
     choiceState.active = false;
     overlay.style.transform = '';
     appState.gameActive = false;
     document.body.classList.remove('game-active');
     overlay.remove();
-    showResult(didWin);
+    if (didWin) {
+      recordGameResult('runner', true, level);
+      const prevWins = parseInt(localStorage.getItem('runner-wins') || '0', 10) || 0;
+      localStorage.setItem('runner-wins', String(prevWins + 1));
+      completeEpisode({ fromBreak: false });
+    } else {
+      showResult(false);
+    }
   }
 
   function onPointerDown(e) {
@@ -3815,7 +4150,10 @@ export function startRunnerGame(level = 1) {
         setTimeout(() => finish(phase === PHASE.WON || won), phase === PHASE.WON ? 1100 : 1600);
       }
     }, 20);
-    trackEvent('runner_started', { level, fear: fear.id, mindflayer: isMindFlayer, run: runCount, daily: dailyBonus });
+    trackEvent('runner_started', {
+      level, episode: ep.id, fear: fear.id, mindflayer: isMindFlayer,
+      run: runCount, daily: dailyBonus, goal: goalDist
+    });
   }
 
   function beginAfterVideo() {
@@ -3939,15 +4277,18 @@ export function startRunnerGame(level = 1) {
     window.removeEventListener('resize', resize);
     cleanupAudio();
     document.getElementById('choice-overlay')?.remove();
+    document.querySelectorAll('.runner-break-modal').forEach((el) => el.remove());
     choiceState.active = false;
     overlay.style.transform = '';
     appState.gameActive = false;
     document.body.classList.remove('game-active');
     overlay.remove();
-    document.querySelectorAll('video[src*="runner-intro"]').forEach((v) => v.remove());
+    document.querySelectorAll('video[src*="runner-intro"], .runner-episode-video').forEach((v) => v.remove());
+    showEpisodeSelect();
   };
 
-  playIntroVideo().then(() => beginAfterVideo());
+  // intro-ролик уже сыгран в startEpisode — сразу в игру
+  beginAfterVideo();
 }
 
-export default { startRunnerGame };
+export default { startRunnerGame, startEpisode };

@@ -590,3 +590,150 @@
   75% { opacity: 1; }
   100% { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(1); }
 }
+
+/* —— Runner v9: выбор эпизода —— */
+.runner-episode-select {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #0a0a2e 0%, #1a0a2e 55%, #0a1520 100%);
+  color: #fff;
+  font-family: 'Segoe UI', Georgia, sans-serif;
+}
+
+.runner-episode-title {
+  font-size: clamp(26px, 6vw, 40px);
+  margin: 0 0 6px;
+  text-align: center;
+  text-shadow: 0 0 30px rgba(255, 0, 60, 0.45);
+}
+
+.runner-episode-sub {
+  color: #aaa;
+  margin: 0 0 22px;
+  font-size: 15px;
+  text-align: center;
+}
+
+.runner-episode-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(92vw, 380px);
+}
+
+.runner-episode-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 16px 18px;
+  border-radius: 16px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: inherit;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.runner-episode-card h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.runner-episode-card p {
+  margin: 0 0 4px;
+  color: #aaa;
+  font-size: 13px;
+}
+
+.runner-episode-card small {
+  color: #777;
+  font-size: 12px;
+}
+
+.runner-episode-card:not(.locked):hover {
+  transform: scale(1.02);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);
+}
+
+.runner-episode-card.done {
+  background: rgba(255, 215, 0, 0.12);
+  border-color: rgba(255, 215, 0, 0.35);
+}
+
+.runner-episode-card.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.runner-episode-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 9999;
+  background: #000;
+}
+
+.runner-break-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10001;
+  min-width: min(90vw, 360px);
+  padding: 32px 28px;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.92);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 0 40px rgba(255, 0, 60, 0.2);
+}
+
+.runner-break-text {
+  font-size: 20px;
+  margin: 0 0 10px;
+}
+
+.runner-break-sub {
+  color: #aaa;
+  font-size: 14px;
+  margin: 0;
+}
+
+.runner-easter-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5000;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffd700;
+  font-size: 14px;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 92vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: runner-easter-fade 3s forwards;
+}
+
+@keyframes runner-easter-fade {
+  0% { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  12% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
