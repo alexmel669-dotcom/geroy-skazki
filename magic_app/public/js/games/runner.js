@@ -35,7 +35,7 @@ const CHOICES = {
     ]
   },
   mia: {
-    trigger: 350,
+    trigger: 200,
     steps: [
       {
         prompt: 'Люцик встречает Мию — девочку-лучницу.',
@@ -436,7 +436,7 @@ export function startRunnerGame(level = 1) {
   let hasGlowingPillar = false;
   let hasDuckBuff = false;
   let allies = [];
-  let allyArrows = [];
+  let arrowEffects = [];
   let miaLoaded = false;
   let maxLoaded = false;
   const choiceState = {
@@ -1157,13 +1157,24 @@ export function startRunnerGame(level = 1) {
       if (choiceState.step < steps.length) {
         showChoice(situation);
       } else {
+        // зациклили троллинг — авто-награда и продолжение
+        const stepReached = steps.length - 1;
         choiceState.step = 0;
-        applyChoiceReward(situation, steps.length - 1);
+        if (situation === 'mia') {
+          spawnMia();
+          if (stepReached >= 3) hasGlowingPillar = true;
+        }
+        applyChoiceReward(situation, stepReached);
         closeChoice();
       }
     } else {
+      // правильный выбор
       const rewardedStep = currentStep;
       choiceState.step = 0;
+      if (situation === 'mia') {
+        spawnMia();
+        if (rewardedStep >= 3) hasGlowingPillar = true;
+      }
       applyChoiceReward(situation, rewardedStep);
       closeChoice();
     }
@@ -1171,6 +1182,7 @@ export function startRunnerGame(level = 1) {
 
   function applyChoiceReward(situation, stepReached) {
     if (situation === 'mia') {
+      // spawnMia уже вызван из handleChoice — дублируем для надёжности
       spawnMia();
       if (stepReached >= 3) {
         hasGlowingPillar = true;
@@ -1178,7 +1190,7 @@ export function startRunnerGame(level = 1) {
         invuln = Math.max(invuln, 200);
         showComboText('🪄 Столб!');
         score += 50;
-      } else {
+      } else if (!hasGlowingPillar) {
         shieldT = Math.max(shieldT, 180);
         showComboText('🏹 Мия!');
         score += 30;
@@ -1233,44 +1245,48 @@ export function startRunnerGame(level = 1) {
   function spawnMia() {
     if (miaLoaded) return;
     miaLoaded = true;
+    choiceState.triggered.mia = true;
     const lane = pickAllyLane(true);
+    const gx = allyHomeX(lane) - 40;
     allies.push({
       id: 'mia',
       name: 'Мия',
       lane,
-      x: lucik.x - 90,
+      x: gx,
       y: groundY() - 60,
       w: 50,
       h: 60,
       anim: 0,
-      shootTimer: 0,
-      shootCooldown: 250, // ~5с при 20мс
+      shootTimer: 180, // почти сразу первая стрела
+      shootCooldown: 250,
       bob: 0
     });
     showAllyMessage('Мия присоединилась! 💫');
     speak('Мия с нами!');
-    burst(lucik.x - 60, groundY() - 40, '#ff69b4', 18);
+    burst(gx + 25, groundY() - 40, '#ff69b4', 22);
   }
 
   function spawnMax() {
     if (maxLoaded) return;
     maxLoaded = true;
+    choiceState.triggered.max = true;
     const mia = allies.find((a) => a.id === 'mia');
     let lane = pickAllyLane(false);
     if (mia && mia.lane === lane) {
       lane = mia.lane === 1 ? -1 : (mia.lane === -1 ? 1 : (lucik.lane >= 0 ? -1 : 1));
     }
+    const gx = allyHomeX(lane) - 55;
     allies.push({
       id: 'max',
       name: 'Макс',
       lane,
-      x: lucik.x - 140,
+      x: gx,
       y: groundY() - 65,
       w: 55,
       h: 65,
       anim: 0,
       protectTimer: 0,
-      protectCooldown: 400, // ~8с
+      protectCooldown: 400,
       protectWindow: 0,
       isProtecting: false,
       knockX: 0,
@@ -1279,19 +1295,71 @@ export function startRunnerGame(level = 1) {
     });
     showAllyMessage('Макс присоединился! 🛡️');
     speak('Макс на защите!');
-    burst(lucik.x - 120, groundY() - 40, '#4169e1', 18);
+    burst(gx + 27, groundY() - 40, '#4169e1', 22);
   }
 
-  function createArrowEffect(x1, y1, x2, y2) {
-    allyArrows.push({
-      x1, y1, x2, y2,
-      life: 14,
-      maxLife: 14
+  function createArrowEffect(fromX, fromY, toX, toY, target) {
+    arrowEffects.push({
+      fromX, fromY, toX, toY,
+      progress: 0,
+      speed: 0.1,
+      target: target || null,
+      hit: false
     });
-    // вспышка у цели
-    burst(x2, y2, '#fff8b0', 14);
-    burst(x2, y2, '#ff69b4', 10);
-    shockwaves.push({ x: x2, y: y2, r: 6, max: 55, color: '#ffe566', life: 18 });
+  }
+
+  function updateArrowEffects() {
+    arrowEffects = arrowEffects.filter((a) => {
+      a.progress += a.speed;
+      if (a.progress >= 1 && !a.hit) {
+        a.hit = true;
+        if (a.target && !a.target.hit) {
+          smashFear(a.target, { quiet: true });
+        }
+        burst(a.toX, a.toY, '#ffff00', 14);
+        burst(a.toX, a.toY, '#ff69b4', 8);
+        shockwaves.push({ x: a.toX, y: a.toY, r: 6, max: 50, color: '#ffe566', life: 16 });
+      }
+      return a.progress < 1.05;
+    });
+  }
+
+  function drawArrowEffects() {
+    arrowEffects.forEach((a) => {
+      const t = Math.min(1, a.progress);
+      const x = a.fromX + (a.toX - a.fromX) * t;
+      const y = a.fromY + (a.toY - a.fromY) * t;
+      ctx.save();
+      // шлейф
+      for (let i = 3; i >= 1; i--) {
+        const px = x - (a.toX - a.fromX) * 0.04 * i;
+        const py = y - (a.toY - a.fromY) * 0.04 * i;
+        ctx.fillStyle = `rgba(255,255,0,${0.35 / i})`;
+        ctx.beginPath();
+        ctx.arc(px, py, 3 + i, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // стрела
+      ctx.fillStyle = '#ffff00';
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      // луч от лука
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = `rgba(255,245,150,${0.55 * (1 - t)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(a.fromX, a.fromY);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.restore();
+    });
   }
 
   function shootArrow(ally) {
@@ -1300,19 +1368,19 @@ export function startRunnerGame(level = 1) {
     for (const o of obstacles) {
       if (o.type !== 'fear' || o.hit) continue;
       const dist = (o.x + o.w / 2) - (ally.x + ally.w / 2);
-      if (dist > 20 && dist < closestDist && dist < canvas.width * 0.85) {
+      if (dist > 20 && dist < closestDist && dist < canvas.width * 0.9) {
         closest = o;
         closestDist = dist;
       }
     }
     if (!closest) return;
     createArrowEffect(
-      ally.x + ally.w,
-      ally.y + ally.h * 0.4,
+      ally.x + ally.w * 0.85,
+      ally.y + ally.h * 0.35,
       closest.x + closest.w / 2,
-      closest.y + closest.h * 0.4
+      closest.y + closest.h * 0.4,
+      closest
     );
-    smashFear(closest, { quiet: true });
     beep(880, 0.08, 'sine', 0.05, 1400);
   }
 
@@ -1341,11 +1409,12 @@ export function startRunnerGame(level = 1) {
     const gy = groundY();
 
     allies.forEach((ally) => {
-      const targetX = allyHomeX(ally.lane) - (ally.id === 'mia' ? 70 : 120);
+      const behind = ally.id === 'mia' ? 35 : 70;
+      const targetX = allyHomeX(ally.lane) - behind;
       const knock = ally.knockT > 0 ? ally.knockX : 0;
-      ally.x += (targetX + knock - ally.x) * 0.14;
-      ally.y = gy - ally.h + Math.sin(frame * 0.15 + ally.bob) * 1.5;
-      ally.anim += Math.max(0.1, speed * 0.04);
+      ally.x += (targetX + knock - ally.x) * 0.16;
+      ally.y = gy - ally.h + Math.sin(frame * 0.18 + ally.bob) * 2;
+      ally.anim += Math.max(0.12, speed * 0.045);
       ally.bob += 0.05;
 
       if (ally.id === 'mia') {
@@ -1366,7 +1435,7 @@ export function startRunnerGame(level = 1) {
           if (ally.protectTimer >= ally.protectCooldown) {
             ally.protectTimer = 0;
             ally.isProtecting = true;
-            ally.protectWindow = 100; // ~2с окно защиты
+            ally.protectWindow = 100;
           }
         }
         if (ally.protectWindow > 0) {
@@ -1376,109 +1445,163 @@ export function startRunnerGame(level = 1) {
       }
     });
 
-    allyArrows.forEach((a) => { a.life--; });
-    allyArrows = allyArrows.filter((a) => a.life > 0);
+    updateArrowEffects();
+  }
+
+  function drawMia(ally) {
+    const runFrame = Math.floor(ally.anim) % 2;
+    const bobY = runFrame === 0 ? 0 : -4;
+    const x = ally.x;
+    const y = ally.y + bobY;
+
+    ctx.save();
+    // тень
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x + 25, groundY() - 2, 18, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // тело
+    ctx.fillStyle = '#ff69b4';
+    ctx.beginPath();
+    ctx.arc(x + 25, y + 32, 18, 0, Math.PI * 2);
+    ctx.fill();
+
+    // голова
+    ctx.fillStyle = '#ffb6c1';
+    ctx.beginPath();
+    ctx.arc(x + 25, y + 14, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    // волосы
+    ctx.fillStyle = '#c71585';
+    ctx.beginPath();
+    ctx.arc(x + 25, y + 10, 14, Math.PI, 0);
+    ctx.fill();
+
+    // глаза
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(x + 20, y + 13, 4.5, 0, Math.PI * 2);
+    ctx.arc(x + 30, y + 13, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.arc(x + 21, y + 13, 2, 0, Math.PI * 2);
+    ctx.arc(x + 31, y + 13, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ноги (2 кадра)
+    ctx.fillStyle = '#db7093';
+    if (runFrame === 0) {
+      ctx.fillRect(x + 14, y + 48, 8, 10);
+      ctx.fillRect(x + 28, y + 50, 8, 8);
+    } else {
+      ctx.fillRect(x + 14, y + 50, 8, 8);
+      ctx.fillRect(x + 28, y + 48, 8, 10);
+    }
+
+    // лук
+    ctx.strokeStyle = '#8b4513';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x + 44, y + 28, 13, -0.9, 0.9);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffe566';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 44, y + 16);
+    ctx.lineTo(x + 44, y + 40);
+    ctx.stroke();
+
+    // имя
+    ctx.fillStyle = '#ffb6d9';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Мия', x + 25, y - 4);
+    ctx.restore();
+  }
+
+  function drawMax(ally) {
+    const runFrame = Math.floor(ally.anim) % 2;
+    const bobY = runFrame === 0 ? 0 : -3;
+    const x = ally.x;
+    const y = ally.y + bobY;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x + 27, groundY() - 2, 20, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // тело (крупнее)
+    ctx.fillStyle = '#4169e1';
+    ctx.beginPath();
+    ctx.arc(x + 27, y + 34, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    // голова
+    ctx.fillStyle = '#87ceeb';
+    ctx.beginPath();
+    ctx.arc(x + 27, y + 14, 15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // волосы
+    ctx.fillStyle = '#1e3a8a';
+    ctx.beginPath();
+    ctx.arc(x + 27, y + 10, 15, Math.PI * 1.05, -0.05);
+    ctx.fill();
+
+    // глаза
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(x + 22, y + 13, 4.5, 0, Math.PI * 2);
+    ctx.arc(x + 32, y + 13, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.arc(x + 23, y + 13, 2, 0, Math.PI * 2);
+    ctx.arc(x + 33, y + 13, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ноги
+    ctx.fillStyle = '#27408b';
+    if (runFrame === 0) {
+      ctx.fillRect(x + 14, y + 52, 10, 11);
+      ctx.fillRect(x + 30, y + 54, 10, 9);
+    } else {
+      ctx.fillRect(x + 14, y + 54, 10, 9);
+      ctx.fillRect(x + 30, y + 52, 10, 11);
+    }
+
+    // щит при защите
+    if (ally.isProtecting) {
+      const pulse = 0.5 + Math.sin(frame * 0.25) * 0.25;
+      ctx.strokeStyle = `rgba(65,105,225,${0.5 + pulse * 0.4})`;
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#4169e1';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.arc(x + 27, y + 28, 32 + Math.sin(frame * 0.2) * 2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(65,105,225,${0.15 + pulse * 0.1})`;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.fillStyle = '#a8c4ff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Макс', x + 27, y - 4);
+    ctx.restore();
   }
 
   function drawAllies() {
     allies.forEach((ally) => {
-      const runFrame = Math.floor(ally.anim) % 2;
-      const bobY = runFrame === 0 ? 0 : -3;
-      const x = ally.x;
-      const y = ally.y + bobY;
-      const isMia = ally.id === 'mia';
-
-      ctx.save();
-      // тень
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.beginPath();
-      ctx.ellipse(x + ally.w / 2, groundY() - 2, ally.w * 0.35, 5, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // заглушка спрайта
-      ctx.fillStyle = isMia ? '#ff69b4' : '#4169e1';
-      ctx.strokeStyle = isMia ? '#ff1493' : '#1e3a8a';
-      ctx.lineWidth = 2;
-      const r = 8;
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + ally.w - r, y);
-      ctx.quadraticCurveTo(x + ally.w, y, x + ally.w, y + r);
-      ctx.lineTo(x + ally.w, y + ally.h - r);
-      ctx.quadraticCurveTo(x + ally.w, y + ally.h, x + ally.w - r, y + ally.h);
-      ctx.lineTo(x + r, y + ally.h);
-      ctx.quadraticCurveTo(x, y + ally.h, x, y + ally.h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // «ноги» — 2 кадра бега
-      ctx.fillStyle = isMia ? '#c71585' : '#27408b';
-      if (runFrame === 0) {
-        ctx.fillRect(x + 10, y + ally.h - 4, 10, 6);
-        ctx.fillRect(x + ally.w - 20, y + ally.h - 2, 10, 4);
-      } else {
-        ctx.fillRect(x + 12, y + ally.h - 2, 10, 4);
-        ctx.fillRect(x + ally.w - 22, y + ally.h - 4, 10, 6);
-      }
-
-      ctx.fillStyle = '#fff';
-      ctx.font = `bold ${isMia ? 22 : 16}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(isMia ? 'М' : 'МА', x + ally.w / 2, y + ally.h * 0.42);
-
-      // имя
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillStyle = isMia ? '#ffb6d9' : '#a8c4ff';
-      ctx.fillText(ally.name, x + ally.w / 2, y - 8);
-
-      // щит Макса
-      if (!isMia && ally.isProtecting) {
-        const pulse = 0.45 + Math.sin(frame * 0.25) * 0.2;
-        ctx.strokeStyle = `rgba(65,105,225,${pulse})`;
-        ctx.lineWidth = 4;
-        ctx.shadowColor = '#4169e1';
-        ctx.shadowBlur = 14;
-        ctx.beginPath();
-        ctx.arc(x + ally.w / 2, y + ally.h / 2, 38 + Math.sin(frame * 0.2) * 3, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      }
-
-      // лук Мии (полоска)
-      if (isMia) {
-        ctx.strokeStyle = '#ffe566';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(x + ally.w - 4, y + ally.h * 0.4, 12, -0.8, 0.8);
-        ctx.stroke();
-      }
-      ctx.restore();
+      if (ally.name === 'Мия' || ally.id === 'mia') drawMia(ally);
+      if (ally.name === 'Макс' || ally.id === 'max') drawMax(ally);
     });
-
-    // световые стрелы
-    allyArrows.forEach((a) => {
-      const t = 1 - a.life / a.maxLife;
-      const x = a.x1 + (a.x2 - a.x1) * Math.min(1, t * 1.4);
-      const y = a.y1 + (a.y2 - a.y1) * Math.min(1, t * 1.4);
-      ctx.save();
-      ctx.strokeStyle = `rgba(255,245,150,${a.life / a.maxLife})`;
-      ctx.lineWidth = 3;
-      ctx.shadowColor = '#ffd700';
-      ctx.shadowBlur = 12;
-      ctx.beginPath();
-      ctx.moveTo(a.x1, a.y1);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    });
+    drawArrowEffects();
   }
 
   function closeChoice() {
@@ -1781,6 +1904,24 @@ export function startRunnerGame(level = 1) {
           showChoice(situation);
           return;
         }
+      }
+
+      // страховка: Мия на 350м, если выбор ещё не был / не появилась
+      if (distance >= 350 && !miaLoaded && !choiceState.active) {
+        if (!choiceState.triggered.mia) {
+          choiceState.triggered.mia = true;
+          choiceState.step = 0;
+          showChoice('mia');
+          return;
+        }
+        // выбор уже был, но спавн не сработал — форс
+        spawnMia();
+      }
+
+      // страховка: Макс на 600м
+      if (distance >= 600 && !maxLoaded) {
+        choiceState.triggered.max = true;
+        spawnMax();
       }
     }
 
@@ -2112,7 +2253,7 @@ export function startRunnerGame(level = 1) {
         spawnBoss();
       }
 
-      // Макс — начало Мира 3
+      // Макс — начало Мира 3 (дубль-страховка)
       if (distance >= 600 && !maxLoaded) spawnMax();
 
       // скорость: тиры дистанции × boost × dash
@@ -3261,8 +3402,8 @@ export function startRunnerGame(level = 1) {
     });
 
     drawParticlesLayer();
-    drawAllies();
     drawLucik();
+    drawAllies();
 
     if (phase === PHASE.INTRO) drawIntroOverlay();
 
