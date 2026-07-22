@@ -482,3 +482,83 @@
   z-index: 1500;
   animation: runner-fall-particle linear forwards;
 }
+
+/* —— Runner v8: выборы с троллингом —— */
+.runner-choice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.85);
+  font-family: 'Comic Sans MS', 'Segoe UI', cursive, sans-serif;
+  animation: runner-choice-fade-in 0.35s ease-out;
+}
+
+@keyframes runner-choice-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.runner-choice-prompt {
+  color: #fff;
+  font-size: clamp(15px, 3.6vw, 20px);
+  line-height: 1.45;
+  text-align: center;
+  margin-bottom: 28px;
+  white-space: pre-line;
+  max-width: min(92vw, 520px);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+.runner-choice-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  max-width: min(92vw, 560px);
+}
+
+.runner-choice-btn {
+  padding: 14px 28px;
+  font-size: clamp(15px, 3.2vw, 18px);
+  font-weight: bold;
+  font-family: inherit;
+  border-radius: 12px;
+  border: 2px solid;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.runner-choice-btn.correct {
+  background: rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+  border-color: #ffd700;
+}
+
+.runner-choice-btn.troll {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ff6666;
+  border-color: #ff6666;
+}
+
+.runner-choice-btn.correct:hover,
+.runner-choice-btn.correct:focus-visible {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px #ffd700;
+  outline: none;
+}
+
+.runner-choice-btn.troll:hover,
+.runner-choice-btn.troll:focus-visible {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px #ff6666;
+  outline: none;
+}
+
+.runner-choice-btn:active {
+  transform: scale(0.98);
+}
