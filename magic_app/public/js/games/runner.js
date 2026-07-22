@@ -1,12 +1,130 @@
 // ========================================
-// runner.js — «Люцик и Обратная сторона» v7
-// Динамика · физика · максимальный визуал · комбо/босс
+// runner.js — «Люцик и Обратная сторона» v8
+// Динамика · физика · максимальный визуал · комбо/босс · выборы с троллингом
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
 import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+
+const CHOICES = {
+  fear: {
+    trigger: 50,
+    steps: [
+      {
+        prompt: 'Люцик видит Страх Темноты впервые.',
+        options: ['Посмотреть в глаза', 'Закрыть глаза'],
+        troll: 1
+      },
+      {
+        prompt: 'Люцик: "Я его не вижу, значит его нет. Логика."\nСтрах тыкает его в бок.\nЛюцик: "АЙ! Он меня ткнул! С закрытыми глазами!"',
+        options: ['Открыть глаза', 'Продолжить не видеть'],
+        troll: 1
+      },
+      {
+        prompt: 'Страх начинает танцевать.\nЛюцик (дрожа): "Почему я слышу танцевальную музыку?"',
+        options: ['ОТКРЫТЬ ГЛАЗА', 'Это моя жизнь теперь'],
+        troll: 1
+      },
+      {
+        prompt: 'Люцик в позе лотоса. Выросли цветы.\n"Я стал одним целым со страхом. Омм..."\nСтрах уходит.\n"Эй, вернись!" Страх возвращается.',
+        options: ['Посмотреть в глаза (битва)', 'Продолжить медитацию'],
+        troll: 1
+      }
+    ]
+  },
+  mia: {
+    trigger: 350,
+    steps: [
+      {
+        prompt: 'Люцик встречает Мию — девочку-лучницу.',
+        options: ['Позвать с собой', 'Пройти мимо'],
+        troll: 1
+      },
+      {
+        prompt: 'Мия: "Я вижу что ты меня видишь."\nЛюцик: "Я дерево разглядываю."\nМия: "Это фонарный столб."',
+        options: ['Позвать', 'Разглядывать столб'],
+        troll: 1
+      },
+      {
+        prompt: 'Мия: "Я МОГУ СТРЕЛЯТЬ СВЕТОМ!"\nЛюцик: "А столб так не умеет..."',
+        options: ['ПОЗВАТЬ', 'Спросить про столб'],
+        troll: 1
+      },
+      {
+        prompt: 'Мия делает столб волшебным.\n"Теперь он с нами. ПОШЛИ."\nЛюцик: "У нас есть волшебный столб!"',
+        options: ['Отличная команда!', 'Ещё по троллить'],
+        troll: 1
+      }
+    ]
+  },
+  portal: {
+    trigger: 590,
+    steps: [
+      {
+        prompt: 'Огромный портал в Обратную сторону.',
+        options: ['Прыгнуть', 'Обойти'],
+        troll: 1
+      },
+      {
+        prompt: 'Люцик обходит слева. Возвращается справа.\n"Я обошёл. А он опять здесь."',
+        options: ['Прыгнуть', 'Обойти с другой стороны'],
+        troll: 1
+      },
+      {
+        prompt: 'Люцик обходит справа. Возвращается слева.\n"Этот портал меня преследует."',
+        options: ['ПРЫГНУТЬ', 'Позвать такси'],
+        troll: 1
+      },
+      {
+        prompt: 'Такси нет. Портал засасывает.\n"ЛАДНО-ЛАДНО, Я САМ!"',
+        options: ['Прыгнуть!', 'Сопротивляться'],
+        troll: 1
+      }
+    ]
+  },
+  boss: {
+    trigger: 890,
+    steps: [
+      {
+        prompt: 'Король Страхов возвышается над лесом.',
+        options: ['В атаку!', 'План Б'],
+        troll: 1
+      },
+      {
+        prompt: 'Люцик: "План Б: убежать."\nМия: "Там нет плана Б!"\nМакс: "Я думал ПЛАН А — атаковать!"',
+        options: ['АТАКОВАТЬ', 'Искать план В'],
+        troll: 1
+      },
+      {
+        prompt: 'Люцик достаёт резиновую уточку.\nБосс в замешательстве.\n"РАБОТАЕТ! АТАКУЕМ!"',
+        options: ['ФИНАЛЬНАЯ БИТВА (бафф Уточки)', 'Ещё покопаться в рюкзаке'],
+        troll: 1
+      }
+    ]
+  },
+  ending: {
+    trigger: 1000,
+    steps: [
+      {
+        prompt: 'Портал закрывается.',
+        options: ['Уйти домой', 'Оставить портал'],
+        troll: 1
+      },
+      {
+        prompt: 'Маленький Страх: "Бублик!"\nЛюцик: "Смотрите, он милый!"\nМия: "Это СТРАХ. Он вырастет."',
+        options: ['ЗАКРЫТЬ', 'Оставить Бублика'],
+        troll: 1
+      },
+      {
+        prompt: 'Бублик вырос в 10 раз.\n"БУБЛИК!" (басом)\nЛюцик: "Кажется я ошибся."',
+        options: ['ЗАКРЫТЬ ПОРТАЛ СРОЧНО', 'Бублик — друг!'],
+        troll: 1
+      }
+    ]
+  }
+};
 
 const FEARS = [
   { id: 'darkness', name: 'Темнота', emoji: '🌑', color: '#111', eye: '#ff0033', shape: 'cloud' },
@@ -55,7 +173,7 @@ function claimDailyBonus() {
 }
 
 export function startRunnerGame(level = 1) {
-  document.querySelectorAll('.game-fullscreen, .game-screen, .runner-result, .runner-share-sheet').forEach((el) => el.remove());
+  document.querySelectorAll('.game-fullscreen, .game-screen, .runner-result, .runner-share-sheet, .runner-choice-overlay, #choice-overlay').forEach((el) => el.remove());
   document.body.classList.remove('game-active');
   appState.gameActive = true;
   level = Math.max(1, Math.min(5, level || 1));
@@ -141,6 +259,7 @@ export function startRunnerGame(level = 1) {
   }
 
   function doDash() {
+    if (choiceState.active) return;
     if (phase !== PHASE.RUN && phase !== PHASE.HUNT) return;
     if (frame < dashReadyAt || dashT > 0) return;
     dashT = 22;
@@ -164,6 +283,7 @@ export function startRunnerGame(level = 1) {
   }
 
   function setLane(dir) {
+    if (choiceState.active) return;
     const next = Math.max(-1, Math.min(1, lucik.lane + dir));
     if (next === lucik.lane) return;
     lucik.lane = next;
@@ -243,7 +363,7 @@ export function startRunnerGame(level = 1) {
 
   function hitBoss() {
     if (!boss) return;
-    boss.hp--;
+    boss.hp -= hasDuckBuff ? 2 : 1;
     boss.hitFlash = 12;
     shakeIntensity = 12;
     spawnFearShards(boss.x + boss.w / 2, boss.y + boss.h / 2, fear.eye, 20);
@@ -313,6 +433,15 @@ export function startRunnerGame(level = 1) {
   let speed = isMindFlayer ? 3.8 : 3.2;
   let baseSpeed = speed;
   let speedMult = 1;
+  let hasGlowingPillar = false;
+  let hasDuckBuff = false;
+  const choiceState = {
+    active: false,
+    situation: null,
+    step: 0,
+    gameSpeedBefore: 1,
+    triggered: {}
+  };
   let frame = 0;
   let finished = false;
   let groundOffset = 0;
@@ -937,7 +1066,7 @@ export function startRunnerGame(level = 1) {
   function triggerWin() {
     if (phase === PHASE.WON || phase === PHASE.WIN_SLOWMO) return;
     won = true;
-    closedPortal = isMindFlayer;
+    if (!closedPortal) closedPortal = isMindFlayer;
     clockMinute = 1;
     if (lastSmash) {
       phase = PHASE.WIN_SLOWMO;
@@ -969,7 +1098,118 @@ export function startRunnerGame(level = 1) {
     }
   }
 
+  function showChoice(situation) {
+    const data = CHOICES[situation];
+    if (!data) return;
+    const steps = data.steps;
+    const step = steps[Math.min(choiceState.step, steps.length - 1)];
+
+    choiceState.active = true;
+    choiceState.situation = situation;
+    choiceState.gameSpeedBefore = speed;
+    speed = 0;
+
+    document.getElementById('choice-overlay')?.remove();
+
+    const choiceOverlay = document.createElement('div');
+    choiceOverlay.id = 'choice-overlay';
+    choiceOverlay.className = 'runner-choice-overlay';
+
+    const prompt = document.createElement('div');
+    prompt.className = 'runner-choice-prompt';
+    prompt.textContent = step.prompt;
+    choiceOverlay.appendChild(prompt);
+
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'runner-choice-btns';
+
+    step.options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `runner-choice-btn${i === step.troll ? ' troll' : ' correct'}`;
+      btn.textContent = opt;
+      btn.onclick = () => handleChoice(i);
+      btnContainer.appendChild(btn);
+    });
+
+    choiceOverlay.appendChild(btnContainer);
+    document.body.appendChild(choiceOverlay);
+  }
+
+  function handleChoice(optionIndex) {
+    const situation = choiceState.situation;
+    const steps = CHOICES[situation]?.steps;
+    if (!steps) {
+      closeChoice();
+      return;
+    }
+    const currentStep = Math.min(choiceState.step, steps.length - 1);
+
+    if (optionIndex === steps[currentStep].troll) {
+      choiceState.step++;
+      document.getElementById('choice-overlay')?.remove();
+      if (choiceState.step < steps.length) {
+        showChoice(situation);
+      } else {
+        choiceState.step = 0;
+        applyChoiceReward(situation, steps.length - 1);
+        closeChoice();
+      }
+    } else {
+      const rewardedStep = currentStep;
+      choiceState.step = 0;
+      applyChoiceReward(situation, rewardedStep);
+      closeChoice();
+    }
+  }
+
+  function applyChoiceReward(situation, stepReached) {
+    if (situation === 'mia') {
+      if (stepReached >= 3) {
+        hasGlowingPillar = true;
+        shieldT = Math.max(shieldT, 350);
+        invuln = Math.max(invuln, 200);
+        showComboText('🪄 Столб!');
+        score += 50;
+      } else {
+        shieldT = Math.max(shieldT, 180);
+        showComboText('🏹 Мия!');
+        score += 30;
+      }
+    }
+    if (situation === 'boss') {
+      if (stepReached >= 2) {
+        hasDuckBuff = true;
+        showComboText('🦆 Уточка!');
+        score += 40;
+      }
+      if (!boss) spawnBoss();
+    }
+    if (situation === 'portal') {
+      score += 20 + stepReached * 10;
+      showComboText('🌀');
+    }
+    if (situation === 'fear') {
+      score += 15;
+      showComboText('👀');
+    }
+    if (situation === 'ending') {
+      closedPortal = true;
+      triggerWin();
+    }
+    const scoreEl = document.getElementById('runnerScore');
+    if (scoreEl) scoreEl.textContent = score;
+  }
+
+  function closeChoice() {
+    document.getElementById('choice-overlay')?.remove();
+    choiceState.active = false;
+    speed = choiceState.gameSpeedBefore || baseSpeed;
+    choiceState.situation = null;
+  }
+
   function jump() {
+    if (choiceState.active) return;
     if (phase === PHASE.INTRO || phase === PHASE.WELL_FALL || phase === PHASE.WELL_INSIDE ||
         phase === PHASE.WELL_EXIT || phase === PHASE.LOST || phase === PHASE.WON ||
         phase === PHASE.WIN_SLOWMO) return;
@@ -1210,6 +1450,7 @@ export function startRunnerGame(level = 1) {
 
   function update() {
     if (phase === PHASE.VIDEO || phase === PHASE.LOST || phase === PHASE.WON) return;
+    if (choiceState.active) return;
 
     // slow-mo
     if (slowMoT > 0) {
@@ -1250,6 +1491,18 @@ export function startRunnerGame(level = 1) {
     if (phase === PHASE.WELL_FALL) { updateWellFall(); updateParticles(); return; }
     if (phase === PHASE.WELL_INSIDE) { updateWellInside(); updateParticles(); return; }
     if (phase === PHASE.WELL_EXIT) { updateWellExit(); updateParticles(); return; }
+
+    // развилки с троллингом
+    if (phase === PHASE.RUN || phase === PHASE.HUNT) {
+      for (const [situation, data] of Object.entries(CHOICES)) {
+        if (distance >= data.trigger && !choiceState.triggered[situation]) {
+          choiceState.triggered[situation] = true;
+          choiceState.step = 0;
+          showChoice(situation);
+          return;
+        }
+      }
+    }
 
     const hunting = phase === PHASE.HUNT;
     const rainbow = rainbowT > 0;
@@ -1680,7 +1933,10 @@ export function startRunnerGame(level = 1) {
 
     updateParticles();
 
-    if (phase === PHASE.RUN && distance >= (isMindFlayer ? 1000 : 900) && !boss) triggerWin();
+    // победа после развилки ending (сама развилка тоже вызывает triggerWin)
+    if (phase === PHASE.RUN && distance >= 1000 && choiceState.triggered.ending && !choiceState.active && !boss) {
+      triggerWin();
+    }
   }
 
   function updateParticles() {
@@ -2739,6 +2995,39 @@ export function startRunnerGame(level = 1) {
       ctx.textAlign = 'left';
     }
 
+    // баффы от развилок
+    if (hasGlowingPillar || hasDuckBuff) {
+      const bits = [];
+      if (hasGlowingPillar) bits.push('🪄 Столб');
+      if (hasDuckBuff) bits.push('🦆 Уточка');
+      ctx.fillStyle = '#ffd700';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(bits.join(' · '), canvas.width - 12, 28);
+      ctx.textAlign = 'left';
+    }
+
+    // волшебный столб рядом с Люциком
+    if (hasGlowingPillar && (phase === PHASE.RUN || phase === PHASE.HUNT)) {
+      const px = lucik.x - 28;
+      const py = groundY();
+      const glow = 0.5 + Math.sin(frame * 0.12) * 0.3;
+      ctx.save();
+      ctx.strokeStyle = `rgba(255, 215, 0, ${0.4 + glow * 0.4})`;
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 12 + glow * 10;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px, py - 52);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(255, 240, 150, ${0.5 + glow * 0.4})`;
+      ctx.beginPath();
+      ctx.arc(px, py - 56, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     if (phase === PHASE.WIN_SLOWMO || phase === PHASE.WON) {
       fireworks.forEach((f) => {
         ctx.fillStyle = f.color;
@@ -3001,6 +3290,8 @@ export function startRunnerGame(level = 1) {
     loop = null;
     window.removeEventListener('resize', resize);
     cleanupAudio();
+    document.getElementById('choice-overlay')?.remove();
+    choiceState.active = false;
     overlay.style.transform = '';
     appState.gameActive = false;
     document.body.classList.remove('game-active');
@@ -3009,6 +3300,7 @@ export function startRunnerGame(level = 1) {
   }
 
   function onPointerDown(e) {
+    if (choiceState.active) return;
     const t = e.touches ? e.touches[0] : e;
     swipeX = t.clientX;
     swipeY = t.clientY;
@@ -3017,6 +3309,11 @@ export function startRunnerGame(level = 1) {
   }
 
   function onPointerUp(e) {
+    if (choiceState.active) {
+      swipeX = null;
+      swipeY = null;
+      return;
+    }
     if (swipeX == null || swipeY == null) {
       jump();
       return;
@@ -3052,6 +3349,7 @@ export function startRunnerGame(level = 1) {
   canvas.addEventListener('touchend', (e) => { e.preventDefault(); onPointerUp(e); }, { passive: false });
 
   window.addEventListener('keydown', (e) => {
+    if (choiceState.active) return;
     if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w' || e.key === 'W') {
       e.preventDefault();
       const now = performance.now();
@@ -3209,6 +3507,8 @@ export function startRunnerGame(level = 1) {
     loop = null;
     window.removeEventListener('resize', resize);
     cleanupAudio();
+    document.getElementById('choice-overlay')?.remove();
+    choiceState.active = false;
     overlay.style.transform = '';
     appState.gameActive = false;
     document.body.classList.remove('game-active');
