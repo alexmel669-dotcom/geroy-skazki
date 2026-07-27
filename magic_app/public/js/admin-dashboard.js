@@ -356,6 +356,7 @@ function showAddPsychologistForm() {
     'Добавить психолога',
     `
       <input id="psyName" class="admin-help-input" placeholder="Имя" autocomplete="off">
+      <input id="psyEmail" class="admin-help-input" placeholder="Email (для кабинета)" autocomplete="off">
       <input id="psySpec" class="admin-help-input" placeholder="Специализация" autocomplete="off">
       <input id="psyExp" class="admin-help-input" placeholder="Опыт (например: 8 лет)" autocomplete="off">
       <input id="psyPhone" class="admin-help-input" placeholder="Телефон" autocomplete="off">
@@ -369,6 +370,7 @@ function showAddPsychologistForm() {
 async function addPsychologist() {
   const data = {
     name: document.getElementById('psyName')?.value.trim(),
+    email: document.getElementById('psyEmail')?.value.trim(),
     specialization: document.getElementById('psySpec')?.value.trim(),
     experience: document.getElementById('psyExp')?.value.trim(),
     phone: document.getElementById('psyPhone')?.value.trim(),
@@ -478,8 +480,8 @@ async function loadHelpLists() {
       psyEl.innerHTML = Array.isArray(psychologists) && psychologists.length
         ? psychologists.map((p) => `
             <div class="admin-list-row">
-              <span>👩‍⚕️ ${escapeHtml(p.name)}${p.city ? ` · ${escapeHtml(p.city)}` : ''}</span>
-              <span>${escapeHtml(p.specialization || '')}</span>
+              <span>👩‍⚕️ ${escapeHtml(p.name)}${p.email ? ` · ${escapeHtml(p.email)}` : ''}${p.city ? ` · ${escapeHtml(p.city)}` : ''}</span>
+              <span>${escapeHtml(p.promoCode || p.specialization || '')}</span>
             </div>
           `).join('')
         : '<div class="empty-state">Пока нет психологов</div>';
