@@ -6,7 +6,7 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN
 });
 
-const APPLICATIONS_KEY = 'geroy:orphanage:applications';
+const APPLICATIONS_KEY = 'geroy:psychologist:applications';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -22,24 +22,24 @@ export default async function handler(req, res) {
   try {
     const {
       name,
-      city,
-      contactName,
-      position,
-      contactPhone,
+      specialization,
+      experience,
       email,
-      childrenCount,
+      phone,
+      telegram,
+      city,
       documents,
       confirmed
     } = req.body || {};
 
-    const cleanName = String(name || '').trim();
-    const cleanContact = String(contactName || '').trim();
-    const cleanPhone = String(contactPhone || '').trim();
     const normalizedEmail = String(email || '').trim().toLowerCase();
+    const cleanName = String(name || '').trim();
+    const cleanSpec = String(specialization || '').trim();
+    const cleanPhone = String(phone || '').trim();
 
-    if (!cleanName || !cleanContact || !cleanPhone || !normalizedEmail) {
+    if (!cleanName || !cleanSpec || !normalizedEmail || !cleanPhone) {
       return res.status(400).json({
-        error: 'Заполните обязательные поля: название, контакт, телефон, email'
+        error: 'Заполните обязательные поля: ФИО, специализация, email, телефон'
       });
     }
 
@@ -54,13 +54,12 @@ export default async function handler(req, res) {
 
     applications.push({
       name: cleanName,
-      city: String(city || '').trim(),
-      contactName: cleanContact,
-      position: String(position || '').trim(),
-      contactPhone: cleanPhone,
-      phone: cleanPhone,
+      specialization: cleanSpec,
+      experience: String(experience || '').trim(),
       email: normalizedEmail,
-      childrenCount: String(childrenCount || '').trim(),
+      phone: cleanPhone,
+      telegram: String(telegram || '').trim(),
+      city: String(city || '').trim(),
       documents: String(documents || '').trim(),
       status: 'pending',
       createdAt: new Date().toISOString()
@@ -68,12 +67,12 @@ export default async function handler(req, res) {
 
     await redis.set(APPLICATIONS_KEY, applications.slice(-500));
 
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
-      message: 'Заявка принята. Мы проверим документы в течение 3 рабочих дней и пришлём промокод.'
+      message: 'Заявка принята. Мы проверим документы в течение 3 рабочих дней.'
     });
   } catch (err) {
-    console.error('verify-orphanage error:', err);
+    console.error('psychologist-apply error:', err);
     return res.status(500).json({ error: 'Не удалось сохранить заявку' });
   }
 }

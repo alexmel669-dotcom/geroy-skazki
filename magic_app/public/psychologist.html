@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Кабинет психолога — Герой Сказок</title>
+  <title>Для психологов — Герой Сказок</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/psychologist.css">
   <link rel="icon" type="image/png" href="assets/images/icon-192.png">
@@ -11,18 +11,75 @@
 </head>
 <body class="psy-body">
   <div class="psy-app">
+    <!-- Заявка -->
+    <section id="psyApplySection" class="psy-apply-wrap">
+      <div class="apply-card">
+        <h1>👩‍⚕️ «Герой Сказок» для психологов</h1>
+        <p class="apply-lead">Присоединяйтесь к платформе и получайте клиентов бесплатно. Заявка проверяется до 3 рабочих дней.</p>
+
+        <ul class="apply-benefits">
+          <li>Поток клиентов без рекламы</li>
+          <li>Личный кабинет, чат и запись</li>
+          <li>Персональный промокод для клиентов</li>
+        </ul>
+
+        <form id="psyApplyForm" class="apply-form">
+          <label for="applyName">ФИО *</label>
+          <input class="form-input" type="text" id="applyName" required placeholder="Иванова Анна Сергеевна" autocomplete="name">
+
+          <label for="applySpec">Специализация *</label>
+          <input class="form-input" type="text" id="applySpec" required placeholder="Детский психолог, КПТ…">
+
+          <label for="applyExp">Опыт</label>
+          <input class="form-input" type="text" id="applyExp" placeholder="8 лет">
+
+          <label for="applyEmail">Email *</label>
+          <input class="form-input" type="email" id="applyEmail" required placeholder="you@example.com" autocomplete="email">
+
+          <label for="applyPhone">Телефон *</label>
+          <input class="form-input" type="tel" id="applyPhone" required placeholder="+7…" autocomplete="tel">
+
+          <label for="applyTg">Telegram</label>
+          <input class="form-input" type="text" id="applyTg" placeholder="@username">
+
+          <label for="applyCity">Город</label>
+          <input class="form-input" type="text" id="applyCity" placeholder="Москва" autocomplete="address-level2">
+
+          <label for="applyDocs">Ссылка на документы (диплом / сертификат)</label>
+          <input class="form-input" type="url" id="applyDocs" placeholder="https://disk.yandex.ru/…">
+
+          <label class="apply-check">
+            <input type="checkbox" id="applyConfirm" required>
+            Подтверждаю достоверность данных и согласие на проверку квалификации *
+          </label>
+
+          <button type="submit" class="psy-btn psy-btn-primary" id="psyApplyBtn">Отправить заявку</button>
+        </form>
+
+        <p id="psyApplyError" class="psy-error" hidden></p>
+        <div id="psyApplySuccess" class="apply-success" hidden>
+          <p>✅ Заявка принята. Мы проверим документы в течение 3 рабочих дней.</p>
+        </div>
+
+        <p class="psy-links">
+          <a href="index.html">← На главную</a>
+          · <a href="#" id="showPsyLogin">Уже партнёр? Войти в кабинет</a>
+        </p>
+      </div>
+    </section>
+
     <!-- Вход -->
-    <section id="psyLogin" class="psy-login">
+    <section id="psyLogin" class="psy-login" hidden>
       <div class="psy-login-card">
         <h1>👩‍⚕️ Кабинет психолога</h1>
         <p class="psy-sub">Войдите аккаунтом с доступом партнёра-психолога</p>
-        <input type="email" id="psyEmail" placeholder="Email" autocomplete="username">
-        <input type="password" id="psyPassword" placeholder="Пароль" autocomplete="current-password">
+        <input type="email" id="psyEmail" class="form-input" placeholder="Email" autocomplete="username">
+        <input type="password" id="psyPassword" class="form-input" placeholder="Пароль" autocomplete="current-password">
         <button type="button" id="psyLoginBtn" class="psy-btn psy-btn-primary">Войти</button>
         <p id="psyLoginError" class="psy-error"></p>
         <p class="psy-links">
-          <a href="index.html">← На главную</a>
-          · <a href="mailto:lucik.geroy.skazki@gmail.com">Стать партнёром</a>
+          <a href="#" id="showPsyApply">← К заявке</a>
+          · <a href="index.html">На главную</a>
         </p>
       </div>
     </section>
@@ -112,5 +169,62 @@
   </div>
 
   <script type="module" src="js/psychologist-dashboard.js"></script>
+  <script type="module">
+    const applySection = document.getElementById('psyApplySection');
+    const loginSection = document.getElementById('psyLogin');
+
+    document.getElementById('showPsyLogin')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      applySection.hidden = true;
+      loginSection.hidden = false;
+    });
+    document.getElementById('showPsyApply')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      loginSection.hidden = true;
+      applySection.hidden = false;
+    });
+
+    const form = document.getElementById('psyApplyForm');
+    const errEl = document.getElementById('psyApplyError');
+    const okEl = document.getElementById('psyApplySuccess');
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errEl.hidden = true;
+      okEl.hidden = true;
+      const btn = document.getElementById('psyApplyBtn');
+      const payload = {
+        name: document.getElementById('applyName').value.trim(),
+        specialization: document.getElementById('applySpec').value.trim(),
+        experience: document.getElementById('applyExp').value.trim(),
+        email: document.getElementById('applyEmail').value.trim(),
+        phone: document.getElementById('applyPhone').value.trim(),
+        telegram: document.getElementById('applyTg').value.trim(),
+        city: document.getElementById('applyCity').value.trim(),
+        documents: document.getElementById('applyDocs').value.trim(),
+        confirmed: document.getElementById('applyConfirm').checked
+      };
+      btn.disabled = true;
+      btn.textContent = 'Отправка…';
+      try {
+        const res = await fetch('/api/psychologist-apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Ошибка отправки');
+        form.hidden = true;
+        okEl.hidden = false;
+        okEl.querySelector('p').textContent = '✅ ' + (data.message || 'Заявка принята.');
+      } catch (err) {
+        errEl.textContent = err.message || 'Ошибка соединения';
+        errEl.hidden = false;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Отправить заявку';
+      }
+    });
+  </script>
 </body>
 </html>

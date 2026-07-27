@@ -24,6 +24,8 @@ import psychologistChat from './_handlers/psychologist-chat.js';
 import psychologistBooking from './_handlers/psychologist-booking.js';
 import psychologistReviews from './_handlers/psychologist-reviews.js';
 import psychologistReport from './_handlers/psychologist-report.js';
+import psychologistApply from './_handlers/psychologist-apply.js';
+import adminApplications from './_handlers/admin-applications.js';
 
 import promocode from './_handlers/promocode.js';
 import promocodeStats from './_handlers/promocode-stats.js';
@@ -84,6 +86,8 @@ const ROUTES = {
 
   'admin-login': adminLogin,
 
+  'admin-applications': adminApplications,
+
   'sync-child-data': sync,
 
   'user/sync': sync,
@@ -101,6 +105,8 @@ const ROUTES = {
   'psychologist-reviews': psychologistReviews,
 
   'psychologist-report': psychologistReport,
+
+  'psychologist-apply': psychologistApply,
 
   promocode: promocode,
 

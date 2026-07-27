@@ -1,49 +1,47 @@
+// CORS middleware
 export function setCors(req, res) {
-  const requestOrigin = req.headers.origin;
+  const origin = req.headers.origin || '';
+  
   const allowedOrigins = [
     'http://localhost:3000',
-    'http://127.0.0.1:3000',
     'http://localhost:3001',
+    'http://localhost:3456',
+    'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:5500',
-    'http://127.0.0.1:5500',
-    'http://localhost:8080',
-    'http://127.0.0.1:8080',
-    'https://geroy-skazki.vercel.app',
+    'http://127.0.0.1:3456',
     'https://geroy-skazki.ru',
-    'https://www.geroy-skazki.ru'
+    'https://www.geroy-skazki.ru',
+    'https://geroy-skazki.vercel.app',
+    'https://geroy-skazki.onrender.com'
   ];
 
-  if (process.env.VERCEL_URL) {
-    allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
+  if (process.env.APP_URL) {
+    allowedOrigins.push(process.env.APP_URL.replace(/\/$/, ''));
   }
-
+  if (process.env.RENDER_EXTERNAL_URL) {
+    allowedOrigins.push(process.env.RENDER_EXTERNAL_URL.replace(/\/$/, ''));
+  }
   if (process.env.RAILWAY_PUBLIC_DOMAIN) {
     allowedOrigins.push(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
   }
 
-  let origin = allowedOrigins[0];
-  if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
-    origin = requestOrigin;
-  } else if (requestOrigin && requestOrigin.endsWith('.vercel.app')) {
-    origin = requestOrigin;
-  } else if (requestOrigin && requestOrigin.endsWith('.up.railway.app')) {
-    origin = requestOrigin;
-  } else if (process.env.NODE_ENV === 'production') {
-    origin = 'https://geroy-skazki.ru';
-  }
-
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Vary', 'Origin');
-
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.status(204).end();
     return true;
   }
+
+  if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Access-Control-Allow-Origin', 'https://geroy-skazki.ru');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
   return false;
 }

@@ -1,0 +1,147 @@
+{
+  "syntax": {
+    "ok": 110,
+    "fail": 0
+  },
+  "api": [
+    {
+      "name": "health",
+      "method": "GET",
+      "http": "ERR",
+      "preview": "Command failed: curl.exe -sS --max-time 30 -w \n__HTTP__%{http_code} https://geroy-skazki.ru/api/health\ncurl: (35) Recv failure: Connection was reset\r\n"
+    },
+    {
+      "name": "psychologists-list",
+      "method": "GET",
+      "http": "ERR",
+      "preview": "Command failed: curl.exe -sS --max-time 30 -w \n__HTTP__%{http_code} https://geroy-skazki.ru/api/psychologists-list\ncurl: (35) Recv failure: Connection was reset\r\n"
+    },
+    {
+      "name": "specialists-list",
+      "method": "GET",
+      "http": "ERR",
+      "preview": "Command failed: curl.exe -sS --max-time 30 -w \n__HTTP__%{http_code} https://geroy-skazki.ru/api/specialists-list\ncurl: (35) Recv failure: Connection was reset\r\n"
+    },
+    {
+      "name": "promocode-stats",
+      "method": "GET",
+      "http": "ERR",
+      "preview": "Command failed: curl.exe -sS --max-time 30 -w \n__HTTP__%{http_code} https://geroy-skazki.ru/api/promocode-stats?code=FOUNDERS\ncurl: (35) Recv failure: Connection was reset\r\n"
+    },
+    {
+      "name": "admin-stats",
+      "method": "GET",
+      "http": "ERR",
+      "preview": "Command failed: curl.exe -sS --max-time 30 -w \n__HTTP__%{http_code} https://geroy-skazki.ru/api/admin-stats?public=1\ncurl: (35) Recv failure: Connection was reset\r\n"
+    },
+    {
+      "name": "feedbacks",
+      "method": "GET",
+      "http": "ERR",
+      "preview": "Command failed: curl.exe -sS --max-time 30 -w \n__HTTP__%{http_code} https://geroy-skazki.ru/api/feedbacks?public=1\ncurl: (35) Recv failure: Connection was reset\r\n"
+    },
+    {
+      "name": "login",
+      "method": "POST",
+      "http": "ERR",
+      "preview": "Command failed: curl.exe -sS --max-time 45 -w \n__HTTP__%{http_code} -X POST https://geroy-skazki.ru/api/login -H Content-Type: application/json -d {\"email\":\"admin@geroy-skazki.local\",\"password\":\"admin"
+    },
+    {
+      "name": "register",
+      "method": "POST",
+      "http": "ERR",
+      "preview": "Command failed: curl.exe -sS --max-time 45 -w \n__HTTP__%{http_code} -X POST https://geroy-skazki.ru/api/register -H Content-Type: application/json -d {\"email\":\"audit1785179048740@test.com\",\"password\":"
+    },
+    {
+      "name": "tts",
+      "method": "POST",
+      "http": "ERR",
+      "preview": "Command failed: curl.exe -sS --max-time 45 -w \n__HTTP__%{http_code} -X POST https://geroy-skazki.ru/api/tts -H Content-Type: application/json -d {\"text\":\"Test\",\"voice\":\"lucik\"}\ncurl: (35) Recv failure"
+    },
+    {
+      "name": "generate",
+      "method": "POST",
+      "http": "ERR",
+      "preview": "Command failed: curl.exe -sS --max-time 45 -w \n__HTTP__%{http_code} -X POST https://geroy-skazki.ru/api/generate -H Content-Type: application/json -d {\"message\":\"Privet\",\"character\":\"lucik\"}\ncurl: (35"
+    }
+  ],
+  "pages": [
+    {
+      "path": "/",
+      "http": "ERR"
+    },
+    {
+      "path": "/app",
+      "http": "ERR"
+    },
+    {
+      "path": "/app.html",
+      "http": "ERR"
+    },
+    {
+      "path": "/admin",
+      "http": "ERR"
+    },
+    {
+      "path": "/admin.html",
+      "http": "ERR"
+    },
+    {
+      "path": "/parent",
+      "http": "ERR"
+    },
+    {
+      "path": "/parent.html",
+      "http": "ERR"
+    },
+    {
+      "path": "/pricing",
+      "http": "ERR"
+    },
+    {
+      "path": "/pricing.html",
+      "http": "ERR"
+    },
+    {
+      "path": "/register",
+      "http": "ERR"
+    },
+    {
+      "path": "/register.html",
+      "http": "ERR"
+    },
+    {
+      "path": "/orphanage",
+      "http": "ERR"
+    },
+    {
+      "path": "/orphanage.html",
+      "http": "ERR"
+    },
+    {
+      "path": "/psychologist",
+      "http": "ERR"
+    },
+    {
+      "path": "/psychologist.html",
+      "http": "ERR"
+    },
+    {
+      "path": "/login.html",
+      "http": "ERR"
+    },
+    {
+      "path": "/terms.html",
+      "http": "ERR"
+    },
+    {
+      "path": "/privacy.html",
+      "http": "ERR"
+    }
+  ],
+  "links": {
+    "broken": []
+  },
+  "env": {},
+  "security": []
+}
