@@ -135,6 +135,48 @@ export function getPlanDaysRemaining() {
   return Math.max(0, Math.ceil(diff / 86400000));
 }
 
+function showTrialBanner(message) {
+  if (document.getElementById('trialBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'trialBanner';
+  banner.className = 'trial-banner';
+  banner.innerHTML = `${message} <button type="button" class="trial-banner-close" aria-label="Закрыть">✕</button>`;
+  document.body.prepend(banner);
+  banner.querySelector('.trial-banner-close')?.addEventListener('click', () => banner.remove());
+}
+
+export function checkTrialPeriod() {
+  if (localStorage.getItem('guestMode') === 'true') return;
+  if (localStorage.getItem('isAuth') !== 'true') return;
+
+  const planDays = getPlanDaysRemaining();
+  const plan = getUserPlan();
+
+  if (planDays > 0 && planDays <= 7 && plan !== 'free') {
+    showTrialBanner(`🎁 Тестовый период: осталось ${planDays} дн. · <a href="pricing.html">Тарифы</a>`);
+    return;
+  }
+
+  let createdAt = localStorage.getItem('userCreatedAt') || localStorage.getItem('registeredAt');
+  try {
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    if (userData.createdAt) createdAt = userData.createdAt;
+  } catch (_) { /* ignore */ }
+
+  if (!createdAt) return;
+
+  const trialDays = 30;
+  const daysSinceReg = (Date.now() - new Date(createdAt).getTime()) / 86400000;
+  if (Number.isNaN(daysSinceReg)) return;
+  const daysLeft = Math.ceil(trialDays - daysSinceReg);
+
+  if (daysLeft <= 7 && daysLeft > 0) {
+    showTrialBanner(`🎁 Тестовый период: осталось ${daysLeft} дн. · <a href="pricing.html">Тарифы</a>`);
+  } else if (daysLeft <= 0 && plan === 'free') {
+    showTrialBanner('Тестовый период закончился. <a href="pricing.html">Оформить Premium</a>');
+  }
+}
+
 export function resetDailyCounters() {
   const today = new Date().toDateString();
   const data = safeParseJSON(localStorage.getItem(PLAN_COUNTERS_KEY), {}) || {};
@@ -894,6 +936,7 @@ export function initCore() {
     if (window.sessionMaxTime) startSessionTimer(window.sessionMaxTime);
   }
   trackRegistrationContext(localStorage.getItem('promocodeUsed'));
+  checkTrialPeriod();
 
   checkDailyStreak();
   updateStreakUI();
