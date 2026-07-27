@@ -69,4 +69,30 @@ export function clearAnalytics() {
   console.log('Analytics cleared');
 }
 
-export default { trackEvent, logError, getAnalyticsStats, clearAnalytics };
+/** Трекинг особого режима и реферальных промокодов специалистов (один раз за сессию) */
+export function trackRegistrationContext(promoCode) {
+  try {
+    if (sessionStorage.getItem('geroy_reg_ctx_tracked') === '1') return;
+
+    const specialMode = localStorage.getItem('specialMode');
+    if (specialMode) {
+      trackEvent('special_mode_activated', { mode: specialMode });
+    }
+
+    const code = promoCode || localStorage.getItem('promocodeUsed') || '';
+    if (code && (code.startsWith('PSY-') || code.startsWith('SPEC-'))) {
+      trackEvent('specialist_referral', {
+        code,
+        type: code.startsWith('PSY-') ? 'psychologist' : 'specialist'
+      });
+    }
+
+    if (specialMode || (code && (code.startsWith('PSY-') || code.startsWith('SPEC-')))) {
+      sessionStorage.setItem('geroy_reg_ctx_tracked', '1');
+    }
+  } catch (e) {
+    console.warn('trackRegistrationContext failed:', e);
+  }
+}
+
+export default { trackEvent, logError, getAnalyticsStats, clearAnalytics, trackRegistrationContext };

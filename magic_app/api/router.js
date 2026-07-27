@@ -22,6 +22,9 @@ import psychologistHelp from './_handlers/psychologist-help.js';
 
 import promocode from './_handlers/promocode.js';
 import promocodeStats from './_handlers/promocode-stats.js';
+import verifyOrphanage from './_handlers/verify-orphanage.js';
+import psychologistsList from './_handlers/psychologists-list.js';
+import specialistsList from './_handlers/specialists-list.js';
 import adminStats from './_handlers/admin-stats.js';
 import adminFullStats from './_handlers/admin-full-stats.js';
 import adminLogin from './_handlers/admin-login.js';
@@ -87,6 +90,12 @@ const ROUTES = {
   promocode: promocode,
 
   'promocode-stats': promocodeStats,
+
+  'verify-orphanage': verifyOrphanage,
+
+  'psychologists-list': psychologistsList,
+
+  'specialists-list': specialistsList,
 
   'verify-pin': verifyPin,
 

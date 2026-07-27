@@ -121,6 +121,15 @@ export const PLANS = {
     games: ['fish', 'puzzle', 'memory', 'riddles', 'quest', 'maze', 'quiz', 'runner', 'drawAi', 'musicCat', 'constellation', 'popFears'],
     memoryDays: 14,
     maxChildren: 3
+  },
+  /** Алиас верхнего тарифа для промокодов интернатов/специалистов */
+  premium: {
+    name: 'Премиум',
+    storiesPerDay: 15,
+    characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
+    games: ['fish', 'puzzle', 'memory', 'riddles', 'quest', 'maze', 'quiz', 'runner', 'drawAi', 'musicCat', 'constellation', 'popFears'],
+    memoryDays: 14,
+    maxChildren: 3
   }
 };
 

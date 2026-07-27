@@ -22,9 +22,15 @@ import {
 import { getAgeWord } from './grammar.js';
 import { synthesizeSpeech } from './audio.js';
 import { checkAchievements, showAchievement } from './achievements.js';
-import { trackEvent, logError } from './analytics.js';
+import { trackEvent, logError, trackRegistrationContext } from './analytics.js';
 import { getEasterEggReply } from './easter-eggs.js';
 import { initSecurity, checkBadWords, sanitizeInput, sanitizeAIText, detectAlertWords } from './security.js';
+import {
+  applySpecialMode,
+  getSpecialModeConfig,
+  applyReplySpecialMode,
+  startSessionTimer
+} from './special-mode.js';
 import { startFishGame } from './games/fish.js';
 import { startMemoryGame } from './games/memory.js';
 import { startPuzzleGame } from './games/puzzle.js';
@@ -882,6 +888,13 @@ export function initCore() {
     window.tamagotchi.start();
   }
 
+  const specialConfig = getSpecialModeConfig();
+  if (specialConfig) {
+    applySpecialMode(localStorage.getItem('specialMode'));
+    if (window.sessionMaxTime) startSessionTimer(window.sessionMaxTime);
+  }
+  trackRegistrationContext(localStorage.getItem('promocodeUsed'));
+
   checkDailyStreak();
   updateStreakUI();
   syncGeroyUser();
@@ -1720,6 +1733,7 @@ async function runBedtimeStory(promptText) {
     hideThinking();
     let reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
     reply = applyGenderToText(sanitizeAIText(reply, child?.age || 7), gender);
+    reply = applyReplySpecialMode(reply);
     console.log('🐱 Ответ ИИ:', reply.slice(0, 100));
     saveToLearnedDictionary(promptText, reply);
 
@@ -1939,6 +1953,7 @@ async function handleUserMessage(text, options = {}) {
 
   if (globalThis.__lastAiMs) applyAiTiming();
   reply = applyGenderToText(sanitizeAIText(reply, child?.age || 7), getChildGender(child));
+  reply = applyReplySpecialMode(reply);
   saveToLearnedDictionary(text, reply);
 
   const botAlerts = detectAlertWords(reply);
@@ -2188,6 +2203,8 @@ if (typeof window !== 'undefined') {
   window.launchFishGame = launchFishGame;
   window.isAppReady = isAppReady;
   window.sendTestNotification = sendTestNotification;
+  window.sendTextMessage = sendTextMessage;
+  window.applySpecialMode = applySpecialMode;
 }
 
 export default {

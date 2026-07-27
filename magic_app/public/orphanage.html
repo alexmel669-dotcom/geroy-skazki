@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Для интернатов — Герой Сказок</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="icon" type="image/png" href="assets/images/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/images/icon-192.png">
+  <style>
+    .orphanage-page { max-width: 520px; }
+    .orphanage-hero { text-align: center; margin-bottom: 20px; }
+    .orphanage-hero h1 { font-size: 1.6rem; margin: 12px 0 8px; }
+    .orphanage-hero p { opacity: 0.85; line-height: 1.45; margin: 0; }
+    .orphanage-benefits {
+      text-align: left;
+      margin: 20px 0;
+      padding: 16px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 16px;
+    }
+    .orphanage-benefits h2 { font-size: 1.05rem; margin: 0 0 10px; }
+    .orphanage-benefits ul { margin: 0; padding-left: 18px; line-height: 1.55; }
+    .orphanage-form label {
+      display: block;
+      text-align: left;
+      font-size: 0.9rem;
+      margin: 12px 0 6px;
+      opacity: 0.9;
+    }
+    .orphanage-form input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(0,0,0,0.25);
+      color: #fff;
+      font-size: 1rem;
+    }
+    .orphanage-result {
+      display: none;
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(76, 175, 80, 0.18);
+      border: 1px solid rgba(129, 199, 132, 0.4);
+      text-align: center;
+    }
+    .orphanage-result.visible { display: block; }
+    .orphanage-code {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin: 10px 0;
+      word-break: break-all;
+    }
+    .orphanage-note { font-size: 0.85rem; opacity: 0.8; margin-top: 8px; }
+    .orphanage-error {
+      display: none;
+      color: #ef9a9a;
+      margin-top: 12px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+<div class="auth-container orphanage-page">
+  <div class="auth-card">
+    <div class="orphanage-hero">
+      <div class="auth-avatar">
+        <img src="assets/images/avatar.svg" data-avatar="lucik" alt="Люцик" width="80" height="80">
+      </div>
+      <h1>🏠 Для детских домов и интернатов</h1>
+      <p>Бесплатный премиум-доступ на год для учреждений, где дети особенно нуждаются в тёплом друге.</p>
+    </div>
+
+    <div class="orphanage-benefits">
+      <h2>Что вы получите</h2>
+      <ul>
+        <li>Тариф Premium на 365 дней</li>
+        <li>Сказки, игры и поддержка страхов с Люциком</li>
+        <li>Один код для регистрации воспитателей</li>
+        <li>Без оплаты — после короткой заявки</li>
+      </ul>
+    </div>
+
+    <form id="orphanageForm" class="orphanage-form">
+      <label for="orgName">Название учреждения *</label>
+      <input type="text" id="orgName" name="name" required placeholder="Детский дом №…" autocomplete="organization">
+
+      <label for="orgCity">Город</label>
+      <input type="text" id="orgCity" name="city" placeholder="Москва" autocomplete="address-level2">
+
+      <label for="contactName">Контактное лицо *</label>
+      <input type="text" id="contactName" name="contactName" required placeholder="Имя и должность" autocomplete="name">
+
+      <label for="contactPhone">Телефон *</label>
+      <input type="tel" id="contactPhone" name="contactPhone" required placeholder="+7…" autocomplete="tel">
+
+      <label for="contactEmail">Email</label>
+      <input type="email" id="contactEmail" name="email" placeholder="email@example.ru" autocomplete="email">
+
+      <button type="submit" class="auth-btn" style="margin-top:18px;width:100%;">Отправить заявку</button>
+    </form>
+
+    <p class="orphanage-error" id="orphanageError"></p>
+
+    <div class="orphanage-result" id="orphanageResult">
+      <p>✅ Заявка принята. Ваш код активирован.</p>
+      <div class="orphanage-code" id="orphanageCode"></div>
+      <p class="orphanage-note">Сохраните код и введите его при регистрации на сайте.</p>
+      <a class="auth-btn" href="register.html" style="display:inline-block;margin-top:12px;text-decoration:none;">Перейти к регистрации</a>
+    </div>
+
+    <p class="auth-link" style="margin-top:20px;">
+      <a href="index.html">← На главную</a>
+    </p>
+  </div>
+</div>
+
+<script type="module">
+  import { initAvatarImages } from './js/config.js';
+  initAvatarImages();
+
+  const form = document.getElementById('orphanageForm');
+  const errorEl = document.getElementById('orphanageError');
+  const resultEl = document.getElementById('orphanageResult');
+  const codeEl = document.getElementById('orphanageCode');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl.style.display = 'none';
+    resultEl.classList.remove('visible');
+
+    const btn = form.querySelector('button[type="submit"]');
+    const payload = {
+      name: document.getElementById('orgName').value.trim(),
+      city: document.getElementById('orgCity').value.trim(),
+      contactName: document.getElementById('contactName').value.trim(),
+      contactPhone: document.getElementById('contactPhone').value.trim(),
+      email: document.getElementById('contactEmail').value.trim()
+    };
+
+    if (!payload.name || !payload.contactName || !payload.contactPhone) {
+      errorEl.textContent = 'Заполните обязательные поля';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Отправка…';
+
+    try {
+      const res = await fetch('/api/verify-orphanage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Не удалось отправить заявку');
+      }
+      codeEl.textContent = data.code;
+      resultEl.classList.add('visible');
+      form.style.display = 'none';
+      try {
+        localStorage.setItem('orphanagePromoCode', data.code);
+      } catch (_) {}
+    } catch (err) {
+      errorEl.textContent = err.message || 'Ошибка соединения';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Отправить заявку';
+    }
+  });
+</script>
+</body>
+</html>
