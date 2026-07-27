@@ -23,6 +23,7 @@ import psychologistDashboard from './_handlers/psychologist-dashboard.js';
 import psychologistChat from './_handlers/psychologist-chat.js';
 import psychologistBooking from './_handlers/psychologist-booking.js';
 import psychologistReviews from './_handlers/psychologist-reviews.js';
+import psychologistReport from './_handlers/psychologist-report.js';
 
 import promocode from './_handlers/promocode.js';
 import promocodeStats from './_handlers/promocode-stats.js';
@@ -98,6 +99,8 @@ const ROUTES = {
   'psychologist-booking': psychologistBooking,
 
   'psychologist-reviews': psychologistReviews,
+
+  'psychologist-report': psychologistReport,
 
   promocode: promocode,
 

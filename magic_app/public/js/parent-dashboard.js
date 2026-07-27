@@ -1237,7 +1237,12 @@ function renderPsychologists(list) {
     return;
   }
 
-  container.innerHTML = list.map((p) => `
+  container.innerHTML = list.map((p) => {
+    const email = p.email ? String(p.email) : '';
+    const reportBtn = email
+      ? `<button type="button" class="report-psy-btn" data-psy-email="${escapeHelpHtml(email)}">🚩 Пожаловаться</button>`
+      : '';
+    return `
     <div class="specialist-card">
       <div class="specialist-card-head">
         <div>
@@ -1247,8 +1252,48 @@ function renderPsychologists(list) {
         </div>
       </div>
       ${specialistContactLinks(p)}
-    </div>
-  `).join('');
+      ${reportBtn ? `<div class="specialist-report-row">${reportBtn}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  container.querySelectorAll('.report-psy-btn').forEach((btn) => {
+    btn.addEventListener('click', () => reportPsychologist(btn.getAttribute('data-psy-email')));
+  });
+}
+
+async function reportPsychologist(email) {
+  if (!email) {
+    alert('Нельзя пожаловаться: у специалиста не указан email');
+    return;
+  }
+  const reason = prompt('Опишите причину жалобы:');
+  if (!reason || !reason.trim()) return;
+
+  const reportedBy = localStorage.getItem('userEmail') || '';
+  const token = localStorage.getItem('userToken') || '';
+
+  try {
+    const res = await fetch('/api/psychologist-report', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        psychologistEmail: email,
+        reason: reason.trim(),
+        reportedBy
+      })
+    });
+    if (res.ok) {
+      alert('✅ Жалоба отправлена. Мы проверим.');
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Не удалось отправить жалобу');
+    }
+  } catch (e) {
+    alert('Ошибка сети');
+  }
 }
 
 function renderSpecialists(list) {
@@ -1394,6 +1439,7 @@ window.saveChildrenNames = saveChildrenNames;
 window.showAttentionModal = showAttentionModal;
 window.generateChildLink = generateChildLink;
 window.generateChildQR = generateChildQR;
+window.reportPsychologist = reportPsychologist;
 
 document.getElementById('pinSubmitBtn')?.addEventListener('click', verifyPinSubmit);
 document.getElementById('pinInput')?.addEventListener('keydown', (e) => {

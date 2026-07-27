@@ -463,28 +463,111 @@ async function addSpecialist() {
   }
 }
 
+function getStatusBadge(p) {
+  if (p.active === false) return '🔴 Заблокирован';
+  if (p.flagged) return '🟠 Жалобы';
+  if (!p.clientsCount || p.clientsCount === 0) return '⚪ Новый';
+  if (p.clientsCount >= 10) return '⭐ Популярный';
+  return '🟢 Активен';
+}
+
+async function togglePsychologist(email, active) {
+  if (!email) {
+    alert('У психолога нет email — нельзя изменить статус');
+    return;
+  }
+  const action = active ? 'разблокировать' : 'заблокировать';
+  if (!confirm(`Точно ${action} ${email}?`)) return;
+
+  try {
+    const res = await fetch('/api/psychologists-list', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: getAdminToken()
+      },
+      body: JSON.stringify({ email, active })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      loadHelpLists();
+    } else {
+      alert(data.error || 'Ошибка');
+    }
+  } catch (e) {
+    alert('Ошибка сети');
+  }
+}
+
+async function clearPsychologistFlag(email) {
+  if (!email) return;
+  try {
+    const res = await fetch('/api/psychologists-list', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: getAdminToken()
+      },
+      body: JSON.stringify({ email, flagged: false })
+    });
+    if (res.ok) loadHelpLists();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 async function loadHelpLists() {
   const psyEl = document.getElementById('adminPsychologistsList');
   const specEl = document.getElementById('adminSpecialistsList');
+  const reportsEl = document.getElementById('adminPsyReports');
   if (!psyEl && !specEl) return;
 
   try {
-    const [psyRes, specRes] = await Promise.all([
-      fetch('/api/psychologists-list'),
-      fetch('/api/specialists-list')
+    const token = getAdminToken();
+    const [psyRes, specRes, reportsRes] = await Promise.all([
+      fetch('/api/psychologists-list', { headers: { Authorization: token } }),
+      fetch('/api/specialists-list'),
+      fetch('/api/psychologist-report', { headers: { Authorization: token } })
     ]);
     const psychologists = psyRes.ok ? await psyRes.json() : [];
     const specialists = specRes.ok ? await specRes.json() : [];
+    const reports = reportsRes.ok ? await reportsRes.json() : [];
 
     if (psyEl) {
       psyEl.innerHTML = Array.isArray(psychologists) && psychologists.length
-        ? psychologists.map((p) => `
-            <div class="admin-list-row">
-              <span>👩‍⚕️ ${escapeHtml(p.name)}${p.email ? ` · ${escapeHtml(p.email)}` : ''}${p.city ? ` · ${escapeHtml(p.city)}` : ''}</span>
-              <span>${escapeHtml(p.promoCode || p.specialization || '')}</span>
+        ? psychologists.map((p) => {
+          const email = p.email || '';
+          const emailAttr = escapeHtml(email);
+          const blockBtn = email
+            ? (p.active !== false
+              ? `<button type="button" class="modal-btn psy-admin-btn" data-toggle-psy="${emailAttr}" data-active="0">Заблокировать</button>`
+              : `<button type="button" class="modal-btn psy-admin-btn" data-toggle-psy="${emailAttr}" data-active="1">Разблокировать</button>`)
+            : '';
+          const clearFlag = email && p.flagged
+            ? `<button type="button" class="modal-btn psy-admin-btn" data-clear-flag="${emailAttr}">Снять флаг</button>`
+            : '';
+          return `
+            <div class="admin-list-row admin-psy-row">
+              <div>
+                <strong>👩‍⚕️ ${escapeHtml(p.name)}</strong>
+                <div class="admin-psy-meta">${escapeHtml(email || 'без email')}${p.city ? ` · ${escapeHtml(p.city)}` : ''}</div>
+                <div class="admin-psy-status">${getStatusBadge(p)}${p.flagReason ? ` · ${escapeHtml(p.flagReason)}` : ''}</div>
+                <div class="admin-psy-meta">Код: ${escapeHtml(p.promoCode || '—')} · клиентов: ${Number(p.clientsCount) || 0}</div>
+              </div>
+              <div class="admin-psy-actions">${blockBtn}${clearFlag}</div>
             </div>
-          `).join('')
+          `;
+        }).join('')
         : '<div class="empty-state">Пока нет психологов</div>';
+
+      psyEl.querySelectorAll('[data-toggle-psy]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          togglePsychologist(btn.getAttribute('data-toggle-psy'), btn.getAttribute('data-active') === '1');
+        });
+      });
+      psyEl.querySelectorAll('[data-clear-flag]').forEach((btn) => {
+        btn.addEventListener('click', () => clearPsychologistFlag(btn.getAttribute('data-clear-flag')));
+      });
     }
 
     if (specEl) {
@@ -496,6 +579,17 @@ async function loadHelpLists() {
             </div>
           `).join('')
         : '<div class="empty-state">Пока нет специалистов</div>';
+    }
+
+    if (reportsEl) {
+      reportsEl.innerHTML = Array.isArray(reports) && reports.length
+        ? reports.slice(0, 20).map((r) => `
+            <div class="admin-list-row">
+              <span>🚩 ${escapeHtml(r.psychologistEmail)} · ${escapeHtml(r.reason)}</span>
+              <span>${r.timestamp ? escapeHtml(new Date(r.timestamp).toLocaleString('ru-RU')) : ''}</span>
+            </div>
+          `).join('')
+        : '<div class="empty-state">Жалоб нет</div>';
     }
   } catch (e) {
     console.error('Help lists load error:', e);
@@ -613,5 +707,6 @@ window.showAddPsychologistForm = showAddPsychologistForm;
 window.showAddSpecialistForm = showAddSpecialistForm;
 window.addPsychologist = addPsychologist;
 window.addSpecialist = addSpecialist;
+window.togglePsychologist = togglePsychologist;
 
 export { adminLogin, adminLogout, loadAdminStats, showAddPsychologistForm, showAddSpecialistForm };

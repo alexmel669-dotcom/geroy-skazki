@@ -277,6 +277,9 @@
         localStorage.setItem('guestMode', 'false');
         localStorage.setItem('userPlan', data.user?.plan || 'free');
         if (data.user?.planExpiry) localStorage.setItem('planExpiry', data.user.planExpiry);
+        if (!localStorage.getItem('userCreatedAt')) {
+          localStorage.setItem('userCreatedAt', new Date().toISOString());
+        }
         if (data.user?.promocodeUsed) localStorage.setItem('promocodeUsed', data.user.promocodeUsed);
         if (data.promoMessage) localStorage.setItem('promoMessage', data.promoMessage);
         if (data.user?.role) localStorage.setItem('userRole', data.user.role);

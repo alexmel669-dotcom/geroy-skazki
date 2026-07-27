@@ -3247,8 +3247,82 @@ body.has-dev-panel {
   font-size: 14px;
 }
 
-.specialist-link:hover {
+.specialist-report-row {
+  margin-top: 10px;
+}
+
+.report-psy-btn {
+  background: none;
+  border: 1px solid #ff4444;
+  color: #ff4444;
+  padding: 4px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.report-psy-btn:hover {
+  background: rgba(255, 68, 68, 0.12);
+}
+
+.admin-psy-row {
+  flex-direction: column;
+  align-items: stretch !important;
+  gap: 8px;
+}
+
+.admin-psy-meta {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.admin-psy-status {
+  margin-top: 4px;
+  font-size: 0.85rem;
+}
+
+.admin-psy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.psy-admin-btn {
+  padding: 4px 10px !important;
+  font-size: 0.75rem !important;
+}
+
+.trial-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: #6C63FF;
+  color: #fff;
+  text-align: center;
+  padding: 12px 36px 12px 12px;
+  z-index: 9999;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.trial-banner a {
+  color: #fff;
   text-decoration: underline;
+  font-weight: 600;
+}
+
+.trial-banner-close {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
 }
 
 /* Админка: психологи / специалисты */
