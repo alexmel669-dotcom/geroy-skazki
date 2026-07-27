@@ -1207,6 +1207,94 @@ function loadStorybook() {
     : '<p>Здесь будут сказки которые Люцик рассказывает вашему ребёнку.</p>';
 }
 
+function escapeHelpHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function specialistContactLinks(person) {
+  const phone = person.phone ? String(person.phone).trim() : '';
+  const tgRaw = person.telegram ? String(person.telegram).trim() : '';
+  const tg = tgRaw.replace(/^@/, '');
+  const parts = [];
+  if (phone) {
+    parts.push(`<a href="tel:${escapeHelpHtml(phone)}" class="specialist-link">📞 Позвонить</a>`);
+  }
+  if (tg) {
+    parts.push(`<a href="https://t.me/${encodeURIComponent(tg)}" target="_blank" rel="noopener" class="specialist-link">💬 Telegram</a>`);
+  }
+  return parts.length ? `<div class="specialist-contacts">${parts.join('')}</div>` : '';
+}
+
+function renderPsychologists(list) {
+  const container = document.getElementById('psychologistsContainer');
+  if (!container) return;
+  if (!Array.isArray(list) || !list.length) {
+    container.innerHTML = '<p class="help-empty">Психологи скоро появятся</p>';
+    return;
+  }
+
+  container.innerHTML = list.map((p) => `
+    <div class="specialist-card">
+      <div class="specialist-card-head">
+        <div>
+          <h4>👩‍⚕️ ${escapeHelpHtml(p.name)}</h4>
+          <p class="specialist-spec">${escapeHelpHtml(p.specialization || '')}</p>
+          <p class="specialist-meta">Опыт: ${escapeHelpHtml(p.experience || '—')} | ${escapeHelpHtml(p.city || '—')}</p>
+        </div>
+      </div>
+      ${specialistContactLinks(p)}
+    </div>
+  `).join('');
+}
+
+function renderSpecialists(list) {
+  const container = document.getElementById('specialistsContainer');
+  if (!container) return;
+  if (!Array.isArray(list) || !list.length) {
+    container.innerHTML = '<p class="help-empty">Специалисты скоро появятся</p>';
+    return;
+  }
+
+  const typeNames = {
+    defectologist: '🧩 Дефектолог',
+    neuropsychologist: '🧠 Нейропсихолог',
+    speech_therapist: '🗣️ Логопед',
+    hearing_specialist: '👂 Сурдопедагог'
+  };
+
+  container.innerHTML = list.map((s) => `
+    <div class="specialist-card">
+      <h4>${typeNames[s.type] || '👩‍⚕️'} ${escapeHelpHtml(s.name)}</h4>
+      <p class="specialist-spec">${escapeHelpHtml(s.specialization || '')}</p>
+      <p class="specialist-meta">Опыт: ${escapeHelpHtml(s.experience || '—')} | ${escapeHelpHtml(s.city || '—')}</p>
+      ${specialistContactLinks(s)}
+    </div>
+  `).join('');
+}
+
+async function loadHelpSection() {
+  const psyContainer = document.getElementById('psychologistsContainer');
+  const specContainer = document.getElementById('specialistsContainer');
+  try {
+    const [psyRes, specRes] = await Promise.all([
+      fetch('/api/psychologists-list'),
+      fetch('/api/specialists-list')
+    ]);
+    const psychologists = psyRes.ok ? await psyRes.json() : [];
+    const specialists = specRes.ok ? await specRes.json() : [];
+    renderPsychologists(Array.isArray(psychologists) ? psychologists : []);
+    renderSpecialists(Array.isArray(specialists) ? specialists : []);
+  } catch (e) {
+    console.error('Help section error:', e);
+    if (psyContainer) psyContainer.innerHTML = '<p class="help-empty">Не удалось загрузить список</p>';
+    if (specContainer) specContainer.innerHTML = '<p class="help-empty">Не удалось загрузить список</p>';
+  }
+}
+
 function loadParentDashboard() {
   loadAllData();
 }
@@ -1218,6 +1306,7 @@ function loadAllData() {
   loadStorybook();
   bindNotificationSettingsUI();
   initNotificationScheduler().catch(() => {});
+  loadHelpSection();
   const children = getChildren();
 
   document.getElementById('childrenNamesInput').value = localStorage.getItem('childrenNames') || '';
