@@ -21,10 +21,12 @@ export default async function handler(req, res) {
       email: user.email,
       username: user.username || user.email,
       parentName: profile?.parentName || profile?.username || null,
-      role: user.role,
+      role: profile?.role || user.role || 'user',
       plan,
       planExpiry: profile?.planExpiry || null,
-      promocodeUsed: profile?.promocodeUsed || null
+      promocodeUsed: profile?.promocodeUsed || null,
+      promoCode: profile?.promoCode || null,
+      maxChildren: profile?.maxChildren || null
     }
   });
 }

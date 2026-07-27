@@ -124,16 +124,21 @@ export default async function handler(req, res) {
     const passwordHash = hashPassword(password);
     const parentPinHash = hashPassword(pinStr);
     const secretAnswerHash = hashPassword(secretAnswerNorm);
-    const role = ADMIN_EMAILS.includes(normalizedEmail) ? 'admin' : 'user';
 
     let plan = 'free';
     let planExpiry = null;
     let promocodeUsed = null;
     let promoMessage = null;
+    let role = ADMIN_EMAILS.includes(normalizedEmail) ? 'admin' : 'user';
+    let maxChildren = null;
+    let userPromoCode = null;
 
     const promo = validatePromocode(promocode);
     if (promo) {
       const promoCodeKey = promo.code;
+      const isClientPsyCode = promoCodeKey.startsWith('PSY-') && promoCodeKey.includes('-CLIENT');
+      const isPartnerPsyCode = promoCodeKey.startsWith('PSY-') && !isClientPsyCode;
+      const isOrphCode = promoCodeKey.startsWith('ORPH-');
 
       if (promo.code === 'FOUNDERS' || promo.type === 'public') {
         const used = await getPromoUsage(promo.code);
@@ -143,7 +148,7 @@ export default async function handler(req, res) {
         }
       }
 
-      if (promoCodeKey.startsWith('PSY-') || promoCodeKey.startsWith('SPEC-')) {
+      if (isClientPsyCode || promoCodeKey.startsWith('SPEC-')) {
         const usage = await getPromoUsage(promoCodeKey);
         if (usage >= 1) {
           return res.status(400).json({ error: 'Промокод уже использован' });
@@ -153,12 +158,24 @@ export default async function handler(req, res) {
           code: promoCodeKey,
           activatedAt: new Date().toISOString()
         });
+      }
 
-        if (promoCodeKey.startsWith('PSY-')) {
-          const psyList = (await redis.get('geroy:psychologists')) || [];
-          const psy = Array.isArray(psyList)
-            ? psyList.find((p) => String(p.promoCode || '').toUpperCase() === promoCodeKey)
-            : null;
+      if (isClientPsyCode) {
+        const psychologistCode = promoCodeKey.replace(/-CLIENT$/i, '');
+        const codeRefs = (await redis.get(`geroy:psychologist:referrals:${psychologistCode}`)) || [];
+        const codeList = Array.isArray(codeRefs) ? [...codeRefs] : [];
+        codeList.push({
+          clientEmail: normalizedEmail,
+          clientName: String(parentName || '').trim() || username,
+          activatedAt: new Date().toISOString()
+        });
+        await redis.set(`geroy:psychologist:referrals:${psychologistCode}`, codeList);
+
+        const psyList = (await redis.get('geroy:psychologists')) || [];
+        if (Array.isArray(psyList)) {
+          const psy = psyList.find(
+            (p) => String(p.promoCode || '').toUpperCase() === psychologistCode
+          );
           if (psy?.email) {
             const refKey = `geroy:psychologist:${String(psy.email).toLowerCase()}:referrals`;
             const refs = (await redis.get(refKey)) || [];
@@ -170,7 +187,9 @@ export default async function handler(req, res) {
               activatedAt: new Date().toISOString()
             });
             await redis.set(refKey, list);
-            const idx = psyList.findIndex((p) => String(p.promoCode || '').toUpperCase() === promoCodeKey);
+            const idx = psyList.findIndex(
+              (p) => String(p.promoCode || '').toUpperCase() === psychologistCode
+            );
             if (idx >= 0) {
               psyList[idx].clientsCount = (Number(psyList[idx].clientsCount) || 0) + 1;
               await redis.set('geroy:psychologists', psyList);
@@ -179,7 +198,7 @@ export default async function handler(req, res) {
         }
       }
 
-      if (promoCodeKey.startsWith('ORPH-')) {
+      if (isOrphCode) {
         const verified = await redis.get(`geroy:orphanage:verified:${promoCodeKey}`);
         if (!verified) {
           return res.status(400).json({ error: 'Промокод требует верификации' });
@@ -192,6 +211,17 @@ export default async function handler(req, res) {
       promocodeUsed = applied.promocodeUsed;
       promoMessage = `Активирован тариф «${plan}» на ${promo.days} дней!`;
       await incrementPromoUsage(promo.code);
+
+      if (role !== 'admin') {
+        if (isPartnerPsyCode) {
+          role = 'psychologist';
+          userPromoCode = promoCodeKey;
+        } else if (isOrphCode) {
+          role = 'orphanage';
+          maxChildren = 10;
+          userPromoCode = promoCodeKey;
+        }
+      }
     }
 
     const user = {
@@ -208,6 +238,8 @@ export default async function handler(req, res) {
       plan,
       planExpiry,
       promocodeUsed,
+      promoCode: userPromoCode,
+      maxChildren,
       role,
       secretQuestion: secretKey,
       secretAnswerHash,
@@ -231,7 +263,9 @@ export default async function handler(req, res) {
         plan: effectivePlan,
         planExpiry: saved.planExpiry || null,
         promocodeUsed: saved.promocodeUsed || null,
-        role,
+        promoCode: saved.promoCode || null,
+        role: saved.role || role,
+        maxChildren: saved.maxChildren || null,
         children: normalizedChildren
       }
     });

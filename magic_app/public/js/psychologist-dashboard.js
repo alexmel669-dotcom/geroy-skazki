@@ -32,6 +32,19 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+function showApply() {
+  const apply = document.getElementById('psyApplySection');
+  const login = document.getElementById('psyLogin');
+  const dash = document.getElementById('psyDashboard');
+  if (apply) apply.hidden = false;
+  if (login) login.hidden = true;
+  if (dash) dash.hidden = true;
+  if (state.chatPoll) {
+    clearInterval(state.chatPoll);
+    state.chatPoll = null;
+  }
+}
+
 function showLogin() {
   document.getElementById('psyApplySection') && (document.getElementById('psyApplySection').hidden = true);
   document.getElementById('psyLogin').hidden = false;
@@ -46,6 +59,40 @@ function showDashboard() {
   document.getElementById('psyApplySection') && (document.getElementById('psyApplySection').hidden = true);
   document.getElementById('psyLogin').hidden = true;
   document.getElementById('psyDashboard').hidden = false;
+}
+
+async function checkPsychologistAccess() {
+  const token = localStorage.getItem(STORAGE_TOKEN);
+  if (!token) {
+    showApply();
+    return false;
+  }
+
+  try {
+    const res = await fetch('/api/verify-token', {
+      headers: {
+        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (!data.valid || data.user?.role !== 'psychologist') {
+      alert('Доступ только для психологов-партнёров');
+      showApply();
+      location.hash = 'apply';
+      return false;
+    }
+
+    state.token = token;
+    state.email = data.user?.email || state.email;
+    localStorage.setItem(STORAGE_EMAIL, state.email);
+    localStorage.setItem('userRole', 'psychologist');
+    showDashboard();
+    await loadAll();
+    return true;
+  } catch {
+    showApply();
+    return false;
+  }
 }
 
 async function psyLogin() {
@@ -76,13 +123,18 @@ async function psyLogin() {
       return;
     }
 
+    if (data.user?.role !== 'psychologist') {
+      errEl.textContent = 'Доступ только для психологов-партнёров';
+      return;
+    }
+
     state.token = data.token || localStorage.getItem(STORAGE_TOKEN) || '';
     state.email = data.user?.email || email;
     localStorage.setItem(STORAGE_TOKEN, state.token);
     localStorage.setItem(STORAGE_EMAIL, state.email);
     localStorage.setItem('userEmail', state.email);
     localStorage.setItem('isAuth', 'true');
-    if (data.user?.role) localStorage.setItem('userRole', data.user.role);
+    localStorage.setItem('userRole', 'psychologist');
 
     showDashboard();
     await loadAll();
@@ -97,7 +149,7 @@ async function psyLogin() {
 function psyLogout() {
   state = { email: '', token: '', slots: [], activeChatParent: null, chatPoll: null };
   localStorage.removeItem(STORAGE_EMAIL);
-  showLogin();
+  showApply();
 }
 
 function switchTab(tab) {
@@ -135,6 +187,21 @@ function renderStats(data) {
   document.getElementById('statBookings').textContent = data.bookingsThisWeek ?? 0;
   document.getElementById('statRating').textContent = data.averageRating ?? '0';
   document.getElementById('statEarned').textContent = `${data.totalEarned ?? 0}₽`;
+
+  let promoBox = document.getElementById('psyPromoCodesBox');
+  if (!promoBox) {
+    promoBox = document.createElement('div');
+    promoBox.id = 'psyPromoCodesBox';
+    promoBox.className = 'psy-promo-box';
+    const grid = document.getElementById('psyStatGrid');
+    grid?.parentElement?.insertBefore(promoBox, grid.nextSibling);
+  }
+  promoBox.innerHTML = `
+    <h3>🔗 Ваши промокоды</h3>
+    <p><strong>Ваш код:</strong> <code>${escapeHtml(data.promoCode || '—')}</code></p>
+    <p><strong>Код для клиентов:</strong> <code>${escapeHtml(data.clientPromoCode || '—')}</code></p>
+    <p class="psy-promo-hint">Дайте клиентский код родителям — они получат Premium, а вы увидите их в дашборде.</p>
+  `;
 
   const upcoming = document.getElementById('psyUpcoming');
   const list = data.upcomingBookings || [];
@@ -367,15 +434,10 @@ document.getElementById('psyChatInput')?.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-  if (state.email && state.token) {
-    showDashboard();
-    await loadAll();
+  if (location.hash === '#cabinet' || (state.email && state.token)) {
+    await checkPsychologistAccess();
   } else {
-    // leave apply form visible by default; login hidden until requested
-    const login = document.getElementById('psyLogin');
-    const dash = document.getElementById('psyDashboard');
-    if (login) login.hidden = true;
-    if (dash) dash.hidden = true;
+    showApply();
     if (state.email) {
       const emailInput = document.getElementById('psyEmail');
       if (emailInput) emailInput.value = state.email;
