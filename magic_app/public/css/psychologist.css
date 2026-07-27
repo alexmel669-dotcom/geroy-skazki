@@ -126,6 +126,26 @@
   border-radius: 6px;
 }
 
+.psy-promo-box {
+  background: rgba(255, 215, 0, 0.1);
+  padding: 16px;
+  border-radius: 12px;
+  margin: 16px 0;
+}
+
+.psy-promo-box h3 {
+  margin: 0 0 10px;
+}
+
+.psy-promo-box p {
+  margin: 6px 0;
+}
+
+.psy-promo-hint {
+  color: #aaa;
+  font-size: 12px;
+}
+
 .psy-tabs {
   display: flex;
   gap: 6px;

@@ -27,7 +27,25 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const referrals = asArray(await redis.get(`geroy:psychologist:${email}:referrals`));
+    const promoCode = access.promoCode || access.profile?.promoCode || access.user?.promoCode || null;
+    const emailReferrals = asArray(await redis.get(`geroy:psychologist:${email}:referrals`));
+    const codeReferrals = promoCode
+      ? asArray(await redis.get(`geroy:psychologist:referrals:${promoCode}`))
+      : [];
+    const referralsMap = new Map();
+    [...emailReferrals, ...codeReferrals].forEach((r) => {
+      const key = String(r.userEmail || r.clientEmail || r.email || '').toLowerCase();
+      if (!key) return;
+      if (!referralsMap.has(key)) {
+        referralsMap.set(key, {
+          userEmail: key,
+          parentName: r.parentName || r.clientName || key,
+          code: r.code || null,
+          activatedAt: r.activatedAt || null
+        });
+      }
+    });
+    const referrals = [...referralsMap.values()];
     const chats = asArray(await redis.get(`geroy:psychologist:${email}:chats`));
     const bookings = asArray(await redis.get(`geroy:psychologist:${email}:bookings`));
     const reviews = asArray(await redis.get(`geroy:psychologist:${email}:reviews`));
@@ -53,7 +71,8 @@ export default async function handler(req, res) {
     return res.status(200).json({
       email,
       name: access.name || email,
-      promoCode: access.promoCode || access.profile?.promoCode || null,
+      promoCode,
+      clientPromoCode: promoCode ? `${promoCode}-CLIENT` : null,
       specialization: access.profile?.specialization || '',
       totalClients: referrals.length || access.profile?.clientsCount || 0,
       activeChats: chats.filter((c) => c.status === 'active').length,
