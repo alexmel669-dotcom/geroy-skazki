@@ -6,9 +6,15 @@ import { setAuthCookie } from '../_lib/cookies.js';
 import { logError } from '../_lib/auth-log.js';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '../_middleware/auth.js';
+import { Redis } from '@upstash/redis';
 import { validatePromocode, buildPlanFromPromo, getEffectivePlan } from '../_lib/promocodes.js';
 import { getPromoUsage, incrementPromoUsage, PROMO_LIMIT } from '../_lib/promo-counter.js';
 import { isValidSecretQuestionKey, normalizeSecretAnswer } from '../_lib/secret-questions.js';
+
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN
+});
 
 const MIN_AGE = 3;
 const MAX_AGE = 14;
@@ -127,12 +133,35 @@ export default async function handler(req, res) {
 
     const promo = validatePromocode(promocode);
     if (promo) {
-      if (promo.code === 'FOUNDERS') {
+      const promoCodeKey = promo.code;
+
+      if (promo.code === 'FOUNDERS' || promo.type === 'public') {
         const used = await getPromoUsage(promo.code);
-        if (used >= PROMO_LIMIT) {
-          return res.status(400).json({ error: 'Все 100 мест по промокоду FOUNDERS заняты' });
+        const limit = promo.limit || PROMO_LIMIT;
+        if (used >= limit) {
+          return res.status(400).json({ error: `Все ${limit} мест по промокоду заняты` });
         }
       }
+
+      if (promoCodeKey.startsWith('PSY-') || promoCodeKey.startsWith('SPEC-')) {
+        const usage = await getPromoUsage(promoCodeKey);
+        if (usage >= 1) {
+          return res.status(400).json({ error: 'Промокод уже использован' });
+        }
+        await redis.set(`geroy:referral:${promoCodeKey}`, {
+          userEmail: normalizedEmail,
+          code: promoCodeKey,
+          activatedAt: new Date().toISOString()
+        });
+      }
+
+      if (promoCodeKey.startsWith('ORPH-')) {
+        const verified = await redis.get(`geroy:orphanage:verified:${promoCodeKey}`);
+        if (!verified) {
+          return res.status(400).json({ error: 'Промокод требует верификации' });
+        }
+      }
+
       const applied = buildPlanFromPromo(promo);
       plan = applied.plan;
       planExpiry = applied.planExpiry;

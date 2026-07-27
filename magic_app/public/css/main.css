@@ -3492,3 +3492,79 @@ body.has-dev-panel {
   25% { transform: rotate(-5deg); }
   75% { transform: rotate(5deg); }
 }
+
+/* ========================================
+   Особые режимы доступности
+   ======================================== */
+
+.large-font {
+  font-size: 20px !important;
+}
+.large-font button {
+  font-size: 22px !important;
+  padding: 16px 24px !important;
+}
+.large-font input,
+.large-font textarea {
+  font-size: 20px !important;
+}
+
+.high-contrast {
+  --bg: #000;
+  --text: #fff;
+  --accent: #ffff00;
+  background: #000 !important;
+  color: #fff !important;
+}
+.high-contrast .card,
+.high-contrast .auth-card,
+.high-contrast .container {
+  background: #111 !important;
+  border: 2px solid #fff !important;
+}
+.high-contrast button,
+.high-contrast .btn {
+  border: 2px solid #ffff00 !important;
+  color: #fff !important;
+}
+
+.subtitle-overlay {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 18px;
+  z-index: 1000;
+  max-width: 90%;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.subtitle-overlay.visible {
+  opacity: 1;
+}
+
+.quick-replies {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px;
+  justify-content: center;
+}
+.quick-replies button {
+  background: var(--accent, #6C63FF);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.quick-replies button:active {
+  transform: scale(0.96);
+}
