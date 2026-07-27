@@ -675,10 +675,112 @@ async function loadAdminStats() {
     renderFeedbacks(stats.feedbacks);
     loadThanks();
     loadHelpLists();
+    loadApplications(currentAppType);
   } catch (error) {
     console.error('Admin stats error:', error);
     errEl.textContent = 'Ошибка сети при загрузке статистики';
     errEl.style.display = 'block';
+  }
+}
+
+let currentAppType = 'psychologist';
+
+function appStatusLabel(status) {
+  if (status === 'approved') return '🟢 Одобрен';
+  if (status === 'rejected') return '🔴 Отклонён';
+  return '🟡 На проверке';
+}
+
+async function loadApplications(type = 'psychologist') {
+  currentAppType = type === 'orphanage' ? 'orphanage' : 'psychologist';
+  document.querySelectorAll('.app-type-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.appType === currentAppType);
+  });
+
+  const container = document.getElementById('applicationsList');
+  if (!container) return;
+
+  try {
+    const res = await fetch(`/api/admin-applications?type=${currentAppType}`, {
+      headers: { Authorization: getAdminToken() }
+    });
+    if (!res.ok) {
+      container.innerHTML = '<div class="empty-state">Не удалось загрузить заявки</div>';
+      return;
+    }
+    const apps = await res.json();
+    if (!Array.isArray(apps) || !apps.length) {
+      container.innerHTML = '<p class="help-empty" style="color:#666;">Нет заявок</p>';
+      return;
+    }
+
+    container.innerHTML = apps.map((a) => {
+      const email = escapeHtml(a.email || '');
+      const docs = a.documents
+        ? `<a href="${escapeHtml(a.documents)}" target="_blank" rel="noopener" class="specialist-link">📄 Документы</a>`
+        : '';
+      const meta = currentAppType === 'orphanage'
+        ? `${escapeHtml(a.position || a.contactName || '')} | ${email} | ${escapeHtml(a.contactPhone || a.phone || '')}`
+        : `${escapeHtml(a.specialization || '')} | ${email} | ${escapeHtml(a.phone || '')}`;
+      const actions = a.status === 'pending'
+        ? `<div class="admin-app-actions">
+            <button type="button" class="modal-btn app-approve" data-email="${email}">✅ Одобрить</button>
+            <button type="button" class="modal-btn app-reject" data-email="${email}">❌ Отклонить</button>
+          </div>`
+        : (a.promoCode ? `<div class="admin-psy-meta">Код: ${escapeHtml(a.promoCode)}</div>` : '');
+
+      return `
+        <div class="admin-app-card">
+          <div class="admin-app-head">
+            <strong>${escapeHtml(a.name || '—')}</strong>
+            <span>${appStatusLabel(a.status)}</span>
+          </div>
+          <p class="admin-psy-meta">${meta}${a.city ? ` · ${escapeHtml(a.city)}` : ''}</p>
+          ${a.childrenCount ? `<p class="admin-psy-meta">Детей: ${escapeHtml(a.childrenCount)}</p>` : ''}
+          ${docs}
+          ${actions}
+        </div>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.app-approve').forEach((btn) => {
+      btn.addEventListener('click', () => reviewApplication(currentAppType, btn.getAttribute('data-email'), 'approved'));
+    });
+    container.querySelectorAll('.app-reject').forEach((btn) => {
+      btn.addEventListener('click', () => reviewApplication(currentAppType, btn.getAttribute('data-email'), 'rejected'));
+    });
+  } catch (e) {
+    console.error('Applications load error:', e);
+    container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+  }
+}
+
+async function reviewApplication(type, email, status) {
+  if (!email) return;
+  const label = status === 'approved' ? 'одобрить' : 'отклонить';
+  if (!confirm(`Точно ${label} заявку ${email}?`)) return;
+
+  try {
+    const res = await fetch('/api/admin-applications', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: getAdminToken()
+      },
+      body: JSON.stringify({ type, email, status })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Ошибка');
+      return;
+    }
+    if (status === 'approved' && data.code) {
+      alert('Одобрено. Промокод: ' + data.code);
+    }
+    loadApplications(type);
+    loadHelpLists();
+  } catch (e) {
+    alert('Ошибка сети');
   }
 }
 
@@ -690,6 +792,9 @@ document.getElementById('adminLogoutBtn')?.addEventListener('click', adminLogout
 document.getElementById('refreshStatsBtn')?.addEventListener('click', loadAdminStats);
 document.getElementById('addPsychologistBtn')?.addEventListener('click', showAddPsychologistForm);
 document.getElementById('addSpecialistBtn')?.addEventListener('click', showAddSpecialistForm);
+document.querySelectorAll('.app-type-btn').forEach((btn) => {
+  btn.addEventListener('click', () => loadApplications(btn.dataset.appType));
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   if (sessionStorage.getItem('admin-auth') === 'true' && getAdminToken()) {
@@ -708,5 +813,7 @@ window.showAddSpecialistForm = showAddSpecialistForm;
 window.addPsychologist = addPsychologist;
 window.addSpecialist = addSpecialist;
 window.togglePsychologist = togglePsychologist;
+window.loadApplications = loadApplications;
+window.reviewApplication = reviewApplication;
 
 export { adminLogin, adminLogout, loadAdminStats, showAddPsychologistForm, showAddSpecialistForm };

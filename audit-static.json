@@ -1,0 +1,52 @@
+{
+  "links": {
+    "htmlFiles": 12,
+    "brokenCount": 0,
+    "broken": []
+  },
+  "envUsed": [
+    "ADMIN_API_TOKEN",
+    "ADMIN_EMAIL",
+    "ADMIN_EMAILS",
+    "ADMIN_PASSWORD",
+    "DEEPSEEK_API_KEY",
+    "JWT_SECRET",
+    "KV_REST_API_TOKEN",
+    "KV_REST_API_URL",
+    "NODE_ENV",
+    "PORT",
+    "RAILWAY_PUBLIC_DOMAIN",
+    "RESEND_API_KEY",
+    "RUN_API_TESTS",
+    "TEST_API_URL",
+    "VERCEL",
+    "VERCEL_URL",
+    "YANDEX_API_KEY",
+    "YANDEX_FOLDER_ID"
+  ],
+  "secrets": [
+    {
+      "file": "magic_app/api/_handlers/admin-login.js",
+      "kind": "default-admin-password"
+    },
+    {
+      "file": "magic_app/api/_lib/admin-token.js",
+      "kind": "default-admin-token"
+    },
+    {
+      "file": "magic_app/api/_middleware/auth.js",
+      "kind": "dev-jwt-fallback"
+    },
+    {
+      "file": "magic_app/scripts/reset-admin-password.mjs",
+      "kind": "default-admin-password"
+    }
+  ],
+  "security": {
+    "corsFile": true,
+    "rateLimitFile": true,
+    "loginUsesRateLimit": true,
+    "registerUsesRateLimit": true,
+    "corsAllowsOrigin": true
+  }
+}

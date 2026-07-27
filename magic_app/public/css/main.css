@@ -3325,6 +3325,139 @@ body.has-dev-panel {
   cursor: pointer;
 }
 
+/* Формы заявок */
+.form-input {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #0a0a1e;
+  color: #fff;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+.form-input:focus {
+  border-color: #6C63FF;
+  outline: none;
+}
+
+.apply-card {
+  text-align: left;
+}
+
+.apply-lead {
+  opacity: 0.85;
+  line-height: 1.45;
+  margin: 0 0 14px;
+}
+
+.apply-benefits {
+  margin: 0 0 18px;
+  padding-left: 18px;
+  line-height: 1.55;
+  opacity: 0.9;
+}
+
+.apply-form label {
+  display: block;
+  font-size: 0.9rem;
+  margin-top: 8px;
+  opacity: 0.9;
+}
+
+.apply-check {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0 8px !important;
+  font-size: 0.85rem !important;
+  line-height: 1.35;
+}
+
+.apply-check input {
+  margin-top: 3px;
+}
+
+.apply-success {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(76, 175, 80, 0.18);
+  border: 1px solid rgba(129, 199, 132, 0.4);
+  text-align: center;
+}
+
+.psy-apply-wrap {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px 0 40px;
+}
+
+.orphanage-page { max-width: 520px; }
+.orphanage-hero { text-align: center; margin-bottom: 20px; }
+.orphanage-hero h1 { font-size: 1.6rem; margin: 12px 0 8px; }
+.orphanage-hero p { opacity: 0.85; line-height: 1.45; margin: 0; }
+.orphanage-benefits {
+  text-align: left;
+  margin: 20px 0;
+  padding: 16px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 16px;
+}
+.orphanage-benefits h2 { font-size: 1.05rem; margin: 0 0 10px; }
+.orphanage-benefits ul { margin: 0; padding-left: 18px; line-height: 1.55; }
+.orphanage-result {
+  display: none;
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(76, 175, 80, 0.18);
+  border: 1px solid rgba(129, 199, 132, 0.4);
+  text-align: center;
+}
+.orphanage-result.visible { display: block; }
+.orphanage-note { font-size: 0.85rem; opacity: 0.8; margin-top: 8px; }
+.orphanage-error {
+  color: #ef9a9a;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.admin-app-card {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 16px;
+  border-radius: 12px;
+  margin: 8px 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-app-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-app-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-app-actions .app-approve {
+  background: #4CAF50 !important;
+}
+
+.admin-app-actions .app-reject {
+  background: #f44336 !important;
+}
+
+.app-type-btn.active {
+  outline: 2px solid #6C63FF;
+}
+
 /* Админка: психологи / специалисты */
 .admin-help-actions {
   display: flex;

@@ -33,6 +33,7 @@ function escapeHtml(str) {
 }
 
 function showLogin() {
+  document.getElementById('psyApplySection') && (document.getElementById('psyApplySection').hidden = true);
   document.getElementById('psyLogin').hidden = false;
   document.getElementById('psyDashboard').hidden = true;
   if (state.chatPoll) {
@@ -42,6 +43,7 @@ function showLogin() {
 }
 
 function showDashboard() {
+  document.getElementById('psyApplySection') && (document.getElementById('psyApplySection').hidden = true);
   document.getElementById('psyLogin').hidden = true;
   document.getElementById('psyDashboard').hidden = false;
 }
@@ -369,7 +371,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     showDashboard();
     await loadAll();
   } else {
-    showLogin();
-    if (state.email) document.getElementById('psyEmail').value = state.email;
+    // leave apply form visible by default; login hidden until requested
+    const login = document.getElementById('psyLogin');
+    const dash = document.getElementById('psyDashboard');
+    if (login) login.hidden = true;
+    if (dash) dash.hidden = true;
+    if (state.email) {
+      const emailInput = document.getElementById('psyEmail');
+      if (emailInput) emailInput.value = state.email;
+    }
   }
 });
