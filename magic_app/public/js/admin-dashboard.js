@@ -313,6 +313,195 @@ async function loadThanks() {
   }
 }
 
+const SPECIALIST_TYPE_LABELS = {
+  defectologist: 'Дефектолог',
+  neuropsychologist: 'Нейропсихолог',
+  speech_therapist: 'Логопед',
+  hearing_specialist: 'Сурдопедагог'
+};
+
+function closeAdminModal() {
+  document.getElementById('adminHelpModal')?.remove();
+  document.getElementById('adminHelpModalBackdrop')?.remove();
+}
+
+function openAdminModal(title, fieldsHtml, onSubmit) {
+  closeAdminModal();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'adminHelpModalBackdrop';
+  backdrop.className = 'admin-help-modal-backdrop';
+  backdrop.addEventListener('click', closeAdminModal);
+
+  const form = document.createElement('div');
+  form.id = 'adminHelpModal';
+  form.className = 'admin-help-modal';
+  form.innerHTML = `
+    <h3>${title}</h3>
+    ${fieldsHtml}
+    <div class="admin-help-modal-actions">
+      <button type="button" class="modal-btn" id="adminHelpSubmit">Добавить</button>
+      <button type="button" class="modal-btn admin-help-cancel" id="adminHelpCancel">Отмена</button>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+  document.body.appendChild(form);
+  form.querySelector('#adminHelpCancel')?.addEventListener('click', closeAdminModal);
+  form.querySelector('#adminHelpSubmit')?.addEventListener('click', onSubmit);
+}
+
+function showAddPsychologistForm() {
+  openAdminModal(
+    'Добавить психолога',
+    `
+      <input id="psyName" class="admin-help-input" placeholder="Имя" autocomplete="off">
+      <input id="psySpec" class="admin-help-input" placeholder="Специализация" autocomplete="off">
+      <input id="psyExp" class="admin-help-input" placeholder="Опыт (например: 8 лет)" autocomplete="off">
+      <input id="psyPhone" class="admin-help-input" placeholder="Телефон" autocomplete="off">
+      <input id="psyTg" class="admin-help-input" placeholder="Telegram (@name)" autocomplete="off">
+      <input id="psyCity" class="admin-help-input" placeholder="Город" autocomplete="off">
+    `,
+    addPsychologist
+  );
+}
+
+async function addPsychologist() {
+  const data = {
+    name: document.getElementById('psyName')?.value.trim(),
+    specialization: document.getElementById('psySpec')?.value.trim(),
+    experience: document.getElementById('psyExp')?.value.trim(),
+    phone: document.getElementById('psyPhone')?.value.trim(),
+    telegram: document.getElementById('psyTg')?.value.trim(),
+    city: document.getElementById('psyCity')?.value.trim()
+  };
+
+  if (!data.name) {
+    alert('Укажите имя');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/psychologists-list', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: getAdminToken()
+      },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert('Психолог добавлен! Промокод: ' + result.code);
+      closeAdminModal();
+      loadHelpLists();
+    } else {
+      alert('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+    }
+  } catch (e) {
+    alert('Ошибка сети');
+  }
+}
+
+function showAddSpecialistForm() {
+  const typeOptions = Object.entries(SPECIALIST_TYPE_LABELS)
+    .map(([value, label]) => `<option value="${value}">${label}</option>`)
+    .join('');
+
+  openAdminModal(
+    'Добавить специалиста',
+    `
+      <input id="specName" class="admin-help-input" placeholder="Имя" autocomplete="off">
+      <select id="specType" class="admin-help-input">${typeOptions}</select>
+      <input id="specSpec" class="admin-help-input" placeholder="Специализация" autocomplete="off">
+      <input id="specExp" class="admin-help-input" placeholder="Опыт (например: 5 лет)" autocomplete="off">
+      <input id="specPhone" class="admin-help-input" placeholder="Телефон" autocomplete="off">
+      <input id="specTg" class="admin-help-input" placeholder="Telegram (@name)" autocomplete="off">
+      <input id="specCity" class="admin-help-input" placeholder="Город" autocomplete="off">
+    `,
+    addSpecialist
+  );
+}
+
+async function addSpecialist() {
+  const data = {
+    name: document.getElementById('specName')?.value.trim(),
+    type: document.getElementById('specType')?.value,
+    specialization: document.getElementById('specSpec')?.value.trim(),
+    experience: document.getElementById('specExp')?.value.trim(),
+    phone: document.getElementById('specPhone')?.value.trim(),
+    telegram: document.getElementById('specTg')?.value.trim(),
+    city: document.getElementById('specCity')?.value.trim()
+  };
+
+  if (!data.name || !data.type) {
+    alert('Укажите имя и тип');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/specialists-list', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: getAdminToken()
+      },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert('Специалист добавлен! Промокод: ' + result.code);
+      closeAdminModal();
+      loadHelpLists();
+    } else {
+      alert('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+    }
+  } catch (e) {
+    alert('Ошибка сети');
+  }
+}
+
+async function loadHelpLists() {
+  const psyEl = document.getElementById('adminPsychologistsList');
+  const specEl = document.getElementById('adminSpecialistsList');
+  if (!psyEl && !specEl) return;
+
+  try {
+    const [psyRes, specRes] = await Promise.all([
+      fetch('/api/psychologists-list'),
+      fetch('/api/specialists-list')
+    ]);
+    const psychologists = psyRes.ok ? await psyRes.json() : [];
+    const specialists = specRes.ok ? await specRes.json() : [];
+
+    if (psyEl) {
+      psyEl.innerHTML = Array.isArray(psychologists) && psychologists.length
+        ? psychologists.map((p) => `
+            <div class="admin-list-row">
+              <span>👩‍⚕️ ${escapeHtml(p.name)}${p.city ? ` · ${escapeHtml(p.city)}` : ''}</span>
+              <span>${escapeHtml(p.specialization || '')}</span>
+            </div>
+          `).join('')
+        : '<div class="empty-state">Пока нет психологов</div>';
+    }
+
+    if (specEl) {
+      specEl.innerHTML = Array.isArray(specialists) && specialists.length
+        ? specialists.map((s) => `
+            <div class="admin-list-row">
+              <span>${escapeHtml(SPECIALIST_TYPE_LABELS[s.type] || s.type)} · ${escapeHtml(s.name)}</span>
+              <span>${escapeHtml(s.city || '')}</span>
+            </div>
+          `).join('')
+        : '<div class="empty-state">Пока нет специалистов</div>';
+    }
+  } catch (e) {
+    console.error('Help lists load error:', e);
+    if (psyEl) psyEl.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+    if (specEl) specEl.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+  }
+}
+
 async function loadAdminStats() {
   const errEl = document.getElementById('adminLoadError');
   const token = getAdminToken();
@@ -389,6 +578,7 @@ async function loadAdminStats() {
     }
     renderFeedbacks(stats.feedbacks);
     loadThanks();
+    loadHelpLists();
   } catch (error) {
     console.error('Admin stats error:', error);
     errEl.textContent = 'Ошибка сети при загрузке статистики';
@@ -402,6 +592,8 @@ document.getElementById('adminPassword')?.addEventListener('keydown', (e) => {
 });
 document.getElementById('adminLogoutBtn')?.addEventListener('click', adminLogout);
 document.getElementById('refreshStatsBtn')?.addEventListener('click', loadAdminStats);
+document.getElementById('addPsychologistBtn')?.addEventListener('click', showAddPsychologistForm);
+document.getElementById('addSpecialistBtn')?.addEventListener('click', showAddSpecialistForm);
 
 document.addEventListener('DOMContentLoaded', () => {
   if (sessionStorage.getItem('admin-auth') === 'true' && getAdminToken()) {
@@ -415,5 +607,9 @@ document.addEventListener('DOMContentLoaded', () => {
 window.adminLogin = adminLogin;
 window.adminLogout = adminLogout;
 window.loadAdminStats = loadAdminStats;
+window.showAddPsychologistForm = showAddPsychologistForm;
+window.showAddSpecialistForm = showAddSpecialistForm;
+window.addPsychologist = addPsychologist;
+window.addSpecialist = addSpecialist;
 
-export { adminLogin, adminLogout, loadAdminStats };
+export { adminLogin, adminLogout, loadAdminStats, showAddPsychologistForm, showAddSpecialistForm };

@@ -3181,6 +3181,153 @@ body.has-dev-panel {
   font-size: 1rem;
 }
 
+/* Помощь специалистов — родительский кабинет */
+.help-section-desc {
+  color: #aaa;
+  font-size: 14px;
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+.help-list-block {
+  margin-top: 16px;
+}
+
+.help-list-block h3 {
+  margin: 0 0 10px;
+}
+
+.specialists-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.help-loading,
+.help-empty {
+  color: #666;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.specialist-card {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.specialist-card h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.specialist-spec {
+  color: #aaa;
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+.specialist-meta {
+  color: #888;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.specialist-contacts {
+  margin-top: 8px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.specialist-link {
+  color: #6C63FF;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.specialist-link:hover {
+  text-decoration: underline;
+}
+
+/* Админка: психологи / специалисты */
+.admin-help-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.admin-help-cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 720px) {
+  .admin-help-cols {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.admin-help-cols h4 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.admin-help-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 9999;
+}
+
+.admin-help-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1a1a2e;
+  padding: 24px;
+  border-radius: 16px;
+  z-index: 10000;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.admin-help-modal h3 {
+  margin: 0 0 12px;
+}
+
+.admin-help-input {
+  width: 100%;
+  padding: 10px 12px;
+  margin: 4px 0;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #0a0a1e;
+  color: #fff;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.admin-help-modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.admin-help-modal-actions .modal-btn {
+  flex: 1;
+}
+
+.admin-help-cancel {
+  background: #333 !important;
+}
+
 .admin-table-wrap {
   overflow-x: auto;
 }
