@@ -1,0 +1,327 @@
+/* Кабинет психолога */
+.psy-body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at top, rgba(108, 99, 255, 0.18), transparent 55%),
+    #12121f;
+  color: #fff;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.psy-app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+.psy-login {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.psy-login-card {
+  width: 100%;
+  max-width: 400px;
+  background: rgba(35, 35, 58, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 28px 22px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.psy-login-card h1 {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+}
+
+.psy-sub {
+  opacity: 0.75;
+  font-size: 0.9rem;
+  margin: 0 0 18px;
+}
+
+.psy-login-card input,
+.psy-slot-form input,
+.psy-chat-start input,
+.psy-chat-compose input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  margin: 6px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.28);
+  color: #fff;
+  font-size: 1rem;
+}
+
+.psy-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.psy-btn-primary {
+  background: #6c63ff;
+  color: #fff;
+  width: 100%;
+}
+
+.psy-btn-secondary {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.psy-btn-ghost {
+  background: transparent;
+  color: #ccc;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.psy-error {
+  color: #ef9a9a;
+  min-height: 1.2em;
+  font-size: 0.85rem;
+}
+
+.psy-links {
+  margin-top: 16px;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.psy-links a {
+  color: #b3aeff;
+}
+
+.psy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.psy-header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.psy-promo {
+  margin: 6px 0 0;
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.psy-promo code {
+  background: rgba(108, 99, 255, 0.25);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.psy-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.psy-tab {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #ddd;
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.psy-tab.active {
+  background: #6c63ff;
+  color: #fff;
+  border-color: transparent;
+}
+
+.psy-panel {
+  display: none;
+  background: rgba(35, 35, 58, 0.55);
+  border-radius: 18px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.psy-panel.active {
+  display: block;
+}
+
+.psy-panel h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.psy-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.psy-stat {
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 14px;
+  padding: 14px 10px;
+  text-align: center;
+}
+
+.psy-stat-val {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #c5c0ff;
+}
+
+.psy-stat-label {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.65;
+  margin-top: 4px;
+}
+
+.psy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.psy-empty,
+.psy-hint {
+  opacity: 0.6;
+  font-size: 0.9rem;
+}
+
+.psy-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.psy-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.psy-card small {
+  opacity: 0.55;
+}
+
+.psy-chat-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 14px;
+  min-height: 420px;
+}
+
+@media (max-width: 720px) {
+  .psy-chat-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.psy-chat-aside {
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  padding-right: 10px;
+}
+
+.psy-chat-title {
+  font-weight: 600;
+  margin-bottom: 10px;
+  opacity: 0.9;
+}
+
+.psy-chat-messages {
+  height: 280px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.psy-msg {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.psy-msg.out {
+  align-self: flex-end;
+  background: #6c63ff;
+}
+
+.psy-msg.in {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.psy-msg time {
+  display: block;
+  font-size: 0.7rem;
+  opacity: 0.65;
+  margin-top: 4px;
+}
+
+.psy-chat-compose {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.psy-chat-compose input {
+  flex: 1;
+  margin: 0;
+}
+
+.psy-chat-compose .psy-btn {
+  margin: 0;
+  width: auto;
+  white-space: nowrap;
+}
+
+.psy-chat-start {
+  margin-top: 12px;
+}
+
+.psy-slot-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 8px;
+  margin: 12px 0;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .psy-slot-form {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.psy-slot-form .psy-btn {
+  margin: 0;
+}
+
+.psy-stars {
+  color: #ffd54f;
+  letter-spacing: 1px;
+}

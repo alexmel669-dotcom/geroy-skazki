@@ -19,6 +19,10 @@ import sync from './_handlers/sync.js';
 import profileUpdate from './_handlers/profile-update.js';
 
 import psychologistHelp from './_handlers/psychologist-help.js';
+import psychologistDashboard from './_handlers/psychologist-dashboard.js';
+import psychologistChat from './_handlers/psychologist-chat.js';
+import psychologistBooking from './_handlers/psychologist-booking.js';
+import psychologistReviews from './_handlers/psychologist-reviews.js';
 
 import promocode from './_handlers/promocode.js';
 import promocodeStats from './_handlers/promocode-stats.js';
@@ -86,6 +90,14 @@ const ROUTES = {
   'profile-update': profileUpdate,
 
   'psychologist-help': psychologistHelp,
+
+  'psychologist-dashboard': psychologistDashboard,
+
+  'psychologist-chat': psychologistChat,
+
+  'psychologist-booking': psychologistBooking,
+
+  'psychologist-reviews': psychologistReviews,
 
   promocode: promocode,
 

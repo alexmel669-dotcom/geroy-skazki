@@ -153,6 +153,30 @@ export default async function handler(req, res) {
           code: promoCodeKey,
           activatedAt: new Date().toISOString()
         });
+
+        if (promoCodeKey.startsWith('PSY-')) {
+          const psyList = (await redis.get('geroy:psychologists')) || [];
+          const psy = Array.isArray(psyList)
+            ? psyList.find((p) => String(p.promoCode || '').toUpperCase() === promoCodeKey)
+            : null;
+          if (psy?.email) {
+            const refKey = `geroy:psychologist:${String(psy.email).toLowerCase()}:referrals`;
+            const refs = (await redis.get(refKey)) || [];
+            const list = Array.isArray(refs) ? [...refs] : [];
+            list.push({
+              userEmail: normalizedEmail,
+              parentName: String(parentName || '').trim() || username,
+              code: promoCodeKey,
+              activatedAt: new Date().toISOString()
+            });
+            await redis.set(refKey, list);
+            const idx = psyList.findIndex((p) => String(p.promoCode || '').toUpperCase() === promoCodeKey);
+            if (idx >= 0) {
+              psyList[idx].clientsCount = (Number(psyList[idx].clientsCount) || 0) + 1;
+              await redis.set('geroy:psychologists', psyList);
+            }
+          }
+        }
       }
 
       if (promoCodeKey.startsWith('ORPH-')) {

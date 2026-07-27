@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Кабинет психолога — Герой Сказок</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/psychologist.css">
+  <link rel="icon" type="image/png" href="assets/images/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/images/icon-192.png">
+</head>
+<body class="psy-body">
+  <div class="psy-app">
+    <!-- Вход -->
+    <section id="psyLogin" class="psy-login">
+      <div class="psy-login-card">
+        <h1>👩‍⚕️ Кабинет психолога</h1>
+        <p class="psy-sub">Войдите аккаунтом с доступом партнёра-психолога</p>
+        <input type="email" id="psyEmail" placeholder="Email" autocomplete="username">
+        <input type="password" id="psyPassword" placeholder="Пароль" autocomplete="current-password">
+        <button type="button" id="psyLoginBtn" class="psy-btn psy-btn-primary">Войти</button>
+        <p id="psyLoginError" class="psy-error"></p>
+        <p class="psy-links">
+          <a href="index.html">← На главную</a>
+          · <a href="mailto:lucik.geroy.skazki@gmail.com">Стать партнёром</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- Кабинет -->
+    <section id="psyDashboard" class="psy-dashboard" hidden>
+      <header class="psy-header">
+        <div>
+          <h1 id="psyGreeting">Здравствуйте!</h1>
+          <p class="psy-promo">Промокод: <code id="psyPromoCode">—</code></p>
+        </div>
+        <button type="button" id="psyLogoutBtn" class="psy-btn psy-btn-ghost">Выйти</button>
+      </header>
+
+      <nav class="psy-tabs" id="psyTabs">
+        <button type="button" class="psy-tab active" data-tab="stats">📊 Статистика</button>
+        <button type="button" class="psy-tab" data-tab="clients">👥 Клиенты</button>
+        <button type="button" class="psy-tab" data-tab="chat">💬 Чат</button>
+        <button type="button" class="psy-tab" data-tab="bookings">📅 Записи</button>
+        <button type="button" class="psy-tab" data-tab="reviews">⭐ Отзывы</button>
+        <button type="button" class="psy-tab" data-tab="slots">⚙️ Слоты</button>
+      </nav>
+
+      <div class="psy-panels">
+        <div class="psy-panel active" id="tab-stats">
+          <div class="psy-stat-grid" id="psyStatGrid">
+            <div class="psy-stat"><span class="psy-stat-val" id="statClients">0</span><span class="psy-stat-label">Клиенты</span></div>
+            <div class="psy-stat"><span class="psy-stat-val" id="statChats">0</span><span class="psy-stat-label">Активные чаты</span></div>
+            <div class="psy-stat"><span class="psy-stat-val" id="statBookings">0</span><span class="psy-stat-label">Записи на неделю</span></div>
+            <div class="psy-stat"><span class="psy-stat-val" id="statRating">0</span><span class="psy-stat-label">Рейтинг</span></div>
+            <div class="psy-stat"><span class="psy-stat-val" id="statEarned">0₽</span><span class="psy-stat-label">Доход</span></div>
+          </div>
+          <h3>Ближайшие записи</h3>
+          <div id="psyUpcoming" class="psy-list"><p class="psy-empty">Пока нет записей</p></div>
+        </div>
+
+        <div class="psy-panel" id="tab-clients">
+          <h3>Недавние клиенты</h3>
+          <div id="psyClients" class="psy-list"><p class="psy-empty">Клиенты появятся после активации промокода</p></div>
+        </div>
+
+        <div class="psy-panel" id="tab-chat">
+          <div class="psy-chat-layout">
+            <aside class="psy-chat-aside">
+              <h3>Диалоги</h3>
+              <div id="psyChatList" class="psy-list"><p class="psy-empty">Нет диалогов</p></div>
+              <div class="psy-chat-start">
+                <input type="email" id="psyChatParentEmail" placeholder="Email родителя">
+                <button type="button" id="psyOpenChatBtn" class="psy-btn psy-btn-secondary">Открыть чат</button>
+              </div>
+            </aside>
+            <div class="psy-chat-main">
+              <div id="psyChatTitle" class="psy-chat-title">Выберите диалог</div>
+              <div id="psyChatMessages" class="psy-chat-messages"></div>
+              <div class="psy-chat-compose">
+                <input type="text" id="psyChatInput" placeholder="Сообщение…" disabled>
+                <button type="button" id="psyChatSend" class="psy-btn psy-btn-primary" disabled>Отправить</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="psy-panel" id="tab-bookings">
+          <h3>Записи на консультации</h3>
+          <div id="psyBookings" class="psy-list"><p class="psy-empty">Записей пока нет</p></div>
+        </div>
+
+        <div class="psy-panel" id="tab-reviews">
+          <h3>Отзывы родителей</h3>
+          <div id="psyReviews" class="psy-list"><p class="psy-empty">Отзывов пока нет</p></div>
+        </div>
+
+        <div class="psy-panel" id="tab-slots">
+          <h3>Слоты приёма</h3>
+          <p class="psy-hint">Укажите дни и время, когда вы доступны для консультаций.</p>
+          <div id="psySlotsList" class="psy-list"></div>
+          <div class="psy-slot-form">
+            <input type="date" id="slotDay">
+            <input type="time" id="slotStart" value="10:00">
+            <input type="time" id="slotEnd" value="11:00">
+            <button type="button" id="psyAddSlotBtn" class="psy-btn psy-btn-secondary">Добавить</button>
+          </div>
+          <button type="button" id="psySaveSlotsBtn" class="psy-btn psy-btn-primary">💾 Сохранить слоты</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="js/psychologist-dashboard.js"></script>
+</body>
+</html>
