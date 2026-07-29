@@ -122,7 +122,13 @@ async function handleLogin(e) {
         localStorage.setItem('activeChildIndex', data.user.children.length > 1 ? '-1' : '0');
       }
       const redirect = new URLSearchParams(window.location.search).get('redirect');
-      window.location.href = redirect === 'parent' ? '/parent.html' : '/app.html';
+      if (redirect === 'parent') {
+        window.location.href = '/parent.html';
+      } else if (data.user?.role === 'psychologist') {
+        window.location.href = '/psychologist';
+      } else {
+        window.location.href = '/app';
+      }
     } else {
       showError(errorEl, translateError(data.error) || 'Ошибка входа');
     }
