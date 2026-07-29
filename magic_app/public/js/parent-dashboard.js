@@ -1239,6 +1239,10 @@ function renderPsychologists(list) {
 
   container.innerHTML = list.map((p) => {
     const email = p.email ? String(p.email) : '';
+    const name = escapeHelpHtml(p.name || '');
+    const chatBtn = email
+      ? `<button type="button" class="chat-psy-btn" data-psy-email="${escapeHelpHtml(email)}" data-psy-name="${name}">💬 Написать</button>`
+      : '';
     const reportBtn = email
       ? `<button type="button" class="report-psy-btn" data-psy-email="${escapeHelpHtml(email)}">🚩 Пожаловаться</button>`
       : '';
@@ -1246,19 +1250,141 @@ function renderPsychologists(list) {
     <div class="specialist-card">
       <div class="specialist-card-head">
         <div>
-          <h4>👩‍⚕️ ${escapeHelpHtml(p.name)}</h4>
+          <h4>👩‍⚕️ ${name}</h4>
           <p class="specialist-spec">${escapeHelpHtml(p.specialization || '')}</p>
           <p class="specialist-meta">Опыт: ${escapeHelpHtml(p.experience || '—')} | ${escapeHelpHtml(p.city || '—')}</p>
         </div>
       </div>
       ${specialistContactLinks(p)}
-      ${reportBtn ? `<div class="specialist-report-row">${reportBtn}</div>` : ''}
+      <div class="specialist-report-row">
+        ${chatBtn}
+        ${reportBtn}
+      </div>
     </div>`;
   }).join('');
 
   container.querySelectorAll('.report-psy-btn').forEach((btn) => {
     btn.addEventListener('click', () => reportPsychologist(btn.getAttribute('data-psy-email')));
   });
+  container.querySelectorAll('.chat-psy-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      openPsychologistChat(btn.getAttribute('data-psy-email'), btn.getAttribute('data-psy-name'));
+    });
+  });
+}
+
+let currentPsychologistChat = null;
+let parentChatPoll = null;
+
+function parentAuthHeaders(json = true) {
+  const headers = {};
+  if (json) headers['Content-Type'] = 'application/json';
+  const token = localStorage.getItem('userToken') || '';
+  if (token) {
+    headers.Authorization = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+  }
+  return headers;
+}
+
+function getParentEmail() {
+  return (localStorage.getItem('userEmail') || '').trim().toLowerCase();
+}
+
+async function openPsychologistChat(psychologistEmail, psychologistName) {
+  const email = String(psychologistEmail || '').trim().toLowerCase();
+  if (!email) {
+    alert('У психолога не указан email');
+    return;
+  }
+  if (!getParentEmail() || !localStorage.getItem('userToken')) {
+    alert('Войдите в аккаунт, чтобы написать психологу');
+    return;
+  }
+
+  currentPsychologistChat = email;
+  const section = document.getElementById('psychologistChatSection');
+  if (section) section.hidden = false;
+  const nameEl = document.getElementById('chatPsychologistName');
+  if (nameEl) nameEl.textContent = psychologistName || email;
+  section?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  await refreshParentMessages();
+  if (parentChatPoll) clearInterval(parentChatPoll);
+  parentChatPoll = setInterval(refreshParentMessages, 5000);
+}
+
+async function refreshParentMessages() {
+  if (!currentPsychologistChat) return;
+  const parentEmail = getParentEmail();
+  if (!parentEmail) return;
+
+  try {
+    const res = await fetch(
+      `/api/psychologist-chat?psychologistEmail=${encodeURIComponent(currentPsychologistChat)}&parentEmail=${encodeURIComponent(parentEmail)}`,
+      { headers: parentAuthHeaders(false) }
+    );
+    if (!res.ok) return;
+    const messages = await res.json();
+    const container = document.getElementById('parentChatMessages');
+    if (!container) return;
+    container.innerHTML = (Array.isArray(messages) ? messages : []).map((m) => {
+      const out = m.role === 'parent' || m.from === parentEmail;
+      const time = m.timestamp
+        ? new Date(m.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+        : '';
+      return `<div class="psy-msg ${out ? 'out' : 'in'}">${escapeHelpHtml(m.message)}<time>${escapeHelpHtml(time)}</time></div>`;
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+  } catch (e) {
+    console.error('Parent chat refresh error:', e);
+  }
+}
+
+async function sendParentMessage() {
+  const input = document.getElementById('parentChatInput');
+  const message = input?.value.trim();
+  if (!message || !currentPsychologistChat) return;
+
+  const parentEmail = getParentEmail();
+  if (!parentEmail) {
+    alert('Войдите в аккаунт');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/psychologist-chat', {
+      method: 'POST',
+      headers: parentAuthHeaders(),
+      body: JSON.stringify({
+        from: parentEmail,
+        to: currentPsychologistChat,
+        psychologistEmail: currentPsychologistChat,
+        parentEmail,
+        parentName: localStorage.getItem('parentName') || parentEmail,
+        message,
+        role: 'parent'
+      })
+    });
+    if (res.ok) {
+      input.value = '';
+      await refreshParentMessages();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Не удалось отправить');
+    }
+  } catch (e) {
+    alert('Ошибка сети');
+  }
+}
+
+function closeParentChat() {
+  currentPsychologistChat = null;
+  if (parentChatPoll) {
+    clearInterval(parentChatPoll);
+    parentChatPoll = null;
+  }
+  const section = document.getElementById('psychologistChatSection');
+  if (section) section.hidden = true;
 }
 
 async function reportPsychologist(email) {
@@ -1440,11 +1566,20 @@ window.showAttentionModal = showAttentionModal;
 window.generateChildLink = generateChildLink;
 window.generateChildQR = generateChildQR;
 window.reportPsychologist = reportPsychologist;
+window.openPsychologistChat = openPsychologistChat;
+window.sendParentMessage = sendParentMessage;
+window.closeParentChat = closeParentChat;
 
 document.getElementById('pinSubmitBtn')?.addEventListener('click', verifyPinSubmit);
 document.getElementById('pinInput')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') verifyPinSubmit();
 });
+
+document.getElementById('parentChatSend')?.addEventListener('click', sendParentMessage);
+document.getElementById('parentChatInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendParentMessage();
+});
+document.getElementById('parentChatClose')?.addEventListener('click', closeParentChat);
 
 document.getElementById('speakReportBtn')?.addEventListener('click', speakReport);
 document.getElementById('parentLogoutBtn')?.addEventListener('click', () => logout());

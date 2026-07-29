@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" href="assets/images/icon-192.png">
   <link rel="apple-touch-icon" href="assets/images/icon-192.png">
 </head>
-<body class="psy-body">
+<body class="psy-body psychologist-mode">
   <div class="psy-app">
     <!-- Заявка -->
     <section id="psyApplySection" class="psy-apply-wrap">
@@ -124,19 +124,20 @@
         <div class="psy-panel" id="tab-chat">
           <div class="psy-chat-layout">
             <aside class="psy-chat-aside">
-              <h3>Диалоги</h3>
-              <div id="psyChatList" class="psy-list"><p class="psy-empty">Нет диалогов</p></div>
+              <div class="psy-chat-title">💬 Чаты</div>
+              <div id="psyChatList" class="psy-list"><p class="psy-empty">Нет активных чатов</p></div>
               <div class="psy-chat-start">
                 <input type="email" id="psyChatParentEmail" placeholder="Email родителя">
                 <button type="button" id="psyOpenChatBtn" class="psy-btn psy-btn-secondary">Открыть чат</button>
               </div>
             </aside>
             <div class="psy-chat-main">
-              <div id="psyChatTitle" class="psy-chat-title">Выберите диалог</div>
-              <div id="psyChatMessages" class="psy-chat-messages"></div>
-              <div class="psy-chat-compose">
-                <input type="text" id="psyChatInput" placeholder="Сообщение…" disabled>
-                <button type="button" id="psyChatSend" class="psy-btn psy-btn-primary" disabled>Отправить</button>
+              <div id="psyChatTitle" class="psy-chat-title">Выберите чат</div>
+              <div id="chatPlaceholder" class="psy-empty" style="padding:40px;text-align:center;">Выберите чат слева</div>
+              <div id="psyChatMessages" class="psy-chat-messages" style="display:none;"></div>
+              <div id="psyChatCompose" class="psy-chat-compose" style="display:none;">
+                <input type="text" id="psyChatInput" placeholder="Сообщение…">
+                <button type="button" id="psyChatSend" class="psy-btn psy-btn-primary">→</button>
               </div>
             </div>
           </div>
