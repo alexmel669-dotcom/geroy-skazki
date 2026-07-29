@@ -249,10 +249,22 @@ body.psychologist-mode > * {
 }
 
 .psy-card {
+  display: block;
+  width: 100%;
+  text-align: left;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 12px 14px;
+  margin-bottom: 8px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.psy-card.active,
+.psy-chat-item.active {
+  border-color: rgba(108, 99, 255, 0.55);
+  background: rgba(108, 99, 255, 0.18);
 }
 
 .psy-card strong {
@@ -262,6 +274,7 @@ body.psychologist-mode > * {
 
 .psy-card small {
   opacity: 0.55;
+  font-size: 0.8rem;
 }
 
 .psy-chat-layout {

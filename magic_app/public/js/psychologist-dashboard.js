@@ -328,38 +328,80 @@ async function saveSlots() {
 }
 
 async function refreshChatList() {
-  // Индекс чатов берём из dashboard chats via bookings clients + open chats stored locally
-  const dash = await loadDashboard();
-  if (!dash) return;
   const chatsEl = document.getElementById('psyChatList');
-  const fromClients = (dash.recentClients || [])
-    .map((c) => c.userEmail || c.email)
-    .filter(Boolean);
-  const emails = [...new Set([...(state.activeChatParent ? [state.activeChatParent] : []), ...fromClients])];
-  chatsEl.innerHTML = emails.length
-    ? emails.map((email) => `
-        <button type="button" class="psy-card" data-chat="${escapeHtml(email)}" style="text-align:left;cursor:pointer;width:100%;color:inherit;background:rgba(255,255,255,0.04);">
-          <strong>${escapeHtml(email)}</strong>
-        </button>
-      `).join('')
-    : '<p class="psy-empty">Нет диалогов</p>';
+  if (!chatsEl) return;
 
-  chatsEl.querySelectorAll('[data-chat]').forEach((btn) => {
-    btn.addEventListener('click', () => openChat(btn.getAttribute('data-chat')));
-  });
+  try {
+    const res = await fetch(
+      `/api/psychologist-chat?psychologistEmail=${encodeURIComponent(state.email)}`,
+      { headers: authHeaders(false) }
+    );
+    let chats = res.ok ? await res.json() : [];
+    if (!Array.isArray(chats)) chats = [];
+
+    // Дополнить клиентами из рефералов, если чата ещё нет
+    const dash = await loadDashboard().catch(() => null);
+    const fromClients = (dash?.recentClients || [])
+      .map((c) => ({
+        parentEmail: c.userEmail || c.email,
+        parentName: c.parentName || c.userEmail || c.email,
+        lastMessage: ''
+      }))
+      .filter((c) => c.parentEmail);
+    const known = new Set(chats.map((c) => String(c.parentEmail || '').toLowerCase()));
+    fromClients.forEach((c) => {
+      const key = String(c.parentEmail).toLowerCase();
+      if (!known.has(key)) {
+        chats.push(c);
+        known.add(key);
+      }
+    });
+
+    if (state.activeChatParent && !known.has(state.activeChatParent)) {
+      chats.unshift({ parentEmail: state.activeChatParent, parentName: state.activeChatParent });
+    }
+
+    if (!chats.length) {
+      chatsEl.innerHTML = '<p class="psy-empty">Нет активных чатов</p>';
+      return;
+    }
+
+    chatsEl.innerHTML = chats.map((c) => {
+      const email = String(c.parentEmail || '').toLowerCase();
+      const active = email === state.activeChatParent ? ' active' : '';
+      return `
+        <button type="button" class="psy-card psy-chat-item${active}" data-chat="${escapeHtml(email)}">
+          <strong>${escapeHtml(c.parentName || email)}</strong>
+          <small>${escapeHtml(c.lastMessage || 'Нет сообщений')}</small>
+        </button>
+      `;
+    }).join('');
+
+    chatsEl.querySelectorAll('[data-chat]').forEach((btn) => {
+      btn.addEventListener('click', () => openChat(btn.getAttribute('data-chat')));
+    });
+  } catch (e) {
+    console.error(e);
+    chatsEl.innerHTML = '<p class="psy-empty">Не удалось загрузить чаты</p>';
+  }
 }
 
 function openChat(parentEmail) {
   state.activeChatParent = String(parentEmail || '').trim().toLowerCase();
   if (!state.activeChatParent) return;
-  document.getElementById('psyChatParentEmail').value = state.activeChatParent;
+
+  const emailInput = document.getElementById('psyChatParentEmail');
+  if (emailInput) emailInput.value = state.activeChatParent;
   document.getElementById('psyChatTitle').textContent = `Чат с ${state.activeChatParent}`;
-  document.getElementById('psyChatInput').disabled = false;
-  document.getElementById('psyChatSend').disabled = false;
+  document.getElementById('chatPlaceholder').style.display = 'none';
+  document.getElementById('psyChatMessages').style.display = 'flex';
+  document.getElementById('psyChatCompose').style.display = 'flex';
+
   switchTab('chat');
   loadChatMessages();
+  refreshChatList();
   if (state.chatPoll) clearInterval(state.chatPoll);
-  state.chatPoll = setInterval(loadChatMessages, 8000);
+  state.chatPoll = setInterval(loadChatMessages, 5000);
 }
 
 async function loadChatMessages() {
@@ -369,9 +411,12 @@ async function loadChatMessages() {
   if (!res.ok) return;
   const messages = await res.json();
   const box = document.getElementById('psyChatMessages');
+  if (!box) return;
   box.innerHTML = (Array.isArray(messages) ? messages : []).map((m) => {
     const out = m.role === 'psychologist' || m.from === state.email;
-    const time = m.timestamp ? new Date(m.timestamp).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    const time = m.timestamp
+      ? new Date(m.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+      : '';
     return `<div class="psy-msg ${out ? 'out' : 'in'}">${escapeHtml(m.message)}<time>${escapeHtml(time)}</time></div>`;
   }).join('');
   box.scrollTop = box.scrollHeight;
@@ -386,6 +431,8 @@ async function sendChatMessage() {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({
+      from: state.email,
+      to: state.activeChatParent,
       psychologistEmail: state.email,
       parentEmail: state.activeChatParent,
       message: text,
@@ -395,6 +442,7 @@ async function sendChatMessage() {
   if (res.ok) {
     input.value = '';
     await loadChatMessages();
+    await refreshChatList();
   } else {
     const data = await res.json().catch(() => ({}));
     alert(data.error || 'Не удалось отправить');

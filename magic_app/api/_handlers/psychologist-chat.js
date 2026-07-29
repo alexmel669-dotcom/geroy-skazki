@@ -11,7 +11,7 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-async function touchChatIndex(psychologistEmail, parentEmail, parentName) {
+async function touchChatIndex(psychologistEmail, parentEmail, parentName, lastMessage) {
   const key = `geroy:psychologist:${psychologistEmail}:chats`;
   const chats = asArray(await redis.get(key));
   const idx = chats.findIndex((c) => String(c.parentEmail || '').toLowerCase() === parentEmail);
@@ -19,10 +19,12 @@ async function touchChatIndex(psychologistEmail, parentEmail, parentName) {
     parentEmail,
     parentName: parentName || (idx >= 0 ? chats[idx].parentName : parentEmail),
     status: 'active',
+    lastMessage: lastMessage ? String(lastMessage).slice(0, 120) : (idx >= 0 ? chats[idx].lastMessage : ''),
     updatedAt: new Date().toISOString()
   };
   if (idx >= 0) chats[idx] = { ...chats[idx], ...entry };
   else chats.push(entry);
+  chats.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
   await redis.set(key, chats.slice(-100));
 }
 
@@ -39,12 +41,27 @@ export default async function handler(req, res) {
       const query = getQuery(req);
       const psychologistEmail = String(query.psychologistEmail || '').trim().toLowerCase();
       const parentEmail = String(query.parentEmail || '').trim().toLowerCase();
-      if (!psychologistEmail || !parentEmail) {
-        return res.status(400).json({ error: 'psychologistEmail и parentEmail обязательны' });
+
+      if (!psychologistEmail) {
+        return res.status(400).json({ error: 'psychologistEmail обязателен' });
       }
 
       const authEmail = String(auth?.email || '').toLowerCase();
       const isPsy = await requirePsychologist(req, psychologistEmail);
+
+      // Список диалогов психолога
+      if (!parentEmail) {
+        const allowed =
+          authEmail === psychologistEmail ||
+          isPsy?.admin ||
+          (isPsy && isPsy.email === psychologistEmail);
+        if (!allowed) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+        const chats = asArray(await redis.get(`geroy:psychologist:${psychologistEmail}:chats`));
+        return res.status(200).json(chats);
+      }
+
       const allowed =
         authEmail === psychologistEmail ||
         authEmail === parentEmail ||
@@ -121,7 +138,7 @@ export default async function handler(req, res) {
       const chat = asArray(await redis.get(key));
       chat.push(msg);
       await redis.set(key, chat.slice(-100));
-      await touchChatIndex(psychologistEmail, parentEmail, parentName);
+      await touchChatIndex(psychologistEmail, parentEmail, parentName, text);
 
       return res.status(200).json({ success: true, message: msg });
     }
