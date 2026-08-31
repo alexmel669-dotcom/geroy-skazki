@@ -205,8 +205,9 @@
 <script type="module" src="js/error-monitor.js"></script>
 <script type="module" src="js/main.js"></script>
 <script>
-  // Service Worker отключён
-  // navigator.serviceWorker.register('/sw.js');
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
 </script>
 </body>
 </html>
