@@ -737,3 +737,127 @@
   75% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+/* —— Runner v12 hub / shop / pause / victory —— */
+.runner-hub .runner-episode-card {
+  text-align: left;
+}
+
+.runner-shop-screen,
+.runner-intro-dialog,
+.runner-pause-screen,
+.runner-victory-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10003;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(4, 6, 20, 0.92);
+  color: #fff;
+  text-align: center;
+  overflow-y: auto;
+}
+
+.runner-shop-balance {
+  font-size: 1.25rem;
+  color: #ffd700;
+  margin: 8px 0 16px;
+}
+
+.runner-shop-list {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.runner-shop-item {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.runner-shop-item .cost {
+  color: #ffd700;
+  margin: 6px 0;
+}
+
+.runner-shop-item .owned {
+  color: #4caf50;
+}
+
+.runner-intro-dialog input {
+  width: min(320px, 90%);
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 1rem;
+  margin: 12px 0;
+}
+
+.runner-intro-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.runner-pause-screen h2,
+.runner-victory-screen h1 {
+  margin: 0 0 12px;
+}
+
+.runner-victory-screen .big-stars {
+  font-size: 2.6rem;
+  color: #ffd700;
+  margin: 16px 0;
+}
+
+.runner-victory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.runner-phase-intro {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10002;
+  font-size: clamp(1.4rem, 5vw, 2.2rem);
+  color: #ff4444;
+  text-shadow: 0 0 24px rgba(255, 0, 0, 0.55);
+  pointer-events: none;
+  font-weight: 700;
+}
+
+.runner-env-forest {
+  --runner-bg: #0a2a0a;
+}
+
+.runner-env-city {
+  --runner-bg: #1a1a1a;
+}
+
+.runner-env-upside {
+  --runner-bg: #1a0508;
+}
+
+.runner-env-boss {
+  --runner-bg: #1a1a0a;
+}
+
+.runner-header {
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.82rem;
+}

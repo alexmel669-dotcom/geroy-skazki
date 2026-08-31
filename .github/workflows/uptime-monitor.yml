@@ -1,0 +1,15 @@
+name: Uptime Monitor
+on:
+  schedule:
+    - cron: '* * * * *'
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping 3 times
+        run: |
+          for i in 1 2 3; do
+            curl -s -o /dev/null -w "%{http_code}" https://geroy-skazki.ru/api/health || echo "fail"
+            sleep 2
+          done

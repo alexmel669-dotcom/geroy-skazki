@@ -1,0 +1,32 @@
+Герой Сказок — APK для NashStore (PWABuilder)
+
+Предварительно:
+1. Задеплойте актуальный код (manifest.json + sw.js + иконки) на https://geroy-skazki.ru
+2. Проверьте в браузере:
+   - https://geroy-skazki.ru/manifest.json
+   - https://geroy-skazki.ru/assets/images/icon-512.png
+   - https://geroy-skazki.ru/sw.js
+
+Сборка APK:
+1. Откройте https://pwabuilder.com
+2. Введите URL: https://geroy-skazki.ru → Start
+3. Дождитесь анализа (должен найти Manifest + Service Worker)
+4. Вкладка / секция Android → Generate / Package
+5. Скачайте ZIP с APK
+6. Положите APK сюда: magic_app/release/
+
+Альтернатива (CloudAPK API):
+- https://pwabuilder-cloudapk.azurewebsites.net/
+- Вставьте JSON из pwabuilder-android.json → Unsigned → Submit
+- Сохраните скачанный ZIP/APK в magic_app/release/
+
+Скриншоты для магазина (5 шт):
+magic_app/release/screenshots/
+  01-home-lucik.png      — главный экран с Люциком
+  02-runner.png          — игра Runner
+  03-parent.png          — родительский кабинет
+  04-psychologist-chat.png — чат с психологом
+  05-register.png        — экран регистрации
+
+Package ID: ru.geroyskazki.app
+Start URL: /app
