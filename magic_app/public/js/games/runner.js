@@ -652,26 +652,20 @@ async function startIntroThenRun({ resume = null, skipDialog = false } = {}) {
   launchRunnerEpisode(getEpisode(1), { resume });
 }
 
-async function completeEpisode(opts = {}) {
-  const fromBreak = !!opts.fromBreak;
-  // P0: перерыв НЕ засчитывает прохождение
-  if (fromBreak) {
-    trackEvent('runner_break_exit', { episode: currentEpisode, stars: metaStars });
-    cleanupRunnerUi();
-    showEpisodeSelect();
-    return;
-  }
-  if (!completedEpisodes.includes(currentEpisode)) {
-    completedEpisodes.push(currentEpisode);
-  }
-  metaStars += 25;
-  totalStars = metaStars;
-  clearCheckpoint();
-  saveProgress();
-  trackEvent('runner_episode_complete', { episode: currentEpisode, stars: metaStars });
-  await playEpisodeVideo(`${currentEpisode}_end`);
+async function exitToHub(reason = 'exit') {
+  trackEvent('runner_exit_hub', { episode: currentEpisode, stars: metaStars, reason });
   cleanupRunnerUi();
   showEpisodeSelect();
+}
+
+/** @deprecated старый completeEpisode — только выход в хаб, без победы */
+async function completeEpisode(opts = {}) {
+  if (opts?.fromBreak) {
+    await exitToHub('break');
+    return;
+  }
+  // Победа всегда через victorySequence → showVictoryScreen
+  await exitToHub('legacy_complete');
 }
 
 export async function startEpisode(id) {
@@ -938,13 +932,18 @@ function launchRunnerEpisode(ep, opts = {}) {
         showComboText(200);
         spawnFearShards(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd700', 30);
         localStorage.setItem('runner-boss-killed', '1');
-        speakStory('Мы сделали это! Домой!', 'lucik');
+        speakStory('Босс повержен! Мы сделали это!', 'lucik');
         boss = null;
         closedPortal = true;
         startMusic(phase === PHASE.HUNT ? 'hunt' : 'flee');
         const el = document.getElementById('runnerScore');
         if (el) el.textContent = score;
-        triggerWin();
+        // Победа только у финиша 5000м
+        if (distance >= FULL_GOAL - 100) victorySequence();
+        else {
+          awardRunStars(50, 'Босс');
+          showComboText('👑 Побеждён!');
+        }
       }
     }
   }
@@ -1830,10 +1829,17 @@ function launchRunnerEpisode(ep, opts = {}) {
     slowMoT = 25;
   }
 
+  function victorySequence() {
+    if (phase === PHASE.WON || phase === PHASE.WIN_SLOWMO) return;
+    closedPortal = true;
+    speakStory('Мы дома!', 'lucik');
+    triggerWin();
+  }
+
   function triggerWin() {
     if (phase === PHASE.WON || phase === PHASE.WIN_SLOWMO) return;
     won = true;
-    if (!closedPortal) closedPortal = isMindFlayer;
+    if (!closedPortal) closedPortal = distance >= FULL_GOAL || bossPhaseIdx >= BOSS_PHASES.length - 1;
     clockMinute = 1;
     if (lastSmash) {
       phase = PHASE.WIN_SLOWMO;
@@ -1974,8 +1980,12 @@ function launchRunnerEpisode(ep, opts = {}) {
       showComboText('👀');
     }
     if (situation === 'ending') {
-      closedPortal = true;
-      triggerWin();
+      // Финал только у цели 5000м
+      if (distance >= FULL_GOAL - 50) victorySequence();
+      else {
+        closedPortal = true;
+        awardRunStars(20, 'Портал');
+      }
     }
     const scoreEl = document.getElementById('runnerScore');
     if (scoreEl) scoreEl.textContent = score;
@@ -2010,7 +2020,7 @@ function launchRunnerEpisode(ep, opts = {}) {
       if (loop) { clearInterval(loop); loop = null; }
       cleanupAudio();
       overlay.remove();
-      completeEpisode({ fromBreak: true });
+      exitToHub('break');
     };
     const cont = document.createElement('button');
     cont.type = 'button';
@@ -2608,6 +2618,26 @@ function launchRunnerEpisode(ep, opts = {}) {
     if (wellT >= 18) startHunt();
   }
 
+  function endHunt() {
+    // Колодец даёт неуязвимость, но НЕ завершает забег
+    phase = PHASE.RUN;
+    overlay.classList.remove('runner-hunt');
+    invuln = Math.max(invuln, 200);
+    shieldT = Math.max(shieldT, 120);
+    lucik.glow = 0.45;
+    speed = baseSpeed;
+    timeScale = 1;
+    slowMoT = 0;
+    if (musicOn) {
+      if (currentEnvironment === ENV_BOSS) startMusic('boss');
+      else if (currentEnvironment === ENV_CITY) startMusic('hunt');
+      else startMusic('flee');
+    }
+    showComboText('✨ Щит колодца!');
+    awardRunStars(5, 'Колодец');
+    speakStory('Я в порядке. Бежим дальше!', 'lucik');
+  }
+
   function updateHunt() {
     huntT++;
     invuln = Math.max(0, invuln - 1);
@@ -2653,7 +2683,7 @@ function launchRunnerEpisode(ep, opts = {}) {
       }
     });
 
-    if (huntT >= 250) triggerWin();
+    if (huntT >= 250) endHunt();
   }
 
   function update() {
@@ -3080,6 +3110,15 @@ function launchRunnerEpisode(ep, opts = {}) {
         spawnBoss(0);
       }
 
+      // дополнительные колодцы по пути (не завершают игру)
+      if (
+        phase === PHASE.RUN &&
+        !well &&
+        [700, 1500, 2200, 3100, 3800].some((d) => distance >= d && distance < d + 8)
+      ) {
+        spawnWell();
+      }
+
       // Макс — 1800м
       if (ep.max && distance >= 1800 && !maxLoaded) spawnMax();
 
@@ -3188,17 +3227,14 @@ function launchRunnerEpisode(ep, opts = {}) {
 
     updateParticles();
 
-    // победа по цели эпизода
-    if (phase === PHASE.RUN && distance >= goalDist && !boss && !choiceState.active) {
-      if (ep.ending && !choiceState.triggered.ending && activeChoices.ending) {
-        choiceState.triggered.ending = true;
-        choiceState.step = 0;
-        showChoice('ending');
-        return;
-      }
-      if (!ep.ending || choiceState.triggered.ending) {
-        triggerWin();
-      }
+    // победа строго на 5000м (v12)
+    if (
+      (phase === PHASE.RUN || phase === PHASE.HUNT) &&
+      distance >= FULL_GOAL &&
+      !boss &&
+      !choiceState.active
+    ) {
+      victorySequence();
     }
   }
 
