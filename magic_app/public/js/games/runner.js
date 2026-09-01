@@ -52,6 +52,19 @@ const DAILY_QUESTS = [
   { id: 'easter3', desc: 'Найди 3 пасхалки', target: 3, reward: 25 }
 ];
 
+const ACHIEVEMENTS = [
+  { id: 'first_fear', name: '👻 Первый страх', desc: 'Победи первого Страха', target: 1, reward: 5 },
+  { id: 'fear_hunter', name: '🎯 Охотник', desc: 'Победи 50 Страхов', target: 50, reward: 20 },
+  { id: 'star_collector', name: '⭐ Коллекционер', desc: 'Собери 100 звёзд', target: 100, reward: 15 },
+  { id: 'combo_master', name: '🔥 Комбо x10', desc: 'Сделай комбо из 10', target: 10, reward: 25 },
+  { id: 'mia_friend', name: '👧 Друг Мии', desc: 'Встреть Мию', target: 1, reward: 10 },
+  { id: 'max_friend', name: '👦 Друг Макса', desc: 'Встреть Макса', target: 1, reward: 10 },
+  { id: 'easter_hunter', name: '🥚 Пасхалка', desc: 'Найди первую пасхалку', target: 1, reward: 5 },
+  { id: 'boss_slayer', name: '👑 Победитель', desc: 'Победи Короля Страхов', target: 1, reward: 50 },
+  { id: 'no_damage', name: '🛡 Неуязвимый', desc: 'Пройди 2000м без урона', target: 2000, reward: 30 },
+  { id: 'rich', name: '💰 Богач', desc: 'Накопи 500 звёзд', target: 500, reward: 100 }
+];
+
 const ENV_META = {
   forest: { fog: 0.3, particles: 'fireflies', music: 'calm', label: '🌲 Лес', colors: ['#050814', '#0a2a12', '#1a3a1a'] },
   city: { fog: 0.5, particles: 'dust', music: 'tense', label: '🏚️ Город', colors: ['#0a0a10', '#2a2a2a', '#3a3a3a'] },
@@ -67,6 +80,12 @@ let questProgress = {};
 let lifetimeFears = 0;
 let lifetimeEggs = 0;
 let lifetimeBestCombo = 0;
+let lifetimeStarsEarned = 0;
+let lifetimeNoHitMax = 0;
+let bossDefeatedLifetime = false;
+let metMiaLifetime = false;
+let metMaxLifetime = false;
+let unlockedAchievements = [];
 
 const CHOICES = {
   fear: {
@@ -258,6 +277,12 @@ function saveProgress() {
       fearsDefeated: lifetimeFears,
       easterEggsFound: lifetimeEggs,
       bestCombo: lifetimeBestCombo,
+      lifetimeStarsEarned,
+      lifetimeNoHitMax,
+      bossDefeatedLifetime,
+      metMiaLifetime,
+      metMaxLifetime,
+      unlockedAchievements,
       playerName,
       mainFearId,
       questProgress,
@@ -280,6 +305,12 @@ function loadProgress() {
     lifetimeFears = data.fearsDefeated || 0;
     lifetimeEggs = data.easterEggsFound || 0;
     lifetimeBestCombo = data.bestCombo || 0;
+    lifetimeStarsEarned = data.lifetimeStarsEarned ?? metaStars;
+    lifetimeNoHitMax = data.lifetimeNoHitMax || 0;
+    bossDefeatedLifetime = !!data.bossDefeatedLifetime;
+    metMiaLifetime = !!data.metMiaLifetime;
+    metMaxLifetime = !!data.metMaxLifetime;
+    unlockedAchievements = Array.isArray(data.unlockedAchievements) ? data.unlockedAchievements : [];
     playerName = data.playerName || '';
     mainFearId = data.mainFearId || 'unknown';
     questProgress = data.questProgress && typeof data.questProgress === 'object' ? data.questProgress : {};
@@ -290,7 +321,126 @@ function loadProgress() {
     completedEpisodes = [];
     metaStars = 0;
     totalStars = 0;
+    unlockedAchievements = [];
   }
+}
+
+function awardMetaStars(amount, reason = '') {
+  const gain = Math.max(0, Math.floor(amount));
+  if (!gain) return;
+  metaStars += gain;
+  totalStars = metaStars;
+  lifetimeStarsEarned += gain;
+  if (reason) {
+    const toast = document.createElement('div');
+    toast.className = 'runner-easter-toast';
+    toast.textContent = `+${gain} ⭐ ${reason}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+  }
+}
+
+function showAchievementUnlocked(ach) {
+  document.querySelectorAll('.runner-ach-toast').forEach((el) => el.remove());
+  const toast = document.createElement('div');
+  toast.className = 'runner-ach-toast';
+  toast.innerHTML = `<strong>🏆 Достижение!</strong><br>${ach.name}<br><small>${ach.desc}</small>`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3200);
+  try { speak(ach.name); } catch { /* */ }
+}
+
+function achievementProgress(achId, ctx = {}) {
+  switch (achId) {
+    case 'first_fear':
+    case 'fear_hunter':
+      return lifetimeFears + (ctx.fearsDefeatedRun || 0);
+    case 'star_collector':
+    case 'rich':
+      return lifetimeStarsEarned + (ctx.runStars || 0);
+    case 'combo_master':
+      return Math.max(lifetimeBestCombo, ctx.bestCombo || 0);
+    case 'mia_friend':
+      return (metMiaLifetime || ctx.miaActive) ? 1 : 0;
+    case 'max_friend':
+      return (metMaxLifetime || ctx.maxActive) ? 1 : 0;
+    case 'easter_hunter':
+      return lifetimeEggs + (ctx.eggsFoundRun || 0);
+    case 'boss_slayer':
+      return (bossDefeatedLifetime || ctx.bossDefeated) ? 1 : 0;
+    case 'no_damage':
+      return Math.max(lifetimeNoHitMax, ctx.noHitDistance || 0);
+    default:
+      return 0;
+  }
+}
+
+function checkAchievements(ctx = {}) {
+  let unlockedAny = false;
+  ACHIEVEMENTS.forEach((ach) => {
+    if (unlockedAchievements.includes(ach.id)) return;
+    const progress = achievementProgress(ach.id, ctx);
+    if (progress >= ach.target) {
+      unlockedAchievements.push(ach.id);
+      showAchievementUnlocked(ach);
+      awardMetaStars(ach.reward, `Достижение: ${ach.name}`);
+      unlockedAny = true;
+      trackEvent('runner_achievement', { id: ach.id });
+    }
+  });
+  if (unlockedAny) saveProgress();
+}
+
+function checkDailyBonus() {
+  const today = new Date().toDateString();
+  const lastBonus = localStorage.getItem('lastDailyBonus');
+  if (lastBonus === today) return false;
+
+  const bonus = 10;
+  localStorage.setItem('lastDailyBonus', today);
+  awardMetaStars(bonus, '');
+  saveProgress();
+
+  document.getElementById('runner-daily-bonus')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'runner-daily-bonus';
+  overlay.className = 'runner-daily-bonus';
+  overlay.innerHTML = `
+    <h2>🎁 Ежедневный бонус!</h2>
+    <p class="runner-daily-amount">+${bonus} ⭐</p>
+    <p class="runner-daily-hint">Заходи каждый день — получай звёзды!</p>
+    <button type="button" class="runner-btn primary" id="runnerDailyOk">Отлично!</button>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#runnerDailyOk')?.addEventListener('click', () => overlay.remove());
+  return true;
+}
+
+function showAchievementsScreen() {
+  loadProgress();
+  document.getElementById('runner-achievements')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'runner-achievements';
+  overlay.className = 'runner-shop-screen';
+  let html = `<h2>🏆 Достижения</h2><p class="runner-shop-balance">${unlockedAchievements.length}/${ACHIEVEMENTS.length}</p><div class="runner-shop-list">`;
+  ACHIEVEMENTS.forEach((ach) => {
+    const done = unlockedAchievements.includes(ach.id);
+    const progress = Math.min(ach.target, achievementProgress(ach.id));
+    html += `<div class="runner-shop-item${done ? ' owned' : ''}">
+      <h3>${done ? '✅ ' : '🔒 '}${ach.name}</h3>
+      <p>${ach.desc}</p>
+      <p class="cost">${progress}/${ach.target} · ⭐ ${ach.reward}</p>
+    </div>`;
+  });
+  html += `</div><button type="button" class="runner-btn secondary" id="runnerAchClose">Закрыть</button>`;
+  overlay.innerHTML = html;
+  document.body.appendChild(overlay);
+  document.body.classList.add('game-active');
+  appState.gameActive = true;
+  overlay.querySelector('#runnerAchClose')?.addEventListener('click', () => {
+    overlay.remove();
+    showEpisodeSelect();
+  });
 }
 
 function saveCheckpoint(payload) {
@@ -400,7 +550,7 @@ function claimDailyBonus() {
 
 function cleanupRunnerUi() {
   document.querySelectorAll(
-    '.game-fullscreen, .game-screen, .runner-result, .runner-share-sheet, .runner-choice-overlay, #choice-overlay, #episode-select, .runner-break-modal, .runner-easter-toast, .runner-episode-video, .runner-shop-screen, .runner-intro-dialog, .runner-pause-screen, .runner-victory-screen, .runner-phase-intro, #runner-shop'
+    '.game-fullscreen, .game-screen, .runner-result, .runner-share-sheet, .runner-choice-overlay, #choice-overlay, #episode-select, .runner-break-modal, .runner-easter-toast, .runner-ach-toast, .runner-episode-video, .runner-shop-screen, .runner-intro-dialog, .runner-pause-screen, .runner-victory-screen, .runner-phase-intro, #runner-shop, #runner-daily-bonus, #runner-achievements'
   ).forEach((el) => el.remove());
   document.body.classList.remove('game-active');
 }
@@ -473,6 +623,8 @@ function showEpisodeSelect() {
   loadProgress();
   const cp = loadCheckpoint();
   cleanupRunnerUi();
+  checkDailyBonus();
+  checkAchievements();
 
   const overlay = showHubOverlay((root) => {
     const title = document.createElement('h1');
@@ -482,7 +634,7 @@ function showEpisodeSelect() {
 
     const sub = document.createElement('p');
     sub.className = 'runner-episode-sub';
-    sub.textContent = `⭐ ${metaStars} · Страхов: ${lifetimeFears} · Пасхалок: ${lifetimeEggs} · Комбо x${lifetimeBestCombo}`;
+    sub.textContent = `⭐ ${metaStars} · 🏆 ${unlockedAchievements.length}/${ACHIEVEMENTS.length} · Страхов: ${lifetimeFears}`;
     root.appendChild(sub);
 
     const list = document.createElement('div');
@@ -520,6 +672,16 @@ function showEpisodeSelect() {
       showShop();
     };
     list.appendChild(shopBtn);
+
+    const achBtn = document.createElement('button');
+    achBtn.type = 'button';
+    achBtn.className = 'runner-episode-card';
+    achBtn.innerHTML = `<h3>🏆 Достижения</h3><p>Награды за подвиги</p><small>${unlockedAchievements.length}/${ACHIEVEMENTS.length} открыто</small>`;
+    achBtn.onclick = () => {
+      root.remove();
+      showAchievementsScreen();
+    };
+    list.appendChild(achBtn);
 
     root.appendChild(list);
 
@@ -932,12 +1094,14 @@ function launchRunnerEpisode(ep, opts = {}) {
         showComboText(200);
         spawnFearShards(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd700', 30);
         localStorage.setItem('runner-boss-killed', '1');
+        bossDefeatedLifetime = true;
         speakStory('Босс повержен! Мы сделали это!', 'lucik');
         boss = null;
         closedPortal = true;
         startMusic(phase === PHASE.HUNT ? 'hunt' : 'flee');
         const el = document.getElementById('runnerScore');
         if (el) el.textContent = score;
+        pulseAchievements({ bossDefeated: true });
         // Победа только у финиша 5000м
         if (distance >= FULL_GOAL - 100) victorySequence();
         else {
@@ -946,6 +1110,21 @@ function launchRunnerEpisode(ep, opts = {}) {
         }
       }
     }
+  }
+
+  function pulseAchievements(extra = {}) {
+    lifetimeNoHitMax = Math.max(lifetimeNoHitMax, Math.floor(noHitDistance));
+    checkAchievements({
+      fearsDefeatedRun,
+      runStars: score,
+      bestCombo: Math.max(bestComboRun, combo),
+      miaActive: miaLoaded || metMiaLifetime,
+      maxActive: maxLoaded || metMaxLifetime,
+      eggsFoundRun,
+      bossDefeated: bossDefeatedLifetime,
+      noHitDistance: Math.floor(noHitDistance),
+      ...extra
+    });
   }
 
   function awardRunStars(amount, reason) {
@@ -1097,11 +1276,17 @@ function launchRunnerEpisode(ep, opts = {}) {
     if (!completedEpisodes.includes(currentEpisode)) completedEpisodes.push(currentEpisode);
     metaStars += score;
     totalStars = metaStars;
+    lifetimeStarsEarned += score;
     lifetimeFears += fearsDefeatedRun;
     lifetimeEggs += eggsFoundRun;
     lifetimeBestCombo = Math.max(lifetimeBestCombo, bestComboRun, combo);
+    lifetimeNoHitMax = Math.max(lifetimeNoHitMax, Math.floor(noHitDistance));
+    if (miaLoaded) metMiaLifetime = true;
+    if (maxLoaded) metMaxLifetime = true;
+    if (closedPortal || localStorage.getItem('runner-boss-killed') === '1') bossDefeatedLifetime = true;
     clearCheckpoint();
     saveProgress();
+    checkAchievements();
     trackEvent('runner_victory', { score, fears: fearsDefeatedRun, eggs: eggsFoundRun });
     const overlayWin = document.createElement('div');
     overlayWin.className = 'runner-victory-screen';
@@ -1771,6 +1956,7 @@ function launchRunnerEpisode(ep, opts = {}) {
       slowMoT = 25;
     }
     lastSmash = { x: cx, y: cy, color: o.eye, name: o.name };
+    pulseAchievements();
   }
 
   function enterWell() {
@@ -2057,6 +2243,7 @@ function launchRunnerEpisode(ep, opts = {}) {
   function spawnMia() {
     if (miaLoaded) return;
     miaLoaded = true;
+    metMiaLifetime = true;
     choiceState.triggered.mia = true;
     const lane = pickAllyLane(true);
     const gx = allyHomeX(lane) - 40;
@@ -2076,11 +2263,13 @@ function launchRunnerEpisode(ep, opts = {}) {
     showAllyMessage('Мия присоединилась! 💫');
     speak('Мия с нами!');
     burst(gx + 25, groundY() - 40, '#ff69b4', 22);
+    pulseAchievements({ miaActive: true });
   }
 
   function spawnMax() {
     if (maxLoaded) return;
     maxLoaded = true;
+    metMaxLifetime = true;
     choiceState.triggered.max = true;
     const mia = allies.find((a) => a.id === 'mia');
     let lane = pickAllyLane(false);
@@ -2108,6 +2297,7 @@ function launchRunnerEpisode(ep, opts = {}) {
     showAllyMessage('Макс присоединился! 🛡️');
     speak('Макс на защите!');
     burst(gx + 27, groundY() - 40, '#4169e1', 22);
+    pulseAchievements({ maxActive: true });
   }
 
   function createArrowEffect(fromX, fromY, toX, toY, target) {
@@ -2774,8 +2964,13 @@ function launchRunnerEpisode(ep, opts = {}) {
           eggsFoundRun++;
           showEasterEgg(`${egg.icon || '🎲'} ${egg.text}`);
           awardRunStars(5, 'Пасхалка');
+          pulseAchievements();
         }
       });
+
+      if (!unlockedAchievements.includes('no_damage') && noHitDistance >= 2000) {
+        pulseAchievements();
+      }
 
       // «Давай отдохнём!» — ~10 минут (не засчитывает эпизод)
       const playSec = (performance.now() - playSessionStart) / 1000;
