@@ -1454,11 +1454,123 @@ function launchRunnerEpisode(ep, opts = {}) {
   let runFrameCounter = 0;
   let animState = 'idle';
 
-  const miaRun1 = new Image();
-  miaRun1.src = 'assets/images/mia-run1.png';
-  const miaRun2 = new Image();
-  miaRun2.src = 'assets/images/mia-run2.png';
+  const miaRunSrc = [
+    Object.assign(new Image(), { src: 'assets/images/mia-run1.png' }),
+    Object.assign(new Image(), { src: 'assets/images/mia-run2.png' })
+  ];
+  const miaRunSprites = [null, null];
   const MIA_SHOOT_FRAMES = 18; // ~300 мс при 60 fps — кадр с луком
+
+  function isMiaBgPixel(r, g, b) {
+    return r > 240 && g > 240 && b > 240;
+  }
+
+  function makeTransparent(image) {
+    const canvas = document.createElement('canvas');
+    const w = image.naturalWidth || image.width;
+    const h = image.naturalHeight || image.height;
+    canvas.width = w;
+    canvas.height = h;
+    const c = canvas.getContext('2d', { willReadFrequently: true });
+    c.drawImage(image, 0, 0);
+    const imageData = c.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    const visited = new Uint8Array(w * h);
+    const stack = [];
+
+    const tryPush = (x, y) => {
+      if (x < 0 || y < 0 || x >= w || y >= h) return;
+      const idx = y * w + x;
+      if (visited[idx]) return;
+      const i = idx * 4;
+      if (data[i + 3] === 0) {
+        visited[idx] = 1;
+        return;
+      }
+      if (isMiaBgPixel(data[i], data[i + 1], data[i + 2])) {
+        visited[idx] = 1;
+        stack.push(idx);
+      }
+    };
+
+    for (let x = 0; x < w; x++) {
+      tryPush(x, 0);
+      tryPush(x, h - 1);
+    }
+    for (let y = 0; y < h; y++) {
+      tryPush(0, y);
+      tryPush(w - 1, y);
+    }
+
+    while (stack.length) {
+      const idx = stack.pop();
+      const i = idx * 4;
+      data[i + 3] = 0;
+      const x = idx % w;
+      const y = (idx / w) | 0;
+      tryPush(x + 1, y);
+      tryPush(x - 1, y);
+      tryPush(x, y + 1);
+      tryPush(x, y - 1);
+      tryPush(x + 1, y + 1);
+      tryPush(x - 1, y - 1);
+      tryPush(x + 1, y - 1);
+      tryPush(x - 1, y + 1);
+    }
+
+    const isGrayShadow = (r, g, b) => {
+      const min = Math.min(r, g, b);
+      const max = Math.max(r, g, b);
+      return min > 165 && max < 240 && (max - min) < 30;
+    };
+    const grayStack = [];
+    const tryGray = (x, y) => {
+      if (x < 0 || y < 0 || x >= w || y >= h) return;
+      const idx = y * w + x;
+      const i = idx * 4;
+      if (data[i + 3] === 0) return;
+      if (!isGrayShadow(data[i], data[i + 1], data[i + 2])) return;
+      data[i + 3] = 0;
+      grayStack.push(idx);
+    };
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (data[(y * w + x) * 4 + 3] !== 0) continue;
+        tryGray(x + 1, y);
+        tryGray(x - 1, y);
+        tryGray(x, y + 1);
+        tryGray(x, y - 1);
+      }
+    }
+    while (grayStack.length) {
+      const idx = grayStack.pop();
+      const x = idx % w;
+      const y = (idx / w) | 0;
+      tryGray(x + 1, y);
+      tryGray(x - 1, y);
+      tryGray(x, y + 1);
+      tryGray(x, y - 1);
+    }
+
+    c.putImageData(imageData, 0, 0);
+    return canvas;
+  }
+
+  function prepareMiaSprite(index) {
+    const img = miaRunSrc[index];
+    const apply = () => {
+      if (!img.naturalWidth) return;
+      try {
+        miaRunSprites[index] = makeTransparent(img);
+      } catch {
+        miaRunSprites[index] = img;
+      }
+    };
+    if (img.complete && img.naturalWidth > 0) apply();
+    else img.addEventListener('load', apply, { once: true });
+  }
+  prepareMiaSprite(0);
+  prepareMiaSprite(1);
 
   // —— Web Audio synthwave ——
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2469,7 +2581,10 @@ function launchRunnerEpisode(ep, opts = {}) {
   }
 
   function miaFrameReady(img) {
-    return !!(img && img.complete && img.naturalWidth > 0);
+    if (!img) return false;
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    return w > 0 && h > 0;
   }
 
   function drawMiaFallback(x, y) {
@@ -2521,7 +2636,7 @@ function launchRunnerEpisode(ep, opts = {}) {
     const x = ally.x;
     const y = ally.y;
     const shooting = ally.shootingT > 0;
-    const img = shooting || ally.runFrame === 1 ? miaRun2 : miaRun1;
+    const img = miaRunSprites[shooting || ally.runFrame === 1 ? 1 : 0];
 
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -2530,8 +2645,8 @@ function launchRunnerEpisode(ep, opts = {}) {
     ctx.fill();
 
     if (miaFrameReady(img)) {
-      const iw = img.naturalWidth;
-      const ih = img.naturalHeight;
+      const iw = img.naturalWidth || img.width;
+      const ih = img.naturalHeight || img.height;
       const scale = Math.min(ally.w / iw, ally.h / ih);
       const dw = iw * scale;
       const dh = ih * scale;
