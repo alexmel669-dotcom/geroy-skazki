@@ -1454,6 +1454,12 @@ function launchRunnerEpisode(ep, opts = {}) {
   let runFrameCounter = 0;
   let animState = 'idle';
 
+  const miaRun1 = new Image();
+  miaRun1.src = 'assets/images/mia-run1.png';
+  const miaRun2 = new Image();
+  miaRun2.src = 'assets/images/mia-run2.png';
+  const MIA_SHOOT_FRAMES = 18; // ~300 мс при 60 fps — кадр с луком
+
   // —— Web Audio synthwave ——
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   let musicOn = true;
@@ -2252,12 +2258,15 @@ function launchRunnerEpisode(ep, opts = {}) {
       name: 'Мия',
       lane,
       x: gx,
-      y: groundY() - 60,
-      w: 50,
-      h: 60,
+      y: groundY() - 80,
+      w: 60,
+      h: 80,
       anim: 0,
       shootTimer: 180, // почти сразу первая стрела
       shootCooldown: 250,
+      shootingT: 0,
+      runFrame: 0,
+      frameTimer: 0,
       bob: 0
     });
     showAllyMessage('Мия присоединилась! 💫');
@@ -2376,6 +2385,7 @@ function launchRunnerEpisode(ep, opts = {}) {
       }
     }
     if (!closest) return;
+    ally.shootingT = MIA_SHOOT_FRAMES;
     createArrowEffect(
       ally.x + ally.w * 0.85,
       ally.y + ally.h * 0.35,
@@ -2420,10 +2430,18 @@ function launchRunnerEpisode(ep, opts = {}) {
       ally.bob += 0.05;
 
       if (ally.id === 'mia') {
+        if (ally.shootingT > 0) ally.shootingT--;
         ally.shootTimer++;
         if (ally.shootTimer >= ally.shootCooldown) {
           ally.shootTimer = 0;
           shootArrow(ally);
+        }
+        if (ally.shootingT <= 0) {
+          ally.frameTimer++;
+          if (ally.frameTimer > 10) {
+            ally.frameTimer = 0;
+            ally.runFrame = ally.runFrame === 0 ? 1 : 0;
+          }
         }
       }
 
@@ -2450,77 +2468,82 @@ function launchRunnerEpisode(ep, opts = {}) {
     updateArrowEffects();
   }
 
-  function drawMia(ally) {
-    const runFrame = Math.floor(ally.anim) % 2;
-    const bobY = runFrame === 0 ? 0 : -4;
-    const x = ally.x;
-    const y = ally.y + bobY;
+  function miaFrameReady(img) {
+    return !!(img && img.complete && img.naturalWidth > 0);
+  }
 
-    ctx.save();
-    // тень
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.beginPath();
-    ctx.ellipse(x + 25, groundY() - 2, 18, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // тело
+  function drawMiaFallback(x, y) {
+    const runFrame = Math.floor(frame * 0.1) % 2;
     ctx.fillStyle = '#ff69b4';
     ctx.beginPath();
-    ctx.arc(x + 25, y + 32, 18, 0, Math.PI * 2);
+    ctx.arc(x + 30, y + 42, 18, 0, Math.PI * 2);
     ctx.fill();
-
-    // голова
     ctx.fillStyle = '#ffb6c1';
     ctx.beginPath();
-    ctx.arc(x + 25, y + 14, 14, 0, Math.PI * 2);
+    ctx.arc(x + 30, y + 18, 14, 0, Math.PI * 2);
     ctx.fill();
-
-    // волосы
     ctx.fillStyle = '#c71585';
     ctx.beginPath();
-    ctx.arc(x + 25, y + 10, 14, Math.PI, 0);
+    ctx.arc(x + 30, y + 14, 14, Math.PI, 0);
     ctx.fill();
-
-    // глаза
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.arc(x + 20, y + 13, 4.5, 0, Math.PI * 2);
-    ctx.arc(x + 30, y + 13, 4.5, 0, Math.PI * 2);
+    ctx.arc(x + 25, y + 17, 4.5, 0, Math.PI * 2);
+    ctx.arc(x + 35, y + 17, 4.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#222';
     ctx.beginPath();
-    ctx.arc(x + 21, y + 13, 2, 0, Math.PI * 2);
-    ctx.arc(x + 31, y + 13, 2, 0, Math.PI * 2);
+    ctx.arc(x + 26, y + 17, 2, 0, Math.PI * 2);
+    ctx.arc(x + 36, y + 17, 2, 0, Math.PI * 2);
     ctx.fill();
-
-    // ноги (2 кадра)
     ctx.fillStyle = '#db7093';
     if (runFrame === 0) {
-      ctx.fillRect(x + 14, y + 48, 8, 10);
-      ctx.fillRect(x + 28, y + 50, 8, 8);
+      ctx.fillRect(x + 18, y + 62, 8, 14);
+      ctx.fillRect(x + 34, y + 66, 8, 10);
     } else {
-      ctx.fillRect(x + 14, y + 50, 8, 8);
-      ctx.fillRect(x + 28, y + 48, 8, 10);
+      ctx.fillRect(x + 18, y + 66, 8, 10);
+      ctx.fillRect(x + 34, y + 62, 8, 14);
     }
-
-    // лук
     ctx.strokeStyle = '#8b4513';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(x + 44, y + 28, 13, -0.9, 0.9);
+    ctx.arc(x + 52, y + 38, 13, -0.9, 0.9);
     ctx.stroke();
     ctx.strokeStyle = '#ffe566';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(x + 44, y + 16);
-    ctx.lineTo(x + 44, y + 40);
+    ctx.moveTo(x + 52, y + 26);
+    ctx.lineTo(x + 52, y + 50);
     ctx.stroke();
+  }
 
-    // имя
+  function drawMia(ally) {
+    const x = ally.x;
+    const y = ally.y;
+    const shooting = ally.shootingT > 0;
+    const img = shooting || ally.runFrame === 1 ? miaRun2 : miaRun1;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x + ally.w / 2, groundY() - 2, 20, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (miaFrameReady(img)) {
+      const iw = img.naturalWidth;
+      const ih = img.naturalHeight;
+      const scale = Math.min(ally.w / iw, ally.h / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      ctx.drawImage(img, x + (ally.w - dw) / 2, y + (ally.h - dh), dw, dh);
+    } else {
+      drawMiaFallback(x, y);
+    }
+
     ctx.fillStyle = '#ffb6d9';
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Мия', x + 25, y - 4);
+    ctx.fillText('Мия', x + ally.w / 2, y - 4);
     ctx.restore();
   }
 
