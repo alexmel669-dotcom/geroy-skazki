@@ -496,6 +496,232 @@ async function speakStory(text, voice = 'lucik') {
   } catch { /* */ }
 }
 
+const SCENE_STATE_KEY = 'runner_scenes';
+const sceneState = {
+  startShown: false,
+  miaShown: false,
+  maxShown: false,
+  portalShown: false,
+  bossShown: false,
+  victoryShown: false,
+  fakeForestShown: false,
+  bossFogShown: false
+};
+
+function defaultSceneState() {
+  return {
+    startShown: false,
+    miaShown: false,
+    maxShown: false,
+    portalShown: false,
+    bossShown: false,
+    victoryShown: false,
+    fakeForestShown: false,
+    bossFogShown: false
+  };
+}
+
+function saveSceneState() {
+  try {
+    localStorage.setItem(SCENE_STATE_KEY, JSON.stringify(sceneState));
+  } catch { /* */ }
+}
+
+function loadSceneState() {
+  try {
+    const saved = localStorage.getItem(SCENE_STATE_KEY);
+    if (saved) Object.assign(sceneState, defaultSceneState(), JSON.parse(saved));
+  } catch { /* */ }
+}
+
+function resetSceneState() {
+  Object.assign(sceneState, defaultSceneState());
+  saveSceneState();
+}
+
+function hideQuestionOverlay() {
+  document.getElementById('runner-ai-dialog')?.remove();
+}
+
+function showQuestionOverlay(question, { image, character = 'lucik' } = {}) {
+  hideQuestionOverlay();
+  const names = { lucik: 'Люцик', mia: 'Мия', max: 'Макс' };
+  const wrap = document.createElement('div');
+  wrap.id = 'runner-ai-dialog';
+  wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:10004;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;color:#fff;';
+  if (image?.src) {
+    const img = document.createElement('img');
+    img.src = image.src;
+    img.alt = '';
+    img.style.cssText = 'max-width:86%;max-height:36%;border-radius:16px;object-fit:contain;margin-bottom:12px;';
+    wrap.appendChild(img);
+  }
+  const title = document.createElement('h2');
+  title.textContent = names[character] || 'Люцик';
+  title.style.cssText = 'margin:0 0 8px;font-size:22px;';
+  wrap.appendChild(title);
+  const q = document.createElement('p');
+  q.id = 'runner-ai-question';
+  q.textContent = question;
+  q.style.cssText = 'font-size:20px;text-align:center;max-width:80%;margin:0 0 16px;';
+  wrap.appendChild(q);
+  const input = document.createElement('input');
+  input.id = 'runner-ai-input';
+  input.type = 'text';
+  input.maxLength = 80;
+  input.placeholder = 'Скажи или напиши…';
+  input.autocomplete = 'off';
+  input.style.cssText = 'width:min(420px,86%);padding:10px 14px;border-radius:8px;border:none;font-size:16px;';
+  wrap.appendChild(input);
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;justify-content:center;';
+  const ok = document.createElement('button');
+  ok.id = 'runner-ai-ok';
+  ok.type = 'button';
+  ok.textContent = 'OK';
+  ok.style.cssText = 'padding:10px 22px;background:#ffd700;color:#000;border:none;border-radius:8px;font-size:16px;cursor:pointer;';
+  const mic = document.createElement('button');
+  mic.id = 'runner-ai-mic';
+  mic.type = 'button';
+  mic.textContent = '🎤 Голосом';
+  mic.style.cssText = 'padding:10px 22px;background:#6C63FF;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;';
+  actions.appendChild(ok);
+  actions.appendChild(mic);
+  wrap.appendChild(actions);
+  document.body.appendChild(wrap);
+  input.focus();
+  return wrap;
+}
+
+function listenToChild() {
+  return new Promise((resolve) => {
+    const wrap = document.getElementById('runner-ai-dialog');
+    if (!wrap) {
+      resolve('...');
+      return;
+    }
+    const input = wrap.querySelector('#runner-ai-input');
+    let done = false;
+    const finish = (val) => {
+      if (done) return;
+      done = true;
+      resolve(String(val || '').trim() || '...');
+    };
+    wrap.querySelector('#runner-ai-ok')?.addEventListener('click', () => finish(input?.value));
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') finish(input.value);
+    });
+    wrap.querySelector('#runner-ai-mic')?.addEventListener('click', async () => {
+      try {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+          speak('Напиши ответ текстом');
+          return;
+        }
+        const rec = new SR();
+        rec.lang = 'ru-RU';
+        rec.onresult = (ev) => finish(ev.results?.[0]?.[0]?.transcript || '');
+        rec.onerror = () => speak('Не расслышал, напиши текстом');
+        rec.start();
+      } catch {
+        speak('Напиши ответ текстом');
+      }
+    });
+  });
+}
+
+async function fetchScenarioReply(childAnswer, scenarioContext, character) {
+  const apiChar = { lucik: 'lucik', mia: 'kid1', max: 'kid2' }[character] || 'lucik';
+  const fallback = 'Хорошо, пойдём!';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('userToken') : null;
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        message: childAnswer || '...',
+        character: apiChar,
+        childName: playerName || '',
+        requestType: 'chat',
+        systemPrompt: `Ты персонаж детской игры. Говори коротко (1–2 предложения), тепло и по-русски.
+Ребёнок ответил: "${childAnswer}".
+Независимо от ответа продолжай сюжет: ${scenarioContext}
+Мягко прими ответ и направь к сценарию. Без страшных подробностей.`
+      }),
+      signal: controller.signal
+    });
+    if (!res.ok) return fallback;
+    const data = await res.json();
+    return String(data.reply || fallback).trim() || fallback;
+  } catch {
+    return fallback;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function waitDialogContinue(label = 'Продолжить →') {
+  return new Promise((resolve) => {
+    const wrap = document.getElementById('runner-ai-dialog');
+    if (!wrap) {
+      resolve();
+      return;
+    }
+    wrap.querySelector('#runner-ai-input')?.remove();
+    wrap.querySelector('#runner-ai-ok')?.remove();
+    wrap.querySelector('#runner-ai-mic')?.remove();
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.style.cssText = 'padding:12px 30px;background:#ffd700;color:#000;border:none;border-radius:8px;font-size:18px;cursor:pointer;margin-top:12px;';
+    btn.onclick = () => resolve();
+    wrap.appendChild(btn);
+    btn.focus();
+  });
+}
+
+async function aiDialog(question, scenarioContext, character = 'lucik', image = null) {
+  showQuestionOverlay(question, { image, character });
+  await speakStory(question, character);
+  const childAnswer = await listenToChild();
+  const q = document.getElementById('runner-ai-question');
+  if (q) q.textContent = '…';
+  const aiReply = await fetchScenarioReply(childAnswer, scenarioContext, character);
+  if (q) q.textContent = aiReply;
+  await speakStory(aiReply, character);
+  await waitDialogContinue();
+  hideQuestionOverlay();
+  return childAnswer;
+}
+
+async function sceneStart() {
+  const name = await aiDialog(
+    'Привет! Как тебя зовут?',
+    'Люцик узнаёт имя и радуется знакомству',
+    'lucik'
+  );
+  playerName = name && name !== '...' ? name : (playerName || 'друг');
+  const fearRaw = await aiDialog(
+    'Чего ты боишься больше всего?',
+    'Люцик понимает страх ребёнка. Этот страх станет главным врагом',
+    'lucik'
+  );
+  mainFearId = interpretFearAnswer(fearRaw);
+  await aiDialog(
+    'Поможешь мне найти дорогу домой?',
+    'Ребёнок соглашается помочь. Приключение начинается',
+    'lucik'
+  );
+  sceneState.startShown = true;
+  saveSceneState();
+  saveProgress();
+}
+
 function showHubOverlay(htmlBuilder) {
   document.getElementById('episode-select')?.remove();
   document.getElementById('runner-shop')?.remove();
@@ -550,7 +776,7 @@ function claimDailyBonus() {
 
 function cleanupRunnerUi() {
   document.querySelectorAll(
-    '.game-fullscreen, .game-screen, .runner-result, .runner-share-sheet, .runner-choice-overlay, #choice-overlay, #episode-select, .runner-break-modal, .runner-easter-toast, .runner-ach-toast, .runner-episode-video, .runner-shop-screen, .runner-intro-dialog, .runner-pause-screen, .runner-victory-screen, .runner-phase-intro, #runner-shop, #runner-daily-bonus, #runner-achievements'
+    '.game-fullscreen, .game-screen, .runner-result, .runner-share-sheet, .runner-choice-overlay, #choice-overlay, #episode-select, .runner-break-modal, .runner-easter-toast, .runner-ach-toast, .runner-episode-video, .runner-shop-screen, .runner-intro-dialog, .runner-pause-screen, .runner-victory-screen, .runner-phase-intro, #runner-shop, #runner-daily-bonus, #runner-achievements, #runner-ai-dialog, #runner-scene-overlay, #runner-fake-path, #runner-dead-end, #runner-boss-fog'
   ).forEach((el) => el.remove());
   document.body.classList.remove('game-active');
 }
@@ -801,12 +1027,10 @@ async function startIntroThenRun({ resume = null, skipDialog = false } = {}) {
   document.body.classList.add('game-active');
 
   if (!skipDialog) {
-    const name = await askText('Привет! Как тебя зовут?', 'Твоё имя');
-    playerName = name || 'друг';
-    const fearRaw = await askText('Чего ты боишься больше всего?', 'темнота / монстры / высота…');
-    mainFearId = interpretFearAnswer(fearRaw);
-    saveProgress();
-    await speakStory(`${playerName}, держись рядом. Мы справимся.`, 'lucik');
+    resetSceneState();
+    await sceneStart();
+  } else {
+    loadSceneState();
   }
 
   currentEpisode = 1;
@@ -1394,6 +1618,25 @@ function launchRunnerEpisode(ep, opts = {}) {
   let bossSceneShown = !!(resume?.distance >= 4500);
   let sceneActive = false;
   let sceneSpeedBefore = 1;
+  if (resume) {
+    loadSceneState();
+    if (resume.miaLoaded) sceneState.miaShown = true;
+    if (resume.maxLoaded) sceneState.maxShown = true;
+    if (resume.distance >= 400) sceneState.fakeForestShown = true;
+    if (resume.distance >= 2500) sceneState.portalShown = true;
+    if (resume.distance >= 4400) sceneState.bossFogShown = true;
+    if (resume.distance >= 4500) sceneState.bossShown = true;
+  } else {
+    loadSceneState();
+    sceneState.miaShown = false;
+    sceneState.maxShown = false;
+    sceneState.portalShown = false;
+    sceneState.bossShown = false;
+    sceneState.victoryShown = false;
+    sceneState.fakeForestShown = false;
+    sceneState.bossFogShown = false;
+    saveSceneState();
+  }
   if (resume?.miaLoaded) {
     /* spawn after canvas ready in beginAfterVideo path */
   }
@@ -2549,6 +2792,213 @@ function launchRunnerEpisode(ep, opts = {}) {
     setTimeout(() => el.remove(), 2200);
   }
 
+  let sceneBusy = false;
+
+  async function runStoryScene(flag, fn) {
+    if (sceneState[flag] || sceneBusy) return;
+    sceneState[flag] = true;
+    sceneBusy = true;
+    saveSceneState();
+    sceneActive = true;
+    const prev = speed;
+    speed = 0;
+    try {
+      await fn();
+    } catch { /* */ }
+    sceneBusy = false;
+    sceneActive = false;
+    if (!choiceState.active && !pauseActive && !breakActive) {
+      speed = prev || baseSpeed;
+    }
+  }
+
+  async function sceneMiaMeet() {
+    await aiDialog(
+      'Кто ты? Ты тоже потерялась?',
+      'Мия присоединяется к команде. Она сестра Макса',
+      'mia',
+      sceneMia
+    );
+    await aiDialog(
+      'Ты поможешь мне найти брата?',
+      'Ребёнок соглашается. Мия счастлива',
+      'mia'
+    );
+    spawnMia({ skipScene: true });
+  }
+
+  async function sceneMaxMeet() {
+    await aiDialog(
+      'Макс! Я тебя везде искал!',
+      'Брат и сестра воссоединяются',
+      'mia',
+      sceneMax
+    );
+    await aiDialog(
+      'Пустишь с нами? Вместе веселее!',
+      'Макс присоединяется к команде',
+      'max'
+    );
+    spawnMax({ skipScene: true });
+  }
+
+  function jumpIntoPortal() {
+    currentEnvironment = ENV_UPSIDE;
+    onEnvironmentChange(ENV_UPSIDE);
+    shakeIntensity = Math.max(shakeIntensity, 14);
+    const flash = document.createElement('div');
+    flash.id = 'runner-boss-fog';
+    flash.style.cssText = 'position:fixed;inset:0;background:rgba(40,0,60,0.82);z-index:10000;display:flex;align-items:center;justify-content:center;color:#fff;transition:opacity 0.6s;';
+    flash.innerHTML = '<p style="font-size:22px;text-align:center;max-width:80%;">Прыжок в Обратную сторону!</p>';
+    document.body.appendChild(flash);
+    setTimeout(() => {
+      flash.style.opacity = '0';
+      setTimeout(() => flash.remove(), 600);
+    }, 1400);
+  }
+
+  async function scenePortal() {
+    await aiDialog(
+      'Это портал в Обратную сторону. Там живёт Король Страхов...',
+      'Команда решает прыгнуть в портал',
+      'lucik'
+    );
+    await aiDialog(
+      'Готовы? Обратного пути не будет...',
+      'Все готовы. Команда прыгает',
+      'lucik'
+    );
+    jumpIntoPortal();
+  }
+
+  async function sceneBossIntro() {
+    await aiDialog(
+      'Вот он... Король Страхов. Страшно?',
+      'Люцик признаёт страх, но решает идти вперёд',
+      'lucik',
+      sceneBoss
+    );
+    await aiDialog(
+      'Вместе мы сильнее! Победим?',
+      'Команда готова к финальной битве',
+      'max'
+    );
+    if (!boss) {
+      choiceState.triggered.bossFinal = true;
+      lastBossAt = Math.floor(distance);
+      spawnBoss(0, { skipScene: true });
+    }
+  }
+
+  async function sceneVictory() {
+    await aiDialog(
+      'Мы сделали это! Мы победили!',
+      'Команда празднует победу',
+      'lucik'
+    );
+    victorySequence();
+  }
+
+  function fakePathForest() {
+    if (sceneState.fakeForestShown) return;
+    sceneState.fakeForestShown = true;
+    saveSceneState();
+    sceneActive = true;
+    const prev = speed;
+    speed = 0;
+    document.getElementById('runner-fake-path')?.remove();
+    const pathOverlay = document.createElement('div');
+    pathOverlay.id = 'runner-fake-path';
+    pathOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10002;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;';
+    pathOverlay.innerHTML = `
+      <p style="font-size:24px;">Развилка: куда пойти?</p>
+      <div style="display:flex;gap:20px;margin-top:20px;flex-wrap:wrap;justify-content:center;">
+        <button type="button" id="left-path" style="padding:16px 30px;background:#6C63FF;color:#fff;border:none;border-radius:8px;font-size:18px;cursor:pointer;">🌲 В чащу</button>
+        <button type="button" id="right-path" style="padding:16px 30px;background:#6C63FF;color:#fff;border:none;border-radius:8px;font-size:18px;cursor:pointer;">🌟 К свету</button>
+      </div>
+    `;
+    document.body.appendChild(pathOverlay);
+    const resumeRun = () => {
+      sceneActive = false;
+      if (!choiceState.active && !pauseActive && !breakActive) speed = prev || baseSpeed;
+    };
+    pathOverlay.querySelector('#left-path').onclick = () => {
+      pathOverlay.remove();
+      const deadEnd = document.createElement('div');
+      deadEnd.id = 'runner-dead-end';
+      deadEnd.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1a2e;padding:30px;border-radius:12px;color:#fff;text-align:center;z-index:10003;';
+      deadEnd.innerHTML = `
+        <p style="font-size:20px;">Густой кустарник. Тупик!</p>
+        <p style="color:#aaa;">«Мурр... Придётся вернуться»</p>
+        <button type="button" style="padding:10px 20px;background:#ffd700;color:#000;border:none;border-radius:8px;cursor:pointer;margin-top:10px;">Вернуться</button>
+      `;
+      deadEnd.querySelector('button').onclick = () => {
+        deadEnd.remove();
+        speakStory('Придётся вернуться. Идём к свету!', 'lucik');
+        resumeRun();
+      };
+      document.body.appendChild(deadEnd);
+    };
+    pathOverlay.querySelector('#right-path').onclick = () => {
+      pathOverlay.remove();
+      awardRunStars(5, 'Правильный путь!');
+      resumeRun();
+    };
+  }
+
+  function fakePathBoss() {
+    if (sceneState.bossFogShown) return;
+    sceneState.bossFogShown = true;
+    saveSceneState();
+    const fog = document.createElement('div');
+    fog.id = 'runner-boss-fog';
+    fog.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;color:#fff;transition:opacity 0.5s;';
+    fog.innerHTML = '<p style="font-size:22px;text-align:center;max-width:80%;">Туман сгущается... Обратного пути нет.</p>';
+    document.body.appendChild(fog);
+    speakStory('Туман сгущается... Обратного пути нет.', 'lucik');
+    setTimeout(() => {
+      fog.style.opacity = '0';
+      setTimeout(() => fog.remove(), 500);
+    }, 2000);
+  }
+
+  function checkScenarioTriggers() {
+    if (sceneBusy || sceneActive) return true;
+    if (distance >= 400 && !sceneState.fakeForestShown) {
+      fakePathForest();
+      return true;
+    }
+    if (ep.mia && distance >= 800 && !sceneState.miaShown && !miaLoaded) {
+      void runStoryScene('miaShown', sceneMiaMeet);
+      return true;
+    }
+    if (ep.max && distance >= 1800 && !sceneState.maxShown && !maxLoaded) {
+      void runStoryScene('maxShown', sceneMaxMeet);
+      return true;
+    }
+    if (distance >= 2500 && !sceneState.portalShown) {
+      void runStoryScene('portalShown', scenePortal);
+      return true;
+    }
+    if (distance >= 4400 && !sceneState.bossFogShown) {
+      fakePathBoss();
+    }
+    if (distance >= 4500 && !sceneState.bossShown && !boss) {
+      void runStoryScene('bossShown', sceneBossIntro);
+      return true;
+    }
+    if (
+      (phase === PHASE.RUN || phase === PHASE.HUNT) &&
+      distance >= FULL_GOAL &&
+      !boss &&
+      !sceneState.victoryShown
+    ) {
+      void runStoryScene('victoryShown', sceneVictory);
+      return true;
+    }
+    return false;
+  }
+
   function showBreakSuggest() {
     breakActive = true;
     speed = 0;
@@ -3280,7 +3730,7 @@ function launchRunnerEpisode(ep, opts = {}) {
 
   function update() {
     if (phase === PHASE.VIDEO || phase === PHASE.LOST || phase === PHASE.WON) return;
-    if (choiceState.active || breakActive || pauseActive || sceneActive) return;
+    if (choiceState.active || breakActive || pauseActive || sceneActive || sceneBusy) return;
 
     // slow-mo
     if (slowMoT > 0) {
@@ -3330,33 +3780,16 @@ function launchRunnerEpisode(ep, opts = {}) {
       checkDailyQuestsRun();
       noHitDistance += speed * 0.12;
 
+      if (checkScenarioTriggers()) return;
+
       for (const [situation, data] of Object.entries(activeChoices)) {
-        // босс-ситуация только около финала
-        if (situation === 'boss' && distance < 4400) continue;
-        if (situation === 'ending' && distance < 4900) continue;
+        if (situation === 'mia' || situation === 'portal' || situation === 'boss' || situation === 'ending') continue;
         if (distance >= data.trigger && !choiceState.triggered[situation]) {
           choiceState.triggered[situation] = true;
           choiceState.step = 0;
           showChoice(situation);
           return;
         }
-      }
-
-      // Мия ~800м
-      if (ep.mia && distance >= 800 && !miaLoaded && !choiceState.active) {
-        if (activeChoices.mia && !choiceState.triggered.mia) {
-          choiceState.triggered.mia = true;
-          choiceState.step = 0;
-          showChoice('mia');
-          return;
-        }
-        spawnMia();
-      }
-
-      // Макс ~1800м
-      if (ep.max && distance >= 1800 && !maxLoaded) {
-        choiceState.triggered.max = true;
-        spawnMax();
       }
 
       // пасхалки
@@ -3704,12 +4137,7 @@ function launchRunnerEpisode(ep, opts = {}) {
         lastChestAt = chestMark;
         if (Math.random() < 0.1) spawnChest();
       }
-      // босс на 4500м (3 фазы)
-      if (distance >= 4500 && !boss && !choiceState.triggered.bossFinal) {
-        choiceState.triggered.bossFinal = true;
-        lastBossAt = Math.floor(distance);
-        spawnBoss(0);
-      }
+      // босс на 4500м — через sceneBossIntro
 
       // дополнительные колодцы по пути (не завершают игру)
       if (
@@ -3720,8 +4148,7 @@ function launchRunnerEpisode(ep, opts = {}) {
         spawnWell();
       }
 
-      // Макс — 1800м
-      if (ep.max && distance >= 1800 && !maxLoaded) spawnMax();
+      // Макс — 1800м, через sceneMaxMeet
 
       // скорость: тиры дистанции × boost × dash × shop
       speedMult = getSpeedMult() * speedShopBonus;
@@ -3833,9 +4260,11 @@ function launchRunnerEpisode(ep, opts = {}) {
       (phase === PHASE.RUN || phase === PHASE.HUNT) &&
       distance >= FULL_GOAL &&
       !boss &&
-      !choiceState.active
+      !choiceState.active &&
+      !sceneState.victoryShown &&
+      !sceneBusy
     ) {
-      victorySequence();
+      void runStoryScene('victoryShown', sceneVictory);
     }
   }
 
@@ -5274,6 +5703,10 @@ function launchRunnerEpisode(ep, opts = {}) {
     cleanupAudio();
     document.getElementById('choice-overlay')?.remove();
     document.getElementById('runner-scene-overlay')?.remove();
+    document.getElementById('runner-ai-dialog')?.remove();
+    document.getElementById('runner-fake-path')?.remove();
+    document.getElementById('runner-dead-end')?.remove();
+    document.getElementById('runner-boss-fog')?.remove();
     document.querySelectorAll('.runner-break-modal, #runner-pause-screen').forEach((el) => el.remove());
     choiceState.active = false;
     sceneActive = false;
@@ -5528,6 +5961,10 @@ function launchRunnerEpisode(ep, opts = {}) {
     cleanupAudio();
     document.getElementById('choice-overlay')?.remove();
     document.getElementById('runner-scene-overlay')?.remove();
+    document.getElementById('runner-ai-dialog')?.remove();
+    document.getElementById('runner-fake-path')?.remove();
+    document.getElementById('runner-dead-end')?.remove();
+    document.getElementById('runner-boss-fog')?.remove();
     document.querySelectorAll('.runner-break-modal, #runner-pause-screen').forEach((el) => el.remove());
     choiceState.active = false;
     sceneActive = false;
