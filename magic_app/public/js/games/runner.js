@@ -1467,6 +1467,26 @@ function launchRunnerEpisode(ep, opts = {}) {
   ];
   const maxRunSprites = [null, null];
 
+  const fearSpriteSrc = {
+    darkness: Object.assign(new Image(), { src: 'assets/images/fear-darkness.png' }),
+    heights: Object.assign(new Image(), { src: 'assets/images/fear-heights.png' }),
+    loneliness: Object.assign(new Image(), { src: 'assets/images/fear-loneliness.png' }),
+    monsters: Object.assign(new Image(), { src: 'assets/images/fear-monsters.png' })
+  };
+  const fearSprites = {
+    darkness: null,
+    heights: null,
+    loneliness: null,
+    monsters: null
+  };
+
+  function fearSpriteKey(id) {
+    if (id === 'height' || id === 'heights') return 'heights';
+    if (id === 'lonely' || id === 'loneliness') return 'loneliness';
+    if (id === 'darkness' || id === 'monsters') return id;
+    return null;
+  }
+
   function isMiaBgPixel(r, g, b) {
     return r > 240 && g > 240 && b > 240;
   }
@@ -1593,6 +1613,86 @@ function launchRunnerEpisode(ep, opts = {}) {
   }
   prepareMaxSprite(0);
   prepareMaxSprite(1);
+
+  function makeTransparentFromEdges(image) {
+    const canvas = document.createElement('canvas');
+    const w = image.naturalWidth || image.width;
+    const h = image.naturalHeight || image.height;
+    canvas.width = w;
+    canvas.height = h;
+    const c = canvas.getContext('2d', { willReadFrequently: true });
+    c.drawImage(image, 0, 0);
+    const imageData = c.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    const corners = [
+      [0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]
+    ].map(([x, y]) => {
+      const i = (y * w + x) * 4;
+      return [data[i], data[i + 1], data[i + 2]];
+    });
+    const isBg = (r, g, b) => {
+      if (r > 235 && g > 235 && b > 235) return true;
+      return corners.some(([cr, cg, cb]) => (
+        Math.abs(r - cr) + Math.abs(g - cg) + Math.abs(b - cb) < 70
+      ));
+    };
+    const visited = new Uint8Array(w * h);
+    const stack = [];
+    const tryPush = (x, y) => {
+      if (x < 0 || y < 0 || x >= w || y >= h) return;
+      const idx = y * w + x;
+      if (visited[idx]) return;
+      const i = idx * 4;
+      if (data[i + 3] === 0) {
+        visited[idx] = 1;
+        return;
+      }
+      if (isBg(data[i], data[i + 1], data[i + 2])) {
+        visited[idx] = 1;
+        stack.push(idx);
+      }
+    };
+    for (let x = 0; x < w; x++) {
+      tryPush(x, 0);
+      tryPush(x, h - 1);
+    }
+    for (let y = 0; y < h; y++) {
+      tryPush(0, y);
+      tryPush(w - 1, y);
+    }
+    while (stack.length) {
+      const idx = stack.pop();
+      const i = idx * 4;
+      data[i + 3] = 0;
+      const x = idx % w;
+      const y = (idx / w) | 0;
+      tryPush(x + 1, y);
+      tryPush(x - 1, y);
+      tryPush(x, y + 1);
+      tryPush(x, y - 1);
+    }
+    c.putImageData(imageData, 0, 0);
+    return canvas;
+  }
+
+  function prepareFearSprite(key) {
+    const img = fearSpriteSrc[key];
+    const apply = () => {
+      if (!img.naturalWidth) return;
+      try {
+        fearSprites[key] = makeTransparentFromEdges(img);
+      } catch {
+        try {
+          fearSprites[key] = makeTransparent(img);
+        } catch {
+          fearSprites[key] = img;
+        }
+      }
+    };
+    if (img.complete && img.naturalWidth > 0) apply();
+    else img.addEventListener('load', apply, { once: true });
+  }
+  Object.keys(fearSpriteSrc).forEach(prepareFearSprite);
 
   // —— Web Audio synthwave ——
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1981,10 +2081,10 @@ function launchRunnerEpisode(ep, opts = {}) {
     if (canvas.width <= 0) return;
     const scale = 1 + Math.min(0.55, distance * 0.0003);
     const variants = [
-      { fearId: 'darkness', w: 50 * scale, h: 44 * scale },
-      { fearId: 'height', w: 42 * scale, h: 52 * scale },
-      { fearId: 'lonely', w: 46 * scale, h: 48 * scale },
-      { fearId: 'monsters', w: 54 * scale, h: 56 * scale }
+      { fearId: 'darkness', fearKind: 'darkness', w: 50 * scale, h: 50 * scale },
+      { fearId: 'height', fearKind: 'heights', w: 50 * scale, h: 50 * scale },
+      { fearId: 'lonely', fearKind: 'loneliness', w: 50 * scale, h: 50 * scale },
+      { fearId: 'monsters', fearKind: 'monsters', w: 50 * scale, h: 50 * scale }
     ];
     const v = variants[Math.floor(Math.random() * variants.length)];
     const meta = FEARS.find((f) => f.id === v.fearId) || fear;
@@ -1993,6 +2093,7 @@ function launchRunnerEpisode(ep, opts = {}) {
     obstacles.push({
       type: 'fear',
       fearId: v.fearId,
+      fearKind: v.fearKind,
       name: meta.name,
       color: meta.color,
       eye: meta.eye,
@@ -3661,23 +3762,14 @@ function launchRunnerEpisode(ep, opts = {}) {
     ctx.closePath();
   }
 
-  function drawFearShape(o) {
-    const grow = o.growMax ? Math.min(1, o.growT / o.growMax) : 1;
-    const waveY = Math.sin(o.wavePh || 0) * 2;
-    const { x, w, color, eye, shape, fleeing } = o;
-    const h = o.h;
-    const y = o.y;
-    ctx.save();
-    ctx.translate(x + w / 2, y + h);
-    ctx.scale(0.85 + grow * 0.15, grow);
-    ctx.translate(-(x + w / 2), -(y + h));
-    if (fleeing) {
-      ctx.translate(x + w / 2, y + h / 2);
-      ctx.scale(-1, 1);
-      ctx.translate(-(x + w / 2), -(y + h / 2));
-    }
-    ctx.globalAlpha = 0.55 + grow * 0.37;
-    const yy = y + waveY;
+  function getFearSprite(o) {
+    const key = o.fearKind || fearSpriteKey(o.fearId);
+    if (!key) return null;
+    return fearSprites[key] || fearSpriteSrc[key] || null;
+  }
+
+  function drawFearFallback(o, x, yy, w, h) {
+    const { color, eye, shape } = o;
     if (shape === 'vortex') {
       for (let i = 4; i >= 0; i--) {
         ctx.strokeStyle = color;
@@ -3710,7 +3802,7 @@ function launchRunnerEpisode(ep, opts = {}) {
         ctx.stroke();
       }
     } else {
-      ctx.fillStyle = color;
+      ctx.fillStyle = color || '#553355';
       ctx.beginPath();
       ctx.arc(x + w * 0.3, yy + h * 0.55, w * 0.28, 0, Math.PI * 2);
       ctx.arc(x + w * 0.55, yy + h * 0.4, w * 0.32, 0, Math.PI * 2);
@@ -3725,6 +3817,37 @@ function launchRunnerEpisode(ep, opts = {}) {
     ctx.arc(x + w * 0.62, yy + h * 0.42, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
+  }
+
+  function drawFearShape(o) {
+    const grow = o.growMax ? Math.min(1, o.growT / o.growMax) : 1;
+    const waveY = Math.sin(o.wavePh || 0) * 2;
+    const { x, w, fleeing } = o;
+    const h = o.h;
+    const y = o.y;
+    const sprite = getFearSprite(o);
+    ctx.save();
+    ctx.translate(x + w / 2, y + h);
+    ctx.scale(0.85 + grow * 0.15, grow);
+    ctx.translate(-(x + w / 2), -(y + h));
+    if (fleeing) {
+      ctx.translate(x + w / 2, y + h / 2);
+      ctx.scale(-1, 1);
+      ctx.translate(-(x + w / 2), -(y + h / 2));
+    }
+    const yy = y + waveY;
+    if (miaFrameReady(sprite)) {
+      ctx.globalAlpha = 0.35 + grow * 0.65;
+      const iw = sprite.naturalWidth || sprite.width;
+      const ih = sprite.naturalHeight || sprite.height;
+      const scale = Math.min(w / iw, h / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      ctx.drawImage(sprite, x + (w - dw) / 2, yy + (h - dh), dw, dh);
+    } else {
+      ctx.globalAlpha = 0.55 + grow * 0.37;
+      drawFearFallback(o, x, yy, w, h);
+    }
     ctx.restore();
     if (grow > 0.6) {
       ctx.fillStyle = 'rgba(0,229,255,0.85)';
@@ -3733,7 +3856,6 @@ function launchRunnerEpisode(ep, opts = {}) {
       ctx.fillText(o.name || '', x + w / 2, y - 4);
       ctx.textAlign = 'left';
     }
-    // зона риска — тонкое кольцо
     if (nearFearRisk() && Math.abs((o.x + o.w / 2) - (lucik.x + lucik.w / 2)) < 110) {
       ctx.strokeStyle = 'rgba(255,80,80,0.25)';
       ctx.lineWidth = 2;
