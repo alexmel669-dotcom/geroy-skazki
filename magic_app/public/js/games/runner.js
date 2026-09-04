@@ -1054,11 +1054,14 @@ function launchRunnerEpisode(ep, opts = {}) {
     if (boss && forcePhase == null) return;
     if (typeof forcePhase === 'number') bossPhaseIdx = forcePhase;
     const phaseDef = BOSS_PHASES[Math.min(bossPhaseIdx, BOSS_PHASES.length - 1)];
+    const bossH = Math.min(300, Math.max(180, groundY() - 24));
+    const bossW = Math.round(bossH * (200 / 300));
+    bossAttacking = bossPhaseIdx >= 1;
     boss = {
       x: canvas.width + 40,
-      y: groundY() - 130,
-      w: 100 + bossPhaseIdx * 12,
-      h: 120 + bossPhaseIdx * 10,
+      y: groundY() - bossH,
+      w: bossW,
+      h: bossH,
       hp: phaseDef.hp,
       maxHp: phaseDef.hp,
       phase: bossPhaseIdx,
@@ -1086,6 +1089,7 @@ function launchRunnerEpisode(ep, opts = {}) {
         bossPhaseIdx++;
         spawnFearShards(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd700', 24);
         boss = null;
+        bossAttacking = false;
         setTimeout(() => spawnBoss(bossPhaseIdx), 600);
       } else {
         score += 200;
@@ -1097,6 +1101,7 @@ function launchRunnerEpisode(ep, opts = {}) {
         bossDefeatedLifetime = true;
         speakStory('Босс повержен! Мы сделали это!', 'lucik');
         boss = null;
+        bossAttacking = false;
         closedPortal = true;
         startMusic(phase === PHASE.HUNT ? 'hunt' : 'flee');
         const el = document.getElementById('runnerScore');
@@ -1355,6 +1360,7 @@ function launchRunnerEpisode(ep, opts = {}) {
   let grassPress = [];
   let chests = [];
   let boss = null;
+  let bossAttacking = false;
   let comboFloats = [];
   let speedLines = [];
   let fireworks = [];
@@ -1693,6 +1699,30 @@ function launchRunnerEpisode(ep, opts = {}) {
     else img.addEventListener('load', apply, { once: true });
   }
   Object.keys(fearSpriteSrc).forEach(prepareFearSprite);
+
+  const bossIdleSrc = Object.assign(new Image(), { src: 'assets/images/boss-idle.png' });
+  const bossAttackSrc = Object.assign(new Image(), { src: 'assets/images/boss-attack.png' });
+  let bossIdleSprite = null;
+  let bossAttackSprite = null;
+
+  function prepareBossSprite(img, assign) {
+    const apply = () => {
+      if (!img.naturalWidth) return;
+      try {
+        assign(makeTransparentFromEdges(img));
+      } catch {
+        try {
+          assign(makeTransparent(img));
+        } catch {
+          assign(img);
+        }
+      }
+    };
+    if (img.complete && img.naturalWidth > 0) apply();
+    else img.addEventListener('load', apply, { once: true });
+  }
+  prepareBossSprite(bossIdleSrc, (s) => { bossIdleSprite = s; });
+  prepareBossSprite(bossAttackSrc, (s) => { bossAttackSprite = s; });
 
   // —— Web Audio synthwave ——
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -3446,6 +3476,10 @@ function launchRunnerEpisode(ep, opts = {}) {
       boss.wobble += 0.08;
       boss.y = gy - boss.h + Math.sin(boss.wobble) * 4;
       if (boss.hitFlash > 0) boss.hitFlash--;
+      // фазы 1–2 (Контратака, Отчаяние) — атака; пауза и преследование — idle
+      bossAttacking = boss.phase >= 1;
+    } else {
+      bossAttacking = false;
     }
     if (well && !well.used) well.x -= move;
     cracks.forEach((c) => { c.x -= move; c.life--; });
@@ -3863,6 +3897,65 @@ function launchRunnerEpisode(ep, opts = {}) {
       ctx.arc(o.x + o.w / 2, o.y + o.h / 2, Math.max(o.w, o.h) * 0.7, 0, Math.PI * 2);
       ctx.stroke();
     }
+  }
+
+  function drawBossFallback(x, y, w, h) {
+    ctx.fillStyle = fear.color || '#1a0a1a';
+    ctx.shadowColor = fear.eye || '#ff0000';
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h * 0.45, w * 0.45, h * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 6; i++) {
+      ctx.strokeStyle = '#330010';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(x + w / 2, y + h * 0.55);
+      ctx.quadraticCurveTo(
+        x + w * (0.1 + i * 0.15),
+        y + h * 0.75 + Math.sin(frame * 0.1 + i) * 6,
+        x + i * 14,
+        y + h
+      );
+      ctx.stroke();
+    }
+    ctx.fillStyle = fear.eye || '#ff0000';
+    ctx.beginPath();
+    ctx.arc(x + w * 0.35, y + h * 0.35, 6, 0, Math.PI * 2);
+    ctx.arc(x + w * 0.65, y + h * 0.35, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  function drawBoss() {
+    if (!boss) return;
+    const x = boss.x;
+    const y = boss.y;
+    const w = boss.w;
+    const h = boss.h;
+    const sprite = bossAttacking
+      ? (bossAttackSprite || bossAttackSrc)
+      : (bossIdleSprite || bossIdleSrc);
+
+    ctx.save();
+    if (boss.hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(frame) * 0.3;
+    if (miaFrameReady(sprite)) {
+      const iw = sprite.naturalWidth || sprite.width;
+      const ih = sprite.naturalHeight || sprite.height;
+      const scale = Math.min(w / iw, h / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      ctx.drawImage(sprite, x + (w - dw) / 2, y + (h - dh), dw, dh);
+    } else {
+      drawBossFallback(x, y, w, h);
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`BOSS · ${'❤'.repeat(Math.max(0, boss.hp))}`, x + w / 2, y - 8);
+    ctx.restore();
   }
 
   function drawWell(wObj, showHint) {
@@ -4714,41 +4807,7 @@ function launchRunnerEpisode(ep, opts = {}) {
       if (o.type === 'fear' && !o.hit) drawFearShape(o);
     });
 
-    // босс
-    if (boss) {
-      ctx.save();
-      if (boss.hitFlash > 0) ctx.globalAlpha = 0.5 + Math.sin(frame) * 0.3;
-      ctx.fillStyle = fear.color || '#1a0510';
-      ctx.shadowColor = fear.eye;
-      ctx.shadowBlur = 20;
-      ctx.beginPath();
-      ctx.ellipse(boss.x + boss.w / 2, boss.y + boss.h * 0.45, boss.w * 0.45, boss.h * 0.4, 0, 0, Math.PI * 2);
-      ctx.fill();
-      for (let i = 0; i < 6; i++) {
-        ctx.strokeStyle = '#330010';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(boss.x + boss.w / 2, boss.y + boss.h * 0.55);
-        ctx.quadraticCurveTo(
-          boss.x + boss.w * (0.1 + i * 0.15),
-          boss.y + boss.h * 0.75 + Math.sin(frame * 0.1 + i) * 6,
-          boss.x + i * 14,
-          boss.y + boss.h
-        );
-        ctx.stroke();
-      }
-      ctx.fillStyle = fear.eye;
-      ctx.beginPath();
-      ctx.arc(boss.x + boss.w * 0.35, boss.y + boss.h * 0.35, 6, 0, Math.PI * 2);
-      ctx.arc(boss.x + boss.w * 0.65, boss.y + boss.h * 0.35, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#ffd700';
-      ctx.font = 'bold 12px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`BOSS · ${'❤'.repeat(boss.hp)}`, boss.x + boss.w / 2, boss.y - 8);
-      ctx.restore();
-    }
+    drawBoss();
 
     speedLines.forEach((l) => {
       ctx.strokeStyle = `rgba(255,255,255,${l.life / 14})`;
