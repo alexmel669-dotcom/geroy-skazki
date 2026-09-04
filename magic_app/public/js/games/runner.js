@@ -1089,7 +1089,6 @@ function launchRunnerEpisode(ep, opts = {}) {
         bossPhaseIdx++;
         spawnFearShards(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd700', 24);
         boss = null;
-        bossAttacking = false;
         setTimeout(() => spawnBoss(bossPhaseIdx), 600);
       } else {
         score += 200;
@@ -1101,7 +1100,6 @@ function launchRunnerEpisode(ep, opts = {}) {
         bossDefeatedLifetime = true;
         speakStory('Босс повержен! Мы сделали это!', 'lucik');
         boss = null;
-        bossAttacking = false;
         closedPortal = true;
         startMusic(phase === PHASE.HUNT ? 'hunt' : 'flee');
         const el = document.getElementById('runnerScore');
@@ -1723,6 +1721,46 @@ function launchRunnerEpisode(ep, opts = {}) {
   }
   prepareBossSprite(bossIdleSrc, (s) => { bossIdleSprite = s; });
   prepareBossSprite(bossAttackSrc, (s) => { bossAttackSprite = s; });
+
+  const worldForest = Object.assign(new Image(), { src: 'assets/images/world-forest.png' });
+  const worldCity = Object.assign(new Image(), { src: 'assets/images/world-city.png' });
+  const worldUpside = Object.assign(new Image(), { src: 'assets/images/world-upside.png' });
+  const worldBoss = Object.assign(new Image(), { src: 'assets/images/world-boss.png' });
+
+  function getWorldBgImage() {
+    switch (currentEnvironment) {
+      case ENV_CITY: return worldCity;
+      case ENV_UPSIDE: return worldUpside;
+      case ENV_BOSS: return worldBoss;
+      default: return worldForest;
+    }
+  }
+
+  function worldBgReady(img) {
+    return !!(img && img.complete && img.naturalWidth > 0);
+  }
+
+  function drawBackground() {
+    const sprite = getWorldBgImage();
+    if (worldBgReady(sprite)) {
+      ctx.drawImage(sprite, 0, 0, canvas.width, canvas.height);
+      return true;
+    }
+    const gradients = {
+      forest: ['#0a2a0a', '#1a3a1a', '#2a4a2a'],
+      city: ['#2a2a2a', '#3a3a3a', '#4a4a4a'],
+      upside: ['#1a0a0a', '#2a0a0a', '#3a0a0a'],
+      boss: ['#0a0a0a', '#1a1a0a', '#2a2a0a']
+    };
+    const colors = gradients[currentEnvironment] || gradients.forest;
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, colors[0]);
+    gradient.addColorStop(0.5, colors[1]);
+    gradient.addColorStop(1, colors[2]);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return false;
+  }
 
   // —— Web Audio synthwave ——
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -4161,27 +4199,31 @@ function launchRunnerEpisode(ep, opts = {}) {
     }
   }
 
-  function drawNightSky() {
+  function drawNightSky(hasWorldBg) {
     const gy = groundY();
-    const meta = ENV_META[currentEnvironment] || ENV_META.forest;
-    const sky = ctx.createLinearGradient(0, 0, 0, gy);
-    sky.addColorStop(0, meta.colors[0]);
-    sky.addColorStop(0.45, meta.colors[1]);
-    sky.addColorStop(1, meta.colors[2]);
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, canvas.width, gy);
+    if (!hasWorldBg) {
+      const meta = ENV_META[currentEnvironment] || ENV_META.forest;
+      const sky = ctx.createLinearGradient(0, 0, 0, gy);
+      sky.addColorStop(0, meta.colors[0]);
+      sky.addColorStop(0.45, meta.colors[1]);
+      sky.addColorStop(1, meta.colors[2]);
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, canvas.width, gy);
+    }
 
     // туман
-    ctx.fillStyle = `rgba(0,0,0,${fogDensity * 0.35})`;
+    ctx.fillStyle = `rgba(0,0,0,${fogDensity * (hasWorldBg ? 0.12 : 0.35)})`;
     ctx.fillRect(0, gy * 0.55, canvas.width, gy * 0.45);
 
-    bgStars.forEach((s) => {
-      const a = 0.3 + Math.sin(frame * s.sp + s.tw) * 0.4;
-      ctx.fillStyle = `rgba(220,240,255,${a * (currentEnvironment === ENV_UPSIDE || currentEnvironment === ENV_BOSS ? 0.5 : 1)})`;
-      ctx.beginPath();
-      ctx.arc(s.x * canvas.width, s.y * gy, s.r, 0, Math.PI * 2);
-      ctx.fill();
-    });
+    if (!hasWorldBg) {
+      bgStars.forEach((s) => {
+        const a = 0.3 + Math.sin(frame * s.sp + s.tw) * 0.4;
+        ctx.fillStyle = `rgba(220,240,255,${a * (currentEnvironment === ENV_UPSIDE || currentEnvironment === ENV_BOSS ? 0.5 : 1)})`;
+        ctx.beginPath();
+        ctx.arc(s.x * canvas.width, s.y * gy, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
 
     // частицы мира
     if (frame % 3 === 0 && Math.random() < 0.35) {
@@ -4202,10 +4244,14 @@ function launchRunnerEpisode(ep, opts = {}) {
       });
     }
 
-    if (currentEnvironment === ENV_UPSIDE || currentEnvironment === ENV_BOSS) drawMindFlayerSky(gy);
+    if (!hasWorldBg && (currentEnvironment === ENV_UPSIDE || currentEnvironment === ENV_BOSS)) {
+      drawMindFlayerSky(gy);
+    }
     if (lightningEnabled && frame % 50 === 0 && Math.random() < 0.35) {
       lightningFlash = 8;
     }
+
+    if (hasWorldBg) return;
 
     // clock 3:00 / 3:01
     const cx = canvas.width * 0.82;
@@ -4759,7 +4805,8 @@ function launchRunnerEpisode(ep, opts = {}) {
       return;
     }
 
-    drawNightSky();
+    const hasWorldBg = drawBackground();
+    drawNightSky(hasWorldBg);
     drawAtmosphere();
     drawGround();
 
