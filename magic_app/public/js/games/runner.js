@@ -1461,6 +1461,12 @@ function launchRunnerEpisode(ep, opts = {}) {
   const miaRunSprites = [null, null];
   const MIA_SHOOT_FRAMES = 18; // ~300 мс при 60 fps — кадр с луком
 
+  const maxRunSrc = [
+    Object.assign(new Image(), { src: 'assets/images/max-run1.png' }),
+    Object.assign(new Image(), { src: 'assets/images/max-run2.png' })
+  ];
+  const maxRunSprites = [null, null];
+
   function isMiaBgPixel(r, g, b) {
     return r > 240 && g > 240 && b > 240;
   }
@@ -1571,6 +1577,22 @@ function launchRunnerEpisode(ep, opts = {}) {
   }
   prepareMiaSprite(0);
   prepareMiaSprite(1);
+
+  function prepareMaxSprite(index) {
+    const img = maxRunSrc[index];
+    const apply = () => {
+      if (!img.naturalWidth) return;
+      try {
+        maxRunSprites[index] = makeTransparent(img);
+      } catch {
+        maxRunSprites[index] = img;
+      }
+    };
+    if (img.complete && img.naturalWidth > 0) apply();
+    else img.addEventListener('load', apply, { once: true });
+  }
+  prepareMaxSprite(0);
+  prepareMaxSprite(1);
 
   // —— Web Audio synthwave ——
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2404,9 +2426,11 @@ function launchRunnerEpisode(ep, opts = {}) {
       lane,
       x: gx,
       y: groundY() - 65,
-      w: 55,
-      h: 65,
+      w: 60,
+      h: 80,
       anim: 0,
+      runFrame: 0,
+      frameTimer: 0,
       protectTimer: 0,
       protectCooldown: 400,
       protectWindow: 0,
@@ -2558,6 +2582,11 @@ function launchRunnerEpisode(ep, opts = {}) {
       }
 
       if (ally.id === 'max') {
+        ally.frameTimer++;
+        if (ally.frameTimer > 10) {
+          ally.frameTimer = 0;
+          ally.runFrame = ally.runFrame === 0 ? 1 : 0;
+        }
         if (ally.knockT > 0) {
           ally.knockT--;
           ally.knockX = Math.sin((1 - ally.knockT / 28) * Math.PI) * -55;
@@ -2662,77 +2691,78 @@ function launchRunnerEpisode(ep, opts = {}) {
     ctx.restore();
   }
 
+  function drawMaxFallback(x, y) {
+    const runFrame = Math.floor(frame * 0.1) % 2;
+    ctx.fillStyle = '#4169e1';
+    ctx.beginPath();
+    ctx.arc(x + 30, y + 42, 20, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#87ceeb';
+    ctx.beginPath();
+    ctx.arc(x + 30, y + 16, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1e3a8a';
+    ctx.beginPath();
+    ctx.arc(x + 30, y + 12, 15, Math.PI * 1.05, -0.05);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(x + 25, y + 15, 4.5, 0, Math.PI * 2);
+    ctx.arc(x + 35, y + 15, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.arc(x + 26, y + 15, 2, 0, Math.PI * 2);
+    ctx.arc(x + 36, y + 15, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#27408b';
+    if (runFrame === 0) {
+      ctx.fillRect(x + 16, y + 62, 10, 14);
+      ctx.fillRect(x + 34, y + 66, 10, 10);
+    } else {
+      ctx.fillRect(x + 16, y + 66, 10, 10);
+      ctx.fillRect(x + 34, y + 62, 10, 14);
+    }
+  }
+
   function drawMax(ally) {
-    const runFrame = Math.floor(ally.anim) % 2;
-    const bobY = runFrame === 0 ? 0 : -3;
     const x = ally.x;
-    const y = ally.y + bobY;
+    const y = ally.y;
+    const img = maxRunSprites[ally.runFrame === 1 ? 1 : 0]
+      || maxRunSrc[ally.runFrame === 1 ? 1 : 0];
 
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
-    ctx.ellipse(x + 27, groundY() - 2, 20, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + ally.w / 2, groundY() - 2, 20, 5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // тело (крупнее)
-    ctx.fillStyle = '#4169e1';
-    ctx.beginPath();
-    ctx.arc(x + 27, y + 34, 20, 0, Math.PI * 2);
-    ctx.fill();
-
-    // голова
-    ctx.fillStyle = '#87ceeb';
-    ctx.beginPath();
-    ctx.arc(x + 27, y + 14, 15, 0, Math.PI * 2);
-    ctx.fill();
-
-    // волосы
-    ctx.fillStyle = '#1e3a8a';
-    ctx.beginPath();
-    ctx.arc(x + 27, y + 10, 15, Math.PI * 1.05, -0.05);
-    ctx.fill();
-
-    // глаза
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(x + 22, y + 13, 4.5, 0, Math.PI * 2);
-    ctx.arc(x + 32, y + 13, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#222';
-    ctx.beginPath();
-    ctx.arc(x + 23, y + 13, 2, 0, Math.PI * 2);
-    ctx.arc(x + 33, y + 13, 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // ноги
-    ctx.fillStyle = '#27408b';
-    if (runFrame === 0) {
-      ctx.fillRect(x + 14, y + 52, 10, 11);
-      ctx.fillRect(x + 30, y + 54, 10, 9);
+    if (miaFrameReady(img)) {
+      const iw = img.naturalWidth || img.width;
+      const ih = img.naturalHeight || img.height;
+      const scale = Math.min(ally.w / iw, ally.h / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      ctx.drawImage(img, x + (ally.w - dw) / 2, y + (ally.h - dh), dw, dh);
     } else {
-      ctx.fillRect(x + 14, y + 54, 10, 9);
-      ctx.fillRect(x + 30, y + 52, 10, 11);
+      drawMaxFallback(x, y);
     }
 
-    // щит при защите
     if (ally.isProtecting) {
-      const pulse = 0.5 + Math.sin(frame * 0.25) * 0.25;
-      ctx.strokeStyle = `rgba(65,105,225,${0.5 + pulse * 0.4})`;
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(65,105,225,0.8)';
+      ctx.lineWidth = 5;
+      ctx.shadowBlur = 20;
       ctx.shadowColor = '#4169e1';
-      ctx.shadowBlur = 16;
       ctx.beginPath();
-      ctx.arc(x + 27, y + 28, 32 + Math.sin(frame * 0.2) * 2, 0, Math.PI * 2);
+      ctx.arc(x + ally.w / 2, y + ally.h / 2, 40, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = `rgba(65,105,225,${0.15 + pulse * 0.1})`;
-      ctx.fill();
       ctx.shadowBlur = 0;
     }
 
     ctx.fillStyle = '#a8c4ff';
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Макс', x + 27, y - 4);
+    ctx.fillText('Макс', x + ally.w / 2, y - 4);
     ctx.restore();
   }
 
