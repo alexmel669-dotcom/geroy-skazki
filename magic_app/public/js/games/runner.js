@@ -565,68 +565,59 @@ function showQuestionOverlay(question, { image, character = 'lucik' } = {}) {
   q.textContent = question;
   q.style.cssText = 'font-size:20px;text-align:center;max-width:80%;margin:0 0 16px;';
   wrap.appendChild(q);
-  const input = document.createElement('input');
-  input.id = 'runner-ai-input';
-  input.type = 'text';
-  input.maxLength = 80;
-  input.placeholder = 'Скажи или напиши…';
-  input.autocomplete = 'off';
-  input.style.cssText = 'width:min(420px,86%);padding:10px 14px;border-radius:8px;border:none;font-size:16px;';
-  wrap.appendChild(input);
+  const status = document.createElement('p');
+  status.id = 'runner-ai-status';
+  status.textContent = '🎤 Слушаю…';
+  status.style.cssText = 'color:#ffd700;font-size:16px;margin:0 0 12px;';
+  wrap.appendChild(status);
   const actions = document.createElement('div');
-  actions.style.cssText = 'display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;justify-content:center;';
-  const ok = document.createElement('button');
-  ok.id = 'runner-ai-ok';
-  ok.type = 'button';
-  ok.textContent = 'OK';
-  ok.style.cssText = 'padding:10px 22px;background:#ffd700;color:#000;border:none;border-radius:8px;font-size:16px;cursor:pointer;';
+  actions.style.cssText = 'display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;justify-content:center;';
   const mic = document.createElement('button');
   mic.id = 'runner-ai-mic';
   mic.type = 'button';
-  mic.textContent = '🎤 Голосом';
+  mic.textContent = '🎤 Ещё раз';
   mic.style.cssText = 'padding:10px 22px;background:#6C63FF;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;';
-  actions.appendChild(ok);
   actions.appendChild(mic);
   wrap.appendChild(actions);
   document.body.appendChild(wrap);
-  input.focus();
   return wrap;
 }
 
 function listenToChild() {
   return new Promise((resolve) => {
     const wrap = document.getElementById('runner-ai-dialog');
-    if (!wrap) {
-      resolve('...');
-      return;
-    }
-    const input = wrap.querySelector('#runner-ai-input');
+    const status = wrap?.querySelector('#runner-ai-status');
     let done = false;
+    let rec = null;
     const finish = (val) => {
       if (done) return;
       done = true;
-      resolve(String(val || '').trim() || '...');
+      try { rec?.stop(); } catch { /* */ }
+      resolve(String(val || '').trim() || 'да');
     };
-    wrap.querySelector('#runner-ai-ok')?.addEventListener('click', () => finish(input?.value));
-    input?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') finish(input.value);
-    });
-    wrap.querySelector('#runner-ai-mic')?.addEventListener('click', async () => {
+    const startRec = () => {
       try {
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) {
-          speak('Напиши ответ текстом');
+          if (status) status.textContent = 'Микрофон недоступен — скажи вслух и нажми «Дальше»';
           return;
         }
-        const rec = new SR();
+        rec = new SR();
         rec.lang = 'ru-RU';
-        rec.onresult = (ev) => finish(ev.results?.[0]?.[0]?.transcript || '');
-        rec.onerror = () => speak('Не расслышал, напиши текстом');
+        rec.interimResults = false;
+        if (status) status.textContent = '🎤 Слушаю…';
+        rec.onresult = (ev) => finish(ev.results?.[0]?.[0]?.transcript || 'да');
+        rec.onerror = () => {
+          if (status) status.textContent = 'Не расслышал. Нажми 🎤 и скажи ещё раз';
+        };
         rec.start();
       } catch {
-        speak('Напиши ответ текстом');
+        if (status) status.textContent = 'Не расслышал. Нажми 🎤 и скажи ещё раз';
       }
-    });
+    };
+    wrap?.querySelector('#runner-ai-mic')?.addEventListener('click', startRec);
+    startRec();
+    setTimeout(() => finish('да'), 9000);
   });
 }
 
@@ -649,7 +640,7 @@ async function fetchScenarioReply(childAnswer, scenarioContext, character) {
         childName: playerName || '',
         requestType: 'chat',
         systemPrompt: `Ты персонаж детской игры. Говори коротко (1–2 предложения), тепло и по-русски.
-Ребёнок ответил: "${childAnswer}".
+Ребёнок ответил голосом: "${childAnswer || 'неразборчиво'}".
 Независимо от ответа продолжай сюжет: ${scenarioContext}
 Мягко прими ответ и направь к сценарию. Без страшных подробностей.`
       }),
@@ -675,6 +666,7 @@ function waitDialogContinue(label = 'Продолжить →') {
     wrap.querySelector('#runner-ai-input')?.remove();
     wrap.querySelector('#runner-ai-ok')?.remove();
     wrap.querySelector('#runner-ai-mic')?.remove();
+    wrap.querySelector('#runner-ai-status')?.remove();
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = label;
@@ -1281,8 +1273,11 @@ function launchRunnerEpisode(ep, opts = {}) {
     const bossH = Math.min(300, Math.max(180, groundY() - 24));
     const bossW = Math.round(bossH * (200 / 300));
     bossAttacking = bossPhaseIdx >= 1;
+    bossFightMode = true;
+    bossAttackTimer = 0;
+    const holdX = canvas.width - Math.min(250, canvas.width * 0.38);
     boss = {
-      x: canvas.width + 40,
+      x: opts.fromRight ? holdX : canvas.width + 40,
       y: groundY() - bossH,
       w: bossW,
       h: bossH,
@@ -1302,9 +1297,113 @@ function launchRunnerEpisode(ep, opts = {}) {
     }
   }
 
-  function hitBoss() {
+  function startBossFight() {
+    const prev = speed;
+    speed = 0;
+    showScene(sceneBoss, 'Король Страхов преградил путь!', 'lucik');
+    spawnBoss(0, { skipScene: true, fromRight: true });
+    bossFightMode = true;
+    bossAttackTimer = 0;
+    startMusic('boss');
+    setTimeout(() => {
+      if (!choiceState.active && !pauseActive && !breakActive) {
+        speed = prev || baseSpeed;
+      }
+    }, 2000);
+  }
+
+  function spawnBossAttack() {
     if (!boss) return;
-    const dmg = hasDuckBuff ? 4 : (fireTrail ? 3 : 2);
+    bossAttacking = true;
+    const fromX = boss.x + 16;
+    const fromY = boss.y + boss.h * 0.38;
+    bossShots.push({
+      x: fromX,
+      y: fromY,
+      vx: -(5.2 + boss.phase * 0.8),
+      vy: ((lucik.y + lucik.h / 2) - fromY) * 0.025,
+      w: 26,
+      h: 26,
+      life: 110
+    });
+    beep(90, 0.18, 'sawtooth', 0.08, 40);
+    setTimeout(() => {
+      if (boss) bossAttacking = boss.phase >= 1;
+    }, 800);
+  }
+
+  function updateBossFight() {
+    if (!bossFightMode || !boss) return;
+    const holdX = canvas.width - Math.min(250, canvas.width * 0.38);
+    boss.x += (holdX - boss.x) * 0.08;
+    bossAttackTimer++;
+    const interval = 120 - boss.phase * 18;
+    if (bossAttackTimer >= interval) {
+      bossAttackTimer = 0;
+      spawnBossAttack();
+    }
+    bossShots.forEach((s) => {
+      s.x += s.vx;
+      s.y += s.vy;
+      s.life--;
+    });
+    bossShots = bossShots.filter((s) => s.life > 0 && s.x > -40);
+    const margin = 8;
+    for (const s of bossShots) {
+      if (
+        lucik.x + margin < s.x + s.w &&
+        lucik.x + lucik.w - margin > s.x &&
+        lucik.y + margin < s.y + s.h &&
+        lucik.y + lucik.h - margin > s.y
+      ) {
+        s.life = 0;
+        if (maxCanProtect()) {
+          const max = allies.find((a) => a.id === 'max');
+          if (max) {
+            max.isProtecting = false;
+            max.protectWindow = 0;
+            max.knockT = 28;
+            showAllyMessage('Макс принял удар! 🛡️');
+            burst(s.x, s.y, '#4169e1', 12);
+          }
+          continue;
+        }
+        if (invuln > 0 || shieldT > 0 || rainbowT > 0) continue;
+        loseHealth('Удар босса!');
+      }
+    }
+  }
+
+  function playerAttack() {
+    if (!boss || !bossFightMode) {
+      jump();
+      return;
+    }
+    const dx = Math.abs((lucik.x + lucik.w / 2) - (boss.x + boss.w / 2));
+    if (dx < 160) {
+      if (lucik.jumping) {
+        damageBoss(5);
+      } else {
+        lucik.vy = JUMP_V0 * 0.72;
+        lucik.jumping = true;
+        wasAirborne = true;
+        animState = 'jump';
+        playJumpSound();
+        damageBoss(5);
+      }
+    } else {
+      jump();
+    }
+  }
+
+  function damageBoss(amount) {
+    hitBoss(amount);
+  }
+
+  function hitBoss(amount) {
+    if (!boss) return;
+    if (boss.hitFlash > 0) return;
+    const dmg = amount ?? (hasDuckBuff ? 4 : (fireTrail ? 3 : 2));
     boss.hp -= dmg;
     boss.hitFlash = 12;
     shakeIntensity = 12;
@@ -1318,7 +1417,8 @@ function launchRunnerEpisode(ep, opts = {}) {
         bossPhaseIdx++;
         spawnFearShards(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd700', 24);
         boss = null;
-        setTimeout(() => spawnBoss(bossPhaseIdx), 600);
+        showPhaseIntro(BOSS_PHASES[bossPhaseIdx].name);
+        setTimeout(() => spawnBoss(bossPhaseIdx, { fromRight: true }), 600);
       } else {
         score += 200;
         fearsSmashed += 3;
@@ -1327,6 +1427,8 @@ function launchRunnerEpisode(ep, opts = {}) {
         spawnFearShards(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd700', 30);
         localStorage.setItem('runner-boss-killed', '1');
         bossDefeatedLifetime = true;
+        bossFightMode = false;
+        bossShots = [];
         speakStory('Босс повержен! Мы сделали это!', 'lucik');
         boss = null;
         closedPortal = true;
@@ -1590,6 +1692,9 @@ function launchRunnerEpisode(ep, opts = {}) {
   let chests = [];
   let boss = null;
   let bossAttacking = false;
+  let bossFightMode = false;
+  let bossAttackTimer = 0;
+  let bossShots = [];
   let comboFloats = [];
   let speedLines = [];
   let fireworks = [];
@@ -2218,6 +2323,47 @@ function launchRunnerEpisode(ep, opts = {}) {
     droneNodes.push(osc, lfo);
   }
 
+  function startSynthwaveLayers(environment) {
+    if (!musicOn) return;
+    resumeAudio();
+    ensureMaster();
+    const bpm = { forest: 90, city: 110, upside: 80, boss: 140 }[environment] || 100;
+    const bassFreq = environment === ENV_UPSIDE || environment === ENV_BOSS ? 55 : 82;
+    const melodyFreq = environment === ENV_BOSS ? 220 : (environment === ENV_CITY ? 196 : 165);
+
+    const bassOsc = audioCtx.createOscillator();
+    bassOsc.type = 'sawtooth';
+    bassOsc.frequency.value = bassFreq;
+    const bassFilter = audioCtx.createBiquadFilter();
+    bassFilter.type = 'lowpass';
+    bassFilter.frequency.value = environment === ENV_BOSS ? 420 : 260;
+    const bassGain = audioCtx.createGain();
+    bassGain.gain.value = 0.06;
+    bassOsc.connect(bassFilter);
+    bassFilter.connect(bassGain);
+    bassGain.connect(masterGain);
+
+    const melodyOsc = audioCtx.createOscillator();
+    melodyOsc.type = 'square';
+    melodyOsc.frequency.value = melodyFreq;
+    const melodyGain = audioCtx.createGain();
+    melodyGain.gain.value = 0.025;
+    melodyOsc.connect(melodyGain);
+    melodyGain.connect(masterGain);
+
+    const lfo = audioCtx.createOscillator();
+    lfo.frequency.value = bpm / 60;
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 0.018;
+    lfo.connect(lfoGain);
+    lfoGain.connect(melodyGain.gain);
+
+    bassOsc.start();
+    melodyOsc.start();
+    lfo.start();
+    droneNodes.push(bassOsc, melodyOsc, lfo);
+  }
+
   function startMusic(mode = 'flee') {
     musicMode = mode;
     if (musicInterval) { clearTimeout(musicInterval); clearInterval(musicInterval); musicInterval = null; }
@@ -2248,6 +2394,11 @@ function launchRunnerEpisode(ep, opts = {}) {
       mode === 'boss' ? 36 : (mode === 'hunt' ? 55 : (isMindFlayer ? 28 : 42)),
       mode === 'boss' ? 0.08 : (mode === 'hunt' ? 0.03 : (isMindFlayer ? 0.07 : 0.04))
     );
+
+    const envKey = mode === 'boss' ? ENV_BOSS
+      : (currentEnvironment === ENV_CITY ? ENV_CITY
+        : (currentEnvironment === ENV_UPSIDE ? ENV_UPSIDE : ENV_FOREST));
+    startSynthwaveLayers(envKey);
 
     const baseMs = mode === 'boss' ? 160 : (mode === 'hunt' ? 200 : (isMindFlayer ? 280 : 320));
     musicIntervalMs = baseMs;
@@ -2886,7 +3037,7 @@ function launchRunnerEpisode(ep, opts = {}) {
     if (!boss) {
       choiceState.triggered.bossFinal = true;
       lastBossAt = Math.floor(distance);
-      spawnBoss(0, { skipScene: true });
+      startBossFight();
     }
   }
 
@@ -3071,7 +3222,7 @@ function launchRunnerEpisode(ep, opts = {}) {
       h: 80,
       anim: 0,
       shootTimer: 180, // почти сразу первая стрела
-      shootCooldown: 250,
+      shootCooldown: 180,
       shootingT: 0,
       runFrame: 0,
       frameTimer: 0,
@@ -3240,8 +3391,19 @@ function launchRunnerEpisode(ep, opts = {}) {
     if (phase !== PHASE.RUN && phase !== PHASE.HUNT) return;
     const gy = groundY();
 
+    const usedLanes = new Set([lucik.lane]);
+    const mia = allies.find((a) => a.id === 'mia');
+    const max = allies.find((a) => a.id === 'max');
+    if (mia) {
+      mia.lane = lucik.lane < 1 ? lucik.lane + 1 : lucik.lane - 1;
+      usedLanes.add(mia.lane);
+    }
+    if (max) {
+      max.lane = [-1, 0, 1].find((l) => !usedLanes.has(l)) ?? (lucik.lane === 0 ? -1 : 0);
+    }
+
     allies.forEach((ally) => {
-      const behind = ally.id === 'mia' ? 35 : 70;
+      const behind = ally.id === 'mia' ? 80 : 120;
       const targetX = allyHomeX(ally.lane) - behind;
       const knock = ally.knockT > 0 ? ally.knockX : 0;
       ally.x += (targetX + knock - ally.x) * 0.16;
@@ -4008,14 +4170,18 @@ function launchRunnerEpisode(ep, opts = {}) {
       c.bob += 0.1;
     });
     if (boss) {
-      boss.x -= move * 0.55;
       boss.wobble += 0.08;
       boss.y = gy - boss.h + Math.sin(boss.wobble) * 4;
       if (boss.hitFlash > 0) boss.hitFlash--;
-      // фазы 1–2 (Контратака, Отчаяние) — атака; пауза и преследование — idle
-      bossAttacking = boss.phase >= 1;
+      if (bossFightMode) {
+        updateBossFight();
+      } else {
+        boss.x -= move * 0.55;
+        bossAttacking = boss.phase >= 1;
+      }
     } else {
       bossAttacking = false;
+      bossFightMode = false;
     }
     if (well && !well.used) well.x -= move;
     cracks.forEach((c) => { c.x -= move; c.life--; });
@@ -4488,6 +4654,16 @@ function launchRunnerEpisode(ep, opts = {}) {
     ctx.textAlign = 'center';
     ctx.fillText(`BOSS · ${'❤'.repeat(Math.max(0, boss.hp))}`, x + w / 2, y - 8);
     ctx.restore();
+    bossShots.forEach((s) => {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,40,60,0.9)';
+      ctx.shadowColor = '#ff2244';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(s.x + s.w / 2, s.y + s.h / 2, s.w / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
   }
 
   function drawWell(wObj, showHint) {
@@ -5763,9 +5939,13 @@ function launchRunnerEpisode(ep, opts = {}) {
       setLane(dx > 0 ? 1 : -1);
       return;
     }
-    // свайп вверх — прыжок; двойной быстрый вверх — рывок
+    // свайп вверх — удар по боссу / прыжок; двойной быстрый вверх — рывок
     if (dy < -50 && Math.abs(dy) > Math.abs(dx)) {
       const recent = swipeTimes.filter((tm) => now - tm < 350);
+      if (bossFightMode && boss) {
+        playerAttack();
+        return;
+      }
       if (recent.length >= 2) {
         doDash();
       } else {
@@ -5789,7 +5969,8 @@ function launchRunnerEpisode(ep, opts = {}) {
       swipeTimes.push(now);
       if (swipeTimes.length > 4) swipeTimes.shift();
       const recent = swipeTimes.filter((tm) => now - tm < 350);
-      if (recent.length >= 2) doDash();
+      if (bossFightMode && boss) playerAttack();
+      else if (recent.length >= 2) doDash();
       else jump();
     }
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setLane(-1);
