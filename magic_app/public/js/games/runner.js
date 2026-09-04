@@ -1050,7 +1050,7 @@ function launchRunnerEpisode(ep, opts = {}) {
     setTimeout(() => el.remove(), 1500);
   }
 
-  function spawnBoss(forcePhase) {
+  function spawnBoss(forcePhase, opts = {}) {
     if (boss && forcePhase == null) return;
     if (typeof forcePhase === 'number') bossPhaseIdx = forcePhase;
     const phaseDef = BOSS_PHASES[Math.min(bossPhaseIdx, BOSS_PHASES.length - 1)];
@@ -1070,7 +1070,12 @@ function launchRunnerEpisode(ep, opts = {}) {
     };
     startMusic('boss');
     showPhaseIntro(phaseDef.name);
-    speakStory(phaseDef.name, 'lucik');
+    if (!opts.skipScene && !bossSceneShown && (forcePhase == null || forcePhase === 0)) {
+      bossSceneShown = true;
+      showScene(sceneBoss, 'Король Страхов... Мы победим!', 'lucik');
+    } else {
+      speakStory(phaseDef.name, 'lucik');
+    }
   }
 
   function hitBoss() {
@@ -1233,6 +1238,8 @@ function launchRunnerEpisode(ep, opts = {}) {
       cleanupAudio();
       overlay.remove();
       document.getElementById('choice-overlay')?.remove();
+      document.getElementById('runner-scene-overlay')?.remove();
+      sceneActive = false;
       showEpisodeSelect();
     });
   }
@@ -1382,6 +1389,11 @@ function launchRunnerEpisode(ep, opts = {}) {
   let arrowEffects = [];
   let miaLoaded = !!(resume?.miaLoaded);
   let maxLoaded = !!(resume?.maxLoaded);
+  let miaSceneShown = !!(resume?.miaLoaded);
+  let maxSceneShown = !!(resume?.maxLoaded);
+  let bossSceneShown = !!(resume?.distance >= 4500);
+  let sceneActive = false;
+  let sceneSpeedBefore = 1;
   if (resume?.miaLoaded) {
     /* spawn after canvas ready in beginAfterVideo path */
   }
@@ -1726,6 +1738,10 @@ function launchRunnerEpisode(ep, opts = {}) {
   const worldCity = Object.assign(new Image(), { src: 'assets/images/world-city.png' });
   const worldUpside = Object.assign(new Image(), { src: 'assets/images/world-upside.png' });
   const worldBoss = Object.assign(new Image(), { src: 'assets/images/world-boss.png' });
+
+  const sceneMia = Object.assign(new Image(), { src: 'assets/images/scene-mia.png' });
+  const sceneMax = Object.assign(new Image(), { src: 'assets/images/scene-max.png' });
+  const sceneBoss = Object.assign(new Image(), { src: 'assets/images/scene-boss.png' });
 
   function getWorldBgImage() {
     switch (currentEnvironment) {
@@ -2486,6 +2502,45 @@ function launchRunnerEpisode(ep, opts = {}) {
     if (scoreEl) scoreEl.textContent = score;
   }
 
+  function showScene(image, text, voice) {
+    if (sceneActive) return;
+    sceneActive = true;
+    sceneSpeedBefore = speed || baseSpeed;
+    speed = 0;
+    document.getElementById('runner-scene-overlay')?.remove();
+
+    const sceneOverlay = document.createElement('div');
+    sceneOverlay.id = 'runner-scene-overlay';
+    sceneOverlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10002;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+
+    const img = document.createElement('img');
+    img.src = image?.src || '';
+    img.alt = '';
+    img.style.cssText = 'max-width:90%;max-height:60%;border-radius:16px;object-fit:contain;';
+    sceneOverlay.appendChild(img);
+
+    const textEl = document.createElement('p');
+    textEl.textContent = text;
+    textEl.style.cssText = 'color:#fff;font-size:20px;margin:20px;text-align:center;max-width:80%;';
+    sceneOverlay.appendChild(textEl);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Продолжить →';
+    btn.style.cssText = 'padding:12px 30px;background:#ffd700;color:#000;border:none;border-radius:8px;font-size:18px;cursor:pointer;';
+    btn.onclick = () => {
+      sceneOverlay.remove();
+      sceneActive = false;
+      if (!choiceState.active && !pauseActive && !breakActive) {
+        speed = sceneSpeedBefore || baseSpeed;
+      }
+    };
+    sceneOverlay.appendChild(btn);
+
+    document.body.appendChild(sceneOverlay);
+    if (voice) speakStory(text, voice);
+  }
+
   function showAllyMessage(text) {
     const el = document.createElement('div');
     el.className = 'runner-ally-toast';
@@ -2549,7 +2604,7 @@ function launchRunnerEpisode(ep, opts = {}) {
     return base + 1;
   }
 
-  function spawnMia() {
+  function spawnMia(opts = {}) {
     if (miaLoaded) return;
     miaLoaded = true;
     metMiaLifetime = true;
@@ -2573,12 +2628,17 @@ function launchRunnerEpisode(ep, opts = {}) {
       bob: 0
     });
     showAllyMessage('Мия присоединилась! 💫');
-    speak('Мия с нами!');
+    if (!opts.skipScene && !miaSceneShown) {
+      miaSceneShown = true;
+      showScene(sceneMia, 'Кто ты? Я Мия. Я тоже потерялась...', 'mia');
+    } else {
+      speak('Мия с нами!');
+    }
     burst(gx + 25, groundY() - 40, '#ff69b4', 22);
     pulseAchievements({ miaActive: true });
   }
 
-  function spawnMax() {
+  function spawnMax(opts = {}) {
     if (maxLoaded) return;
     maxLoaded = true;
     metMaxLifetime = true;
@@ -2609,7 +2669,12 @@ function launchRunnerEpisode(ep, opts = {}) {
       bob: 0
     });
     showAllyMessage('Макс присоединился! 🛡️');
-    speak('Макс на защите!');
+    if (!opts.skipScene && !maxSceneShown) {
+      maxSceneShown = true;
+      showScene(sceneMax, 'Макс! Я тебя везде искал!', 'max');
+    } else {
+      speak('Макс на защите!');
+    }
     burst(gx + 27, groundY() - 40, '#4169e1', 22);
     pulseAchievements({ maxActive: true });
   }
@@ -2946,12 +3011,12 @@ function launchRunnerEpisode(ep, opts = {}) {
   function closeChoice() {
     document.getElementById('choice-overlay')?.remove();
     choiceState.active = false;
-    speed = choiceState.gameSpeedBefore || baseSpeed;
+    if (!sceneActive) speed = choiceState.gameSpeedBefore || baseSpeed;
     choiceState.situation = null;
   }
 
   function jump() {
-    if (choiceState.active) return;
+    if (choiceState.active || sceneActive) return;
     if (phase === PHASE.INTRO || phase === PHASE.WELL_FALL || phase === PHASE.WELL_INSIDE ||
         phase === PHASE.WELL_EXIT || phase === PHASE.LOST || phase === PHASE.WON ||
         phase === PHASE.WIN_SLOWMO) return;
@@ -3027,8 +3092,8 @@ function launchRunnerEpisode(ep, opts = {}) {
       animState = 'run';
       phase = PHASE.RUN;
       // в поздних эпизодах союзники уже в команде
-      if (ep.id >= 4 && ep.mia && !miaLoaded) spawnMia();
-      if (ep.id >= 4 && ep.max && !maxLoaded) spawnMax();
+      if (ep.id >= 4 && ep.mia && !miaLoaded) spawnMia({ skipScene: true });
+      if (ep.id >= 4 && ep.max && !maxLoaded) spawnMax({ skipScene: true });
       stopDrone();
       startMusic('flee');
       setMusicVolume(0.04);
@@ -3215,7 +3280,7 @@ function launchRunnerEpisode(ep, opts = {}) {
 
   function update() {
     if (phase === PHASE.VIDEO || phase === PHASE.LOST || phase === PHASE.WON) return;
-    if (choiceState.active || breakActive || pauseActive) return;
+    if (choiceState.active || breakActive || pauseActive || sceneActive) return;
 
     // slow-mo
     if (slowMoT > 0) {
@@ -5208,8 +5273,10 @@ function launchRunnerEpisode(ep, opts = {}) {
     document.removeEventListener('visibilitychange', onVisibility);
     cleanupAudio();
     document.getElementById('choice-overlay')?.remove();
+    document.getElementById('runner-scene-overlay')?.remove();
     document.querySelectorAll('.runner-break-modal, #runner-pause-screen').forEach((el) => el.remove());
     choiceState.active = false;
+    sceneActive = false;
     overlay.style.transform = '';
     appState.gameActive = false;
     document.body.classList.remove('game-active');
@@ -5226,14 +5293,14 @@ function launchRunnerEpisode(ep, opts = {}) {
   }
 
   function onVisibility() {
-    if (document.hidden && phase === PHASE.RUN && !pauseActive && !choiceState.active) {
+    if (document.hidden && phase === PHASE.RUN && !pauseActive && !choiceState.active && !sceneActive) {
       showPauseScreen();
     }
   }
   document.addEventListener('visibilitychange', onVisibility);
 
   function onPointerDown(e) {
-    if (choiceState.active) return;
+    if (choiceState.active || sceneActive) return;
     const t = e.touches ? e.touches[0] : e;
     swipeX = t.clientX;
     swipeY = t.clientY;
@@ -5242,7 +5309,7 @@ function launchRunnerEpisode(ep, opts = {}) {
   }
 
   function onPointerUp(e) {
-    if (choiceState.active) {
+    if (choiceState.active || sceneActive) {
       swipeX = null;
       swipeY = null;
       return;
@@ -5282,7 +5349,7 @@ function launchRunnerEpisode(ep, opts = {}) {
   canvas.addEventListener('touchend', (e) => { e.preventDefault(); onPointerUp(e); }, { passive: false });
 
   window.addEventListener('keydown', (e) => {
-    if (choiceState.active) return;
+    if (choiceState.active || sceneActive) return;
     if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w' || e.key === 'W') {
       e.preventDefault();
       const now = performance.now();
@@ -5329,13 +5396,13 @@ function launchRunnerEpisode(ep, opts = {}) {
       startGameLoop();
       if (resume?.miaLoaded) {
         miaLoaded = false;
-        spawnMia();
+        spawnMia({ skipScene: true });
       }
       if (resume?.maxLoaded) {
         maxLoaded = false;
-        spawnMax();
+        spawnMax({ skipScene: true });
       }
-      if (resume?.distance >= 4500) spawnBoss(resume.bossPhaseIdx || 0);
+      if (resume?.distance >= 4500) spawnBoss(resume.bossPhaseIdx || 0, { skipScene: true });
       updateEnvironment(distance);
     });
   }
@@ -5460,8 +5527,10 @@ function launchRunnerEpisode(ep, opts = {}) {
     document.removeEventListener('visibilitychange', onVisibility);
     cleanupAudio();
     document.getElementById('choice-overlay')?.remove();
+    document.getElementById('runner-scene-overlay')?.remove();
     document.querySelectorAll('.runner-break-modal, #runner-pause-screen').forEach((el) => el.remove());
     choiceState.active = false;
+    sceneActive = false;
     overlay.style.transform = '';
     appState.gameActive = false;
     document.body.classList.remove('game-active');
