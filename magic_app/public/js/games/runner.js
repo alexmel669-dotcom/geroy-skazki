@@ -579,6 +579,25 @@ function showQuestionOverlay(question, { image, character = 'lucik' } = {}) {
   mic.style.cssText = 'padding:10px 22px;background:#6C63FF;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;';
   actions.appendChild(mic);
   wrap.appendChild(actions);
+  // текстовый фолбэк — всегда доступен, не только когда распознавание речи не сработало.
+  // Работает в любом браузере (Firefox, приватные режимы и т.д. без Web Speech API)
+  const textRow = document.createElement('div');
+  textRow.style.cssText = 'display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;justify-content:center;';
+  const textInput = document.createElement('input');
+  textInput.type = 'text';
+  textInput.id = 'runner-ai-text-input';
+  textInput.maxLength = 60;
+  textInput.placeholder = 'Или напиши ответ...';
+  textInput.autocomplete = 'off';
+  textInput.style.cssText = 'padding:10px 14px;border-radius:8px;border:none;font-size:16px;min-width:200px;flex:1 1 200px;';
+  const textBtn = document.createElement('button');
+  textBtn.id = 'runner-ai-text-submit';
+  textBtn.type = 'button';
+  textBtn.textContent = 'Ответить →';
+  textBtn.style.cssText = 'padding:10px 22px;background:#ffd700;color:#000;border:none;border-radius:8px;font-size:16px;cursor:pointer;';
+  textRow.appendChild(textInput);
+  textRow.appendChild(textBtn);
+  wrap.appendChild(textRow);
   document.body.appendChild(wrap);
   return wrap;
 }
@@ -587,6 +606,7 @@ function listenToChild() {
   return new Promise((resolve) => {
     const wrap = document.getElementById('runner-ai-dialog');
     const status = wrap?.querySelector('#runner-ai-status');
+    const textInput = wrap?.querySelector('#runner-ai-text-input');
     let done = false;
     let rec = null;
     const finish = (val) => {
@@ -595,11 +615,19 @@ function listenToChild() {
       try { rec?.stop(); } catch { /* */ }
       resolve(String(val || '').trim() || 'да');
     };
+    const submitText = () => finish(textInput?.value);
+    wrap?.querySelector('#runner-ai-text-submit')?.addEventListener('click', submitText);
+    textInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitText();
+    });
     const startRec = () => {
       try {
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) {
-          if (status) status.textContent = 'Микрофон недоступен — скажи вслух и нажми «Дальше»';
+          // распознавания речи нет в браузере (Firefox, часть приватных режимов и т.д.) —
+          // единственный реальный способ ответить это текстовое поле, оно уже на экране
+          if (status) status.textContent = 'Микрофон недоступен — напиши ответ и нажми «Ответить»';
+          textInput?.focus();
           return;
         }
         rec = new SR();
@@ -608,11 +636,12 @@ function listenToChild() {
         if (status) status.textContent = '🎤 Слушаю…';
         rec.onresult = (ev) => finish(ev.results?.[0]?.[0]?.transcript || 'да');
         rec.onerror = () => {
-          if (status) status.textContent = 'Не расслышал. Нажми 🎤 и скажи ещё раз';
+          if (status) status.textContent = 'Не расслышал. Нажми 🎤 ещё раз или напиши ответ';
         };
         rec.start();
       } catch {
-        if (status) status.textContent = 'Не расслышал. Нажми 🎤 и скажи ещё раз';
+        if (status) status.textContent = 'Не расслышал. Нажми 🎤 ещё раз или напиши ответ';
+        textInput?.focus();
       }
     };
     wrap?.querySelector('#runner-ai-mic')?.addEventListener('click', startRec);
@@ -1419,8 +1448,18 @@ function launchRunnerEpisode(ep, opts = {}) {
         bossPhaseIdx++;
         spawnFearShards(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd700', 24);
         boss = null;
+        bossFightMode = false;
+        // замораживаем мир на время перехода между фазами — иначе дистанция
+        // продолжает расти, пока следующая фаза босса ещё не заспавнилась
+        const speedBeforePhaseSwitch = speed || baseSpeed;
+        speed = 0;
         showPhaseIntro(BOSS_PHASES[bossPhaseIdx].name);
-        setTimeout(() => spawnBoss(bossPhaseIdx, { fromRight: true }), 600);
+        setTimeout(() => {
+          spawnBoss(bossPhaseIdx, { fromRight: true });
+          if (!choiceState.active && !pauseActive && !breakActive && !sceneActive) {
+            speed = speedBeforePhaseSwitch;
+          }
+        }, 600);
       } else {
         score += 200;
         fearsSmashed += 3;
@@ -1562,7 +1601,8 @@ function launchRunnerEpisode(ep, opts = {}) {
       persistCheckpoint(distance);
       ps.remove();
       pauseActive = false;
-      if (loop) { clearInterval(loop); loop = null; }
+      if (loop) { cancelAnimationFrame(loop); loop = null; }
+      window.removeEventListener('keydown', handleRunnerKeydown);
       cleanupAudio();
       overlay.remove();
       document.getElementById('choice-overlay')?.remove();
@@ -1754,6 +1794,7 @@ function launchRunnerEpisode(ep, opts = {}) {
     gameSpeedBefore: 1,
     triggered: {}
   };
+  let choiceResolve = null;
   let frame = 0;
   let finished = false;
   let groundOffset = 0;
@@ -1794,7 +1835,9 @@ function launchRunnerEpisode(ep, opts = {}) {
   let heartbeatBpm = 80;
   let footstepAcc = 0;
   let gameStarted = false;
-  let loop = null;
+  let loop = null; // handle requestAnimationFrame (не setInterval id)
+  let rafLastTime = null;
+  let rafAccumulator = 0;
   let dashReadyAt = 0;
   let dashT = 0;
   let lastChestAt = 0;
@@ -2780,7 +2823,15 @@ function launchRunnerEpisode(ep, opts = {}) {
 
   function showChoice(situation) {
     const data = activeChoices[situation] || CHOICES[situation];
-    if (!data) return;
+    if (!data) {
+      // защита: если для ситуации нет данных, не оставляем runChoice() висящим навсегда
+      if (choiceResolve) {
+        const resolve = choiceResolve;
+        choiceResolve = null;
+        resolve();
+      }
+      return;
+    }
     const steps = data.steps;
     const step = steps[Math.min(choiceState.step, steps.length - 1)];
 
@@ -2816,11 +2867,33 @@ function launchRunnerEpisode(ep, opts = {}) {
     document.body.appendChild(choiceOverlay);
   }
 
+  /**
+   * Промис-обёртка над showChoice(): позволяет async-сценам (sceneMiaMeet,
+   * scenePortal, sceneBossIntro, sceneVictory) дождаться, пока ребёнок
+   * пройдёт троллинг-развилку, прежде чем продолжать сюжет/выдавать баффы.
+   */
+  function runChoice(situation) {
+    return new Promise((resolve) => {
+      choiceResolve = resolve;
+      choiceState.step = 0;
+      showChoice(situation);
+    });
+  }
+
+  function resolveChoicePromise() {
+    if (choiceResolve) {
+      const resolve = choiceResolve;
+      choiceResolve = null;
+      resolve();
+    }
+  }
+
   function handleChoice(optionIndex) {
     const situation = choiceState.situation;
     const steps = (activeChoices[situation] || CHOICES[situation])?.steps;
     if (!steps) {
       closeChoice();
+      resolveChoicePromise();
       return;
     }
     const currentStep = Math.min(choiceState.step, steps.length - 1);
@@ -2840,6 +2913,7 @@ function launchRunnerEpisode(ep, opts = {}) {
         }
         applyChoiceReward(situation, stepReached);
         closeChoice();
+        resolveChoicePromise();
       }
     } else {
       // правильный выбор
@@ -2851,6 +2925,7 @@ function launchRunnerEpisode(ep, opts = {}) {
       }
       applyChoiceReward(situation, rewardedStep);
       closeChoice();
+      resolveChoicePromise();
     }
   }
 
@@ -2876,7 +2951,7 @@ function launchRunnerEpisode(ep, opts = {}) {
         showComboText('🦆 Уточка!');
         score += 40;
       }
-      if (!boss) spawnBoss();
+      // сам спавн босса — задача sceneBossIntro()/startBossFight() сразу после runChoice('boss')
     }
     if (situation === 'portal') {
       score += 20 + stepReached * 10;
@@ -2977,6 +3052,9 @@ function launchRunnerEpisode(ep, opts = {}) {
       'Ребёнок соглашается. Мия счастлива',
       'mia'
     );
+    // троллинг-развилка CHOICES.mia: шутки про «волшебный столб» + бафф hasGlowingPillar
+    await runChoice('mia');
+    // подстраховка на случай, если развилка выше по какой-то причине не заспавнила Мию
     spawnMia({ skipScene: true });
   }
 
@@ -3021,6 +3099,8 @@ function launchRunnerEpisode(ep, opts = {}) {
       'Все готовы. Команда прыгает',
       'lucik'
     );
+    // троллинг-развилка CHOICES.portal: шутки про обход портала + бонусные очки
+    await runChoice('portal');
     jumpIntoPortal();
   }
 
@@ -3036,6 +3116,8 @@ function launchRunnerEpisode(ep, opts = {}) {
       'Команда готова к финальной битве',
       'max'
     );
+    // троллинг-развилка CHOICES.boss: шутки про резиновую уточку + бафф hasDuckBuff
+    await runChoice('boss');
     if (!boss) {
       choiceState.triggered.bossFinal = true;
       lastBossAt = Math.floor(distance);
@@ -3049,6 +3131,9 @@ function launchRunnerEpisode(ep, opts = {}) {
       'Команда празднует победу',
       'lucik'
     );
+    // троллинг-развилка CHOICES.ending: шутки про Бублика; applyChoiceReward('ending')
+    // сама вызывает victorySequence() при distance у цели — явный вызов ниже подстраховывает
+    await runChoice('ending');
     victorySequence();
   }
 
@@ -3170,7 +3255,8 @@ function launchRunnerEpisode(ep, opts = {}) {
       msg.remove();
       breakActive = false;
       persistCheckpoint(distance);
-      if (loop) { clearInterval(loop); loop = null; }
+      if (loop) { cancelAnimationFrame(loop); loop = null; }
+      window.removeEventListener('keydown', handleRunnerKeydown);
       cleanupAudio();
       overlay.remove();
       exitToHub('break');
@@ -3614,11 +3700,27 @@ function launchRunnerEpisode(ep, opts = {}) {
     ctx.restore();
   }
 
-  function drawAllies() {
+  /**
+   * Рисует Люцика и союзников в порядке по глубине (y + h — «где ноги
+   * стоят на экране»), чтобы спрайт союзника, догнавший Люцика при смене
+   * дорожки, не перекрывал героя. У Люцика небольшой приоритет (+0.5) на
+   * случай равной глубины — в норме он и союзники стоят на одной линии
+   * земли, и без этого сдвига Array.prototype.sort (стабильная сортировка)
+   * оставила бы порядок вставки, то есть Люцика под союзниками.
+   */
+  function drawCharacters() {
+    const layers = [{ depth: lucik.y + lucik.h + 0.5, draw: drawLucik }];
     allies.forEach((ally) => {
-      if (ally.name === 'Мия' || ally.id === 'mia') drawMia(ally);
-      if (ally.name === 'Макс' || ally.id === 'max') drawMax(ally);
+      layers.push({
+        depth: ally.y + ally.h,
+        draw: () => {
+          if (ally.name === 'Мия' || ally.id === 'mia') drawMia(ally);
+          if (ally.name === 'Макс' || ally.id === 'max') drawMax(ally);
+        }
+      });
     });
+    layers.sort((a, b) => a.depth - b.depth);
+    layers.forEach((layer) => layer.draw());
     drawArrowEffects();
   }
 
@@ -5556,8 +5658,7 @@ function launchRunnerEpisode(ep, opts = {}) {
     });
 
     drawParticlesLayer();
-    drawLucik();
-    drawAllies();
+    drawCharacters();
 
     if (phase === PHASE.INTRO) drawIntroOverlay();
 
@@ -5874,10 +5975,11 @@ function launchRunnerEpisode(ep, opts = {}) {
   }
 
   function finish(didWin) {
-    if (loop) clearInterval(loop);
+    if (loop) cancelAnimationFrame(loop);
     loop = null;
     window.removeEventListener('resize', resize);
     document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('keydown', handleRunnerKeydown);
     cleanupAudio();
     document.getElementById('choice-overlay')?.remove();
     document.getElementById('runner-scene-overlay')?.remove();
@@ -5963,7 +6065,10 @@ function launchRunnerEpisode(ep, opts = {}) {
   canvas.addEventListener('touchstart', (e) => { e.preventDefault(); onPointerDown(e); }, { passive: false });
   canvas.addEventListener('touchend', (e) => { e.preventDefault(); onPointerUp(e); }, { passive: false });
 
-  window.addEventListener('keydown', (e) => {
+  // именованная функция — чтобы можно было снять обработчик при выходе
+  // из эпизода (иначе при каждом повторном запуске накапливался новый
+  // слушатель на window, который никогда не удалялся)
+  function handleRunnerKeydown(e) {
     if (choiceState.active || sceneActive) return;
     if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w' || e.key === 'W') {
       e.preventDefault();
@@ -5978,7 +6083,17 @@ function launchRunnerEpisode(ep, opts = {}) {
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setLane(-1);
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') setLane(1);
     if (e.key === 'Shift') doDash();
-  });
+  }
+  window.addEventListener('keydown', handleRunnerKeydown);
+
+  // update() написан в расчёте на фиксированный шаг ~20мс (физика прыжка,
+  // таймеры-счётчики кадров и т.д.) — поэтому вместо пересчёта всей физики
+  // под произвольную дельту используем классический fixed-timestep с
+  // аккумулятором поверх requestAnimationFrame: сколько бы реального
+  // времени ни прошло между кадрами, update() всегда вызывается ровно
+  // 20-миллисекундными порциями, а draw() — ровно раз за кадр экрана.
+  const STEP_MS = 20;
+  const MAX_STEPS_PER_FRAME = 5; // защита от «спирали смерти» после долгой паузы/фоновой вкладки
 
   function startGameLoop() {
     if (loop) return;
@@ -5989,8 +6104,22 @@ function launchRunnerEpisode(ep, opts = {}) {
       const el = document.getElementById('runnerScore');
       if (el) el.textContent = score;
     }
-    loop = setInterval(() => {
-      update();
+    rafLastTime = null;
+    rafAccumulator = 0;
+    const tick = (now) => {
+      loop = requestAnimationFrame(tick);
+      if (rafLastTime == null) rafLastTime = now;
+      let dt = now - rafLastTime;
+      rafLastTime = now;
+      if (dt > 250) dt = 250; // скачок после сворачивания вкладки — не пытаемся мгновенно «догнать»
+      rafAccumulator += dt;
+      let steps = 0;
+      while (rafAccumulator >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
+        update();
+        rafAccumulator -= STEP_MS;
+        steps++;
+      }
+      if (steps >= MAX_STEPS_PER_FRAME) rafAccumulator = 0;
       draw();
       updateFilmLayer();
       if ((phase === PHASE.LOST || phase === PHASE.WON) && !finished) {
@@ -5999,7 +6128,8 @@ function launchRunnerEpisode(ep, opts = {}) {
         stopDrone();
         setTimeout(() => finish(phase === PHASE.WON || won), phase === PHASE.WON ? 1100 : 1600);
       }
-    }, 20);
+    };
+    loop = requestAnimationFrame(tick);
     trackEvent('runner_started', {
       level, episode: ep.id, fear: fear.id, mindflayer: isMindFlayer,
       run: runCount, daily: dailyBonus, goal: goalDist
@@ -6137,10 +6267,11 @@ function launchRunnerEpisode(ep, opts = {}) {
   };
   document.getElementById('runnerClose').onclick = () => {
     persistCheckpoint(distance);
-    if (loop) clearInterval(loop);
+    if (loop) cancelAnimationFrame(loop);
     loop = null;
     window.removeEventListener('resize', resize);
     document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('keydown', handleRunnerKeydown);
     cleanupAudio();
     document.getElementById('choice-overlay')?.remove();
     document.getElementById('runner-scene-overlay')?.remove();
