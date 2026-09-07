@@ -201,7 +201,7 @@ export function startDrawAIGame(level = 1) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: `Ребёнок нарисовал картинку. Анализ пикселей: ${desc}. Угадай ОДНИМ словом что это.`,
-          type: 'chat',
+         type: 'draw_guess',
           systemPrompt: 'Ты — программа распознавания рисунков. Отвечай одним словом.'
         })
       });

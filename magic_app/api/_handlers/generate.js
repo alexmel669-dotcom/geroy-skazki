@@ -461,7 +461,7 @@ export default async function handler(req, res) {
 
     const parsed = parseAiJson(raw);
     const age = childAge ? Math.min(14, Math.max(3, parseInt(childAge, 10))) : 7;
-    const safeMessage = req.body.systemPrompt
+    const safeMessage = reqType === 'draw_guess'
       ? String(parsed.message || raw).trim().split(/\s+/)[0].replace(/[^а-яё-]/gi, '')
       : applyGrammarFixes(applyGenderToText(sanitizeAIText(parsed.message, age), gender));
     return res.status(200).json({
