@@ -1071,7 +1071,9 @@ function launchRunnerEpisode(ep, opts = {}) {
   const goalDist = FULL_GOAL;
   const activeChoices = buildEpisodeChoices(ep);
   const easterEggs = STRANGER_THINGS_EASTER_EGGS.map((egg) => ({ ...egg, shown: false }));
-  const storyTold = new Set();
+    const storyTold = new Set(
+    (resume?.distance ? STORY_TRIGGERS.filter(t => t.distance <= resume.distance).map(t => t.distance) : [])
+  );
   const playSessionStart = performance.now();
   let breakSuggested = false;
   let breakActive = false;
