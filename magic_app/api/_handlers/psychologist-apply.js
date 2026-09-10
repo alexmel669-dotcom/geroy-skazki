@@ -1,5 +1,11 @@
 import { Redis } from '@upstash/redis';
 import { setCors } from '../_middleware/cors.js';
+import { sanitizeUrl, isValidEmailFormat } from '../_lib/sanitize.js';
+// Примечание: текстовые поля (имя, специализация и т.п.) уже безопасно
+// экранируются на выводе в admin-dashboard.js (escapeHtml()) — повторное
+// HTML-экранирование здесь дало бы двойное экранирование. Единственная реальная
+// дыра — поле documents (рендерится как <a href="...">, javascript:-схема не
+// блокируется escapeHtml), поэтому валидируем именно его.
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
@@ -43,8 +49,21 @@ export default async function handler(req, res) {
       });
     }
 
+    if (!isValidEmailFormat(normalizedEmail)) {
+      return res.status(400).json({ error: 'Некорректный email' });
+    }
+
     if (confirmed === false) {
       return res.status(400).json({ error: 'Подтвердите согласие с условиями' });
+    }
+
+    // P0-2 fix: documents раньше принимался как есть и рендерился в админке как
+    // <a href="...">, что позволяло вставить javascript:-схему (XSS при клике админа).
+    const cleanDocuments = String(documents || '').trim();
+    if (cleanDocuments && !sanitizeUrl(cleanDocuments)) {
+      return res.status(400).json({
+        error: 'Поле «Документы» должно быть ссылкой (http:// или https://)'
+      });
     }
 
     const applications = asArray(await redis.get(APPLICATIONS_KEY));
@@ -60,7 +79,7 @@ export default async function handler(req, res) {
       phone: cleanPhone,
       telegram: String(telegram || '').trim(),
       city: String(city || '').trim(),
-      documents: String(documents || '').trim(),
+      documents: sanitizeUrl(cleanDocuments),
       status: 'pending',
       createdAt: new Date().toISOString()
     });

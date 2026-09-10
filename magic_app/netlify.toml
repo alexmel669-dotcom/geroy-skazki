@@ -1,3 +1,8 @@
+# АРХИВНЫЙ КОНФИГ — не используется в проде.
+# Актуальная схема деплоя: Cloudflare Pages (статика) + Cloudflare Worker
+# geroy-skazki-api2 (worker/index.js) -> Render (magic_app/server.js).
+# Netlify этот проект сейчас не хостит; файл оставлен для истории/отката.
+# Подробности: DEPLOY.md в корне репозитория.
 [[redirects]]
   from = "/api/*"
   to = "https://geroy-skazki.vercel.app/api/:splat"

@@ -19,6 +19,39 @@ if (process.env.RAILWAY_PUBLIC_DOMAIN && !process.env.VERCEL_URL) {
   process.env.VERCEL_URL = process.env.RAILWAY_PUBLIC_DOMAIN;
 }
 
+// P0-1 fix: проверка обязательных секретов при старте сервера.
+// Раньше их отсутствие тихо подменялось хардкод-значениями внутри отдельных
+// хендлеров (admin-token.js, admin-login.js) — теперь сервер в проде вообще
+// не поднимается, если критичные переменные окружения не заданы.
+function checkRequiredEnv() {
+  const required = [
+    'JWT_SECRET',
+    'ADMIN_EMAIL',
+    'ADMIN_PASSWORD',
+    'ADMIN_API_TOKEN',
+    'KV_REST_API_URL',
+    'KV_REST_API_TOKEN'
+  ];
+  const missing = required.filter((name) => !process.env[name]?.trim());
+  if (!missing.length) return;
+
+  const isProd = process.env.NODE_ENV === 'production' || Boolean(process.env.RENDER);
+  if (isProd) {
+    console.error(
+      `[server] Отсутствуют обязательные переменные окружения: ${missing.join(', ')}. ` +
+      'Сервер не будет запущен без них — заполните их в настройках Render (Environment) и перезапустите деплой.'
+    );
+    process.exit(1);
+  }
+
+  console.error(
+    `[server] ВНИМАНИЕ: не заданы переменные окружения ${missing.join(', ')} — ` +
+    'админ-панель и часть API будут недоступны/отключены. Заполните magic_app/.env.local для локальной разработки.'
+  );
+}
+
+checkRequiredEnv();
+
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',

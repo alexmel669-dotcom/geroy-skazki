@@ -1,5 +1,13 @@
 import { Redis } from '@upstash/redis';
 import { setCors } from '../_middleware/cors.js';
+import { sanitizeUrl, isValidEmailFormat } from '../_lib/sanitize.js';
+
+// Примечание: имя/город/контакт и т.п. здесь НЕ прогоняются через sanitizeHTML —
+// эти поля уже безопасно экранируются на выводе в admin-dashboard.js (escapeHtml())
+// при каждом рендере; повторное HTML-экранирование на сохранении дало бы двойное
+// экранирование ("&amp;amp;" вместо "&"). Единственная реальная дыра здесь — поле
+// documents, которое рендерится как <a href="..."> и НЕ проходит через escapeHtml
+// для схемы ссылки, поэтому его валидируем отдельно (sanitizeUrl/isSafeHttpUrl).
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
@@ -43,8 +51,22 @@ export default async function handler(req, res) {
       });
     }
 
+    if (!isValidEmailFormat(normalizedEmail)) {
+      return res.status(400).json({ error: 'Некорректный email' });
+    }
+
     if (confirmed === false) {
       return res.status(400).json({ error: 'Подтвердите согласие с условиями' });
+    }
+
+    // P0-2 fix: поле documents раньше принималось как есть и рендерилось в админке
+    // как <a href="...">, что позволяло вставить javascript:-схему (XSS при клике
+    // админа). Теперь принимаем только настоящие http(s)-ссылки.
+    const cleanDocuments = String(documents || '').trim();
+    if (cleanDocuments && !sanitizeUrl(cleanDocuments)) {
+      return res.status(400).json({
+        error: 'Поле «Документы» должно быть ссылкой (http:// или https://)'
+      });
     }
 
     const applications = asArray(await redis.get(APPLICATIONS_KEY));
@@ -53,15 +75,15 @@ export default async function handler(req, res) {
     }
 
     applications.push({
-      name: cleanName,
-      city: String(city || '').trim(),
-      contactName: cleanContact,
-      position: String(position || '').trim(),
+      name: cleanName.slice(0, 200),
+      city: String(city || '').trim().slice(0, 100),
+      contactName: cleanContact.slice(0, 200),
+      position: String(position || '').trim().slice(0, 100),
       contactPhone: cleanPhone,
       phone: cleanPhone,
       email: normalizedEmail,
-      childrenCount: String(childrenCount || '').trim(),
-      documents: String(documents || '').trim(),
+      childrenCount: String(childrenCount || '').trim().slice(0, 20),
+      documents: sanitizeUrl(cleanDocuments),
       status: 'pending',
       createdAt: new Date().toISOString()
     });

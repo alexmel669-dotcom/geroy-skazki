@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '../_middleware/auth.js';
 import { Redis } from '@upstash/redis';
 import { validatePromocode, buildPlanFromPromo, getEffectivePlan } from '../_lib/promocodes.js';
+import { verifyPromoCode, logRejectedPromoAttempt } from '../_lib/promo-verify.js';
 import { getPromoUsage, incrementPromoUsage, PROMO_LIMIT } from '../_lib/promo-counter.js';
 import { isValidSecretQuestionKey, normalizeSecretAnswer } from '../_lib/secret-questions.js';
 
@@ -138,6 +139,7 @@ export default async function handler(req, res) {
       const promoCodeKey = promo.code;
       const isClientPsyCode = promoCodeKey.startsWith('PSY-') && promoCodeKey.includes('-CLIENT');
       const isPartnerPsyCode = promoCodeKey.startsWith('PSY-') && !isClientPsyCode;
+      const isSpecCode = promoCodeKey.startsWith('SPEC-');
       const isOrphCode = promoCodeKey.startsWith('ORPH-');
 
       if (promo.code === 'FOUNDERS' || promo.type === 'public') {
@@ -148,7 +150,53 @@ export default async function handler(req, res) {
         }
       }
 
-      if (isClientPsyCode || promoCodeKey.startsWith('SPEC-')) {
+      // P0-3 fix: раньше PSY-/SPEC- принимались по одному факту префикса —
+      // роль 'psychologist' можно было получить, просто придумав код. Теперь
+      // код обязан быть либо реально выдан админом (см. admin-applications.js),
+      // либо совпадать с "мастер"-кодом из env. Без этого — 400 и лог попытки
+      // для админа (ручное одобрение через существующие формы заявок).
+      if (isPartnerPsyCode) {
+        const usage = await getPromoUsage(promoCodeKey);
+        if (usage >= 1) {
+          return res.status(400).json({ error: 'Промокод уже использован' });
+        }
+        const check = await verifyPromoCode(promoCodeKey, 'psychologist');
+        if (!check.valid) {
+          await logRejectedPromoAttempt(promoCodeKey, 'psychologist', normalizedEmail);
+          return res.status(400).json({
+            error: 'Промокод психолога не подтверждён. Подайте заявку через форму «Стать партнёром» — мы одобрим её вручную и вышлем персональный код.'
+          });
+        }
+      }
+
+      if (isClientPsyCode) {
+        const psychologistCode = promoCodeKey.replace(/-CLIENT$/i, '');
+        const check = await verifyPromoCode(psychologistCode, 'psychologist');
+        if (!check.valid) {
+          await logRejectedPromoAttempt(promoCodeKey, 'psychologist-referral', normalizedEmail);
+          return res.status(400).json({ error: 'Реферальный код психолога не найден или не активен' });
+        }
+      }
+
+      if (isSpecCode) {
+        const check = await verifyPromoCode(promoCodeKey, 'specialist');
+        if (!check.valid) {
+          await logRejectedPromoAttempt(promoCodeKey, 'specialist', normalizedEmail);
+          return res.status(400).json({
+            error: 'Промокод не подтверждён. Обратитесь в поддержку для верификации — мы одобрим доступ вручную.'
+          });
+        }
+      }
+
+      if (isOrphCode) {
+        const check = await verifyPromoCode(promoCodeKey, 'orphanage');
+        if (!check.valid) {
+          await logRejectedPromoAttempt(promoCodeKey, 'orphanage', normalizedEmail);
+          return res.status(400).json({ error: 'Промокод требует верификации' });
+        }
+      }
+
+      if (isClientPsyCode || isSpecCode) {
         const usage = await getPromoUsage(promoCodeKey);
         if (usage >= 1) {
           return res.status(400).json({ error: 'Промокод уже использован' });
@@ -195,13 +243,6 @@ export default async function handler(req, res) {
               await redis.set('geroy:psychologists', psyList);
             }
           }
-        }
-      }
-
-      if (isOrphCode) {
-        const verified = await redis.get(`geroy:orphanage:verified:${promoCodeKey}`);
-        if (!verified) {
-          return res.status(400).json({ error: 'Промокод требует верификации' });
         }
       }
 
