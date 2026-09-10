@@ -107,6 +107,25 @@ export function sanitizeAIText(text, age) {
 }
 
 /**
+ * Экранирует HTML-спецсимволы перед вставкой в innerHTML (P0-2 из аудита
+ * безопасности: раньше текст диалогов ребёнка вставлялся в родительском
+ * кабинете без экранирования — хранимый XSS). В отличие от sanitizeInput()
+ * НЕ вырезает символы, а превращает их в безопасные HTML-сущности, поэтому
+ * годится для текста, который должен отображаться как есть.
+ * @param {*} value
+ * @returns {string}
+ */
+export function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
  * Безопасная очистка HTML входных данных
  * @param {string} input - Входная строка
  * @returns {string} - Очищенная строка
@@ -202,6 +221,7 @@ export default {
     sanitizeText,
     sanitizeAIText,
     sanitizeInput,
+    escapeHtml,
     ALLOWED_SLANG,
     FORBIDDEN_WORDS,
     detectAlertWords,

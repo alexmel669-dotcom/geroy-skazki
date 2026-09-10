@@ -248,6 +248,20 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+// P0-2 fix: escapeHtml() экранирует кавычки/скобки, но НЕ блокирует опасные схемы
+// ссылок (javascript:, data:) — если такая схема попадёт в href, код выполнится
+// при клике. Бэкенд теперь отклоняет такие значения при приёме заявки, но эта
+// проверка — доп. защита на случай уже сохранённых старых записей.
+function isSafeHttpUrl(value) {
+  if (!value || typeof value !== 'string') return false;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function renderFeedbacks(feedbacks) {
   const tbody = document.querySelector('#feedbacksTable tbody');
   if (!tbody) return;
@@ -716,7 +730,7 @@ async function loadApplications(type = 'psychologist') {
 
     container.innerHTML = apps.map((a) => {
       const email = escapeHtml(a.email || '');
-      const docs = a.documents
+      const docs = isSafeHttpUrl(a.documents)
         ? `<a href="${escapeHtml(a.documents)}" target="_blank" rel="noopener" class="specialist-link">📄 Документы</a>`
         : '';
       const meta = currentAppType === 'orphanage'

@@ -5,6 +5,7 @@ import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDa
 import { getGameProgressSummary, loadGameProgress } from './game-progress.js';
 import { getChildGender, guessGenderFromName, chattedPast, pickByGender } from './gender.js';
 import { getCorrectNameForm, getAgeWord } from './grammar.js';
+import { escapeHtml } from './security.js';
 
 function getAgeFromBirthday(birthday) {
   if (!birthday) return null;
@@ -1004,10 +1005,16 @@ function renderDialogs(history) {
     const isChild = h.role === 'child';
     const cls = isChild ? 'child' : 'lucik';
     const lucikIcon = avatarImgHtml('lucik', 18);
-    const prefix = isChild ? 'Ребёнок' : (h.characterName ? `${lucikIcon} ${h.characterName}` : `${lucikIcon} Люцик`);
+    // P0-2 fix: текст диалога — это то, что ребёнок сам ввёл в чат (или ответ ИИ),
+    // и раньше он вставлялся в innerHTML без экранирования (хранимый XSS). Эти
+    // данные никогда не проходят через бэкенд (хранятся в localStorage), поэтому
+    // единственное место, где их можно безопасно обезвредить — здесь, при рендере.
+    const prefix = isChild
+      ? 'Ребёнок'
+      : (h.characterName ? `${lucikIcon} ${escapeHtml(h.characterName)}` : `${lucikIcon} Люцик`);
     const attentionWords = !isChild ? (h.alertWords || checkAttentionWords(h.text)) : [];
     const isAlerted = h.alerted || attentionWords.length > 0;
-    const text = (h.text || '').substring(0, 150);
+    const text = escapeHtml((h.text || '').substring(0, 150));
     return `
       <div class="history-item ${cls} ${isAlerted ? 'alerted' : ''}">
         <div class="msg">${text}${(h.text && h.text.length > 150) ? '...' : ''}${isAlerted ? '<span class="alert-tag">⚠️</span>' : ''}</div>

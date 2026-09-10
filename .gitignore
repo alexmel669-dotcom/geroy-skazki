@@ -13,3 +13,16 @@ node_modules/
 .data/
 .DS_Store
 *.log
+
+# Ключ подписи APK — не коммитить (без него нельзя обновлять приложение в RuStore)
+*.keystore
+*.jks
+
+# APK/AAB build artifacts
+*.apk
+*.aab
+*.idsig
+*.keystore
+
+# Patches (temporary)
+*.patch

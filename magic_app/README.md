@@ -73,65 +73,37 @@ npm run dev
 
 ---
 
-## ☁️ Деплой на Vercel
+## ☁️ Деплой (актуальная схема: Cloudflare Pages + Render)
 
-### Важно: Root Directory
+Прод (`geroy-skazki.ru`) обслуживается так:
 
-В [Vercel Dashboard](https://vercel.com) → Project → **Settings** → **General** → **Root Directory** должно быть:
+- **Статика** (`public/`) — Cloudflare Pages.
+- **API** (`api/`, через `server.js`) — Render (обычный Node-сервис,
+  команда старта `npm start`).
+- Единый домен собирает **Cloudflare Worker** `geroy-skazki-api2`
+  (`../worker/index.js`, конфиг `../wrangler.toml`): `/api/*` → Render,
+  остальное → Cloudflare Pages.
 
-```
-magic_app
-```
-
-Если указана корневая папка репозитория — деплой падает с ошибкой (нет `package.json` и `api/`).
-
-### Деплой
-
-```powershell
-cd magic_app
-
-# 1. Заполните .env.local (ключи без пробелов и переносов строк!)
-# 2. Загрузите переменные на Vercel:
-npm run deploy:env
-
-# 3. Деплой:
-npm run deploy
-```
-
-### Если 404 NOT_FOUND после деплоя
-
-Причина: Vercel не видит папку `magic_app`.
-
-**Исправление:** Settings → General → **Root Directory** = `magic_app` → **Redeploy**.
-
-Либо оставьте Root Directory пустым — в корне репозитория есть `vercel.json` с путями к `magic_app/`.
+Обязательные переменные окружения задаются в Render → Environment (не в
+Vercel!): `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_API_TOKEN`,
+`KV_REST_API_URL`, `KV_REST_API_TOKEN`, `DEEPSEEK_API_KEY`, `YANDEX_API_KEY`,
+`YANDEX_FOLDER_ID`. Без первых шести сервер теперь не стартует в проде —
+подробности и полный чек-лист деплоя в [DEPLOY.md](../DEPLOY.md).
 
 ### Проверка после деплоя
 
-Откройте в браузере:
-
 ```
-https://geroy-skazki.vercel.app/api/health
+https://geroy-skazki.ru/api/health
 ```
 
-Должно быть:
-```json
-{ "ok": true, "env": { "jwt": true, "yandexKey": true, "yandexFolder": true } }
-```
+Должно быть: `{ "ok": true, ... }`.
 
-Если `yandexKey: false` — ключ не загружен на Vercel. Запустите `npm run deploy:env` ещё раз.
+### Легаси: Vercel / Netlify / Railway
 
-### Если журнал деплоя не открывается
-
-Через терминал (после `npm i -g vercel` и `vercel login`):
-
-```powershell
-cd magic_app
-vercel logs geroy-skazki --prod
-vercel inspect <url-последнего-деплоя>
-```
-
-Или: Dashboard → Deployments → три точки → **Redeploy** → смотрите статус **Building** / **Ready** / **Error**.
+В репозитории остались конфиги для Vercel (`vercel.json`), Netlify
+(`netlify.toml`) и Railway (`railway.json`) — они **не обслуживают** текущий
+прод и оставлены только как архив/на случай отката. Инструкция по ним — в
+[DEPLOY.md](../DEPLOY.md) (раздел «Легаси-инструкция: деплой на Vercel»).
 
 ---
 

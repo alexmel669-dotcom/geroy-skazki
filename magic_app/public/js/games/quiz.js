@@ -2,7 +2,7 @@
 // quiz.js — Викторина (v5.6.8)
 // ========================================
 
-import { appState } from '../core.js';
+import { appState, showGamesMenu } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
 import { addXP } from '../progression.js';
@@ -164,7 +164,7 @@ export function startQuizGame(level = 1) {
     result.innerHTML = '<div style="background:#fff;border-radius:20px;padding:clamp(20px,5vw,40px);text-align:center;max-width:90vw;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.6);"><div style="font-size:48px;">'+(won?'🎉':'😅')+'</div><h2 style="margin:12px 0;color:#222;font-size:22px;">'+(won?'Эрудит!':'Время вышло!')+'</h2><p style="color:#444;font-size:16px;">Правильно '+score+' из '+pool.length+'</p><p style="color:#666;">🏆 Лучший: '+best+'</p><button id="qr" style="margin:8px;padding:14px 28px;border-radius:12px;border:none;background:#FFD700;color:#222;font-weight:bold;font-size:18px;cursor:pointer;width:80%;">🔄 '+(won?'Дальше':'Ещё раз')+'</button><button id="qe" style="margin:8px;padding:12px 24px;border-radius:12px;border:2px solid #ccc;background:#fff;color:#888;font-size:16px;cursor:pointer;width:80%;">🚪 Выйти</button></div>';
     document.body.appendChild(result);
     result.querySelector('#qr').onclick = () => { result.remove(); startQuizGame(won?level+1:level); };
-    result.querySelector('#qe').onclick = () => { result.remove(); if(typeof showGamesMenu==='function') showGamesMenu(); };
+    result.querySelector('#qe').onclick = () => { result.remove(); showGamesMenu(); };
   }
 
   document.getElementById('qc').onclick = () => {

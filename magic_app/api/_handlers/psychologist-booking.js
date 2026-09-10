@@ -21,6 +21,16 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'psychologistEmail required' });
       }
 
+      // P0-4 fix: раньше эта ветка отдавала слоты и ВСЕ записи (включая
+      // parentEmail/childName/concern — повод обращения) без единой проверки
+      // авторизации. Email психолога публично виден в /api/psychologists-list,
+      // так что любой мог просто подставить его в URL. Теперь доступ есть
+      // только у самого психолога (или админа).
+      const access = await requirePsychologist(req, psychologistEmail);
+      if (!access || (access.email !== psychologistEmail && !access.admin)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
       const slots = asArray(await redis.get(`geroy:psychologist:${psychologistEmail}:slots`));
       const bookings = asArray(await redis.get(`geroy:psychologist:${psychologistEmail}:bookings`));
       return res.status(200).json({ slots, bookings });

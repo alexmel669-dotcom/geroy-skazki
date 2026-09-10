@@ -1,4 +1,4 @@
-import { appState } from '../core.js';
+import { appState, showGamesMenu } from '../core.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
 import { addXP } from '../progression.js';
@@ -139,7 +139,7 @@ export function startPuzzleGame(level = 1) {
     result.innerHTML = '<div style="background:#fff;border-radius:20px;padding:clamp(20px,5vw,40px);text-align:center;max-width:90vw;width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.6);"><div style="font-size:48px;">🧩</div><h2 style="margin:12px 0;color:#222;font-size:22px;">Пазл собран!</h2><p style="color:#444;font-size:16px;">За '+moves+' ходов</p><button id="pr" style="margin:8px;padding:14px 28px;border-radius:12px;border:none;background:#FFD700;color:#222;font-weight:bold;font-size:18px;cursor:pointer;width:80%;">🔄 Ещё раз</button><button id="pe" style="margin:8px;padding:12px 24px;border-radius:12px;border:2px solid #ccc;background:#fff;color:#888;font-size:16px;cursor:pointer;width:80%;">🚪 Выйти</button></div>';
     document.body.appendChild(result);
     result.querySelector('#pr').onclick = () => { result.remove(); startPuzzleGame(level+1); };
-    result.querySelector('#pe').onclick = () => { result.remove(); if(typeof showGamesMenu==='function') showGamesMenu(); };
+    result.querySelector('#pe').onclick = () => { result.remove(); showGamesMenu(); };
   }
 
   canvas.onclick = function(e) {
