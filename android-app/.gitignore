@@ -1,0 +1,12 @@
+﻿# Не коммитим www — он копируется автоматически в workflow из magic_app/public
+www/
+
+# Не коммитим node_modules — ставятся через npm install
+node_modules/
+
+# Не коммитим сгенерированный android-проект — создаётся через npx cap add
+android/
+
+# Локальные файлы
+.DS_Store
+*.log

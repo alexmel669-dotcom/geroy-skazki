@@ -1,0 +1,43 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Нет подключения — Герой сказок</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container { padding: 20px; max-width: 400px; }
+        h1 { font-size: 28px; margin-bottom: 20px; }
+        p { font-size: 16px; opacity: 0.8; margin-bottom: 30px; line-height: 1.5; }
+        button {
+            background: #ffd700;
+            color: #1a1a2e;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .cat { font-size: 64px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="cat">🐱</div>
+        <h1>Ой!</h1>
+        <p>Люцик потерял связь с волшебным лесом. Проверь интернет и попробуй снова.</p>
+        <button onclick="location.reload()">Попробовать снова</button>
+    </div>
+</body>
+</html>
