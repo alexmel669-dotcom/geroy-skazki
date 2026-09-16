@@ -23,10 +23,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-      
+
       - name: Install Capacitor
         working-directory: ./android-app
         run: |
@@ -37,9 +34,9 @@ jobs:
         run: |
           mkdir -p ./android-app/www
           cp -r ./magic_app/public/* ./android-app/www/
-          echo "=== Файлы в www ==="
+          echo "=== Files in www ==="
           ls -la ./android-app/www/ | head -20
-          echo "=== Кол-во файлов ==="
+          echo "=== File count ==="
           find ./android-app/www/ -type f | wc -l
       
       - name: Init Capacitor
@@ -50,10 +47,12 @@ jobs:
       
       - name: Build Debug APK
         working-directory: ./android-app/android
-        run: ./gradlew assembleDebug
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: geroy-skazki-debug
-          path: android-app/android/build/outputs/apk/debug/app-debug.apk
+          path: android-app/android/app/build/outputs/apk/debug/app-debug.apk
