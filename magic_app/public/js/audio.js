@@ -72,7 +72,8 @@ class TTSEngine {
       this.isSpeaking = false;
       setAvatarState(null);
       if (resolve) resolve();
-      this.processQueue();
+      // Throttle: 400ms между TTS-запросами
+      if (this.queue.length) setTimeout(() => this.processQueue(), 400);
     }
   }
 

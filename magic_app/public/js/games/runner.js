@@ -1164,8 +1164,8 @@ function launchRunnerEpisode(ep, opts = {}) {
   document.body.classList.add('game-active');
   appState.gameActive = true;
 
-  const ctx = canvas.getContext('2d');
-  const filmCtx = filmCanvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const filmCtx = filmCanvas.getContext('2d', { willReadFrequently: true });
 
   const dailyBonus = claimDailyBonus();
   let fearsSmashed = 0;
@@ -2543,7 +2543,7 @@ function launchRunnerEpisode(ep, opts = {}) {
     grainCanvas = document.createElement('canvas');
     grainCanvas.width = 64;
     grainCanvas.height = 64;
-    grainCtx = grainCanvas.getContext('2d');
+    grainCtx = grainCanvas.getContext('2d', { willReadFrequently: true });
   }
 
   function resize() {
