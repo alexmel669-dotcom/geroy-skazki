@@ -158,10 +158,10 @@
   </div>
 
   <div class="actions-row">
-    <button class="action-btn" id="feedBtn" onclick="feedLucik()" title="Покормить Люцика">🍎</button>
-    <button class="action-btn" onclick="showGamesMenu()" title="Игры">🎮</button>
-    <button class="action-btn" onclick="showLeaderboard()" title="Таблица лидеров">🏆</button>
-    <button class="action-btn" id="houseBtn" onclick="showLucikHouse()" title="Домик">🏠</button>
+    <button class="action-btn" id="feedBtn" onclick="if(window.feedLucik)window.feedLucik()" title="Покормить Люцика">🍎</button>
+    <button class="action-btn" onclick="if(window.showGamesMenu)window.showGamesMenu()" title="Игры">🎮</button>
+    <button class="action-btn" onclick="if(window.showLeaderboard)window.showLeaderboard()" title="Таблица лидеров">🏆</button>
+    <button class="action-btn" id="houseBtn" onclick="if(window.showLucikHouse)window.showLucikHouse()" title="Домик">🏠</button>
   </div>
 
   <div class="text-chat-row">
