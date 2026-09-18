@@ -3,6 +3,15 @@
   "appName": "Герой сказок",
   "webDir": "www",
   "bundledWebRuntime": false,
+  "server": {
+    "url": "https://geroy-skazki.ru",
+    "androidScheme": "https",
+    "cleartext": false,
+    "allowNavigation": [
+      "geroy-skazki.ru",
+      "*.geroy-skazki.ru"
+    ]
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 2000,
