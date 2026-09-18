@@ -4848,12 +4848,12 @@ function launchRunnerEpisode(ep, opts = {}) {
 
     // мягкая тень
     if (phase !== PHASE.WELL_INSIDE && phase !== PHASE.WELL_FALL) {
-      const air = Math.max(0, (gy - lucik.h - lucik.y) / 80);
+      const air = Math.min(2.5, Math.max(0, (gy - lucik.h - lucik.y) / 80));
       const shadowW = 30 * lucik.scale * (1 - air * 0.4);
       const shadowA = 0.35 * (1 - air * 0.6);
       ctx.fillStyle = `rgba(10,5,25,${shadowA})`;
       ctx.beginPath();
-      ctx.ellipse(lx + lucik.tilt * 8, gy - 1, shadowW, 7 * (1 - air * 0.3), lucik.tilt * 0.3, 0, Math.PI * 2);
+      ctx.ellipse(lx + lucik.tilt * 8, gy - 1, Math.max(0, shadowW), Math.max(0, 7 * (1 - air * 0.3)), lucik.tilt * 0.3, 0, Math.PI * 2);
       ctx.fill();
     }
 
