@@ -206,7 +206,7 @@
 <script type="module" src="js/main.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').catch((err) => console.warn('[SW] Ошибка регистрации:', err));
   }
 </script>
 </body>

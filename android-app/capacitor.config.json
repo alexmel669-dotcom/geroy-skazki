@@ -1,10 +1,9 @@
-﻿{
+{
   "appId": "ru.geroy_skazki.app",
   "appName": "Герой сказок",
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://geroy-skazki.ru",
     "androidScheme": "https",
     "cleartext": false,
     "allowNavigation": [

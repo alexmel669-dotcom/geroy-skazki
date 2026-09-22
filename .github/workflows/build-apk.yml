@@ -28,7 +28,7 @@ jobs:
         working-directory: ./android-app
         run: |
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen
+          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen @capacitor/assets
 
       - name: Copy Web Assets
         run: |
@@ -44,6 +44,19 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+
+      - name: Generate Icons & Splash
+        working-directory: ./android-app
+        run: |
+          echo "=== Resources ==="
+          ls -la resources/
+          echo "=== Generating icons and splash ==="
+          npx capacitor-assets generate --android
+          echo "=== Generated mipmap files ==="
+          find android/app/src/main/res -name "ic_launcher*" -o -name "splash*" | head -30
+          echo "=== Generated drawable files ==="
+          ls -la android/app/src/main/res/drawable/ 2>/dev/null || echo "no drawable dir"
+          ls -la android/app/src/main/res/mipmap-xxxhdpi/ 2>/dev/null || echo "no mipmap-xxxhdpi dir"
 
       - name: Patch Android for microphone
         working-directory: ./android-app
@@ -65,17 +78,23 @@ jobs:
 
       - name: Decode Keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ./android-app/android/app/geroy-skazki.keystore
+          echo "$KEYSTORE_BASE64" | base64 -d > ./android-app/android/app/geroy-skazki.keystore
           ls -la ./android-app/android/app/geroy-skazki.keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
       - name: Build Release APK (signed)
         working-directory: ./android-app/android
         run: |
           ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file=$PWD/app/geroy-skazki.keystore \
-            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+            -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
+            -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload Signed Release APK
         uses: actions/upload-artifact@v4

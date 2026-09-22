@@ -27,7 +27,7 @@ node_modules/
 # Patches (temporary)
 *.patch
 
-# === яейперш х йкчвх ===
+# === О©╫О©╫О©╫О©╫О©╫О©╫О©╫ О©╫ О©╫О©╫О©╫О©╫О©╫ ===
 yandex-key.txt
 yandex-folder.txt
 yandex-*.txt
@@ -42,3 +42,9 @@ secrets/
 .env.local
 credentials.json
 service-account.json
+
+# === KEYSTORE BASE64 (п²п∙ п п·п°п°п≤п╒п≤п╒п╛!) ===
+keystore-base64.txt
+*.keystore.base64
+keystore*.txt
+bfg.jar
