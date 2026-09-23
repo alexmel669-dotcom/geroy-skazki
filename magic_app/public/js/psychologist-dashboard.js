@@ -2,6 +2,8 @@
 // psychologist-dashboard.js — кабинет психолога
 // ========================================
 
+
+import { apiFetch } from './api-base.js';
 const STORAGE_EMAIL = 'psyEmail';
 const STORAGE_TOKEN = 'userToken';
 
@@ -69,7 +71,7 @@ async function checkPsychologistAccess() {
   }
 
   try {
-    const res = await fetch('/api/verify-token', {
+    const res = await apiFetch('/api/verify-token', {
       headers: {
         Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`
       }
@@ -111,7 +113,7 @@ async function psyLogin() {
   btn.textContent = 'Вход…';
 
   try {
-    const res = await fetch('/api/login', {
+    const res = await apiFetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -166,7 +168,7 @@ function switchTab(tab) {
 }
 
 async function loadDashboard() {
-  const res = await fetch(`/api/psychologist-dashboard?email=${encodeURIComponent(state.email)}`, {
+  const res = await apiFetch(`/api/psychologist-dashboard?email=${encodeURIComponent(state.email)}`, {
     headers: authHeaders(false)
   });
   if (res.status === 403 || res.status === 401) {
@@ -233,7 +235,7 @@ function renderStats(data) {
 }
 
 async function loadBookings() {
-  const res = await fetch(`/api/psychologist-booking?psychologistEmail=${encodeURIComponent(state.email)}`, {
+  const res = await apiFetch(`/api/psychologist-booking?psychologistEmail=${encodeURIComponent(state.email)}`, {
     headers: authHeaders(false)
   });
   if (!res.ok) return;
@@ -252,7 +254,7 @@ async function loadBookings() {
 }
 
 async function loadReviews() {
-  const res = await fetch(`/api/psychologist-reviews?psychologistEmail=${encodeURIComponent(state.email)}`, {
+  const res = await apiFetch(`/api/psychologist-reviews?psychologistEmail=${encodeURIComponent(state.email)}`, {
     headers: authHeaders(false)
   });
   if (!res.ok) return;
@@ -271,7 +273,7 @@ async function loadReviews() {
 }
 
 async function loadSlots() {
-  const res = await fetch(`/api/psychologist-booking?psychologistEmail=${encodeURIComponent(state.email)}`, {
+  const res = await apiFetch(`/api/psychologist-booking?psychologistEmail=${encodeURIComponent(state.email)}`, {
     headers: authHeaders(false)
   });
   if (!res.ok) return;
@@ -312,7 +314,7 @@ function addSlot() {
 }
 
 async function saveSlots() {
-  const res = await fetch('/api/psychologist-booking', {
+  const res = await apiFetch('/api/psychologist-booking', {
     method: 'PUT',
     headers: authHeaders(),
     body: JSON.stringify({ psychologistEmail: state.email, slots: state.slots })
@@ -332,8 +334,7 @@ async function refreshChatList() {
   if (!chatsEl) return;
 
   try {
-    const res = await fetch(
-      `/api/psychologist-chat?psychologistEmail=${encodeURIComponent(state.email)}`,
+    const res = await apiFetch(`/api/psychologist-chat?psychologistEmail=${encodeURIComponent(state.email)}`,
       { headers: authHeaders(false) }
     );
     let chats = res.ok ? await res.json() : [];
@@ -407,7 +408,7 @@ function openChat(parentEmail) {
 async function loadChatMessages() {
   if (!state.activeChatParent) return;
   const url = `/api/psychologist-chat?psychologistEmail=${encodeURIComponent(state.email)}&parentEmail=${encodeURIComponent(state.activeChatParent)}`;
-  const res = await fetch(url, { headers: authHeaders(false) });
+  const res = await apiFetch(url, { headers: authHeaders(false) });
   if (!res.ok) return;
   const messages = await res.json();
   const box = document.getElementById('psyChatMessages');
@@ -427,7 +428,7 @@ async function sendChatMessage() {
   const text = input?.value.trim();
   if (!text || !state.activeChatParent) return;
 
-  const res = await fetch('/api/psychologist-chat', {
+  const res = await apiFetch('/api/psychologist-chat', {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({

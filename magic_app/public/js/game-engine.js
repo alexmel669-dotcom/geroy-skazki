@@ -1,5 +1,6 @@
 // game-engine.js — универсальный игровой движок
 import { trackEvent } from './analytics.js';
+import { apiFetch } from './api-base.js';
 
 export class GameEngine {
   constructor(config) {
@@ -146,7 +147,7 @@ export class GameEngine {
 
   async _saveResult(won) {
     try {
-      await fetch('/api/analytics', {
+      await apiFetch('/api/analytics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

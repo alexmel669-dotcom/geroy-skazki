@@ -1,7 +1,7 @@
 import { initAvatarImages } from './config.js';
+import { apiFetch } from './api-base.js';
 
-const API_BASE = '/api';
-
+// API_BASE импортируется из api-base.js
 const ERROR_MESSAGES = {
   'Invalid credentials': 'Неверный email или пароль',
   'Email and password required': 'Введите email и пароль',
@@ -32,7 +32,7 @@ export async function checkAuth() {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/verify-token`, {
+    const response = await apiFetch('/api/verify-token', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -94,7 +94,7 @@ async function handleLogin(e) {
   hideError(errorEl);
   
   try {
-    const response = await fetch(`${API_BASE}/login`, {
+    const response = await apiFetch('/api/login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -175,7 +175,7 @@ async function handleRegister(e) {
   hideError(errorEl);
   
   try {
-    const response = await fetch(`${API_BASE}/register`, {
+    const response = await apiFetch('/api/register', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -206,7 +206,7 @@ async function handleRegister(e) {
 // Выход
 export async function logout() {
   try {
-    const response = await fetch(`${API_BASE}/logout`, {
+    const response = await apiFetch('/api/logout', {
       method: 'POST',
       credentials: 'include'
     });
@@ -267,7 +267,7 @@ async function getSecretQuestion() {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/get-secret-question`, {
+    const response = await apiFetch('/api/get-secret-question', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
@@ -299,7 +299,7 @@ async function resetPassword() {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/reset-password`, {
+    const response = await apiFetch('/api/reset-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, secretAnswer, newPassword })

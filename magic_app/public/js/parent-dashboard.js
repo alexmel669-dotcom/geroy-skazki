@@ -6,6 +6,7 @@ import { getGameProgressSummary, loadGameProgress } from './game-progress.js';
 import { getChildGender, guessGenderFromName, chattedPast, pickByGender } from './gender.js';
 import { getCorrectNameForm, getAgeWord } from './grammar.js';
 import { escapeHtml } from './security.js';
+import { apiFetch } from './api-base.js';
 
 function getAgeFromBirthday(birthday) {
   if (!birthday) return null;
@@ -86,7 +87,7 @@ async function getCurrentUser() {
   if (!token || localStorage.getItem('guestMode') === 'true') return { ...fallback, children };
 
   try {
-    const res = await fetch('/api/profile-update', {
+    const res = await apiFetch('/api/profile-update', {
       credentials: 'include',
       headers: authHeaders()
     });
@@ -108,7 +109,7 @@ async function getCurrentUser() {
 }
 
 async function fetchChildToken(index) {
-  const res = await fetch(`/api/child-token?child=${index}`, {
+  const res = await apiFetch(`/api/child-token?child=${index}`, {
     method: 'POST',
     credentials: 'include',
     headers: authHeaders(),
@@ -370,7 +371,7 @@ async function generateDetailedReport(childIndex = activeChild) {
   const concerns = await getWeekConcerns(childName);
 
   try {
-    const res = await fetch('/api/generate', {
+    const res = await apiFetch('/api/generate', {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({
@@ -452,7 +453,7 @@ function generateChildReportText(stats, childName, gender, multiChild) {
 
 async function fetchWeeklyStatsFromServer() {
   try {
-    const res = await fetch('/api/weekly-stats?all=1', { headers: authHeaders() });
+    const res = await apiFetch('/api/weekly-stats?all=1', { headers: authHeaders() });
     if (!res.ok) return null;
     const data = await res.json();
     if (data.children?.length) {
@@ -479,7 +480,7 @@ async function fetchWeeklyStatsFromServer() {
 
 async function playTextAsSpeech(text) {
   try {
-    const res = await fetch('/api/tts', {
+    const res = await apiFetch('/api/tts', {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({ text, voice: 'jane' })
@@ -627,7 +628,7 @@ async function enterParentCabinet() {
   }
 
   try {
-    const check = await fetch('/api/verify-pin', {
+    const check = await apiFetch('/api/verify-pin', {
       method: 'POST',
       credentials: 'include',
       headers: authHeaders(),
@@ -660,7 +661,7 @@ async function verifyPinSubmit() {
     return;
   }
 
-  const res = await fetch('/api/verify-pin', {
+  const res = await apiFetch('/api/verify-pin', {
     method: 'POST',
     credentials: 'include',
     headers: authHeaders(),
@@ -1073,7 +1074,7 @@ async function renderPlanInfo() {
 
   if (localStorage.getItem('guestMode') !== 'true') {
     try {
-      const res = await fetch('/api/profile-update', { credentials: 'include' });
+      const res = await apiFetch('/api/profile-update', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan);
@@ -1123,7 +1124,7 @@ async function loadConcernsFromServer() {
   const local = safeParseJSON(localStorage.getItem('parentConcerns'), []) || [];
   if (localStorage.getItem('guestMode') === 'true') return local;
   try {
-    const res = await fetch('/api/profile-update', { credentials: 'include' });
+    const res = await apiFetch('/api/profile-update', { credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       if (data.user?.concerns?.length) return data.user.concerns;
@@ -1184,7 +1185,7 @@ async function getPsychologistHelp() {
   if (block) block.style.display = 'block';
 
   try {
-    const res = await fetch('/api/psychologist-help', {
+    const res = await apiFetch('/api/psychologist-help', {
       method: 'POST',
       credentials: 'include',
       headers: authHeaders(),
@@ -1326,8 +1327,7 @@ async function refreshParentMessages() {
   if (!parentEmail) return;
 
   try {
-    const res = await fetch(
-      `/api/psychologist-chat?psychologistEmail=${encodeURIComponent(currentPsychologistChat)}&parentEmail=${encodeURIComponent(parentEmail)}`,
+    const res = await apiFetch(`/api/psychologist-chat?psychologistEmail=${encodeURIComponent(currentPsychologistChat)}&parentEmail=${encodeURIComponent(parentEmail)}`,
       { headers: parentAuthHeaders(false) }
     );
     if (!res.ok) return;
@@ -1359,7 +1359,7 @@ async function sendParentMessage() {
   }
 
   try {
-    const res = await fetch('/api/psychologist-chat', {
+    const res = await apiFetch('/api/psychologist-chat', {
       method: 'POST',
       headers: parentAuthHeaders(),
       body: JSON.stringify({
@@ -1406,7 +1406,7 @@ async function reportPsychologist(email) {
   const token = localStorage.getItem('userToken') || '';
 
   try {
-    const res = await fetch('/api/psychologist-report', {
+    const res = await apiFetch('/api/psychologist-report', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1459,8 +1459,8 @@ async function loadHelpSection() {
   const specContainer = document.getElementById('specialistsContainer');
   try {
     const [psyRes, specRes] = await Promise.all([
-      fetch('/api/psychologists-list'),
-      fetch('/api/specialists-list')
+      apiFetch('/api/psychologists-list'),
+      apiFetch('/api/specialists-list')
     ]);
     const psychologists = psyRes.ok ? await psyRes.json() : [];
     const specialists = specRes.ok ? await specRes.json() : [];
@@ -1591,7 +1591,7 @@ document.getElementById('parentChatClose')?.addEventListener('click', closeParen
 document.getElementById('speakReportBtn')?.addEventListener('click', speakReport);
 document.getElementById('parentLogoutBtn')?.addEventListener('click', () => logout());
 document.getElementById('weeklyDigestBtn')?.addEventListener('click', async () => {
-  const res = await fetch('/api/weekly-digest', {
+  const res = await apiFetch('/api/weekly-digest', {
     method: 'POST',
     credentials: 'include',
     headers: authHeaders()

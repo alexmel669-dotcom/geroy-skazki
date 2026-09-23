@@ -7,6 +7,7 @@ import { appState, showGamesMenu } from '../core.js';
 import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
+import { apiFetch } from '../api-base.js';
 
 const FULL_GOAL = 5000;
 const ENV_FOREST = 'forest';
@@ -657,7 +658,7 @@ async function fetchScenarioReply(childAnswer, scenarioContext, character) {
   const timer = setTimeout(() => controller.abort(), 10000);
   try {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('userToken') : null;
-    const res = await fetch('/api/generate', {
+    const res = await apiFetch('/api/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -5914,7 +5915,7 @@ function launchRunnerEpisode(ep, opts = {}) {
       if (!compareEl) return;
       try {
         const myScore = Math.floor(distance) + score;
-        const res = await fetch(`/api/leaderboard?game=${encodeURIComponent('runner')}`);
+        const res = await apiFetch(`/api/leaderboard?game=${encodeURIComponent('runner')}`);
         const scores = await res.json();
         if (!Array.isArray(scores) || !scores.length) {
           compareEl.textContent = 'Ты среди первых героев Обратной стороны!';

@@ -1,4 +1,6 @@
 // error-monitor.js — клиентский мониторинг ошибок
+
+import { apiFetch } from './api-base.js';
 const MAX_BUFFER = 50;
 const FLUSH_INTERVAL_MS = 30000;
 const FLUSH_THRESHOLD = 10;
@@ -71,7 +73,7 @@ class ErrorMonitor {
   flush() {
     if (!this.buffer.length) return;
     const batch = this.buffer.splice(0, MAX_BUFFER);
-    fetch('/api/analytics', {
+    apiFetch('/api/analytics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

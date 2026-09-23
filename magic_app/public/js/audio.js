@@ -4,6 +4,7 @@
 
 import { playAudioFromUrl } from './mic.js';
 import { setAvatarState } from './ui.js';
+import { apiFetch } from './api-base.js';
 
 const VOICE_PITCH = { lucik: 1.2, mom: 1.4, dad: 0.8, kid1: 1.6, kid2: 1.5 };
 
@@ -104,7 +105,7 @@ class TTSEngine {
     try {
       const voice = CHARACTER_VOICES[characterId] || CHARACTER_VOICES.lucik;
       const token = typeof localStorage !== 'undefined' ? localStorage.getItem('userToken') : null;
-      const response = await fetch('/api/tts', {
+      const response = await apiFetch('/api/tts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -5,6 +5,7 @@
 import { CHARACTERS, PLANS } from './config.js';
 import { getTimeContext } from './context.js';
 import { buildGenderPrompt, applyGenderToText, guessGenderFromName } from './gender.js';
+import { apiFetch } from './api-base.js';
 
 const AI_TIMEOUT = 8000;
 
@@ -156,7 +157,7 @@ export async function generateResponse(prompt, childInfo = {}) {
 
   try {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('userToken') : null;
-    const response = await fetch('/api/generate', {
+    const response = await apiFetch('/api/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

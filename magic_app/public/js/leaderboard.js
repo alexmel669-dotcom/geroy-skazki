@@ -1,8 +1,10 @@
+
+import { apiFetch } from './api-base.js';
 window.leaderboard = {
   async submitScore(game, score) {
     const user = JSON.parse(localStorage.getItem('geroy-user') || '{}');
     try {
-      await fetch('/api/leaderboard', {
+      await apiFetch('/api/leaderboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ game, score, name: user.childName || 'Гость' })
@@ -14,7 +16,7 @@ window.leaderboard = {
 
   async render(game) {
     try {
-      const res = await fetch(`/api/leaderboard?game=${encodeURIComponent(game || 'runner')}`);
+      const res = await apiFetch(`/api/leaderboard?game=${encodeURIComponent(game || 'runner')}`);
       const scores = await res.json();
       if (!Array.isArray(scores) || !scores.length) return '<p>Пока нет рекордов</p>';
       return scores.slice(0, 5).map((s, i) =>
@@ -38,7 +40,7 @@ async function loadLeaderboard(gameId) {
   if (!el) return;
   el.innerHTML = '<p>Загрузка...</p>';
   try {
-    const res = await fetch(`/api/leaderboard?game=${encodeURIComponent(gameId)}`);
+    const res = await apiFetch(`/api/leaderboard?game=${encodeURIComponent(gameId)}`);
     const scores = await res.json();
     el.innerHTML = (Array.isArray(scores) ? scores : []).slice(0, 10).map((s, i) =>
       `<div class="leaderboard-row">${['🥇', '🥈', '🥉'][i] || '•'} ${s.name}: ${s.score}⭐</div>`

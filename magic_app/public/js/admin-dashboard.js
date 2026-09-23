@@ -1,4 +1,6 @@
-const API = '/api/admin/full-stats';
+
+import { apiFetch } from './api-base.js';
+const API = window.apiUrl('/api/admin/full-stats');
 
 const PLAN_LABELS = { free: 'Бесплатный', basic: 'Базовый', family: 'Семейный' };
 const TIME_LABELS = {
@@ -41,7 +43,7 @@ async function adminLogin() {
   errEl.textContent = '';
 
   try {
-    const res = await fetch('/api/admin/login', {
+    const res = await apiFetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -104,7 +106,7 @@ async function editUser(email) {
   if (!newName) return;
   const token = getAdminToken();
   try {
-    const res = await fetch('/api/admin/user-edit', {
+    const res = await apiFetch('/api/admin/user-edit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: token },
       body: JSON.stringify({ email, parentName: newName })
@@ -125,7 +127,7 @@ async function deleteUser(email) {
   if (!confirm('Удалить пользователя ' + email + '? Все данные будут потеряны.')) return;
   const token = getAdminToken();
   try {
-    const res = await fetch('/api/admin/user-delete', {
+    const res = await apiFetch('/api/admin/user-delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: token },
       body: JSON.stringify({ email })
@@ -288,7 +290,7 @@ async function replyToFeedback(index) {
   const signedReply = reply + '\n\n🐱 С уважением, Люцик — ваш помощник и друг';
 
   try {
-    await fetch('/api/admin/feedback-reply', {
+    await apiFetch('/api/admin/feedback-reply', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -306,7 +308,7 @@ window.replyToFeedback = replyToFeedback;
 
 async function loadThanks() {
   try {
-    const res = await fetch('/api/admin-thanks', {
+    const res = await apiFetch('/api/admin-thanks', {
       headers: { Authorization: getAdminToken() }
     });
     if (!res.ok) return;
@@ -398,7 +400,7 @@ async function addPsychologist() {
   }
 
   try {
-    const res = await fetch('/api/psychologists-list', {
+    const res = await apiFetch('/api/psychologists-list', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -456,7 +458,7 @@ async function addSpecialist() {
   }
 
   try {
-    const res = await fetch('/api/specialists-list', {
+    const res = await apiFetch('/api/specialists-list', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -494,7 +496,7 @@ async function togglePsychologist(email, active) {
   if (!confirm(`Точно ${action} ${email}?`)) return;
 
   try {
-    const res = await fetch('/api/psychologists-list', {
+    const res = await apiFetch('/api/psychologists-list', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -516,7 +518,7 @@ async function togglePsychologist(email, active) {
 async function clearPsychologistFlag(email) {
   if (!email) return;
   try {
-    const res = await fetch('/api/psychologists-list', {
+    const res = await apiFetch('/api/psychologists-list', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -539,9 +541,9 @@ async function loadHelpLists() {
   try {
     const token = getAdminToken();
     const [psyRes, specRes, reportsRes] = await Promise.all([
-      fetch('/api/psychologists-list', { headers: { Authorization: token } }),
-      fetch('/api/specialists-list'),
-      fetch('/api/psychologist-report', { headers: { Authorization: token } })
+      apiFetch('/api/psychologists-list', { headers: { Authorization: token } }),
+      apiFetch('/api/specialists-list'),
+      apiFetch('/api/psychologist-report', { headers: { Authorization: token } })
     ]);
     const psychologists = psyRes.ok ? await psyRes.json() : [];
     const specialists = specRes.ok ? await specRes.json() : [];
@@ -623,7 +625,7 @@ async function loadAdminStats() {
   errEl.style.display = 'none';
 
   try {
-    const res = await fetch(API, {
+    const res = await apiFetch(API, {
       headers: { Authorization: token }
     });
 
@@ -715,7 +717,7 @@ async function loadApplications(type = 'psychologist') {
   if (!container) return;
 
   try {
-    const res = await fetch(`/api/admin-applications?type=${currentAppType}`, {
+    const res = await apiFetch(`/api/admin-applications?type=${currentAppType}`, {
       headers: { Authorization: getAdminToken() }
     });
     if (!res.ok) {
@@ -775,7 +777,7 @@ async function reviewApplication(type, email, status) {
   if (!confirm(`Точно ${label} заявку ${email}?`)) return;
 
   try {
-    const res = await fetch('/api/admin-applications', {
+    const res = await apiFetch('/api/admin-applications', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

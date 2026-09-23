@@ -6,6 +6,7 @@
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
 import { getChildGender, guessGenderFromName, normalizeGender, applyGenderToText, gladToSeePhrase } from './gender.js';
 import {
+import { apiFetch } from './api-base.js';
   generateResponse, detectFear, detectPersonalData,
   setCharacter, getCharacter, addToContext, clearContext,
   loadChatHistory, setChatChild, extractFearsFromText,
@@ -253,7 +254,7 @@ async function syncProfileToServer(data) {
   if (localStorage.getItem('guestMode') === 'true') return;
   if (!localStorage.getItem('userToken') && localStorage.getItem('isAuth') !== 'true') return;
   try {
-    await fetch('/api/profile-update', {
+    await apiFetch('/api/profile-update', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -841,7 +842,7 @@ async function generateDaySummary() {
 
   try {
     const token = localStorage.getItem('userToken');
-    const res = await fetch('/api/generate', {
+    const res = await apiFetch('/api/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1514,7 +1515,7 @@ function applyAiTiming() {
 
 async function handleLogout() {
   try {
-    await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+    await apiFetch('/api/logout', { method: 'POST', credentials: 'include' });
   } catch (e) {
     console.warn('Logout API error:', e);
   }
@@ -1564,7 +1565,7 @@ async function recognizeSpeech(blob) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), CONFIG.AUDIO_TIMEOUT);
     const token = localStorage.getItem('userToken');
-    const response = await fetch('/api/speech-to-text', {
+    const response = await apiFetch('/api/speech-to-text', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1876,7 +1877,7 @@ async function handleUserMessage(text, options = {}) {
 
     if (easterEgg.notifyCreator) {
       const user = getCurrentUser();
-      fetch('/api/notify-creator', {
+      apiFetch('/api/notify-creator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1936,7 +1937,7 @@ async function handleUserMessage(text, options = {}) {
         mood: 'хорошее'
       }));
       const token = localStorage.getItem('userToken');
-      const res = await fetch('/api/generate', {
+      const res = await apiFetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2025,7 +2026,7 @@ async function handleUserMessage(text, options = {}) {
   saveChildStats(stats);
   addXP('dialog');
 
-  fetch('/api/analytics', {
+  apiFetch('/api/analytics', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: 'dialog', child: getActiveChild()?.name })

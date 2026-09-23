@@ -3,12 +3,18 @@ export function setCors(req, res) {
   const origin = req.headers.origin || '';
   
   const allowedOrigins = [
+    // Dev в браузере на ПК
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3456',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
     'http://127.0.0.1:3456',
+    // Capacitor WebView (Android + iOS)
+    'https://localhost',
+    'http://localhost',
+    'capacitor://localhost',
+    // Прод
     'https://geroy-skazki.ru',
     'https://www.geroy-skazki.ru',
     'https://geroy-skazki.vercel.app',

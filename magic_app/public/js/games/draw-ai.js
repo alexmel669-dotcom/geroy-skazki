@@ -7,6 +7,7 @@ import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
 import { addXP } from '../progression.js';
 import { updateAchievement, checkProgressAchievements } from '../achievements.js';
+import { apiFetch } from '../api-base.js';
 
 const TASKS = {
   1: { hint: 'Нарисуй солнышко ☀️', check: (g) => g.includes('солнц') || g.includes('солнышк') || g.includes('круг') && g.includes('жёлт') },
@@ -196,7 +197,7 @@ export function startDrawAIGame(level = 1) {
     const desc = analyzePixels(canvas);
 
     try {
-      const res = await fetch('/api/generate', {
+      const res = await apiFetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

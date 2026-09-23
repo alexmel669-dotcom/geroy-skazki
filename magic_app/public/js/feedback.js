@@ -1,5 +1,7 @@
 // feedback.js — модуль отзывов
 
+
+import { apiFetch } from './api-base.js';
 let feedbackRating = 0;
 
 export function openFeedbackModal() {
@@ -37,7 +39,7 @@ async function submitFeedback() {
   }
   
   try {
-    const res = await fetch('/api/feedbacks', {
+    const res = await apiFetch('/api/feedbacks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, role, rating: feedbackRating || 5, text })

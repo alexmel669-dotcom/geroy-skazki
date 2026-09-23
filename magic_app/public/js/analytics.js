@@ -2,6 +2,8 @@
 // analytics.js — АНАЛИТИКА И ЛОГГИРОВАНИЕ
 // ========================================
 
+
+import { apiFetch } from './api-base.js';
 export function trackEvent(eventName, eventData) {
   console.log(`📊 Event: ${eventName}`, eventData);
 
@@ -22,7 +24,7 @@ export function trackEvent(eventName, eventData) {
   }
 
   if (typeof fetch !== 'undefined') {
-    fetch('/api/analytics', {
+    apiFetch('/api/analytics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ events: [event] })
