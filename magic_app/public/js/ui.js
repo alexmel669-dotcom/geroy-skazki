@@ -315,6 +315,66 @@ export function initDevPanel() {
 // ЭКСПОРТЫ
 // ========================================
 
+function onboardingDone() {
+  return localStorage.getItem('ob-done') === '1'
+    || localStorage.getItem('geroy-onboarding-done') === 'true';
+}
+
+export function showMicHint() {
+  if (!onboardingDone()) return;
+  if (localStorage.getItem('mic-hint-played')) return;
+  ttsEngine.speak('Нажми на микрофон и расскажи мне что-нибудь! Я тебя внимательно слушаю.').catch(() => {});
+  localStorage.setItem('mic-hint-played', 'true');
+}
+
+export function showGamesHint() {
+  if (!onboardingDone()) return;
+  if (localStorage.getItem('games-hint-played')) return;
+  setTimeout(() => {
+    if (localStorage.getItem('games-hint-played')) return;
+    ttsEngine.speak('Здесь игры! Нажми на иконку, чтобы поиграть. Давай повеселимся!').catch(() => {});
+    localStorage.setItem('games-hint-played', 'true');
+  }, 5000);
+}
+
+export function showSwipeHint() {
+  if (!onboardingDone()) return;
+  if (localStorage.getItem('swipe-hint-played')) return;
+  setTimeout(() => {
+    if (localStorage.getItem('swipe-hint-played')) return;
+    ttsEngine.speak('Свайпни по мне влево или вправо, чтобы увидеть других друзей!').catch(() => {});
+    localStorage.setItem('swipe-hint-played', 'true');
+  }, 8000);
+}
+
+export function showLucikHouse() {
+  const avatar = document.getElementById('avatar');
+  if (avatar) avatar.classList.add('avatar-cleaning');
+
+  let popup = document.getElementById('lucikHousePopup');
+  if (!popup) {
+    popup = document.createElement('div');
+    popup.id = 'lucikHousePopup';
+    popup.className = 'lucik-house-popup';
+    popup.textContent = '🏠 Домик Люцика открыт!';
+    document.body.appendChild(popup);
+  }
+  popup.style.display = 'block';
+
+  window.ttsEngine?.speak('Убираюсь в домике!');
+  setTimeout(() => {
+    avatar?.classList.remove('avatar-cleaning');
+    if (popup) popup.style.display = 'none';
+  }, 2000);
+}
+
+/** Голосовые подсказки для пользователей, уже прошедших онбординг */
+export function initVoiceHints() {
+  setTimeout(showMicHint, 2000);
+  showGamesHint();
+  showSwipeHint();
+}
+
 export default {
     updateUI,
     switchCharacter,
