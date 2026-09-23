@@ -211,8 +211,66 @@ async function handleApi(nodeReq, nodeRes) {
   await apiRouter(req, res);
 }
 
+// ГЛОБАЛЬНЫЙ CORS — для всех запросов (статика + API)
+function handleGlobalCors(req, res) {
+  const origin = req.headers.origin || '';
+
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3456',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:3456',
+    'https://localhost',
+    'http://localhost',
+    'capacitor://localhost',
+    'https://geroy-skazki.ru',
+    'https://www.geroy-skazki.ru',
+    'https://geroy-skazki.vercel.app',
+    'https://geroy-skazki.onrender.com'
+  ];
+
+  if (process.env.APP_URL) {
+    allowedOrigins.push(process.env.APP_URL.replace(/\/$/, ''));
+  }
+  if (process.env.RENDER_EXTERNAL_URL) {
+    allowedOrigins.push(process.env.RENDER_EXTERNAL_URL.replace(/\/$/, ''));
+  }
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    allowedOrigins.push('https://' + process.env.RAILWAY_PUBLIC_DOMAIN);
+  }
+
+  const isAllowed = allowedOrigins.includes(origin);
+
+  if (isAllowed) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Access-Control-Allow-Origin', 'https://geroy-skazki.ru');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie, X-Requested-With');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.setHeader('Vary', 'Origin');
+
+  // OPTIONS preflight — сразу отвечаем 204
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return true;
+  }
+
+  return false;
+}
+
 const server = http.createServer(async (nodeReq, nodeRes) => {
   try {
+    // ГЛОБАЛЬНЫЙ CORS — ДО всей логики
+    if (handleGlobalCors(nodeReq, nodeRes)) return;
+
     const url = new URL(nodeReq.url || '/', `http://${nodeReq.headers.host || 'localhost'}`);
     const pathname = url.pathname;
 
