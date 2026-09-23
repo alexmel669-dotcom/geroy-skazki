@@ -5,8 +5,8 @@
 
 import { CONFIG, CHARACTERS, FALLBACK_REPLIES, PLANS, GAMES, migrateFearStatsObject, avatarImgHtml, assetUrl, initAvatarImages } from './config.js';
 import { getChildGender, guessGenderFromName, normalizeGender, applyGenderToText, gladToSeePhrase } from './gender.js';
-import {
 import { apiFetch } from './api-base.js';
+import {
   generateResponse, detectFear, detectPersonalData,
   setCharacter, getCharacter, addToContext, clearContext,
   loadChatHistory, setChatChild, extractFearsFromText,
@@ -2133,6 +2133,33 @@ async function processAudio(audioBlob) {
 // GAMES
 // ========================================
 
+/**
+ * Умный запуск рыбалки:
+ * - В APK (Capacitor WebView) — открывает нативную FishGameActivity через GamePlugin
+ * - В браузере (веб) — JS-версия startFishGame
+ */
+export async function launchFishGameSmart(level = 1) {
+  const plugin = (typeof window !== 'undefined')
+    ? window.Capacitor?.Plugins?.GamePlugin
+    : null;
+
+  if (plugin && typeof plugin.startFishGame === 'function') {
+    try {
+      console.log('[fish] Открываем нативную игру (GamePlugin)');
+      await plugin.startFishGame();
+      trackEvent('fish_native_launch', { level });
+      return true;
+    } catch (err) {
+      console.warn('[fish] Нативный плагин упал, fallback на JS:', err);
+      logError('fish_native_launch_failed', { message: err?.message });
+    }
+  }
+
+  console.log('[fish] Открываем JS-версию (веб)');
+  startFishGame(level);
+  return false;
+}
+
 export function showGamesMenu() {
   if (document.getElementById('gamesMenuOverlay')) return;
   if (appState.gameActive || document.body.classList.contains('game-active')) {
@@ -2181,7 +2208,7 @@ export function showGamesMenu() {
         return;
       }
       const launchers = {
-        fish: (lvl) => startFishGame(lvl),
+        fish: (lvl) => launchFishGameSmart(lvl),
         memory: (lvl) => startMemoryGame(lvl),
         puzzle: (lvl) => startPuzzleGame(lvl),
         riddles: (lvl) => startRiddlesGame(lvl),
@@ -2221,7 +2248,7 @@ export function showGamesMenu() {
 
 export function launchFishGame() {
   incrementGames();
-  startFishGame(getGameLevel('fish'));
+  launchFishGameSmart(getGameLevel('fish'));
   trackEvent('fish_start', getActiveChildName());
 }
 

@@ -19,6 +19,11 @@
       "androidSplashResourceName": "splash",
       "androidScaleType": "CENTER_CROP",
       "showSpinner": false
+    },
+    "GamePlugin": {
+      "android": {
+        "classPath": "ru.geroy_skazki.app.GamePlugin"
+      }
     }
   },
   "android": {
