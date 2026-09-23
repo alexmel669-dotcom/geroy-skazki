@@ -214,6 +214,7 @@ async function handleApi(nodeReq, nodeRes) {
 // ГЛОБАЛЬНЫЙ CORS — для всех запросов (статика + API)
 function handleGlobalCors(req, res) {
   const origin = req.headers.origin || '';
+  console.log('[CORS]', req.method, req.url, '| Origin:', origin || '(none)', '| All headers:', Object.keys(req.headers).join(','));
 
   const allowedOrigins = [
     'http://localhost:3000',
@@ -242,6 +243,7 @@ function handleGlobalCors(req, res) {
   }
 
   const isAllowed = allowedOrigins.includes(origin);
+  console.log('[CORS] isAllowed:', isAllowed, '| origin:', origin || '(none)', '| allowedOrigins[0]:', allowedOrigins[0]);
 
   if (isAllowed) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -258,6 +260,7 @@ function handleGlobalCors(req, res) {
 
   // OPTIONS preflight — сразу отвечаем 204
   if (req.method === 'OPTIONS') {
+    console.log('[CORS] Responding 204 for OPTIONS. Headers:', JSON.stringify(res.getHeaders ? res.getHeaders() : 'N/A'));
     res.writeHead(204);
     res.end();
     return true;
