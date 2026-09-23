@@ -301,94 +301,13 @@ export function initDevPanel() {
     document.getElementById('devPlanBasic')?.addEventListener('click', () => switchPlan('basic'));
     document.getElementById('devPlanFamily')?.addEventListener('click', () => switchPlan('family'));
 
-    const origFetch = window.fetch.bind(window);
-    window.fetch = async (...args) => {
-        console.log('[DEV fetch]', args[0], args[1]?.method || 'GET');
-        return origFetch(...args);
-    };
-}
-
-function switchPlan(planId) {
-    localStorage.setItem('userPlan', planId);
-    const expiry = new Date();
-    expiry.setDate(expiry.getDate() + 30);
-    localStorage.setItem('planExpiry', expiry.toISOString());
-    showNotification(`Тариф: ${planId}`, 'info');
-    updateUI();
-}
-
-function onboardingDone() {
-  return localStorage.getItem('ob-done') === '1'
-    || localStorage.getItem('geroy-onboarding-done') === 'true';
-}
-
-export function showMicHint() {
-  if (!onboardingDone()) return;
-  if (localStorage.getItem('mic-hint-played')) return;
-  ttsEngine.speak('Нажми на микрофон и расскажи мне что-нибудь! Я тебя внимательно слушаю.').catch(() => {});
-  localStorage.setItem('mic-hint-played', 'true');
-}
-
-export function showGamesHint() {
-  if (!onboardingDone()) return;
-  if (localStorage.getItem('games-hint-played')) return;
-  setTimeout(() => {
-    if (localStorage.getItem('games-hint-played')) return;
-    ttsEngine.speak('Здесь игры! Нажми на иконку, чтобы поиграть. Давай повеселимся!').catch(() => {});
-    localStorage.setItem('games-hint-played', 'true');
-  }, 5000);
-}
-
-export function showSwipeHint() {
-  if (!onboardingDone()) return;
-  if (localStorage.getItem('swipe-hint-played')) return;
-  setTimeout(() => {
-    if (localStorage.getItem('swipe-hint-played')) return;
-    ttsEngine.speak('Свайпни по мне влево или вправо, чтобы переключиться между детьми!').catch(() => {});
-    localStorage.setItem('swipe-hint-played', 'true');
-  }, 8000);
-}
-
-export function showLucikHouse() {
-  const avatar = document.getElementById('avatar');
-  if (avatar) avatar.classList.add('avatar-cleaning');
-
-  let popup = document.getElementById('lucikHousePopup');
-  if (!popup) {
-    popup = document.createElement('div');
-    popup.id = 'lucikHousePopup';
-    popup.className = 'lucik-house-popup';
-    document.body.appendChild(popup);
-  }
-
-  const dirtLevel = getHouseDirtLevel();
-  popup.innerHTML = `<div id="houseRoom" class="house-room">🏠 Домик Люцика${dirtLevel >= 2 ? ' — нужно прибраться!' : ''}</div>`;
-  popup.style.display = 'block';
-  applyHouseDirtVisual(document.getElementById('houseRoom'), dirtLevel);
-
-  if (dirtLevel < 3) {
-    window.ttsEngine?.speak('Убираюсь в домике!');
-  }
-
-  setTimeout(() => {
-    avatar?.classList.remove('avatar-cleaning');
-    cleanHouse();
-    if (popup) popup.style.display = 'none';
-  }, 2000);
-}
-
-/** Голосовые подсказки для пользователей, уже прошедших онбординг */
-export function initVoiceHints() {
-  setTimeout(showMicHint, 2000);
-  showGamesHint();
-  showSwipeHint();
-}
-
-if (typeof window !== 'undefined') {
-    window.resetAllData = () => {
-        localStorage.clear();
-        window.location.reload();
-    };
+    // [DEV fetch] логирование отключено в продакшне
+    // Если нужно включить — раскомментировать:
+    // const origFetch = window.fetch.bind(window);
+    // window.fetch = async (...args) => {
+    //     console.log('[DEV fetch]', args[0], args[1]?.method || 'GET');
+    //     return origFetch(...args);
+    // };
     window.switchPlan = switchPlan;
 }
 

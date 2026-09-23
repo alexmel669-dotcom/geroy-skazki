@@ -250,10 +250,22 @@ const OLD_FEAR_MAP = {
 
 const APP_MODE = (() => {
   if (typeof window === 'undefined') return 'production';
+  
+  // Явный запрос dev-режима — высший приоритет (?mode=dev в URL)
+  if (window.location.search.includes('mode=dev')) return 'dev';
+  
+  // Capacitor WebView (реальное приложение) — ВСЕГДА production
+  // Даже если URL = https://localhost, это не dev — это APK
+  const isCapacitor =
+    window.location.protocol === 'capacitor:' ||
+    (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.includes('Capacitor')) ||
+    (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.includes('Android') && navigator.userAgent.includes('wv'));
+  if (isCapacitor) return 'production';
+  
+  // Обычный браузер
   const host = window.location.hostname;
   if (host === 'localhost' || host.includes('127.0.0.1')) return 'local';
   if (host.includes('dev.') || host.includes('staging.')) return 'staging';
-  if (window.location.search.includes('mode=dev')) return 'dev';
   return 'production';
 })();
 
@@ -286,7 +298,7 @@ export function getFearDisplayName(key) {
 export function validateConfig() {
   refreshCharacterIcons();
   console.log('✅ Config validated, version:', CONFIG.APP_VERSION, 'env:', ENV.mode);
-  if (ENV.isDev || ENV.isStaging) console.log('🛠 Dev/staging mode active');
+  // dev/staging log отключён в продакшне
   return true;
 }
 
