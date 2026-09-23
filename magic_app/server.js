@@ -260,8 +260,22 @@ function handleGlobalCors(req, res) {
 
   // OPTIONS preflight — сразу отвечаем 204
   if (req.method === 'OPTIONS') {
-    console.log('[CORS] Responding 204 for OPTIONS. Headers:', JSON.stringify(res.getHeaders ? res.getHeaders() : 'N/A'));
-    res.writeHead(204);
+    const corsHeaders = {};
+    if (isAllowed) {
+      corsHeaders['Access-Control-Allow-Origin'] = origin;
+      corsHeaders['Access-Control-Allow-Credentials'] = 'true';
+    } else if (process.env.NODE_ENV === 'production') {
+      corsHeaders['Access-Control-Allow-Origin'] = 'https://geroy-skazki.ru';
+      corsHeaders['Access-Control-Allow-Credentials'] = 'true';
+    }
+    corsHeaders['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+    corsHeaders['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cookie, X-Requested-With';
+    corsHeaders['Access-Control-Max-Age'] = '86400';
+    corsHeaders['Vary'] = 'Origin';
+    corsHeaders['Content-Length'] = '0';
+
+    console.log('[CORS] OPTIONS response with headers:', JSON.stringify(corsHeaders));
+    res.writeHead(204, corsHeaders);
     res.end();
     return true;
   }
