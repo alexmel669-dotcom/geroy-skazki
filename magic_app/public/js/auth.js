@@ -143,43 +143,90 @@ async function handleLogin(e) {
 // Функция регистрации
 async function handleRegister(e) {
   e.preventDefault();
-  
+
   const email = document.getElementById('regEmail')?.value.trim();
   const password = document.getElementById('regPassword')?.value;
   const confirm = document.getElementById('regPasswordConfirm')?.value;
+  const parentName = document.getElementById('parentName')?.value.trim();
+  const parentPin = document.getElementById('parentPin')?.value.trim();
+  const secretQuestion = document.getElementById('secretQuestion')?.value.trim();
+  const secretAnswer = document.getElementById('secretAnswer')?.value.trim();
+  const promocode = document.getElementById('promocode')?.value.trim();
   const errorEl = document.getElementById('regError');
   const submitBtn = e.target.querySelector('button[type="submit"]');
-  
-  // Валидация
+
+  const children = [];
+  for (let i = 1; i <= 3; i++) {
+    const childName = document.getElementById('child' + i + 'Name')?.value.trim();
+    if (!childName) continue;
+    const childBirthday = document.getElementById('child' + i + 'Birthday')?.value || '';
+    const childGender = document.getElementById('child' + i + 'Gender')?.value || 'male';
+    children.push({ name: childName, birthday: childBirthday, gender: childGender });
+  }
+
   if (!email || !password || !confirm) {
     showError(errorEl, 'Заполни все поля!');
     return;
   }
-  
+
   if (!isValidEmail(email)) {
     showError(errorEl, 'Введи правильный email!');
     return;
   }
-  
+
   if (password.length < 6) {
     showError(errorEl, 'Пароль должен быть минимум 6 символов');
     return;
   }
-  
+
   if (password !== confirm) {
     showError(errorEl, 'Пароли не совпадают!');
     return;
   }
-  
+
+  if (!parentName) {
+    showError(errorEl, 'Введи своё имя!');
+    return;
+  }
+
+  if (!/^\d{4}$/.test(parentPin)) {
+    showError(errorEl, 'PIN-код должен состоять из 4 цифр');
+    return;
+  }
+
+  if (!secretQuestion) {
+    showError(errorEl, 'Выбери секретный вопрос!');
+    return;
+  }
+
+  if (secretAnswer.length < 2) {
+    showError(errorEl, 'Ответ на секретный вопрос слишком короткий');
+    return;
+  }
+
+  if (children.length < 1) {
+    showError(errorEl, 'Добавь хотя бы одного ребёнка!');
+    return;
+  }
+
   setButtonLoading(submitBtn, true);
   hideError(errorEl);
-  
+
   try {
     const response = await apiFetch('/api/register', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({
+        email,
+        password,
+        parentName,
+        parentPin,
+        secretQuestion,
+        secretAnswer,
+        children,
+        ...(promocode ? { promocode } : {})
+      })
     });
 
     const data = await response.json();
@@ -193,7 +240,7 @@ async function handleRegister(e) {
       if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan || 'free');
       window.location.href = '/app.html';
     } else {
-      showError(errorEl, translateError(data.error) || 'Ошибка регистрации');
+      showError(errorEl, data.error || translateError(data.error) || 'Ошибка регистрации');
     }
   } catch (error) {
     console.error('Register error:', error);
