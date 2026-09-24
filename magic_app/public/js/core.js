@@ -256,7 +256,6 @@ async function syncProfileToServer(data) {
   try {
     await apiFetch('/api/profile-update', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
@@ -1515,7 +1514,7 @@ function applyAiTiming() {
 
 async function handleLogout() {
   try {
-    await apiFetch('/api/logout', { method: 'POST', credentials: 'include' });
+    await apiFetch('/api/logout', { method: 'POST' });
   } catch (e) {
     console.warn('Logout API error:', e);
   }
