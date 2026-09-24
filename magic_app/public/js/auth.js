@@ -34,7 +34,6 @@ export async function checkAuth() {
   try {
     const response = await apiFetch('/api/verify-token', {
       method: 'POST',
-      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
@@ -96,7 +95,6 @@ async function handleLogin(e) {
   try {
     const response = await apiFetch('/api/login', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
@@ -215,7 +213,6 @@ async function handleRegister(e) {
   try {
     const response = await apiFetch('/api/register', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email,
@@ -255,7 +252,6 @@ export async function logout() {
   try {
     const response = await apiFetch('/api/logout', {
       method: 'POST',
-      credentials: 'include'
     });
     
     console.log('🚪 Выход выполнен');
