@@ -413,7 +413,7 @@ if (typeof window !== 'undefined') {
     window.getSecretQuestion = getSecretQuestion;
     window.resetPassword = resetPassword;
 
-    if (registerForm && !document.getElementById('child1Name')) {
+    if (registerForm) {
       registerForm.addEventListener('submit', handleRegister);
       const btn = registerForm.querySelector('button[type="submit"]');
       if (btn) btn.setAttribute('data-original-text', btn.textContent);
