@@ -123,9 +123,9 @@ async function handleLogin(e) {
       if (redirect === 'parent') {
         window.location.href = '/parent.html';
       } else if (data.user?.role === 'psychologist') {
-        window.location.href = '/psychologist';
+        window.location.href = '/psychologist.html';
       } else {
-        window.location.href = '/app';
+        window.location.href = '/app.html';
       }
     } else {
       showError(errorEl, translateError(data.error) || 'Ошибка входа');
