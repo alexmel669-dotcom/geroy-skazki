@@ -81,6 +81,60 @@ if [ -d "$NATIVE_DIR" ]; then
   cp "$NATIVE_DIR/FishGameView.kt" "$JAVA_DIR/"
   cp "$NATIVE_DIR/GamePlugin.kt" "$JAVA_DIR/"
   echo "✅ Скопированы .kt файлы:"
+
+  # === Регистрируем GamePlugin в MainActivity ===
+  echo ""
+  echo "=== Регистрируем GamePlugin в MainActivity ==="
+  if [ -n "$MAIN_ACTIVITY" ]; then
+    if grep -q "registerPlugin(GamePlugin" "$MAIN_ACTIVITY"; then
+      echo "✅ GamePlugin уже зарегистрирован"
+    else
+      # Патчим через Python — добавляем registerPlugin(GamePlugin.class);
+      cat > /tmp/patch_gp.py << 'PYEOF'
+import sys
+
+file_path = sys.argv[1]
+
+with open(file_path, 'r') as f:
+    content = f.read()
+
+# Импорт: добавляем com.getcapacitor.Plugin и GamePlugin (если нужно)
+if 'registerPlugin(GamePlugin.class)' not in content:
+    # Ищем onCreate
+    if 'public void onCreate' in content or 'protected void onCreate' in content:
+        # Вставляем registerPlugin в начало onCreate (после super.onCreate)
+        content = content.replace(
+            'super.onCreate(savedInstanceState);',
+            'super.onCreate(savedInstanceState);\n        registerPlugin(GamePlugin.class);',
+            1
+        )
+    else:
+        # Создаём onCreate
+        insertion = '''
+    @Override
+    public void onCreate(android.os.Bundle savedInstanceState) {
+        registerPlugin(GamePlugin.class);
+        super.onCreate(savedInstanceState);
+    }
+'''
+        # Вставляем перед последней закрывающей }
+        last_brace = content.rfind('}')
+        if last_brace != -1:
+            content = content[:last_brace] + insertion + content[last_brace:]
+
+with open(file_path, 'w') as f:
+    f.write(content)
+
+print("✅ GamePlugin registered in MainActivity")
+PYEOF
+      python3 /tmp/patch_gp.py "$MAIN_ACTIVITY"
+      echo "✅ GamePlugin добавлен в MainActivity"
+    fi
+
+    # Проверка
+    echo "=== Проверка registerPlugin ==="
+    grep -c "registerPlugin(GamePlugin" "$MAIN_ACTIVITY" || echo "  ❌ НЕ НАЙДЕНО"
+  fi
   ls -la "$JAVA_DIR/"
 else
   echo "⚠️ Не найдена папка $NATIVE_DIR — пропускаем копирование .kt"
