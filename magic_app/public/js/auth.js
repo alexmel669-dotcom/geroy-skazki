@@ -235,6 +235,20 @@ async function handleRegister(e) {
       localStorage.setItem('userEmail', data.user?.email || email);
       localStorage.setItem('guestMode', 'false');
       if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan || 'free');
+      // Сохраняем детей в geroy-user (первый ребёнок — активный)
+      const savedChildren = data.user?.children?.length ? data.user.children : children;
+      if (savedChildren?.length) {
+        const first = savedChildren[0];
+        localStorage.setItem('geroy-user', JSON.stringify({
+          childName: first.name,
+          childAge: first.age || 5,
+          birthday: first.birthday || null
+        }));
+        localStorage.setItem('children', JSON.stringify(savedChildren));
+        localStorage.setItem('childrenNames', savedChildren.map(c => c.name).join(', '));
+        localStorage.setItem('activeChildIndex', savedChildren.length > 1 ? '-1' : '0');
+      }
+      
       window.location.href = '/app.html';
     } else {
       showError(errorEl, data.error || translateError(data.error) || 'Ошибка регистрации');
