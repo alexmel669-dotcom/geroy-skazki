@@ -1070,7 +1070,7 @@ async function renderPlanInfo() {
 
   if (localStorage.getItem('guestMode') !== 'true') {
     try {
-      const res = await apiFetch('/api/profile-update', { });
+      const res = await apiFetch('/api/profile-update', { headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
         if (data.user?.plan) localStorage.setItem('userPlan', data.user.plan);
@@ -1120,7 +1120,7 @@ async function loadConcernsFromServer() {
   const local = safeParseJSON(localStorage.getItem('parentConcerns'), []) || [];
   if (localStorage.getItem('guestMode') === 'true') return local;
   try {
-    const res = await apiFetch('/api/profile-update', { });
+    const res = await apiFetch('/api/profile-update', { headers: authHeaders() });
     if (res.ok) {
       const data = await res.json();
       if (data.user?.concerns?.length) return data.user.concerns;
