@@ -82,6 +82,47 @@ if [ -d "$NATIVE_DIR" ]; then
   cp "$NATIVE_DIR/GamePlugin.kt" "$JAVA_DIR/"
   echo "✅ Скопированы .kt файлы:"
 
+  # === Подключаем Kotlin plugin к build.gradle ===
+  echo ""
+  echo "=== Подключаем Kotlin plugin ==="
+  BUILD_GRADLE_APP="android/app/build.gradle"
+  BUILD_GRADLE_ROOT="android/build.gradle"
+
+  if [ -f "$BUILD_GRADLE_APP" ]; then
+    if grep -q "kotlin-android" "$BUILD_GRADLE_APP"; then
+      echo "✅ Kotlin plugin уже в app/build.gradle"
+    else
+      # Добавляем kotlin-android plugin после com.android.application
+      sed -i "s|apply plugin: 'com.android.application'|apply plugin: 'com.android.application'\napply plugin: 'kotlin-android'|" "$BUILD_GRADLE_APP"
+
+      # Добавляем kotlin-stdlib в dependencies
+      if grep -q "^dependencies {" "$BUILD_GRADLE_APP"; then
+        sed -i "/^dependencies {/a\    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'" "$BUILD_GRADLE_APP"
+      fi
+
+      echo "✅ Kotlin plugin добавлен в app/build.gradle"
+    fi
+  else
+    echo "❌ Не нашли $BUILD_GRADLE_APP"
+  fi
+
+  # Патчим root build.gradle — добавляем kotlin classpath
+  if [ -f "$BUILD_GRADLE_ROOT" ]; then
+    if grep -q "kotlin-gradle-plugin" "$BUILD_GRADLE_ROOT"; then
+      echo "✅ kotlin-gradle-plugin уже в root/build.gradle"
+    else
+      # Добавляем classpath kotlin после com.android.tools.build:gradle
+      sed -i "s|classpath 'com.android.tools.build:gradle:[^']*'|&\n        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24'|" "$BUILD_GRADLE_ROOT"
+      echo "✅ kotlin-gradle-plugin добавлен в root/build.gradle"
+    fi
+  fi
+
+  # Проверка
+  echo ""
+  echo "=== Проверка Kotlin plugin ==="
+  grep -n "kotlin" "$BUILD_GRADLE_APP" || echo "  ❌ НЕ НАЙДЕНО в app/build.gradle"
+  grep -n "kotlin-gradle-plugin" "$BUILD_GRADLE_ROOT" || echo "  ❌ НЕ НАЙДЕНО в root/build.gradle"
+
   # === Регистрируем GamePlugin в MainActivity ===
   echo ""
   echo "=== Регистрируем GamePlugin в MainActivity ==="
