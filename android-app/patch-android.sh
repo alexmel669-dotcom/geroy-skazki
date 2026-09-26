@@ -174,6 +174,23 @@ PYEOF
 
     # Проверка
     echo "=== Проверка registerPlugin ==="
+
+# === Поднимаем versionCode и versionName ===
+echo ""
+echo "=== Обновляем versionCode + versionName ==="
+BUILD_GRADLE_APP="android/app/build.gradle"
+
+if [ -f "$BUILD_GRADLE_APP" ]; then
+  # versionCode = 2 (RuStore требует > предыдущего)
+  sed -i "s/versionCode [0-9]*/versionCode 2/" "$BUILD_GRADLE_APP"
+  # versionName = "1.0.1"
+  sed -i 's/versionName "[^"]*"/versionName "1.0.1"/' "$BUILD_GRADLE_APP"
+  
+  echo "✅ versionCode = 2, versionName = 1.0.1"
+  grep -n "versionCode\|versionName" "$BUILD_GRADLE_APP" || echo "  ❌ НЕ НАЙДЕНО"
+else
+  echo "❌ Не нашли $BUILD_GRADLE_APP"
+fi
     grep -c "registerPlugin(GamePlugin" "$MAIN_ACTIVITY" || echo "  ❌ НЕ НАЙДЕНО"
   fi
   ls -la "$JAVA_DIR/"
