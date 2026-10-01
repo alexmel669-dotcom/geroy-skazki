@@ -149,6 +149,42 @@
       font-size: 14px;
       margin: 12px 0 0;
     }
+
+    .consent-block {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .consent-desc { font-size: 0.85rem; opacity: 0.75; line-height: 1.5; margin: 0 0 8px; }
+    .consent-child-line { font-size: 0.85rem; opacity: 0.85; margin: 0 0 10px; }
+    .consent-list { display: flex; flex-direction: column; gap: 8px; }
+    .consent-item {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .consent-item-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+    .consent-item-head strong { font-size: 0.9rem; }
+    .consent-item-head small { font-size: 0.75rem; opacity: 0.6; }
+    .consent-children { display: flex; flex-direction: column; gap: 6px; }
+    .consent-child-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.03);
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .consent-child-row input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      accent-color: #6C63FF;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -264,6 +300,17 @@
         <button type="button" id="parentChatSend" class="btn-soft">→</button>
       </div>
       <button type="button" id="parentChatClose" class="btn-save" style="margin-top:8px;width:auto;">Закрыть чат</button>
+    </div>
+
+    <div class="consent-block" id="consentBlock">
+      <h3>🔒 Согласие на передачу данных</h3>
+      <p class="consent-desc">
+        По умолчанию выключено. Отметьте, какому психологу и по какому ребёнку
+        разрешено видеть <strong>страхи</strong> и <strong>настроение</strong>.
+        Согласие можно отозвать в любой момент.
+      </p>
+      <p class="consent-child-line">Дети: <strong id="consentChildName">—</strong></p>
+      <div id="consentList" class="consent-list"><p class="help-loading">Загрузка…</p></div>
     </div>
   </div>
 

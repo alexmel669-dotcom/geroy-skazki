@@ -164,6 +164,7 @@ function switchTab(tab) {
   if (tab === 'bookings') loadBookings();
   if (tab === 'reviews') loadReviews();
   if (tab === 'slots') loadSlots();
+  if (tab === 'clients') loadDashboard().then((d) => d && renderStats(d)).catch(() => {});
 }
 
 async function loadDashboard() {
@@ -219,18 +220,111 @@ function renderStats(data) {
   const clients = document.getElementById('psyClients');
   const recent = data.recentClients || [];
   clients.innerHTML = recent.length
-    ? recent.map((c) => `
+    ? recent.map((c) => {
+        const parentEmail = String(c.userEmail || c.email || '').toLowerCase();
+        return `
         <div class="psy-card">
-          <strong>${escapeHtml(c.parentName || c.userEmail || c.email || 'Клиент')}</strong>
+          <strong>${escapeHtml(c.parentName || parentEmail || 'Клиент')}</strong>
           <small>${escapeHtml(c.activatedAt ? new Date(c.activatedAt).toLocaleDateString('ru-RU') : '')}</small>
-          ${c.userEmail || c.email ? `<button type="button" class="psy-btn psy-btn-secondary" data-open-chat="${escapeHtml(c.userEmail || c.email)}">Открыть чат</button>` : ''}
+          <div class="psy-card-actions">
+            ${parentEmail ? `<button type="button" class="psy-btn psy-btn-secondary" data-open-chat="${escapeHtml(parentEmail)}">Открыть чат</button>` : ''}
+            ${parentEmail ? `<button type="button" class="psy-btn psy-btn-ghost" data-child-stats="${escapeHtml(parentEmail)}">📊 Данные ребёнка</button>` : ''}
+          </div>
+          <div class="psy-child-stats" data-stats-for="${escapeHtml(parentEmail)}" hidden></div>
         </div>
-      `).join('')
+      `;
+      }).join('')
     : '<p class="psy-empty">Клиенты появятся после активации промокода</p>';
 
   clients.querySelectorAll('[data-open-chat]').forEach((btn) => {
     btn.addEventListener('click', () => openChat(btn.getAttribute('data-open-chat')));
   });
+  clients.querySelectorAll('[data-child-stats]').forEach((btn) => {
+    btn.addEventListener('click', () => toggleChildStats(btn.getAttribute('data-child-stats'), btn));
+  });
+}
+
+const FEAR_LABELS_PSY = {
+  darkness: '🌑 Темнота',
+  monsters: '👹 Монстры',
+  loud_noises: '🔊 Громкие звуки',
+  strangers: '👤 Незнакомцы',
+  separation: '💔 Разлука',
+  school: '🏫 Школа',
+  peers: '🧑‍🤝‍🧑 Сверстники'
+};
+
+const MOOD_LABELS_PSY = {
+  happy: '😊 Радостное',
+  neutral: '😐 Спокойное',
+  sad: '😢 Грустное',
+  anxious: '😟 Тревожное',
+  excited: '🤩 Весёлое',
+  tired: '😴 Уставшее'
+};
+
+function renderChildStats(box, data) {
+  const fears = data.fearStats || {};
+  const fearRows = Object.keys(FEAR_LABELS_PSY)
+    .map((key) => ({ key, label: FEAR_LABELS_PSY[key], value: Math.max(0, Number(fears[key]) || 0) }))
+    .filter((f) => f.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  const mood = MOOD_LABELS_PSY[data.mood] || null;
+  const updated = data.updatedAt ? new Date(data.updatedAt).toLocaleString('ru-RU') : '';
+
+  box.innerHTML = `
+    <div class="psy-child-stats-inner">
+      <p class="psy-child-stats-head">
+        👶 <strong>${escapeHtml(data.childName || 'Ребёнок')}</strong>
+        ${mood ? `<span class="psy-mood">${escapeHtml(mood)}</span>` : ''}
+      </p>
+      ${fearRows.length
+        ? `<ul class="psy-fears">${fearRows.map((f) => `<li><span>${escapeHtml(f.label)}</span><strong>${f.value}</strong></li>`).join('')}</ul>`
+        : '<p class="psy-empty">Страхи пока не отмечены</p>'}
+      <small class="psy-consent-note">Согласие родителя · обновлено ${escapeHtml(updated)}</small>
+    </div>
+  `;
+  box.hidden = false;
+}
+
+async function toggleChildStats(parentEmail, btn) {
+  const email = String(parentEmail || '').trim().toLowerCase();
+  if (!email) return;
+
+  const box = document.querySelector(`[data-stats-for="${CSS.escape(email)}"]`);
+  if (!box) return;
+
+  if (!box.hidden) {
+    box.hidden = true;
+    box.innerHTML = '';
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  box.hidden = false;
+  box.innerHTML = '<p class="psy-empty">Загрузка…</p>';
+
+  try {
+    const url = `/api/psychologist-child-stats?psychologistEmail=${encodeURIComponent(state.email)}&parentEmail=${encodeURIComponent(email)}`;
+    const res = await apiFetch(url, { headers: authHeaders(false) });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 403) {
+      box.innerHTML = `<p class="psy-empty">🔒 ${escapeHtml(data.error || 'Родитель не дал согласие на передачу данных')}</p>`;
+      return;
+    }
+    if (!res.ok) {
+      box.innerHTML = '<p class="psy-empty">Не удалось загрузить данные</p>';
+      return;
+    }
+    renderChildStats(box, data);
+  } catch (e) {
+    console.error('child stats error:', e);
+    box.innerHTML = '<p class="psy-empty">Ошибка сети</p>';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 async function loadBookings() {

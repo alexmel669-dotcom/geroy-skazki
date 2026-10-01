@@ -49,6 +49,8 @@ import feedbacks from './_handlers/feedbacks.js';
 import adminFeedbackReply from './_handlers/admin-feedback-reply.js';
 import adminUserDelete from './_handlers/admin-user-delete.js';
 import adminUserEdit from './_handlers/admin-user-edit.js';
+import parentConsent from './_handlers/parent-consent.js';
+import psychologistChildStats from './_handlers/psychologist-child-stats.js';
 
 
 
@@ -144,7 +146,11 @@ const ROUTES = {
 
   'admin/user-delete': adminUserDelete,
 
-  'admin/user-edit': adminUserEdit
+  'admin/user-edit': adminUserEdit,
+
+  'parent-consent': parentConsent,
+
+  'psychologist-child-stats': psychologistChildStats
 
 };
 

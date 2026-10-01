@@ -781,6 +781,7 @@ function renderTabs(children) {
       this.classList.add('active');
       loadChildStats(activeChild);
       renderChildSelector();
+      renderConsentBlock();
     });
   });
 }
@@ -1461,12 +1462,155 @@ async function loadHelpSection() {
     const specialists = specRes.ok ? await specRes.json() : [];
     renderPsychologists(Array.isArray(psychologists) ? psychologists : []);
     renderSpecialists(Array.isArray(specialists) ? specialists : []);
+    return Array.isArray(psychologists) ? psychologists : [];
   } catch (e) {
     console.error('Help section error:', e);
     if (psyContainer) psyContainer.innerHTML = '<p class="help-empty">Не удалось загрузить список</p>';
     if (specContainer) specContainer.innerHTML = '<p class="help-empty">Не удалось загрузить список</p>';
+    return [];
   }
 }
+
+// ========================================
+// Согласие на передачу данных ребёнка психологу
+// ========================================
+
+function collectChildMoodFor(childName) {
+  if (!childName) return null;
+  const raw = safeParseJSON(localStorage.getItem(`stats_${childName}`), {}) || {};
+  const history = raw.history || [];
+  const weekAgo = Date.now() - 7 * 86400000;
+  const moods = history
+    .filter((h) => new Date(h.timestamp || 0).getTime() > weekAgo)
+    .map((h) => h.mood)
+    .filter(Boolean);
+  return mapHistoryMood(moods);
+}
+
+function collectFearStatsFor(childName) {
+  if (!childName) return {};
+  const raw = safeParseJSON(localStorage.getItem(`stats_${childName}`), {}) || {};
+  return migrateFearStatsObject(raw.fearStats || {});
+}
+
+// consentKey -> { [childName]: true }
+async function loadConsentMap() {
+  const map = {};
+  try {
+    const res = await apiFetch('/api/parent-consent', { headers: parentAuthHeaders(false) });
+    if (res.ok) {
+      const data = await res.json();
+      (data.psychologists || []).forEach((p) => {
+        const psyEmail = String(p.psychologistEmail || '').toLowerCase();
+        const childName = String(p.childName || '').trim();
+        if (!psyEmail || !childName) return;
+        const key = `${psyEmail}::${childName}`;
+        map[key] = true;
+      });
+    }
+  } catch {
+    /* считаем, что согласий нет */
+  }
+  return map;
+}
+
+async function renderConsentBlock(psychologists) {
+  const listEl = document.getElementById('consentList');
+  const childNameEl = document.getElementById('consentChildName');
+  if (!listEl) return;
+
+  const children = getChildren().filter((c) => c && c.name);
+  if (childNameEl) {
+    childNameEl.textContent = children.length ? children.map((c) => c.name).join(', ') : '—';
+  }
+
+  if (!children.length) {
+    listEl.innerHTML = '<p class="help-empty">Сначала добавьте ребёнка в разделе «Дети»</p>';
+    return;
+  }
+
+  let list = Array.isArray(psychologists) ? psychologists : [];
+  if (!list.length) {
+    list = await loadHelpSection() || [];
+  }
+  const withEmail = list.filter((p) => p && p.email);
+  if (!withEmail.length) {
+    listEl.innerHTML = '<p class="help-empty">Психологи скоро появятся</p>';
+    return;
+  }
+
+  const consented = await loadConsentMap();
+
+  listEl.innerHTML = withEmail.map((p) => {
+    const email = String(p.email).toLowerCase();
+    const childRows = children.map((c) => {
+      const checked = consented[`${email}::${c.name}`] ? 'checked' : '';
+      return `
+        <label class="consent-child-row">
+          <input type="checkbox" class="consent-toggle" data-psy-email="${escapeHelpHtml(email)}" data-child-name="${escapeHelpHtml(c.name)}" ${checked}>
+          <span>${escapeHelpHtml(c.name)}</span>
+        </label>`;
+    }).join('');
+
+    return `
+      <div class="consent-item">
+        <div class="consent-item-head">
+          <strong>${escapeHelpHtml(p.name || email)}</strong>
+          <small>${escapeHelpHtml(p.specialization || 'Психолог')} · страхи и настроение</small>
+        </div>
+        <div class="consent-children">${childRows}</div>
+      </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.consent-toggle').forEach((input) => {
+    input.addEventListener('change', () => toggleConsent(
+      input.getAttribute('data-psy-email'),
+      input.getAttribute('data-child-name'),
+      input.checked,
+      input
+    ));
+  });
+}
+
+async function toggleConsent(psychologistEmail, childName, checked, inputEl) {
+  const email = String(psychologistEmail || '').trim().toLowerCase();
+  const name = String(childName || '').trim();
+  if (!email || !name) return;
+
+  if (inputEl) inputEl.disabled = true;
+
+  const payload = { psychologistEmail: email, childName: name, consent: checked };
+  if (checked) {
+    payload.fearStats = collectFearStatsFor(name);
+    payload.mood = collectChildMoodFor(name);
+  }
+
+  try {
+    const res = await apiFetch('/api/parent-consent', {
+      method: 'POST',
+      headers: parentAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(data.error || 'Не удалось сохранить согласие');
+      if (inputEl) inputEl.checked = !checked;
+      return;
+    }
+    if (checked) {
+      alert(`✅ Психолог ${email} теперь видит страхи и настроение: ${name}. Согласие можно отозвать в любой момент.`);
+    } else {
+      alert(`🔒 Согласие на данные «${name}» отозвано, больше не передаются.`);
+    }
+  } catch {
+    alert('Ошибка сети');
+    if (inputEl) inputEl.checked = !checked;
+  } finally {
+    if (inputEl) inputEl.disabled = false;
+  }
+}
+
+window.toggleConsent = toggleConsent;
 
 function loadParentDashboard() {
   loadAllData();
@@ -1479,7 +1623,7 @@ function loadAllData() {
   loadStorybook();
   bindNotificationSettingsUI();
   initNotificationScheduler().catch(() => {});
-  loadHelpSection();
+  loadHelpSection().then((list) => renderConsentBlock(list));
   const children = getChildren();
 
   document.getElementById('childrenNamesInput').value = localStorage.getItem('childrenNames') || '';
