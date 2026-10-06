@@ -48,3 +48,6 @@ keystore-base64.txt
 *.keystore.base64
 keystore*.txt
 bfg.jar
+
+gigachat-keys.txt
+.env
