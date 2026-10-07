@@ -51,3 +51,6 @@ bfg.jar
 
 gigachat-keys.txt
 .env
+
+russian_trusted_*.crt
+russian_trusted_ca_bundle.pem
