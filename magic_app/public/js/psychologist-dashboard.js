@@ -1,4 +1,4 @@
-// ========================================
+﻿// ========================================
 // psychologist-dashboard.js — кабинет психолога
 // ========================================
 
@@ -202,7 +202,7 @@ function renderStats(data) {
     <h3>🔗 Ваши промокоды</h3>
     <p><strong>Ваш код:</strong> <code>${escapeHtml(data.promoCode || '—')}</code></p>
     <p><strong>Код для клиентов:</strong> <code>${escapeHtml(data.clientPromoCode || '—')}</code></p>
-    <p class="psy-promo-hint">Дайте клиентский код родителям — они получат Premium, а вы увидите их в дашборде.</p>
+    <p class="psy-promo-hint">Дайте клиентский код родителям — они получат расширенный доступ, а вы увидите их в дашборде.</p>
   `;
 
   const upcoming = document.getElementById('psyUpcoming');

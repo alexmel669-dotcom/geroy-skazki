@@ -1,4 +1,4 @@
-// ========================================
+﻿// ========================================
 // config.js — КОНФИГУРАЦИЯ ПРИЛОЖЕНИЯ
 // ========================================
 
@@ -108,14 +108,14 @@ export const PLANS = {
     memoryDays: 3
   },
   basic: {
-    name: 'Базовый',
+    name: 'Стандартный',
     storiesPerDay: 15,
     characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
     games: ['fish', 'puzzle', 'memory', 'riddles', 'quest', 'maze', 'quiz', 'runner', 'drawAi', 'musicCat', 'constellation', 'popFears'],
     memoryDays: 14
   },
   family: {
-    name: 'Семейный',
+    name: 'Многодетный',
     storiesPerDay: 15,
     characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
     games: ['fish', 'puzzle', 'memory', 'riddles', 'quest', 'maze', 'quiz', 'runner', 'drawAi', 'musicCat', 'constellation', 'popFears'],
@@ -124,7 +124,7 @@ export const PLANS = {
   },
   /** Алиас верхнего тарифа для промокодов детских домов/специалистов */
   premium: {
-    name: 'Премиум',
+    name: 'Расширенный',
     storiesPerDay: 15,
     characters: ['lucik', 'mom', 'dad', 'kid1', 'kid2'],
     games: ['fish', 'puzzle', 'memory', 'riddles', 'quest', 'maze', 'quiz', 'runner', 'drawAi', 'musicCat', 'constellation', 'popFears'],

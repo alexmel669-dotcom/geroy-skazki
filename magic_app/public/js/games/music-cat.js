@@ -1,5 +1,5 @@
-// ========================================
-// music-cat.js — DJ Люцик Premium (v5.7.4)
+﻿// ========================================
+// music-cat.js — DJ Люцик (v5.7.4)
 // ========================================
 
 import { appState, getActiveChild, showGamesMenu } from '../core.js';

@@ -1,4 +1,4 @@
-// ========================================
+﻿// ========================================
 // core.js — ЯДРО ПРИЛОЖЕНИЯ «ГЕРОЙ СКАЗОК»
 // v5.4.3
 // ========================================
@@ -154,7 +154,7 @@ export function checkTrialPeriod() {
   const plan = getUserPlan();
 
   if (planDays > 0 && planDays <= 7 && plan !== 'free') {
-    showTrialBanner(`🎁 Тестовый период: осталось ${planDays} дн. · <a href="pricing.html">Тарифы</a>`);
+    showTrialBanner(`🎁 Тестовый период: осталось ${planDays} дн.`);
     return;
   }
 
@@ -172,9 +172,9 @@ export function checkTrialPeriod() {
   const daysLeft = Math.ceil(trialDays - daysSinceReg);
 
   if (daysLeft <= 7 && daysLeft > 0) {
-    showTrialBanner(`🎁 Тестовый период: осталось ${daysLeft} дн. · <a href="pricing.html">Тарифы</a>`);
+    showTrialBanner(`🎁 Тестовый период: осталось ${daysLeft} дн.`);
   } else if (daysLeft <= 0 && plan === 'free') {
-    showTrialBanner('Тестовый период закончился. <a href="pricing.html">Оформить Premium</a>');
+    showTrialBanner('Тестовый период закончился. Оформите расширенный доступ в настройках.');
   }
 }
 

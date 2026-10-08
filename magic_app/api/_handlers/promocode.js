@@ -1,4 +1,4 @@
-import { Redis } from '@upstash/redis';
+﻿import { Redis } from '@upstash/redis';
 import { setCors } from '../_middleware/cors.js';
 import { validatePromocode, PROMO_TYPES } from '../_lib/promocodes.js';
 import { getPromoUsage, incrementPromoUsage, PROMO_LIMIT } from '../_lib/promo-counter.js';
@@ -11,7 +11,7 @@ const redis = new Redis({
 const PLAN_NAMES = {
   basic: 'Базовый',
   family: 'Семейный',
-  premium: 'Премиум',
+  premium: 'Расширенный',
   free: 'Бесплатный'
 };
 
