@@ -1,4 +1,4 @@
-import { bindNotificationSettingsUI, initNotificationScheduler, scheduleMissYouNotification } from './notifications.js';
+﻿import { bindNotificationSettingsUI, initNotificationScheduler, scheduleMissYouNotification } from './notifications.js';
 import { logout, checkAuth } from './auth.js';
 import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName, avatarImgHtml, initAvatarImages } from './config.js';
 import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDaysRemaining, resetDailyCounters } from './core.js';
@@ -1729,6 +1729,29 @@ document.getElementById('parentChatClose')?.addEventListener('click', closeParen
 
 document.getElementById('speakReportBtn')?.addEventListener('click', speakReport);
 document.getElementById('parentLogoutBtn')?.addEventListener('click', () => logout());
+
+document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
+  if (!confirm('Вы уверены? Все данные аккаунта будут удалены навсегда.')) return;
+  if (!confirm('Точно удалить? Родительский кабинет, история диалогов и профиль ребёнка будут стёрты. Это действие нельзя отменить.')) return;
+
+  try {
+    const res = await apiFetch('/api/delete-account', {
+      method: 'POST',
+      headers: authHeaders()
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      alert('Аккаунт удалён. Все персональные данные стёрты.');
+      logout();
+    } else {
+      alert(data.error || 'Не удалось удалить аккаунт. Попробуйте позже.');
+    }
+  } catch (e) {
+    alert('Ошибка сети. Попробуйте позже.');
+    console.error('[delete-account] error:', e);
+  }
+});
 document.getElementById('weeklyDigestBtn')?.addEventListener('click', async () => {
   const res = await apiFetch('/api/weekly-digest', {
     method: 'POST',

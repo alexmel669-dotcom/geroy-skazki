@@ -51,6 +51,7 @@ import adminUserDelete from './_handlers/admin-user-delete.js';
 import adminUserEdit from './_handlers/admin-user-edit.js';
 import parentConsent from './_handlers/parent-consent.js';
 import psychologistChildStats from './_handlers/psychologist-child-stats.js';
+import deleteAccount from './_handlers/delete-account.js';
 
 
 
@@ -150,7 +151,9 @@ const ROUTES = {
 
   'parent-consent': parentConsent,
 
-  'psychologist-child-stats': psychologistChildStats
+  'psychologist-child-stats': psychologistChildStats,
+
+  'delete-account': deleteAccount
 
 };
 
@@ -189,4 +192,3 @@ export default async function handler(req, res) {
   return routeHandler(req, res);
 
 }
-
