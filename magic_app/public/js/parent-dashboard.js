@@ -1193,7 +1193,8 @@ async function getPsychologistHelp() {
     });
     const data = await res.json();
     if (adviceEl && data.advice) {
-      adviceEl.innerHTML = `<p>${data.advice.replace(/\n/g, '<br>')}</p>`;
+      adviceEl.textContent = String(data.advice);
+      adviceEl.style.whiteSpace = 'pre-wrap';
     }
   } catch {
     if (adviceEl) {

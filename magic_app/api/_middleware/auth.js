@@ -36,3 +36,20 @@ export function verifyAdmin(req) {
   // Only the dedicated administrator login credential grants admin access.
   return isValidAdminToken(req) ? { role: 'admin' } : null;
 }
+
+// Shared parent-only guard; legacy parent role 'user' remains supported.
+export function isChildIdentity(identity) {
+  return identity?.role === 'child' || identity?.mode === 'child';
+}
+export function requireParent(req, res) {
+  const identity = verifyAuth(req);
+  if (!identity?.email) {
+    res.status(401).json({ error: 'Требуется авторизация' });
+    return null;
+  }
+  if (isChildIdentity(identity)) {
+    res.status(403).json({ error: 'Только для родителя' });
+    return null;
+  }
+  return identity;
+}

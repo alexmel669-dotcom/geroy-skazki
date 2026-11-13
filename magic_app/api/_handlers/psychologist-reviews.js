@@ -18,7 +18,8 @@ export default async function handler(req, res) {
       }
 
       const reviews = asArray(await redis.get(`geroy:psychologist:${psychologistEmail}:reviews`));
-      return res.status(200).json(reviews);
+      return res.status(200).json(reviews.map(({ id, rating, text, createdAt }) =>
+        ({ id, rating, text, createdAt })));
     }
 
     if (req.method === 'POST') {
