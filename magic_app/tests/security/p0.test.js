@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import jwt from 'jsonwebtoken';
 const store = vi.hoisted(() => new Map());
 vi.mock('@upstash/redis', () => ({ Redis: class {
@@ -30,6 +30,8 @@ beforeEach(() => {
   vi.stubEnv('YANDEX_FOLDER_ID','synthetic-folder');
   vi.stubGlobal('fetch',vi.fn(async()=>{throw new Error('UNEXPECTED NETWORK');}));
 });
+
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('P0-01 privilege isolation', () => {
   it('public signup at legacy admin email gets an ordinary JWT', async () => {
