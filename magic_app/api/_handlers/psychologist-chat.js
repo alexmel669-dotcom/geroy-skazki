@@ -37,6 +37,10 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    if (auth.role === 'child' || auth.mode === 'child') {
+      return res.status(403).json({ error: 'Только для родителя или психолога' });
+    }
+
     if (req.method === 'GET') {
       const query = getQuery(req);
       const psychologistEmail = String(query.psychologistEmail || '').trim().toLowerCase();
@@ -52,7 +56,6 @@ export default async function handler(req, res) {
       // Список диалогов психолога
       if (!parentEmail) {
         const allowed =
-          authEmail === psychologistEmail ||
           isPsy?.admin ||
           (isPsy && isPsy.email === psychologistEmail);
         if (!allowed) {
@@ -63,7 +66,6 @@ export default async function handler(req, res) {
       }
 
       const allowed =
-        authEmail === psychologistEmail ||
         authEmail === parentEmail ||
         isPsy?.admin ||
         (isPsy && isPsy.email === psychologistEmail);

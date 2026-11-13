@@ -37,7 +37,7 @@ export async function resolvePsychologistAccess(email) {
   const user = await findUser(normalized);
   const profile = await findPsychologistProfile(normalized);
 
-  if (user?.role === 'psychologist' || (profile && profile.active !== false)) {
+  if (user?.role === 'psychologist' && profile?.active !== false) {
     return {
       email: normalized,
       user,
@@ -58,10 +58,10 @@ export async function requirePsychologist(req, emailHint) {
   }
 
   const auth = verifyAuth(req);
-  if (!auth?.email) return null;
+  if (!auth?.email || auth.role === 'child' || auth.mode === 'child') return null;
 
   const email = String(emailHint || auth.email).trim().toLowerCase();
-  if (email !== String(auth.email).toLowerCase() && auth.role !== 'admin') {
+  if (email !== String(auth.email).toLowerCase()) {
     return null;
   }
 

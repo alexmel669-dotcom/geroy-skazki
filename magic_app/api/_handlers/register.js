@@ -20,11 +20,6 @@ const redis = new Redis({
 const MIN_AGE = 3;
 const MAX_AGE = 14;
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@geroy-skazki.local')
-  .split(',')
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
-
 function getAgeFromBirthday(birthday) {
   if (!birthday) return null;
   const today = new Date();
@@ -130,7 +125,8 @@ export default async function handler(req, res) {
     let planExpiry = null;
     let promocodeUsed = null;
     let promoMessage = null;
-    let role = ADMIN_EMAILS.includes(normalizedEmail) ? 'admin' : 'user';
+    // Public registration never grants administrative privileges.
+    let role = 'user';
     let maxChildren = null;
     let userPromoCode = null;
 

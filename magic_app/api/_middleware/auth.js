@@ -1,3 +1,4 @@
+import { isValidAdminToken } from '../_lib/admin-token.js';
 import jwt from 'jsonwebtoken';
 
 export function getJwtSecret() {
@@ -31,7 +32,7 @@ export function verifyAuth(req) {
 }
 
 export function verifyAdmin(req) {
-  const user = verifyAuth(req);
-  if (!user || user.role !== 'admin') return null;
-  return user;
+  // Legacy family JWTs may contain an admin role assigned by public signup.
+  // Only the dedicated administrator login credential grants admin access.
+  return isValidAdminToken(req) ? { role: 'admin' } : null;
 }
