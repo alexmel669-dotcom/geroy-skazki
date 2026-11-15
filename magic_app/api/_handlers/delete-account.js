@@ -1,12 +1,12 @@
 import { setCors } from '../_middleware/cors.js';
-import { requireParent } from '../_middleware/auth.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { deleteUser, findUser } from '../_lib/users.js';
 
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const auth = requireParent(req, res);
+  const auth = await requireParentPin(req, res);
   if (!auth) return;
 
   const email = auth.email.toLowerCase();

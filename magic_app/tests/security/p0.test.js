@@ -98,6 +98,7 @@ describe('P0-02 parent AI family context', () => {
   });
 });
 
+import { issueParentGrant } from '../../api/_middleware/parent-pin.js';
 import profile from '../../api/_handlers/profile-update.js';
 import deleteAccount from '../../api/_handlers/delete-account.js';
 import reviews from '../../api/_handlers/psychologist-reviews.js';
@@ -116,7 +117,9 @@ describe('Stage B data exposure and child rights', () => {
   });
   it('legacy parent can update without exposing top-level or nested secrets', async () => {
     store.set(`geroy:user:${email}`,{email,username:'Synthetic',passwordHash:'DO_NOT_EXPOSE',parentPinHash:'DO_NOT_EXPOSE',secretAnswerHash:'DO_NOT_EXPOSE',internal:'DO_NOT_EXPOSE',children:[{name:'Synthetic',age:7,internal:'DO_NOT_EXPOSE'}]});
-    const r=response();await profile(req({childName:'Changed'},{email,role:'user'}),r);
+    const request = req({childName:'Changed'},{email,role:'user'});
+    request.headers['x-parent-authorization'] = `Bearer ${issueParentGrant(request,store.get(`geroy:user:${email}`)).parentGrant}`;
+    const r=response();await profile(request,r);
     expect(r.code).toBe(200);expect(r.body.user.childName).toBe('Changed');
     expect(JSON.stringify(r.body)).not.toContain('DO_NOT_EXPOSE');
     expect(store.get(`geroy:user:${email}`).passwordHash).toBe('DO_NOT_EXPOSE');

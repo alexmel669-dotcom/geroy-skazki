@@ -1,5 +1,5 @@
 import { setCors } from '../_middleware/cors.js';
-import { verifyAuth } from '../_middleware/auth.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { getQuery, redis, findPsychologistProfile } from '../_lib/psychologist-access.js';
 
 // Согласие родителя на передачу данных ребёнка (страхи/настроение) психологу.
@@ -54,13 +54,8 @@ function sanitizeChildName(raw) {
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
 
-  const auth = verifyAuth(req);
-  if (!auth?.email) {
-    return res.status(401).json({ error: 'Требуется авторизация' });
-  }
-  if (auth.role === 'child' || auth.mode === 'child') {
-    return res.status(403).json({ error: 'Только для родителя' });
-  }
+  const auth = await requireParentPin(req, res);
+  if (!auth) return;
 
   const parentEmail = normalizeEmail(auth.email);
 

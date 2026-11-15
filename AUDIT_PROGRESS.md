@@ -66,3 +66,27 @@ After B: C server-owned AI operation templates, mandatory input/output safety, s
 Rerun on the implementation changes with Chromium/Playwright: 12/12 games PASS_OPEN plus menu close; login/register and four parent guards PASS. Production-mode app boots without captured errors; localhost still reproduces the known switchPlan fatal (P2-11 OPEN). All browser requests fulfilled from local source or synthetic API errors, external origins aborted, service workers blocked. No game completion, authenticated live backend, real mic, Android device or PWA upgrade test. No claim of successful local-mode app boot.
 
 Exporting to the prescribed /codex/.../output directory was attempted but this runtime mounts /codex read-only. Git commits, progress and ledger remain in the workspace; no remote publication is claimed.
+
+
+## P1-02 stage 1 — resumed from GitHub draft PR #4
+
+Fetched `fix/security-audit-2026` from origin; PR #4 is open/draft and its head matched `fd285f501f6409a89490187a0e2854d41996b8da`. The old publication-failure notes above describe the previous session. This stage changes neither main nor backup and performs no deploy. Its commit SHA is the HEAD containing this section (`git rev-parse HEAD`).
+
+Implemented:
+- Correct PIN now issues a separately keyed HS256 grant (audience geroy:parent-pin), maximum lifetime 300 seconds. Bound to SHA-256 of the exact verified login JWT and a fingerprint of the current password/PIN hashes. PIN grant cannot authenticate as a login JWT. A missing grant, wrong session/family, expired/modified proof, missing user or changed credentials fails closed. Protected responses and issuance use Cache-Control:no-store.
+- Login/register add random JWT jti so simultaneous logins are distinct. Existing signed parent JWTs without jti remain usable, but must submit PIN to obtain their own short-lived proof. Old child tokens remain forbidden. No account migration or credential rewrite.
+- Enforced on profile-update GET/POST, delete-account, child-token, weekly-stats, weekly-digest, parent-consent and psychologist-help. Other parent routes are explicitly NOT secured by this stage: generate mom/dad, parent side of psychologist-chat, booking/review/report and local-only history. P1-02 remains PARTIAL until the route matrix is completed.
+- A profile without parentPinHash no longer receives elevated access via noPin; it gets an explicit support/configuration error. Do not silently manufacture a PIN. A verified recovery/enrolment path is future work.
+- Dashboard sends X-Parent-Authorization from memory only. Same appearance and existing PIN overlay; wrong PIN remains locked, expiry/server rejection relocks, pagehide clears proof and BFCache return relocks. Five minutes is an absolute lifetime, not extended by activity. CORS allow-header lists in backend/Worker include this header; existing Worker credentialed-CORS issue remains OPEN.
+
+Validation on this stage:
+- `npm test -- tests/security/parent-pin.test.js tests/security/parent-access.test.js tests/security/p0.test.js`: initially 53 passed (28 server, 6 client, 19 previous regressions). An additional cross-origin proof-leak regression was then added and passed in the final full run (7 client cases).
+- `npm test`: 61 passed, 2 skipped (existing opt-in API tests).
+- `npm run test:syntax`: 119 JS files passed.
+- `npm run type-check`: passed; checkJs=false limitation unchanged.
+- Browser: `PLAYWRIGHT_MODULE=/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright node tests/browser/parent-pin-smoke.cjs` from magic_app. Initial PIN, wrong PIN denial, correct PIN unlock, proof header, no persistent proof, expiry hiding cabinet: all passed, no page errors. All routes locally fulfilled/aborted, synthetic API responses; this is client integration smoke, not live Redis/provider E2E.
+- `git diff --check`: passed. Dependencies reused from the prior isolated audit install, no package/lock changes.
+
+Limits: stateless proof follows current login token validity. Logout does not yet revoke a copied login/proof server-side; both are required and the proof expires in at most five minutes. General session revocation is still P2-01 OPEN. Existing PIN-attempt counters are not yet atomic under concurrent requests (P2-15/OBS-03). Existing PWA cache may retain old dashboard JS, so isolated staging must use a clean context; no production rollout is claimed.
+
+Next step after owner's review: finish P1-02 route matrix for remaining parent paths, then session revocation. Stop after this first tested stage as requested; do not start further audit fixes. Any failed push must be reported without repeated retries.

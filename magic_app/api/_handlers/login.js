@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
 import { verifyPassword } from '../_lib/crypto.js';
@@ -18,7 +19,7 @@ function signToken(user) {
       role: user.role || 'user'
     },
     getJwtSecret(),
-    { expiresIn: '7d' }
+    { expiresIn: '7d', jwtid: randomUUID() }
   );
 }
 

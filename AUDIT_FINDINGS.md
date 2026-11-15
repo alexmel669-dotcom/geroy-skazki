@@ -7,7 +7,7 @@ Original baseline: 0e28268bc50417fb54ce744d0a673f42396bfceb. Current main was id
 | P0-01 | P0 | FIXED | register.js, auth.js, psychologist-access.js, psychologist-chat.js: remove signup admin and legacy privilege paths | signup user JWT; legacy admin denied; own psychologist allowed; foreign chat/stats denied; child and directory-squatting denied |
 | P0-02 | P0 | FIXED | generate.js: verified parent family context only | unauthenticated mom/dad and child rejected; body foreign email ignored in captured mocked provider payload; guest retained |
 | P1-01 | P1 | FIXED | profile-update.js: explicit parent DTO including child field allowlist | GET/POST child denied; parent POST excludes nested/top-level secret fields; stored hashes retained |
-| P1-02 | P1 | OPEN | PIN UI-only elevation | add session-bound recent-PIN grant and enforce sensitivity policy |
+| P1-02 | P1 | PARTIAL | parent-pin.js, verify-pin.js, 7 cabinet handlers, parent-access.js, parent-dashboard.js, login/register jti, CORS header | 28 server + 7 client tests and route-mocked browser smoke; 5-minute grant bound to login token and current credentials. Remaining parent AI/chat/booking/report routes, local-only data and session revocation are not covered by this stage. |
 | P1-03 | P1 | FIXED | delete-account.js, auth.js: child cannot delete family | both role=child and mode=child return 403; fixture retained; parent PIN covered separately by P1-02 |
 | P1-04 | P1 | FIXED | api-base.js: remove URL override | actual module ignores attacker query; mock fetch target stays trusted origin |
 | P1-05 | P1 | OPEN | external QR receives child bearer | local QR; one-use exchange/revocation |

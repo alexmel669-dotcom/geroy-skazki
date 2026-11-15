@@ -1,5 +1,6 @@
 import { setCors } from '../_middleware/cors.js';
-import { verifyAuth } from '../_middleware/auth.js';
+import { requireParent } from '../_middleware/auth.js';
+import { issueParentGrant } from '../_middleware/parent-pin.js';
 import { findUser, saveUser } from '../_lib/users.js';
 import { verify } from '../_lib/crypto.js';
 
@@ -10,13 +11,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Метод не разрешён' });
   }
 
-  const decoded = verifyAuth(req);
-  if (!decoded?.email) {
-    return res.status(401).json({ error: 'Требуется авторизация' });
-  }
-  if (decoded.role === 'child' || decoded.mode === 'child') {
-    return res.status(403).json({ error: 'Только для родителя' });
-  }
+  res.setHeader('Cache-Control', 'no-store');
+  const decoded = requireParent(req, res);
+  if (!decoded) return;
 
   try {
     const user = await findUser(decoded.email);
@@ -42,15 +39,15 @@ export default async function handler(req, res) {
     const pinStr = String(pin || '').trim();
 
     if (!user.parentPinHash) {
-      return res.status(200).json({ success: true, noPin: true });
+      return res.status(403).json({ code: 'PARENT_PIN_NOT_CONFIGURED', error: 'Родительский PIN не настроен. Обратитесь в поддержку.' });
     }
 
-    const valid = verify(pinStr, user.parentPinHash);
+    const valid = /^\d{4}$/.test(pinStr) && verify(pinStr, user.parentPinHash);
     if (valid) {
       user.pinAttempts = 0;
       user.lockedUntil = null;
       await saveUser(decoded.email, user);
-      return res.status(200).json({ success: true });
+      return res.status(200).json({ success: true, ...issueParentGrant(req, { ...user, email: decoded.email }) });
     }
 
     user.pinAttempts = (user.pinAttempts || 0) + 1;

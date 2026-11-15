@@ -1,5 +1,5 @@
 import { setCors } from '../_middleware/cors.js';
-import { verifyAuth } from '../_middleware/auth.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { findUser } from '../_lib/users.js';
 
 export default async function handler(req, res) {
@@ -9,10 +9,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const user = verifyAuth(req);
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  const user = await requireParentPin(req, res);
+  if (!user) return;
 
   try {
     const profile = await findUser(user.email);

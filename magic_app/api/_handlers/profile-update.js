@@ -1,5 +1,5 @@
 import { setCors } from '../_middleware/cors.js';
-import { requireParent } from '../_middleware/auth.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { findUser, updateChildProfile } from '../_lib/users.js';
 import { getEffectivePlan } from '../_lib/promocodes.js';
 
@@ -23,7 +23,7 @@ function publicProfile(profile) {
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
 
-  const user = requireParent(req, res);
+  const user = await requireParentPin(req, res);
   if (!user) return;
 
   if (req.method === 'GET') {
