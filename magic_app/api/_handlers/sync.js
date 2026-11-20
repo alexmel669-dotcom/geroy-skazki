@@ -8,7 +8,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const user = verifyAuth(req);
+  let user;
+  try {
+    user = await verifyAuth(req);
+  } catch {
+    return res.status(503).json({ error: 'Session verification unavailable' });
+  }
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }

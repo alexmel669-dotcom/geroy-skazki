@@ -1,6 +1,6 @@
 import { setCors } from '../_middleware/cors.js';
 import { requireParentPin } from '../_middleware/parent-pin.js';
-import { deleteUser, findUser } from '../_lib/users.js';
+import { deleteUser } from '../_lib/users.js';
 
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
@@ -10,15 +10,12 @@ export default async function handler(req, res) {
   if (!auth) return;
 
   const email = auth.email.toLowerCase();
-  const user = await findUser(email);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
+  if (!await deleteUser(email, auth.sessionGeneration ?? null)) {
+    return res.status(409).json({ error: 'Аккаунт изменился. Повторите запрос.' });
   }
-
-  await deleteUser(email);
 
   return res.status(200).json({
     success: true,
-    message: 'Аккаунт удалён. Все персональные данные стёрты.',
+    message: 'Аккаунт удалён, сессии завершены.',
   });
 }

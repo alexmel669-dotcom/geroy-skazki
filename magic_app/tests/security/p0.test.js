@@ -3,13 +3,20 @@ import jwt from 'jsonwebtoken';
 const store = vi.hoisted(() => new Map());
 vi.mock('@upstash/redis', () => ({ Redis: class {
   async get(key) { return structuredClone(store.get(key) ?? null); }
+  async mget(...keys) { return Promise.all(keys.map(key => this.get(key))); }
   async set(key, value) { store.set(key, structuredClone(value)); return 'OK'; }
+  async eval(_script, [key, generation], [expected, updated]) {
+    if (!store.has(key) || (store.get(generation) ?? '') !== expected) return 0;
+    store.set(key, JSON.parse(updated));
+    return 1;
+  }
   async exists(key) { return store.has(key) ? 1 : 0; }
   async del(key) { store.delete(key); }
 }}));
 vi.mock('../../api/_middleware/rate-limit.js', () => ({checkRateLimit: () => true, getRateLimitKey: () => 'synthetic'}));
 vi.mock('../../api/_middleware/ai-rate-limit.js', () => ({checkRateLimit: () => ({allowed:true})}));
 import register from '../../api/_handlers/register.js';
+import { issueParentGrant } from '../../api/_middleware/parent-pin.js';
 import generate from '../../api/_handlers/generate.js';
 import chat from '../../api/_handlers/psychologist-chat.js';
 import childStats from '../../api/_handlers/psychologist-child-stats.js';
@@ -20,7 +27,7 @@ function response() {
   return { code:200, headers:{}, status(n){this.code=n;return this;}, setHeader(k,v){this.headers[k]=v;}, json(body){this.body=body;return this;}, end(){} };
 }
 function req(body={}, claims, method='POST', query={}) {
-  return {method,body,query,headers:claims?{authorization:`Bearer ${jwt.sign(claims,process.env.JWT_SECRET)}`}:{}};
+  return {method,body,query,headers:claims?{authorization:`Bearer ${jwt.sign(claims,process.env.JWT_SECRET,{expiresIn:'7d'})}`}:{}};
 }
 beforeEach(() => {
   store.clear();
@@ -49,6 +56,7 @@ describe('P0-01 privilege isolation', () => {
   it('legacy admin JWT cannot read another psychologist chat or child stats', async () => {
     store.set('geroy:user:psy@audit.invalid',{role:'psychologist'});
     store.set('geroy:psychologists',[{email:'psy@audit.invalid',active:true}]);
+    store.set('geroy:user:old@audit.invalid', { role: 'admin' });
     store.set('geroy:chat:psy@audit.invalid:family@audit.invalid',[{message:'private'}]);
     store.set('geroy:consent:family@audit.invalid:psy@audit.invalid',{consent:true,childName:'Private'});
     for(const handler of [chat,childStats]){
@@ -79,14 +87,18 @@ describe('P0-02 parent AI family context', () => {
     expect(r.code).toBe(401);expect(fetch).not.toHaveBeenCalled();
   });
   it('rejects child parent-mode even with history', async () => {
+    store.set('geroy:user:family@audit.invalid', {});
     const r=response();await generate(req({character:'mom',message:'stats',history:[{content:'old'}]}, {email:'family@audit.invalid',role:'child'}),r);
     expect(r.code).toBe(403);expect(fetch).not.toHaveBeenCalled();
   });
   it('ignores body email and global activity, uses only authenticated family', async () => {
-    store.set('geroy:user:own@audit.invalid',{children:[{name:'OWN_SYNTHETIC',age:7}]});
+    store.set('geroy:user:own@audit.invalid',{parentPinHash:'fixture-pin-hash',children:[{name:'OWN_SYNTHETIC',age:7}]});
     store.set('geroy:user:other@audit.invalid',{children:[{name:'FOREIGN_SYNTHETIC',age:9}]});
     fetch.mockResolvedValue({ok:true,json:async()=>({result:{alternatives:[{message:{text:'{"message":"Привет"}'}}]}})});
-    const r=response();await generate(req({character:'mom',message:'stats',parentEmail:'other@audit.invalid',email:'other@audit.invalid'},{email:'own@audit.invalid',role:'user'}),r);
+    const request = req({character:'mom',message:'stats',parentEmail:'other@audit.invalid',email:'other@audit.invalid'},{email:'own@audit.invalid',role:'user'});
+    const grant = issueParentGrant(request, { ...store.get('geroy:user:own@audit.invalid'), email: 'own@audit.invalid' });
+    request.headers['x-parent-authorization'] = 'Bearer ' + grant.parentGrant;
+    const r=response();await generate(request,r);
     expect(r.code).toBe(200);expect(fetch).toHaveBeenCalledTimes(1);
     const body=fetch.mock.calls[0][1].body;
     expect(body).toContain('OWN_SYNTHETIC');expect(body).not.toContain('FOREIGN_SYNTHETIC');expect(body).not.toContain('Всего событий');
@@ -107,6 +119,7 @@ import { readFileSync } from 'node:fs';
 describe('Stage B data exposure and child rights', () => {
   const email='family@audit.invalid';
   it.each(['GET','POST'])('child profile %s is forbidden', async method => {
+    store.set(`geroy:user:${email}`, { email });
     const r=response();await profile(req({}, {email,role:'child'},method),r);
     expect(r.code).toBe(403);
   });

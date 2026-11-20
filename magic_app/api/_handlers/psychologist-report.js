@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { setCors } from '../_middleware/cors.js';
-import { verifyAuth } from '../_middleware/auth.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { isValidAdminToken } from '../_lib/admin-token.js';
 
 const redis = new Redis({
@@ -31,8 +31,9 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const auth = verifyAuth(req);
-    const { psychologistEmail, reason, reportedBy } = req.body || {};
+    const auth = await requireParentPin(req, res);
+    if (!auth) return;
+    const { psychologistEmail, reason } = req.body || {};
     const psyEmail = String(psychologistEmail || '').trim().toLowerCase();
     const reasonText = String(reason || '').trim();
 
@@ -40,14 +41,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Email и причина обязательны' });
     }
 
-    const reporter =
-      String(reportedBy || auth?.email || '').trim().toLowerCase() || 'anonymous';
-
     const reports = asArray(await redis.get(REPORTS_KEY));
     reports.push({
       psychologistEmail: psyEmail,
       reason: reasonText.slice(0, 1000),
-      reportedBy: reporter,
+      reportedBy: auth.email.toLowerCase(),
       timestamp: new Date().toISOString(),
       status: 'pending'
     });

@@ -3,7 +3,7 @@ import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit } from '../_middleware/ai-rate-limit.js';
 import { buildGenderPrompt, applyGenderToText, normalizeGender } from '../_lib/gender-ru.js';
 import { getAgeWord, applyGrammarFixes, getCorrectNameForm } from '../_lib/grammar-ru.js';
-import { verifyAuth } from '../_middleware/auth.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { findUser } from '../_lib/users.js';
 import { Redis } from '@upstash/redis';
 
@@ -350,11 +350,8 @@ export default async function handler(req, res) {
     // Parent context is always bound to the authenticated family, including
     // follow-up requests with history. Request body email is never an identity.
     if (charId === 'mom' || charId === 'dad' || isParent) {
-      const auth = verifyAuth(req);
-      if (!auth?.email) return res.status(401).json({ error: 'Требуется авторизация' });
-      if (auth.role === 'child' || auth.mode === 'child') {
-        return res.status(403).json({ error: 'Только для родителя' });
-      }
+      const auth = await requireParentPin(req, res);
+      if (!auth) return;
       const user = await findUser(auth.email.toLowerCase());
       if (!user) return res.status(401).json({ error: 'Сессия недействительна' });
       if (historyEmpty) {

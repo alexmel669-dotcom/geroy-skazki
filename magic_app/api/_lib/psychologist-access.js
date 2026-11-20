@@ -57,7 +57,7 @@ export async function requirePsychologist(req, emailHint) {
     return access ? { ...access, admin: true } : { admin: true, email, user: null, profile: null };
   }
 
-  const auth = verifyAuth(req);
+  const auth = await verifyAuth(req);
   if (!auth?.email || auth.role === 'child' || auth.mode === 'child') return null;
 
   const email = String(emailHint || auth.email).trim().toLowerCase();

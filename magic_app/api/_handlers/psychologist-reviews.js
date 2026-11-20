@@ -1,5 +1,5 @@
 import { setCors } from '../_middleware/cors.js';
-import { verifyAuth } from '../_middleware/auth.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { getQuery, redis } from '../_lib/psychologist-access.js';
 
 function asArray(value) {
@@ -23,10 +23,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const auth = verifyAuth(req);
-      if (!auth?.email) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
+      const auth = await requireParentPin(req, res);
+      if (!auth) return;
 
       const { psychologistEmail, parentEmail, parentName, rating, text } = req.body || {};
       const psyEmail = String(psychologistEmail || '').trim().toLowerCase();

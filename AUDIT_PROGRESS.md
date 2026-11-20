@@ -90,3 +90,22 @@ Validation on this stage:
 Limits: stateless proof follows current login token validity. Logout does not yet revoke a copied login/proof server-side; both are required and the proof expires in at most five minutes. General session revocation is still P2-01 OPEN. Existing PIN-attempt counters are not yet atomic under concurrent requests (P2-15/OBS-03). Existing PWA cache may retain old dashboard JS, so isolated staging must use a clean context; no production rollout is claimed.
 
 Next step after owner's review: finish P1-02 route matrix for remaining parent paths, then session revocation. Stop after this first tested stage as requested; do not start further audit fixes. Any failed push must be reported without repeated retries.
+
+## P1-02 and P2-01 follow-up on 7099734
+
+Started from `fix/security-audit-2026` at `7099734456baceb32312af04b2fe7f76f0d9a422`. The full independent QA report was unavailable in this workspace and the discussion of GitHub PR #4. The PR was verified open and draft. Confirmed baseline: 54 security tests PASS, 61 full-suite PASS, 2 SKIP, and P1-02 PARTIAL. See AUDIT_FINDINGS.md for the route matrix and confirmation assessment.
+
+- Sensitive parent branches now require the existing session-bound grant. The dashboard sends it from tab memory. Legacy parent chat in the main app opens the parent dashboard when the server requires PIN.
+- A five-minute Redis window admits three PIN comparisons per family, including successful comparisons. The fourth request gets 429 until expiry. Existing profile lock timestamps are honored until expiry.
+- Logout revokes presented cookie and bearer JWTs until expiry. Other independent sessions, including independently issued child links, remain active. Password reset and deletion invalidate all previous family tokens, including legacy child links, by rotating the generation. Logout failure is surfaced to the client for retry.
+- Redis storage adds a persistent generation key per affected family, a TTL-bound revocation key per logged-out JWT, and a five-minute PIN attempt key per active family. Missing generation supports legacy valid HS256 JWTs with expiry. Reset/delete write account state and generation in one Redis script. Profile writes based on an earlier generation fail. No backfill or bulk migration is necessary. Keep generation keys across account recreation, and confirm EVAL and MGET support and key retention on an isolated Redis instance. Older service builds do not enforce revocation, so mixed-version rollout or rollback needs explicit coordination.
+- P1-02 remains PARTIAL for browser-local family data and the proposed dedicated deletion confirmation. P1-10 cascade cleanup, legacy recovery, one-use child links, and live client/Redis integration remain open. Requests already authorized and in flight can finish after revocation.
+- Initial in-sandbox Vitest runs failed during esbuild config loading with Windows Access Denied. Validation results for subsequent runs are recorded below.
+
+Validation on the local follow-up changes:
+
+- `npm test -- tests/security`: 68 PASS, including 14 additional regressions. The tests use synthetic fixtures and an in-memory Redis double for session and PIN operations.
+- `npm test`: 75 PASS, 2 SKIP. The opt-in server API cases were explicitly disabled.
+- `npm run type-check`: PASS. `npm run test:syntax`: 119 files PASS. `git diff --check`: PASS.
+- Vitest passed outside the sandbox after adjusting three existing fixtures for the account-existence and Redis-write checks. No browser or live Redis integration was run on this follow-up.
+- Local changes are on the requested branch. HEAD remains `7099734`. No push, merge, deployment, or production API call. The bundle remains untracked.

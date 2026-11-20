@@ -7,7 +7,7 @@ Original baseline: 0e28268bc50417fb54ce744d0a673f42396bfceb. Current main was id
 | P0-01 | P0 | FIXED | register.js, auth.js, psychologist-access.js, psychologist-chat.js: remove signup admin and legacy privilege paths | signup user JWT; legacy admin denied; own psychologist allowed; foreign chat/stats denied; child and directory-squatting denied |
 | P0-02 | P0 | FIXED | generate.js: verified parent family context only | unauthenticated mom/dad and child rejected; body foreign email ignored in captured mocked provider payload; guest retained |
 | P1-01 | P1 | FIXED | profile-update.js: explicit parent DTO including child field allowlist | GET/POST child denied; parent POST excludes nested/top-level secret fields; stored hashes retained |
-| P1-02 | P1 | PARTIAL | parent-pin.js, verify-pin.js, 7 cabinet handlers, parent-access.js, parent-dashboard.js, login/register jti, CORS header | 28 server + 7 client tests and route-mocked browser smoke; 5-minute grant bound to login token and current credentials. Remaining parent AI/chat/booking/report routes, local-only data and session revocation are not covered by this stage. |
+| P1-02 | P1 | PARTIAL | parent-pin.js, verify-pin.js, 7 cabinet handlers, parent-access.js, parent-dashboard.js, login/register jti, CORS header | PIN now covers the remaining sensitive parent API operations. See the matrix below. Browser-local history and cached data remain outside server enforcement. |
 | P1-03 | P1 | FIXED | delete-account.js, auth.js: child cannot delete family | both role=child and mode=child return 403; fixture retained; parent PIN covered separately by P1-02 |
 | P1-04 | P1 | FIXED | api-base.js: remove URL override | actual module ignores attacker query; mock fetch target stays trusted origin |
 | P1-05 | P1 | OPEN | external QR receives child bearer | local QR; one-use exchange/revocation |
@@ -19,7 +19,7 @@ Original baseline: 0e28268bc50417fb54ce744d0a673f42396bfceb. Current main was id
 | P1-11 | P1 | OPEN | unscoped persistent local storybook | family/child namespace and cleanup |
 | P1-12 | P1 | FIXED | parent-dashboard.js advice HTML sink | execute actual render block with HTML payload; innerHTML setter throws; textContent preserved |
 | P1-13 | P1 | OPEN | privacy claims disagree with flows | technical map and owner-reviewed policy; no invented retention/regions |
-| P2-01 | P2 | OPEN | JWT not revoked on logout/reset | server sessions/versioning, compatibility |
+| P2-01 | P2 | IMPLEMENTED | Logout revokes presented JWTs. Reset and account deletion rotate the family session generation in Redis. | Offline regressions in `tests/security/parent-pin.test.js`. Live Redis and client integration pending. |
 | P2-02 | P2 | OPEN | static-answer recovery | verified one-use email recovery; owner sender setup |
 | P2-03 | P2 | OPEN | unlimited HTTP body buffering | stream byte cap and 413 tests |
 | P2-04 | P2 | OPEN | AI/STT/TTS input caps | text/audio/schema bounds |
@@ -54,3 +54,32 @@ Original baseline: 0e28268bc50417fb54ce744d0a673f42396bfceb. Current main was id
 ## Non-findings and external limits
 
 SQL/Mongo string-query injection and exploitable CSRF were NOT established by the audit; do not relabel absence of proof as FIXED. Existing SameSite/HttpOnly/scrypt protections remain. Production security headers, provider moderation/retention, actual regions, VPS backups, Android artifact/store state remain UNVERIFIED. The original report's 12 explicitly untested areas remain unverified except the narrow local tests listed in AUDIT_PROGRESS.md. No ALREADY FIXED claim: main equalled the audit baseline at the start.
+
+## Parent API matrix from 7099734
+
+| Route | Role | PIN after change | Protection at 7099734 | Finding or remaining risk |
+|---|---|---|---|---|
+| POST /api/verify-pin | Parent | PIN comparison for grant issuance | Family JWT and profile counter | Counter could race across parallel requests. Uses a shared Redis reservation before hash verification. |
+| GET/POST /api/profile-update | Parent | Required | Session-bound PIN and allowlisted DTO | Existing protection retained. |
+| POST /api/delete-account | Parent | Required | Session-bound PIN and two UI confirmations | Generic grant remains replayable within its lifetime. Session invalidation is atomic with primary record deletion. Residual records are tracked in P1-10. |
+| POST /api/child-token | Parent | Required | Session-bound PIN and own family profile | Rejects invalid or absent child indexes. Any valid child in that family is intentionally selectable. External QR exposure and one-use link exchange remain P1-05. |
+| GET/POST /api/weekly-stats, POST /api/weekly-digest | Parent | Required | Session-bound PIN and signed family identity | Legacy dialog stats may aggregate activity without stable child IDs. |
+| GET/POST /api/parent-consent | Parent | Required | Session-bound PIN and family-keyed records | Consent shares supplied child details with the selected psychologist. Existing dashboard confirmation stays in place. |
+| POST /api/psychologist-help | Parent | Required | Session-bound PIN | Existing protection retained. |
+| POST /api/generate (mom, dad or isParent) | Parent | Required | Verified non-child JWT and family lookup | Family context was accessible before PIN. Guest/child generation remains public. Prompt policy remains P1-07. |
+| GET/POST /api/psychologist-chat | Parent or authorized psychologist | Parent branch only | Signed family identity and verified psychologist access | Added PIN on parent reads and writes. Psychologist access stays scoped to their identity. |
+| GET/POST/PUT /api/psychologist-booking | Parent on POST, authorized psychologist/admin | Parent POST only | Signed JWT and existing psychologist checks | Family-matching child JWT could enter the parent POST branch. |
+| GET/POST /api/psychologist-reviews | Public read, parent write | POST only | Public DTO and signed parent email comparison | POST accepted child identity of the same family. |
+| GET/POST /api/psychologist-report | Admin read, parent write | POST only | Admin credential on GET | POST accepted anonymous complaints and caller-supplied reporter identity. Reporter now comes from verified JWT. |
+| POST /api/feedback | Public feedback, parent account bonus | Bonus request only | Optional JWT | An authenticated child could request a family plan extension. |
+| /api/verify-token | Family session | No | JWT signature | Now checks account existence and revocation and reports child role for child JWTs. Response still exposes basic account information. |
+| POST /api/user/sync, /api/sync-child-data | Family session | No | JWT signature | Current handlers acknowledge requests without persisting or returning profile data. Add appropriate PIN or child scope before implementing persistence. |
+| POST /api/logout, /api/auth/logout | Presented session | No | Cookie clearing | Copied JWT stayed valid. Server now revokes valid presented cookie and bearer JWTs. |
+| POST /api/get-secret-question, /api/reset-password | Recovery | No | Recovery answer on reset | Successful reset now revokes all family JWTs. Recovery design is P2-02. |
+| POST /api/login, /api/register | Sign-in or enrollment | No separate PIN step | Password or registration validation | Login and registration still return bootstrap child profile fields required by the existing client. Local copies remain part of P1-02/P1-11 scope. |
+| /api/psychologists-list, /api/specialists-list | Public directory | No | Public catalog | No access to private family records through these directory reads. |
+| /api/psychologist-dashboard, /api/psychologist-child-stats | Authorized specialist | No | Verified psychologist identity, consent for child stats | Existing access logic retained and now uses revocation-aware auth. |
+| Public promo validation, registration verification, applications, analytics, leaderboard, TTS/STT, health | Public or purpose-specific credential | No | Endpoint-specific policy | Separate surfaces outside parental elevation. Promo validation still accepts a caller-supplied referral email. |
+| /api/admin/* and admin aliases | Dedicated admin credential | No | Separate admin authentication | Family JWTs do not grant admin access. Admin account deletion also rotates the family session generation. |
+
+For deletion, a dedicated one-use server confirmation bound to the session, action and current credentials would raise the assurance beyond the existing five-minute PIN grant and UI confirmation. Profile edits and existing consent controls retain the standard PIN grant. A separate deletion confirmation remains open with P1-10.

@@ -20,7 +20,8 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
 
-    const childIndex = parseInt(req.query?.child ?? req.body?.childIndex ?? '0', 10);
+    const selector = req.query?.child ?? req.body?.childIndex ?? 0;
+    const childIndex = /^\d+$/.test(String(selector)) && !Array.isArray(selector) ? Number(selector) : -1;
     const child = user.children?.[childIndex];
 
     if (!child) {
@@ -30,6 +31,7 @@ export default async function handler(req, res) {
     const childToken = jwt.sign(
       {
         email: decoded.email,
+        sessionGeneration: decoded.sessionGeneration,
         parentEmail: decoded.email,
         childName: child.name,
         childAge: child.age,

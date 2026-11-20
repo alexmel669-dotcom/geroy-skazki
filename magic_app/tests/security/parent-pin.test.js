@@ -4,7 +4,35 @@ import { hashPassword } from '../../api/_lib/crypto.js';
 const memory = vi.hoisted(() => ({ store: new Map(), unavailable: false }));
 vi.mock('@upstash/redis', () => ({ Redis: class {
   async get(key) { if (memory.unavailable) throw new Error('offline'); return structuredClone(memory.store.get(key) ?? null); }
+  async mget(...keys) { return Promise.all(keys.map(key => this.get(key))); }
   async set(key, value) { memory.store.set(key, structuredClone(value)); return 'OK'; }
+  async eval(script, [key, generation], args) {
+    const store = memory.store;
+    if (script.includes("'INCR'")) {
+      const entry = store.get(key);
+      const now = Date.now();
+      const count = entry?.until > now ? entry.count : 0;
+      if (count >= 3) return [0, Math.ceil((entry.until - now) / 1000)];
+      store.set(key, { count: count + 1, until: count ? entry.until : now + 300000 });
+      return [count + 1, 0];
+    }
+    if (script.includes("'DEL'")) {
+      if (args[1] === '1' && (store.get(generation) ?? '') !== args[2]) return 0;
+      store.set(generation, args[0]);
+      return Number(store.delete(key));
+    }
+    const user = store.get(key);
+    const current = store.get(generation) ?? '';
+    if (script.includes('secretAnswerHash')) {
+      if (!user || user.passwordHash !== args[0] || user.secretAnswerHash !== args[1] || current !== args[4]) return 0;
+      store.set(key, { ...user, passwordHash: args[2] });
+      store.set(generation, args[3]);
+      return 1;
+    }
+    if (!user || current !== args[0]) return 0;
+    store.set(key, JSON.parse(args[1]));
+    return 1;
+  }
   async del(key) { memory.store.delete(key); }
 }}));
 vi.mock('../../api/_middleware/rate-limit.js', () => ({ checkRateLimit: () => true, getRateLimitKey: () => 'synthetic' }));
@@ -16,6 +44,14 @@ import childToken from '../../api/_handlers/child-token.js';
 import consent from '../../api/_handlers/parent-consent.js';
 import help from '../../api/_handlers/psychologist-help.js';
 import digest from '../../api/_handlers/weekly-digest.js';
+import logout from '../../api/_handlers/logout.js';
+import reset from '../../api/_handlers/reset-password.js';
+import verifyToken from '../../api/_handlers/verify-token.js';
+import chat from '../../api/_handlers/psychologist-chat.js';
+import booking from '../../api/_handlers/psychologist-booking.js';
+import reviews from '../../api/_handlers/psychologist-reviews.js';
+import report from '../../api/_handlers/psychologist-report.js';
+import feedback from '../../api/_handlers/feedback.js';
 import login from '../../api/_handlers/login.js';
 import { verifyAuth } from '../../api/_middleware/auth.js';
 
@@ -82,7 +118,7 @@ describe('P1-02 session-bound parent PIN', () => {
     expect((await stats(session,parts.join('.'))).code).toBe(403);
   });
   it('PIN grants cannot be substituted for login tokens', async () => {
-    const grant=await unlock(token());expect(verifyAuth(request(grant))).toBeNull();
+    const grant=await unlock(token());expect(await verifyAuth(request(grant))).toBeNull();
   });
   it('a login JWT cannot be substituted for a PIN grant', async () => {
     const session=token();expect((await stats(session,session)).code).toBe(403);
@@ -122,5 +158,122 @@ describe('P1-02 session-bound parent PIN', () => {
   it('child link issuance still works after PIN', async () => {
     const session=token();const r=res();await childToken(request(session,{childIndex:0},await unlock(session)),r);
     expect(r.code).toBe(200);expect(r.body.url).toContain('child_token=');
+  });
+});
+
+describe('remaining parent API guards', () => {
+  const psychologistEmail = 'psychologist@synthetic.invalid';
+  const fields = {
+    psychologistEmail, parentEmail: email, reason: 'Synthetic',
+    message: 'Synthetic', date: '2026-01-01', time: '10:00', rating: 4,
+    requestExtend: true
+  };
+  it.each([
+    ['chat read', chat, 'GET'], ['chat write', chat, 'POST'],
+    ['booking', booking, 'POST'], ['review', reviews, 'POST'],
+    ['report', report, 'POST'], ['feedback bonus', feedback, 'POST']
+  ])('%s requires a PIN and denies the child role', async (_name, handler, method) => {
+    for (const [session, expected] of [[token(), 403], [token({ role: 'child' }), 403]]) {
+      const req = request(session, fields, undefined, method);
+      req.query = fields;
+      const r = res();
+      await handler(req, r);
+      expect(r.code).toBe(expected);
+      if (jwt.decode(session).role === 'user') expect(r.body.code).toBe('PARENT_PIN_REQUIRED');
+    }
+  });
+  it('uses verified family identity when submitting a complaint', async () => {
+    const session = token();
+    const r = res();
+    await report(request(session, { ...fields, reportedBy: 'foreign@synthetic.invalid' }, await unlock(session)), r);
+    expect(r.code).toBe(200);
+    expect(memory.store.get('geroy:psychologist:reports')[0].reportedBy).toBe(email);
+  });
+  it('rejects a foreign family booking after PIN', async () => {
+    const session = token();
+    const r = res();
+    await booking(request(session, { ...fields, parentEmail: 'foreign@synthetic.invalid' }, await unlock(session)), r);
+    expect(r.code).toBe(403);
+    expect(memory.store.has('geroy:psychologist:' + psychologistEmail + ':bookings')).toBe(false);
+  });
+  it('only issues links for child indexes in the verified family', async () => {
+    const session = token();
+    const grant = await unlock(session);
+    const missing = res();
+    await childToken(request(session, { childIndex: 1, parentEmail: 'foreign@synthetic.invalid' }, grant), missing);
+    expect(missing.code).toBe(404);
+    const own = res();
+    await childToken(request(session, { childIndex: 0, parentEmail: 'foreign@synthetic.invalid' }, grant), own);
+    const claims = jwt.decode(new URL(own.body.url).searchParams.get('child_token'));
+    expect(claims).toMatchObject({ email, role: 'child', childIndex: 0 });
+    expect((await stats(new URL(own.body.url).searchParams.get('child_token'), grant)).code).toBe(403);
+  });
+  it('admits only three PIN attempts per family across concurrent requests and sessions', async () => {
+    const replies = await Promise.all(Array.from({ length: 12 }, async (_, i) => {
+      const r = res();
+      await verifyPin(request(token({ jti: 'pin-' + i }), { pin: '0000' }), r);
+      return r.code;
+    }));
+    expect(replies.filter(code => code === 403)).toHaveLength(3);
+    expect(replies.filter(code => code === 429)).toHaveLength(9);
+    vi.setSystemTime(Date.now() + 300000);
+    expect(await unlock(token())).toBeTruthy();
+  });
+});
+
+describe('server-side session revocation', () => {
+  async function status(session) {
+    const r = res();
+    await verifyToken(request(session, {}, undefined, 'GET'), r);
+    return r.code;
+  }
+
+  it('logout revokes cookie and bearer JWTs, preserving independent sessions', async () => {
+    const cookie = token({ jti: 'cookie' });
+    const bearer = token({ jti: 'bearer' });
+    const other = token({ jti: 'other' });
+    const grant = await unlock(bearer);
+    const req = request(bearer);
+    req.headers.cookie = 'token=' + cookie;
+    const r = res();
+    await logout(req, r);
+    expect(r.code).toBe(200);
+    expect(await status(cookie)).toBe(401);
+    expect(await status(bearer)).toBe(401);
+    expect(await status(other)).toBe(200);
+    expect((await stats(bearer, grant)).code).toBe(401);
+  });
+  it('reset revokes legacy parent and child JWTs and permits login with the new password', async () => {
+    const user = memory.store.get('geroy:user:' + email);
+    user.secretAnswerHash = hashPassword('synthetic');
+    const parent = token();
+    const child = token({ role: 'child' });
+    const r = res();
+    await reset(request(null, { email, secretAnswer: 'synthetic', newPassword: 'new-synthetic-password' }), r);
+    expect(r.code).toBe(200);
+    expect(await status(parent)).toBe(401);
+    expect(await status(child)).toBe(401);
+    const fresh = res();
+    await login(request(null, { email, password: 'new-synthetic-password' }), fresh);
+    expect(fresh.code).toBe(200);
+    expect(await status(fresh.body.token)).toBe(200);
+  });
+  it('account deletion invalidates parent and child JWTs even if the email is reused', async () => {
+    const parent = token();
+    const child = token({ role: 'child' });
+    const original = memory.store.get('geroy:user:' + email);
+    const r = res();
+    await deletion(request(parent, {}, await unlock(parent)), r);
+    expect(r.code).toBe(200);
+    expect(await status(parent)).toBe(401);
+    memory.store.set('geroy:user:' + email, original);
+    expect(await status(parent)).toBe(401);
+    expect(await status(child)).toBe(401);
+  });
+  it('verify-token preserves child role for an existing family', async () => {
+    const r = res();
+    await verifyToken(request(token({ mode: 'child' }), {}, undefined, 'GET'), r);
+    expect(r.code).toBe(200);
+    expect(r.body.user.role).toBe('child');
   });
 });

@@ -1,7 +1,7 @@
 import { setCors } from '../_middleware/cors.js';
 import { requireParent } from '../_middleware/auth.js';
 import { issueParentGrant } from '../_middleware/parent-pin.js';
-import { findUser, saveUser } from '../_lib/users.js';
+import { findUser, reservePinAttempt } from '../_lib/users.js';
 import { verify } from '../_lib/crypto.js';
 
 export default async function handler(req, res) {
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   }
 
   res.setHeader('Cache-Control', 'no-store');
-  const decoded = requireParent(req, res);
+  const decoded = await requireParent(req, res);
   if (!decoded) return;
 
   try {
@@ -42,26 +42,14 @@ export default async function handler(req, res) {
       return res.status(403).json({ code: 'PARENT_PIN_NOT_CONFIGURED', error: 'Родительский PIN не настроен. Обратитесь в поддержку.' });
     }
 
-    const valid = /^\d{4}$/.test(pinStr) && verify(pinStr, user.parentPinHash);
-    if (valid) {
-      user.pinAttempts = 0;
-      user.lockedUntil = null;
-      await saveUser(decoded.email, user);
+    const [attempt, waitSec] = await reservePinAttempt(decoded.email);
+    if (attempt === 0) {
+      return res.status(429).json({ error: 'Слишком много попыток', waitSec: Math.max(1, waitSec) });
+    }
+    if (/^\d{4}$/.test(pinStr) && verify(pinStr, user.parentPinHash)) {
       return res.status(200).json({ success: true, ...issueParentGrant(req, { ...user, email: decoded.email }) });
     }
-
-    user.pinAttempts = (user.pinAttempts || 0) + 1;
-    const attemptsLeft = Math.max(0, 3 - user.pinAttempts);
-    if (user.pinAttempts >= 3) {
-      user.lockedUntil = Date.now() + 300000;
-      user.pinAttempts = 0;
-    }
-    await saveUser(decoded.email, user);
-
-    return res.status(403).json({
-      error: 'Неверный PIN',
-      attemptsLeft: user.lockedUntil ? 0 : attemptsLeft
-    });
+    return res.status(403).json({ error: 'Неверный PIN', attemptsLeft: 3 - attempt });
   } catch (error) {
     console.error('verify-pin error:', error);
     return res.status(500).json({ error: 'Ошибка сервера' });

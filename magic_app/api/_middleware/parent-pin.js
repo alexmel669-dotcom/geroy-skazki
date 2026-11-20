@@ -25,7 +25,7 @@ export function issueParentGrant(req, profile) {
 
 export async function requireParentPin(req, res) {
   res.setHeader('Cache-Control', 'no-store');
-  const identity = requireParent(req, res);
+  const identity = await requireParent(req, res);
   if (!identity) return null;
   try {
     const profile = await findUser(identity.email);

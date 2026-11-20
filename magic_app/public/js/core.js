@@ -1514,9 +1514,16 @@ function applyAiTiming() {
 
 async function handleLogout() {
   try {
-    await apiFetch('/api/logout', { method: 'POST' });
+    const token = localStorage.getItem('userToken');
+    const response = await apiFetch('/api/logout', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (!response.ok) throw new Error('Logout failed');
   } catch (e) {
     console.warn('Logout API error:', e);
+    window.alert('Не удалось завершить сессию. Повторите выход.');
+    return;
   }
   localStorage.removeItem('userToken');
   localStorage.removeItem('userEmail');
@@ -1952,6 +1959,13 @@ async function handleUserMessage(text, options = {}) {
           character: getCharacter()
         })
       });
+      if (res.status === 403) {
+        const data = await res.json();
+        if (data.code === 'PARENT_PIN_REQUIRED') {
+          window.location.href = '/parent.html';
+          return;
+        }
+      }
       if (res.ok) {
         const data = await res.json();
         if (typeof data.ms === 'number') globalThis.__lastAiMs = data.ms;
@@ -1971,16 +1985,16 @@ async function handleUserMessage(text, options = {}) {
         timeContext
       });
     }
-    reply = typeof aiResult === 'string' ? aiResult : aiResult.text;
-    responseType = aiResult.type || requestType;
-    aiMood = aiResult.mood || null;
+    reply = typeof aiResult === 'string' ? aiResult : aiResult?.text;
+    responseType = aiResult?.type || requestType;
+    aiMood = aiResult?.mood || null;
     if (typeof aiResult === 'object' && aiResult) {
       if (aiResult.childName || aiResult.childAge != null) {
         saveDetectedProfile({ childName: aiResult.childName, childAge: aiResult.childAge });
       }
       if (aiResult.concerns?.length) saveParentConcerns(aiResult.concerns);
     }
-    if (!aiResult.fromApi && dictFallback) {
+    if (!aiResult?.fromApi && dictFallback) {
       reply = dictFallback;
       console.log('📖 Словарь (API недоступен):', reply.slice(0, 100));
     }

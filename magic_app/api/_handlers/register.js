@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
 import { hashPassword } from '../_lib/crypto.js';
-import { saveUser, userExists } from '../_lib/users.js';
+import { getSessionGeneration, saveUser, userExists } from '../_lib/users.js';
 import { setAuthCookie } from '../_lib/cookies.js';
 import { logError } from '../_lib/auth-log.js';
 import jwt from 'jsonwebtoken';
@@ -53,10 +53,11 @@ function normalizeChildren(children) {
   }).filter((c) => c.name);
 }
 
-function signToken(user) {
+function signToken(user, sessionGeneration) {
   return jwt.sign(
     {
       email: user.email,
+      sessionGeneration,
       username: user.username,
       userId: user.email,
       plan: getEffectivePlan(user),
@@ -285,9 +286,10 @@ export default async function handler(req, res) {
       lastLoginAt: new Date().toISOString()
     };
 
+    const sessionGeneration = await getSessionGeneration(normalizedEmail);
     const saved = await saveUser(normalizedEmail, user);
     const effectivePlan = getEffectivePlan(saved);
-    const token = signToken({ ...saved, plan: effectivePlan });
+    const token = signToken({ ...saved, plan: effectivePlan }, sessionGeneration);
     setAuthCookie(res, token);
 
     return res.status(201).json({
