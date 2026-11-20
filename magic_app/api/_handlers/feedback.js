@@ -1,4 +1,5 @@
 import { setCors } from '../_middleware/cors.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { verifyAuth } from '../_middleware/auth.js';
 import { findUser, saveUser } from '../_lib/users.js';
 import { getEffectivePlan } from '../_lib/promocodes.js';
@@ -29,7 +30,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Rating 1-5 required' });
     }
 
-    const user = verifyAuth(req);
+    const user = requestExtend ? await requireParentPin(req, res) : await verifyAuth(req);
+    if (requestExtend && !user) return;
     const entry = {
       rating: stars,
       text: String(text || '').trim().slice(0, 1000),

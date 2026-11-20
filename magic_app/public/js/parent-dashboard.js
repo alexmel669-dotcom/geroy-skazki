@@ -6,7 +6,7 @@ import { getGameProgressSummary, loadGameProgress } from './game-progress.js';
 import { getChildGender, guessGenderFromName, chattedPast, pickByGender } from './gender.js';
 import { getCorrectNameForm, getAgeWord } from './grammar.js';
 import { escapeHtml } from './security.js';
-import { apiFetch } from './api-base.js';
+import { parentApiFetch as apiFetch, acceptParentGrant, clearParentGrant } from './parent-access.js';
 
 function getAgeFromBirthday(birthday) {
   if (!birthday) return null;
@@ -616,7 +616,14 @@ async function ensureParentAccess() {
   return true;
 }
 
+window.addEventListener('parent-pin-required', () => {
+  document.getElementById('parentCabinet').style.display = 'none';
+  document.getElementById('pinOverlay').style.display = 'flex';
+  document.getElementById('pinInput').value = '';
+});
+
 async function enterParentCabinet() {
+  clearParentGrant();
   if (!(await ensureParentAccess())) return;
 
   if (Date.now() < pinLockedUntil) {
@@ -637,9 +644,9 @@ async function enterParentCabinet() {
     }
     const data = await check.json();
     if (data.noPin) {
-      document.getElementById('parentCabinet').style.display = 'block';
-      loadAllData();
-      return;
+      const error = document.getElementById('pinError');
+      error.textContent = 'Родительский PIN не настроен. Обратитесь в поддержку.';
+      error.style.display = 'block';
     }
   } catch {
     /* show pin overlay */
@@ -678,6 +685,13 @@ async function verifyPinSubmit() {
   }
 
   if (res.ok) {
+    const grantData = await res.json().catch(() => ({}));
+    if (!acceptParentGrant(grantData)) {
+      errEl.textContent = 'Не удалось подтвердить доступ. Введите PIN ещё раз.';
+      errEl.style.display = 'block';
+      return;
+    }
+    document.getElementById('pinInput').value = '';
     pinAttempts = 0;
     document.getElementById('pinOverlay').style.display = 'none';
     document.getElementById('parentCabinet').style.display = 'block';
@@ -1193,7 +1207,8 @@ async function getPsychologistHelp() {
     });
     const data = await res.json();
     if (adviceEl && data.advice) {
-      adviceEl.innerHTML = `<p>${data.advice.replace(/\n/g, '<br>')}</p>`;
+      adviceEl.textContent = String(data.advice);
+      adviceEl.style.whiteSpace = 'pre-wrap';
     }
   } catch {
     if (adviceEl) {

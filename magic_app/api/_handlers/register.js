@@ -1,7 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
 import { hashPassword } from '../_lib/crypto.js';
-import { saveUser, userExists } from '../_lib/users.js';
+import { getSessionGeneration, saveUser, userExists } from '../_lib/users.js';
 import { setAuthCookie } from '../_lib/cookies.js';
 import { logError } from '../_lib/auth-log.js';
 import jwt from 'jsonwebtoken';
@@ -19,11 +20,6 @@ const redis = new Redis({
 
 const MIN_AGE = 3;
 const MAX_AGE = 14;
-
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@geroy-skazki.local')
-  .split(',')
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
 
 function getAgeFromBirthday(birthday) {
   if (!birthday) return null;
@@ -57,17 +53,18 @@ function normalizeChildren(children) {
   }).filter((c) => c.name);
 }
 
-function signToken(user) {
+function signToken(user, sessionGeneration) {
   return jwt.sign(
     {
       email: user.email,
+      sessionGeneration,
       username: user.username,
       userId: user.email,
       plan: getEffectivePlan(user),
       role: user.role || 'user'
     },
     getJwtSecret(),
-    { expiresIn: '7d' }
+    { expiresIn: '7d', jwtid: randomUUID() }
   );
 }
 
@@ -130,7 +127,8 @@ export default async function handler(req, res) {
     let planExpiry = null;
     let promocodeUsed = null;
     let promoMessage = null;
-    let role = ADMIN_EMAILS.includes(normalizedEmail) ? 'admin' : 'user';
+    // Public registration never grants administrative privileges.
+    let role = 'user';
     let maxChildren = null;
     let userPromoCode = null;
 
@@ -288,9 +286,10 @@ export default async function handler(req, res) {
       lastLoginAt: new Date().toISOString()
     };
 
+    const sessionGeneration = await getSessionGeneration(normalizedEmail);
     const saved = await saveUser(normalizedEmail, user);
     const effectivePlan = getEffectivePlan(saved);
-    const token = signToken({ ...saved, plan: effectivePlan });
+    const token = signToken({ ...saved, plan: effectivePlan }, sessionGeneration);
     setAuthCookie(res, token);
 
     return res.status(201).json({

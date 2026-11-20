@@ -1,4 +1,5 @@
 import { setCors } from '../_middleware/cors.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { verifyAuth } from '../_middleware/auth.js';
 import {
   getQuery,
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const auth = verifyAuth(req);
+      const auth = await verifyAuth(req);
       if (!auth?.email) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
@@ -59,9 +60,10 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'psychologistEmail, date и time обязательны' });
       }
 
-      if (parent !== String(auth.email).toLowerCase()) {
-        const psy = await requirePsychologist(req, psyEmail);
-        if (!psy) {
+      const psy = await requirePsychologist(req, psyEmail);
+      if (!psy) {
+        if (!await requireParentPin(req, res)) return;
+        if (parent !== auth.email.toLowerCase()) {
           return res.status(403).json({ error: 'Access denied' });
         }
       }

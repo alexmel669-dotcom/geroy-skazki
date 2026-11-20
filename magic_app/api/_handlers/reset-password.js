@@ -1,6 +1,6 @@
 import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
-import { findUser, saveUser } from '../_lib/users.js';
+import { findUser, resetUserPassword } from '../_lib/users.js';
 import { hashPassword, verifyPassword } from '../_lib/crypto.js';
 import { normalizeSecretAnswer } from '../_lib/secret-questions.js';
 
@@ -43,8 +43,9 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Неверный ответ на секретный вопрос' });
     }
 
-    user.passwordHash = hashPassword(newPassword);
-    await saveUser(email, user);
+    if (!await resetUserPassword(email, user, hashPassword(newPassword))) {
+      return res.status(409).json({ error: 'Аккаунт изменился. Повторите запрос.' });
+    }
 
     return res.status(200).json({ success: true, message: 'Пароль изменён' });
   } catch (error) {

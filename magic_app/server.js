@@ -254,7 +254,7 @@ function handleGlobalCors(req, res) {
   }
 
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Parent-Authorization, Cookie, X-Requested-With');
   res.setHeader('Access-Control-Max-Age', '86400');
   res.setHeader('Vary', 'Origin');
 
@@ -269,7 +269,7 @@ function handleGlobalCors(req, res) {
       corsHeaders['Access-Control-Allow-Credentials'] = 'true';
     }
     corsHeaders['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-    corsHeaders['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cookie, X-Requested-With';
+    corsHeaders['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Parent-Authorization, Cookie, X-Requested-With';
     corsHeaders['Access-Control-Max-Age'] = '86400';
     corsHeaders['Vary'] = 'Origin';
     corsHeaders['Content-Length'] = '0';

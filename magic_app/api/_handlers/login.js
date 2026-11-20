@@ -1,7 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit, getRateLimitKey } from '../_middleware/rate-limit.js';
 import { verifyPassword } from '../_lib/crypto.js';
-import { findUser, saveUser } from '../_lib/users.js';
+import { findUser, saveUser, sessionGenerationOf } from '../_lib/users.js';
 import { setAuthCookie } from '../_lib/cookies.js';
 import { logError } from '../_lib/auth-log.js';
 import jwt from 'jsonwebtoken';
@@ -12,13 +13,14 @@ function signToken(user) {
   return jwt.sign(
     {
       email: user.email,
+      sessionGeneration: user.sessionGeneration,
       username: user.username,
       userId: user.email,
       plan: user.plan || 'free',
       role: user.role || 'user'
     },
     getJwtSecret(),
-    { expiresIn: '7d' }
+    { expiresIn: '7d', jwtid: randomUUID() }
   );
 }
 
@@ -60,7 +62,7 @@ export default async function handler(req, res) {
     const saved = await saveUser(normalizedEmail, user);
 
     const effectivePlan = getEffectivePlan(saved);
-    const token = signToken({ ...saved, plan: effectivePlan });
+    const token = signToken({ ...saved, plan: effectivePlan, sessionGeneration: sessionGenerationOf(user) });
     setAuthCookie(res, token);
 
     return res.status(200).json({

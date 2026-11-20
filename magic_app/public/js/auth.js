@@ -264,17 +264,19 @@ async function handleRegister(e) {
 // Выход
 export async function logout() {
   try {
+    const token = localStorage.getItem('userToken');
     const response = await apiFetch('/api/logout', {
       method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
-    
-    console.log('🚪 Выход выполнен');
+    if (!response.ok) throw new Error('Logout failed');
   } catch (error) {
     console.warn('Logout error:', error);
-  } finally {
-    clearAuthData();
-    window.location.href = '/login.html';
+    window.alert('Не удалось завершить сессию. Повторите выход.');
+    return;
   }
+  clearAuthData();
+  window.location.href = '/login.html';
 }
 
 // Вспомогательные функции

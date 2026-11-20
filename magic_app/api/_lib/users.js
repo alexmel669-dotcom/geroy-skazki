@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'node:crypto';
 import { Redis } from '@upstash/redis';
 
 const redis = new Redis({
@@ -8,6 +9,56 @@ const redis = new Redis({
 const USERS_KEY = 'geroy:users';
 const USER_PREFIX = 'geroy:user:';
 const DIALOGS_PREFIX = 'geroy:dialogs:';
+const snapshots = new WeakMap();
+const accountKey = (email) => USER_PREFIX + email.toLowerCase();
+const generationKey = (email) => 'geroy:session-generation:' + email.toLowerCase();
+const revokedKey = (token) => 'geroy:revoked-session:' + createHash('sha256').update(token.slice(0, token.lastIndexOf('.'))).digest('hex');
+
+export function getSessionGeneration(email) {
+  return redis.get(generationKey(email));
+}
+
+export function sessionGenerationOf(user) {
+  return snapshots.get(user).generation;
+}
+
+export function isSessionRevoked(token) {
+  return redis.get(revokedKey(token));
+}
+
+export async function revokeSession(token, expiry) {
+  const seconds = expiry - Math.floor(Date.now() / 1000);
+  if (seconds > 0) await redis.set(revokedKey(token), 'revoked', { ex: seconds });
+}
+
+export function reservePinAttempt(email) {
+  return redis.eval(`
+    local count = tonumber(redis.call('GET', KEYS[1]) or '0')
+    if count >= 3 then return {0, redis.call('TTL', KEYS[1])} end
+    count = redis.call('INCR', KEYS[1])
+    if count == 1 then redis.call('EXPIRE', KEYS[1], 300) end
+    return {count, 0}
+  `, ['geroy:pin-attempts:' + email.toLowerCase()], []);
+}
+
+export async function resetUserPassword(email, user, passwordHash) {
+  return redis.eval(`
+    local raw = redis.call('GET', KEYS[1])
+    if not raw then return 0 end
+    local user = cjson.decode(raw)
+    if user.passwordHash ~= ARGV[1] or user.secretAnswerHash ~= ARGV[2]
+      or (redis.call('GET', KEYS[2]) or '') ~= ARGV[5] then return 0 end
+    -- Preserve arrays in the stored JSON by replacing just the password string.
+    local updated, count = string.gsub(raw, '"passwordHash"%s*:%s*"[^"]*"', function()
+      return '"passwordHash":' .. cjson.encode(ARGV[3])
+    end, 1)
+    if count ~= 1 or cjson.decode(updated).passwordHash ~= ARGV[3] then return 0 end
+    redis.call('SET', KEYS[1], updated)
+    redis.call('SET', KEYS[2], ARGV[4])
+    return 1
+  `, [accountKey(email), generationKey(email)],
+  [user.passwordHash, user.secretAnswerHash, passwordHash, randomUUID(), snapshots.get(user).generation ?? '']);
+}
 
 // Получить всех пользователей (индекс)
 export async function getAllUsers() {
@@ -17,8 +68,8 @@ export async function getAllUsers() {
 
 // Найти пользователя по email
 export async function findUser(email) {
-  const key = USER_PREFIX + email.toLowerCase();
-  const user = await redis.get(key);
+  const [user, generation] = await redis.mget(accountKey(email), generationKey(email));
+  if (user) snapshots.set(user, { generation });
   return user || null;
 }
 
@@ -33,7 +84,18 @@ export async function saveUser(email, userData) {
     updatedAt: new Date().toISOString()
   };
 
-  await redis.set(key, user);
+  const snapshot = snapshots.get(userData);
+  if (snapshot) {
+    const saved = await redis.eval(`
+      if redis.call('EXISTS', KEYS[1]) == 0
+        or (redis.call('GET', KEYS[2]) or '') ~= ARGV[1] then return 0 end
+      redis.call('SET', KEYS[1], ARGV[2])
+      return 1
+    `, [key, generationKey(email)], [snapshot.generation ?? '', JSON.stringify(user)]);
+    if (!saved) throw new Error('Account changed during update');
+  } else {
+    await redis.set(key, user);
+  }
 
   const users = await getAllUsers();
   users[normalizedEmail] = {
@@ -54,13 +116,18 @@ export async function userExists(email) {
 }
 
 // Удалить пользователя
-export async function deleteUser(email) {
-  const key = USER_PREFIX + email.toLowerCase();
-  await redis.del(key);
+export async function deleteUser(email, expectedGeneration) {
+  const deleted = await redis.eval(`
+    if ARGV[2] == '1' and (redis.call('GET', KEYS[2]) or '') ~= ARGV[3] then return 0 end
+    redis.call('SET', KEYS[2], ARGV[1])
+    return redis.call('DEL', KEYS[1])
+  `, [accountKey(email), generationKey(email)], [randomUUID(), expectedGeneration === undefined ? '0' : '1', expectedGeneration ?? '']);
+  if (!deleted) return false;
 
   const users = await getAllUsers();
   delete users[email.toLowerCase()];
   await redis.set(USERS_KEY, users);
+  return true;
 }
 
 // Сохранить диалог
