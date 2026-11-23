@@ -120,8 +120,9 @@ export async function deleteUser(email, expectedGeneration) {
   const deleted = await redis.eval(`
     if ARGV[2] == '1' and (redis.call('GET', KEYS[2]) or '') ~= ARGV[3] then return 0 end
     redis.call('SET', KEYS[2], ARGV[1])
+    redis.call('DEL', KEYS[3])
     return redis.call('DEL', KEYS[1])
-  `, [accountKey(email), generationKey(email)], [randomUUID(), expectedGeneration === undefined ? '0' : '1', expectedGeneration ?? '']);
+  `, [accountKey(email), generationKey(email), DIALOGS_PREFIX + email.toLowerCase()], [randomUUID(), expectedGeneration === undefined ? '0' : '1', expectedGeneration ?? '']);
   if (!deleted) return false;
 
   const users = await getAllUsers();

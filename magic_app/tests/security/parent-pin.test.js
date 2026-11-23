@@ -6,7 +6,7 @@ vi.mock('@upstash/redis', () => ({ Redis: class {
   async get(key) { if (memory.unavailable) throw new Error('offline'); return structuredClone(memory.store.get(key) ?? null); }
   async mget(...keys) { return Promise.all(keys.map(key => this.get(key))); }
   async set(key, value) { memory.store.set(key, structuredClone(value)); return 'OK'; }
-  async eval(script, [key, generation], args) {
+  async eval(script, [key, generation, dialogs], args) {
     const store = memory.store;
     if (script.includes("'INCR'")) {
       const entry = store.get(key);
@@ -19,6 +19,7 @@ vi.mock('@upstash/redis', () => ({ Redis: class {
     if (script.includes("'DEL'")) {
       if (args[1] === '1' && (store.get(generation) ?? '') !== args[2]) return 0;
       store.set(generation, args[0]);
+      if (script.includes("redis.call('DEL', KEYS[3])")) store.delete(dialogs);
       return Number(store.delete(key));
     }
     const user = store.get(key);
@@ -152,7 +153,12 @@ describe('P1-02 session-bound parent PIN', () => {
     expect(memory.store.has(`geroy:user:${email}`)).toBe(true);expect(fetch).not.toHaveBeenCalled();
   });
   it('delete succeeds with current session proof (synthetic data only)', async () => {
+    const dialogsKey = 'geroy:dialogs:' + email.toLowerCase();
+    memory.store.set(dialogsKey, ['synthetic']);
+    memory.store.set('geroy:dialogs:other@audit.invalid', ['other']);
     const session=token();const r=res();await deletion(request(session,{},await unlock(session)),r);
+    expect(memory.store.has(dialogsKey)).toBe(false);
+    expect(memory.store.get('geroy:dialogs:other@audit.invalid')).toEqual(['other']);
     expect(r.code).toBe(200);expect(memory.store.has(`geroy:user:${email}`)).toBe(false);
   });
   it('child link issuance still works after PIN', async () => {
