@@ -276,6 +276,27 @@ describe('server-side session revocation', () => {
     expect(await status(parent)).toBe(401);
     expect(await status(child)).toBe(401);
   });
+  it('rejects an issued session on a protected route after account deletion', async () => {
+    memory.store.set('geroy:session-generation:' + email, 'previous-generation');
+    const signedIn = res();
+    await login(request(null, { email, password: 'synthetic-password' }), signedIn);
+    expect(signedIn.code).toBe(200);
+    const session = signedIn.body.token;
+    const grant = await unlock(session);
+    expect((await stats(session, grant)).code).toBe(200);
+
+    const removed = res();
+    await deletion(request(session, {}, grant), removed);
+    expect(removed.code).toBe(200);
+    expect((await stats(session, grant)).code).toBe(401);
+
+    memory.store.set('geroy:user:' + email, { email, passwordHash, parentPinHash });
+    expect((await stats(session, grant)).code).toBe(401);
+    const fresh = res();
+    await login(request(null, { email, password: 'synthetic-password' }), fresh);
+    expect(fresh.code).toBe(200);
+    expect(await status(fresh.body.token)).toBe(200);
+  });
   it('verify-token preserves child role for an existing family', async () => {
     const r = res();
     await verifyToken(request(token({ mode: 'child' }), {}, undefined, 'GET'), r);
