@@ -1,0 +1,17 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Герой Сказок · Центр управления</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#f6f5f0;color:#243933;font:16px/1.55 "Segoe UI",sans-serif}header{background:#183f37;color:white;padding:22px 6vw;display:flex;justify-content:space-between;align-items:center}header b{font:28px Georgia}header strong{color:#ffda94}main{max-width:1150px;margin:auto;padding:32px 5vw}nav{display:flex;gap:8px;flex-wrap:wrap}button,a{font:inherit}button{border:1px solid #bbcbc1;background:white;border-radius:8px;padding:8px 14px;cursor:pointer}button[aria-current=true],form button{background:#245349;color:white}h1{font:40px Georgia;margin:30px 0 12px}article,form{background:#fff;border:1px solid #d2dbd2;border-radius:12px;padding:18px 22px;margin:12px 0}h2{font-size:18px;margin:0 0 8px}small{color:#51695d}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.6 Consolas,monospace}textarea,input{display:block;width:100%;padding:8px;margin:6px 0 14px}a{color:#25634d}#meta{overflow-wrap:anywhere}.approval h2{white-space:pre-wrap;overflow-wrap:anywhere}.approval small{display:block;overflow-wrap:anywhere}.approval button{margin-top:16px;background:#245349;color:white}.event{margin-top:12px;padding:12px 16px;border-radius:8px;border-left:4px solid;overflow-wrap:anywhere}.event p{margin:4px 0;white-space:pre-wrap}.event-start{background:#edf4ff;border-color:#3268b2}.event-progress{background:#fff6ce;border-color:#b98a13}.event-finish{background:#e6f6e9;border-color:#32804a}.event-error{background:#fdebea;border-color:#be453f}.approval label{display:block;margin-top:16px}
+.page-title{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px}
+progress{width:100%;height:14px;accent-color:#26765a}
+.checks{list-style:none;padding:0}.checks li{padding:.5em 0;border-bottom:1px solid #e2e8e3;overflow-wrap:anywhere}
+.active-run{display:inline-block;margin-left:10px;color:#215538;font-weight:600}
+.active-run::before{content:"";display:inline-block;width:9px;height:9px;margin-right:6px;border-radius:50%;background:#288556;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}@media(prefers-reduced-motion:reduce){.active-run::before{animation:none}}
+</style>
+<header><b>Герой Сказок</b><strong>Выпуск приостановлен</strong></header><main><nav aria-label="Разделы"></nav><div class="page-title"><h1></h1><small id="agent-clock" hidden></small></div><small id="meta"></small><article id="dispatch" hidden>
+<h2>Создать задачу для ИИ</h2>
+<label>Что нужно сделать?<textarea id="task" rows="3"></textarea></label>
+<button id="generate" disabled>Сформировать наряд</button>
+<div id="order" hidden><h2>Наряд на работу</h2>
+<textarea id="prompt" aria-label="Текст наряда" rows="8" readonly></textarea>
+<button id="copy">Скопировать в буфер обмена</button> <small id="copyStatus" role="status"></small></div>
+</article><section></section><form hidden><h2>Замечание владельца</h2><label>SHA проверяемой версии<input name="sha" required pattern="[0-9a-f]{40}"></label><label>Шаги, ожидаемый и фактический результат<textarea name="body" required maxlength="2000" rows="4"></textarea></label><button>Сохранить замечание</button> <output></output></form></main><script src="/hub.js"></script></html>

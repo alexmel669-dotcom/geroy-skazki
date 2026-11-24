@@ -54,3 +54,4 @@ gigachat-keys.txt
 
 russian_trusted_*.crt
 russian_trusted_ca_bundle.pem
+/project-control/owner-hub/config.json
