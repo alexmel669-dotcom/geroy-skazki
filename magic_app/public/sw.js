@@ -1,6 +1,6 @@
 // Service Worker — кэширование + offline fallback
 // Версия кэша: увеличивай при обновлении файлов, чтобы форсировать обновление
-const CACHE_NAME = 'geroy-skazki-v2';
+const CACHE_NAME = 'geroy-skazki-v3';
 const OFFLINE_URL = 'offline.html';
 
 // Файлы, которые кэшируем сразу при установке
