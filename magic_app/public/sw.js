@@ -1,6 +1,6 @@
 // Service Worker — кэширование + offline fallback
 // Версия кэша: увеличивай при обновлении файлов, чтобы форсировать обновление
-const CACHE_NAME = 'geroy-skazki-v1';
+const CACHE_NAME = 'geroy-skazki-v2';
 const OFFLINE_URL = 'offline.html';
 
 // Файлы, которые кэшируем сразу при установке
@@ -8,6 +8,7 @@ const PRECACHE_URLS = [
   './',
   'index.html',
   'app.html',
+  '/app',
   'register.html',
   'login.html',
   'offline.html',
@@ -23,7 +24,13 @@ self.addEventListener('install', (event) => {
       // Кэшируем по одному — чтобы один упавший файл не сломал всю установку
       return Promise.all(
         PRECACHE_URLS.map((url) =>
-          cache.add(url).catch((err) => {
+          // В APK сервер WebView не обязан поддерживать короткий веб-маршрут.
+          (url === '/app'
+            ? fetch('app.html').then(response => {
+                if (!response.ok) throw new Error('Не удалось загрузить app.html');
+                return cache.put('/app', response);
+              })
+            : cache.add(url)).catch((err) => {
             console.warn('[SW] Не удалось закэшировать:', url, err.message);
           })
         )

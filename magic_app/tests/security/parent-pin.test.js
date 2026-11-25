@@ -168,6 +168,17 @@ describe('P1-02 session-bound parent PIN', () => {
 });
 
 describe('remaining parent API guards', () => {
+  it('returns a general conversation topic without quoting a private concern', async () => {
+    vi.stubEnv('DEEPSEEK_API_KEY', '');
+    const session = token();
+    const concern = 'Страх перед SYNTHETIC_PRIVATE_DETAIL';
+    const r = res();
+    await help(request(session, { concerns: [concern] }, await unlock(session)), r);
+    expect(r.code).toBe(200);
+    expect(r.body.advice).toContain('страхи и чувство безопасности');
+    expect(r.body.advice).not.toContain('SYNTHETIC_PRIVATE_DETAIL');
+    expect(fetch).not.toHaveBeenCalled();
+  });
   const psychologistEmail = 'psychologist@synthetic.invalid';
   const fields = {
     psychologistEmail, parentEmail: email, reason: 'Synthetic',

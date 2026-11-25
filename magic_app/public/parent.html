@@ -40,15 +40,6 @@
     .progress-card .stat-label { opacity: 0.6; }
     .progress-card .stat-val { font-weight: 600; }
     
-    .history-item { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .history-item:last-child { border-bottom: none; }
-    .history-item .msg { font-size: 0.85rem; line-height: 1.4; }
-    .history-item .meta { opacity: 0.4; font-size: 0.7rem; margin-top: 4px; display: flex; gap: 12px; }
-    .history-item.child .msg { color: var(--blue); }
-    .history-item.lucik .msg { color: var(--accent); }
-    .history-item.alerted { background: rgba(255, 64, 129, 0.12); border-radius: 10px; padding: 8px 10px; margin: 2px 0; }
-    .history-item.alerted .msg { color: #ff8a80; }
-    .alert-tag { display: inline-block; background: var(--accent); color: #fff; font-size: 0.65rem; padding: 2px 8px; border-radius: 10px; margin-left: 8px; font-weight: 600; }
     
     .children-input { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #fff; font-size: 0.9rem; margin-bottom: 8px; }
     .btn-save { padding: 8px 20px; border-radius: 20px; border: none; background: var(--green); color: #fff; font-size: 0.85rem; cursor: pointer; font-weight: 600; }
@@ -67,12 +58,6 @@
     .week-day.partial { background: rgba(255,255,255,0.1); }
     .week-day.none { background: rgba(255,255,255,0.03); }
     
-    .attention-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; align-items: center; justify-content: center; }
-    .attention-box { background: rgba(35, 35, 58, 0.92); border-radius: 24px; padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; backdrop-filter: blur(12px); }
-    .attention-box h3 { margin: 0 0 12px; color: var(--accent); }
-    .attention-item { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; margin-bottom: 8px; border-left: 3px solid var(--yellow); }
-    .attention-item .attn-text { font-size: 0.85rem; margin-bottom: 4px; }
-    .attention-item .attn-meta { opacity: 0.4; font-size: 0.7rem; }
 
     .parent-greeting {
       font-size: 1.15rem;
@@ -218,9 +203,9 @@
   <p class="subtitle" id="childInfo">Статистика и прогресс</p>
   <p class="child-birthday-line">🎂 <span id="childBirthday">-</span> (<span id="childAge">-</span>)</p>
   
-  <div class="psychologist-help" id="psychologistBlock" style="display:none;">
-    <h3>🧠 Деликатная помощь</h3>
-    <p>Люцик заметил темы, которые волнуют вашего ребёнка. Мы подготовили мягкие рекомендации для разговора.</p>
+  <div class="psychologist-help" id="psychologistBlock">
+    <h3>Семейные подсказки</h3>
+    <p>Здесь можно получить идеи для бережного разговора с ребёнком.</p>
     <button id="getPsychologistHelp" class="btn-soft" type="button">Получить рекомендации</button>
     <div id="psychologistAdvice" class="advice-box" style="display:none;"></div>
   </div>
@@ -318,7 +303,6 @@
   <div class="card">
     <h2>📊 Общая статистика</h2>
     <div id="statsContainer"><div class="empty-state">Загрузка...</div></div>
-    <button class="btn-attention" onclick="showAttentionModal()">⚠️ Обрати внимание</button>
   </div>
   
   <div class="card">
@@ -348,11 +332,6 @@
   </div>
   
   <div class="card">
-    <h2>💬 Последние диалоги</h2>
-    <div id="dialogsContainer"><div class="empty-state">Пока нет диалогов</div></div>
-  </div>
-  
-  <div class="card">
     <h2>💡 Выводы</h2>
     <div id="insightsContainer"><div class="empty-state">Недостаточно данных для выводов</div></div>
   </div>
@@ -363,16 +342,6 @@
     <button class="btn-attention" id="weeklyDigestBtn" type="button" style="margin-top:0;">📧 Отправить недельный отчёт на email</button>
     <button class="btn-save" id="parentLogoutBtn" type="button" style="width:100%;margin-top:12px;background:rgba(255,255,255,0.15);">🚪 Выйти из аккаунта</button>
       <button class="btn-save" id="deleteAccountBtn" type="button" style="width:100%;margin-top:12px;background:rgba(255,80,80,0.2);color:#ff6b6b;">🗑️ Удалить аккаунт</button>
-  </div>
-</div>
-
-<!-- Модальное окно "Обрати внимание" -->
-<div class="attention-modal" id="attentionModal" style="display:none;">
-  <div class="attention-box">
-    <h3>⚠️ Обрати внимание</h3>
-    <p style="opacity:0.7;font-size:0.85rem;margin:0 0 16px;">В этих сообщениях ИИ упомянул тревожные темы или личные данные. Рекомендуем просмотреть.</p>
-    <div id="attentionContent"><div class="empty-state">Нет подозрительных сообщений</div></div>
-    <button class="btn-save" style="width:100%;margin-top:16px;background:rgba(255,255,255,0.15);" onclick="document.getElementById('attentionModal').style.display='none'">Закрыть</button>
   </div>
 </div>
 

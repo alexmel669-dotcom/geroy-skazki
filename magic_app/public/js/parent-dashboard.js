@@ -4,8 +4,7 @@ import { CONFIG, FEAR_LABELS, PLANS, migrateFearStatsObject, getFearDisplayName,
 import { safeParseJSON, getChildren, getUserPlan, getStoriesRemaining, getPlanDaysRemaining, resetDailyCounters } from './core.js';
 import { getGameProgressSummary, loadGameProgress } from './game-progress.js';
 import { getChildGender, guessGenderFromName, chattedPast, pickByGender } from './gender.js';
-import { getCorrectNameForm, getAgeWord } from './grammar.js';
-import { escapeHtml } from './security.js';
+import { getAgeWord } from './grammar.js';
 import { parentApiFetch as apiFetch, acceptParentGrant, clearParentGrant } from './parent-access.js';
 
 function getAgeFromBirthday(birthday) {
@@ -314,96 +313,6 @@ function generateGameReportLines(childName, gender) {
   return lines;
 }
 
-function getWeekDialogs(childName) {
-  const key = childName ? `stats_${childName}` : 'stats_guest';
-  const stats = safeParseJSON(localStorage.getItem(key), {}) || {};
-  const history = stats.history || [];
-  const weekAgo = Date.now() - 7 * 86400000;
-  return history
-    .filter((h) => new Date(h.timestamp || 0).getTime() > weekAgo)
-    .filter((h) => h.role === 'child' || h.role === 'user')
-    .map((h) => ({ question: h.text || '', mood: h.mood }));
-}
-
-function getAverageMood(dialogs) {
-  if (!dialogs.length) return 'спокойное';
-  const moods = dialogs.map((d) => d.mood).filter(Boolean);
-  if (!moods.length) return 'спокойное';
-  const positive = moods.filter((m) => m === 'positive' || m === 'happy').length;
-  const concerned = moods.filter((m) => m === 'concerned' || m === 'anxious').length;
-  const sad = moods.filter((m) => m === 'sad' || m === 'negative').length;
-  if (concerned > 0) return 'тревожное';
-  if (sad > moods.length / 2) return 'грустное';
-  if (positive > moods.length / 2) return 'радостное';
-  return 'спокойное';
-}
-
-async function getWeekConcerns(childName) {
-  const concerns = [...(await loadConcernsFromServer())];
-  const key = childName ? `stats_${childName}` : 'stats_guest';
-  const stats = safeParseJSON(localStorage.getItem(key), {}) || {};
-  const history = stats.history || [];
-  const weekAgo = Date.now() - 7 * 86400000;
-  history
-    .filter((h) => new Date(h.timestamp || 0).getTime() > weekAgo)
-    .flatMap((h) => h.alertWords || [])
-    .filter(Boolean)
-    .forEach((w) => concerns.push(w));
-  return [...new Set(concerns)].slice(0, 10);
-}
-
-async function generateDetailedReport(childIndex = activeChild) {
-  const user = await getCurrentUser();
-  const children = user.children?.length ? user.children : getChildren();
-  const child = children[childIndex] || children[0] || user;
-  if (!child?.name && !child?.childName) return null;
-
-  const childName = child.name || child.childName;
-  const childGender = child.gender || child.childGender || 'male';
-  const childAge = child.age || child.childAge;
-  const nameForms = getCorrectNameForm(childName, childGender);
-
-  const dialogs = getWeekDialogs(childName);
-  const topics = dialogs.map((d) => d.question).join('; ');
-  const moodSummary = getAverageMood(dialogs);
-  const concerns = await getWeekConcerns(childName);
-
-  try {
-    const res = await apiFetch('/api/generate', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({
-        text: `Составь отчёт из 3-4 предложений.
-
-Ребёнок: ${childName}, возраст: ${childAge} лет, пол: ${childGender === 'female' ? 'девочка' : 'мальчик'}.
-
-СТРОГИЕ ПРАВИЛА:
-1. Склоняй имя правильно:
-   - Для ${childName}: "у ${nameForms.gen}", "с ${nameForms.gen}", "для ${nameForms.gen}"
-   - Никогда не говори "отчет о Лиза" или "отчет о Лев" — только "отчёт о Лизе", "отчёт о Льве"
-2. Используй правильный род:
-   - ${childGender === 'female' ? 'ОНА общалась, у НЕЁ, ЕЙ, она сказала' : 'ОН общался, у НЕГО, ЕМУ, он сказал'}
-3. Говори грамотно:
-   - "мы с тобой общались" (не "общался")
-   - "я рассказал ${childGender === 'female' ? 'ей' : 'ему'} сказку"
-   - "настроение у ${nameForms.gen} хорошее"
-
-За неделю: ${topics || 'разные темы'}
-Настроение: ${moodSummary}
-${concerns.length > 0 ? 'Беспокойства: ' + concerns.join(', ') + '.' : ''}`,
-        type: 'chat',
-        systemPrompt: 'Ты — ассистент для родителей. Говори грамотно. Склоняй имена по падежам. Используй правильный род. Никогда не говори "отчет о Лиза" — только "отчёт о Лизе".'
-      })
-    });
-
-    const data = await res.json();
-    return data.message || data.reply || null;
-  } catch (e) {
-    console.warn('generateDetailedReport failed:', e);
-    return null;
-  }
-}
-
 function generateChildReportText(stats, childName, gender, multiChild) {
   const parts = [];
   if (multiChild) {
@@ -542,23 +451,7 @@ async function speakReport() {
         btn.textContent = `🎤 ${i + 1}/${childrenStats.length}: ${childName}...`;
       }
 
-      const dialogs = getWeekDialogs(childName);
-      let text = null;
-      if (dialogs.length > 0) {
-        const childIdx = getChildren().findIndex((c) => c.name === childName);
-        text = await generateDetailedReport(childIdx >= 0 ? childIdx : activeChild);
-      }
-      if (!text) {
-        text = generateChildReportText(stats, childName, gender, multiChild);
-      } else if (multiChild) {
-        text = `Сейчас расскажу про ${childName}. ${text}`;
-      }
-
-      const gameLines = generateGameReportLines(childName, gender);
-      if (gameLines.length) {
-        text = `${text} ${gameLines.join(' ')}`;
-      }
-
+      const text = generateChildReportText(stats, childName, gender, multiChild);
       const ok = await playTextAsSpeech(text);
       if (!ok) throw new Error('tts_failed');
       if (i < childrenStats.length - 1) {
@@ -820,7 +713,6 @@ function loadChildStats(index) {
       : 'Гость — общая статистика';
   }
   updateChildInfo(child);
-  checkConcerns(child);
 
   const statsContainer = document.getElementById('statsContainer');
   if (statsContainer) {
@@ -838,16 +730,9 @@ function loadChildStats(index) {
   renderWeekActivity(history);
   renderMoodChart(history);
   renderFears(fearStats);
-  renderDialogs(history);
-  renderInsights(fearStats, totalStories, totalGames, history);
+  renderInsights(fearStats, totalStories, totalGames);
   renderTimeStats(history);
 }
-
-const ATTENTION_KEYWORDS = [
-  'адрес', 'улица', 'дом', 'квартира', 'телефон', 'номер', 'звони',
-  'страх', 'страшно', 'боюсь', 'обида', 'обидел', 'плачу', 'больно',
-  'один', 'ушёл', 'ушла', 'бросил', 'помоги', 'убьют', 'фамилия', 'почта'
-];
 
 function getCurrentChildKey() {
   const children = getChildren();
@@ -997,47 +882,7 @@ function renderFears(fearStats) {
   document.getElementById('fearInsight').innerHTML = insightHTML;
 }
 
-function checkAttentionWords(text) {
-  if (!text) return [];
-  const lower = text.toLowerCase();
-  return ATTENTION_KEYWORDS.filter(kw => lower.includes(kw));
-}
-
-function renderDialogs(history) {
-  const recentHistory = history.slice(-15).reverse();
-  const container = document.getElementById('dialogsContainer');
-  if (recentHistory.length === 0) {
-    container.innerHTML = '<div class="empty-state">Пока нет диалогов</div>';
-    return;
-  }
-
-  container.innerHTML = recentHistory.map(h => {
-    const date = new Date(h.timestamp || Date.now());
-    const time = date.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    const isChild = h.role === 'child';
-    const cls = isChild ? 'child' : 'lucik';
-    const lucikIcon = avatarImgHtml('lucik', 18);
-    // P0-2 fix: текст диалога — это то, что ребёнок сам ввёл в чат (или ответ ИИ),
-    // и раньше он вставлялся в innerHTML без экранирования (хранимый XSS). Эти
-    // данные никогда не проходят через бэкенд (хранятся в localStorage), поэтому
-    // единственное место, где их можно безопасно обезвредить — здесь, при рендере.
-    const prefix = isChild
-      ? 'Ребёнок'
-      : (h.characterName ? `${lucikIcon} ${escapeHtml(h.characterName)}` : `${lucikIcon} Люцик`);
-    const attentionWords = !isChild ? (h.alertWords || checkAttentionWords(h.text)) : [];
-    const isAlerted = h.alerted || attentionWords.length > 0;
-    const text = escapeHtml((h.text || '').substring(0, 150));
-    return `
-      <div class="history-item ${cls} ${isAlerted ? 'alerted' : ''}">
-        <div class="msg">${text}${(h.text && h.text.length > 150) ? '...' : ''}${isAlerted ? '<span class="alert-tag">⚠️</span>' : ''}</div>
-        <div class="meta"><span>${prefix}</span><span>${time}</span></div>
-      </div>
-    `;
-  }).join('');
-  initAvatarImages();
-}
-
-function renderInsights(fearStats, totalStories, totalGames, history) {
+function renderInsights(fearStats, totalStories, totalGames) {
   const totalSessions = Object.values(fearStats).reduce((a, b) => a + b, 0);
   let html = '';
 
@@ -1049,10 +894,6 @@ function renderInsights(fearStats, totalStories, totalGames, history) {
     if (totalSessions > 0) {
       const topFear = Object.entries(fearStats).sort((a, b) => b[1] - a[1])[0];
       html += `<div class="insight-box">💬 ${totalSessions} обращений к страхам. Чаще: <strong>${topFear ? getFearDisplayName(topFear[0]) : '—'}</strong>.</div>`;
-    }
-    const attentionCount = history.filter(h => h.role !== 'child' && (h.alerted || checkAttentionWords(h.text).length > 0)).length;
-    if (attentionCount > 0) {
-      html += `<div class="insight-box warn">⚠️ ${attentionCount} ответов требуют внимания. Нажмите «Обрати внимание».</div>`;
     }
   }
   document.getElementById('insightsContainer').innerHTML = html || '<div class="empty-state">Недостаточно данных</div>';
@@ -1146,34 +987,6 @@ async function loadConcernsFromServer() {
   return local;
 }
 
-async function renderPsychologistBlock() {
-  const concerns = await loadConcernsFromServer();
-  checkConcerns(null, concerns);
-  const block = document.getElementById('psychologistBlock');
-  if (!block) return;
-  if (!concerns.length) {
-    block.style.display = 'none';
-    return;
-  }
-  block.style.display = 'block';
-
-  const btn = document.getElementById('getPsychologistHelp');
-  const adviceEl = document.getElementById('psychologistAdvice');
-  if (!btn || btn.dataset.bound) return;
-  btn.dataset.bound = '1';
-
-  btn.addEventListener('click', () => getPsychologistHelp());
-}
-
-function checkConcerns(child, concernsOverride) {
-  const block = document.getElementById('psychologistBlock');
-  if (!block) return;
-  const concerns = concernsOverride || safeParseJSON(localStorage.getItem('parentConcerns'), []) || [];
-  if (concerns.length > 0 || child?.concerns?.length > 0) {
-    block.style.display = 'block';
-  }
-}
-
 async function getPsychologistHelp() {
   const children = getChildren();
   const child = children[activeChild] || children[0] || null;
@@ -1205,6 +1018,7 @@ async function getPsychologistHelp() {
         concerns
       })
     });
+    if (!res.ok) throw new Error('Recommendations unavailable');
     const data = await res.json();
     if (adviceEl && data.advice) {
       adviceEl.textContent = String(data.advice);
@@ -1634,7 +1448,6 @@ function loadParentDashboard() {
 function loadAllData() {
   updateParentGreeting();
   renderPlanInfo();
-  renderPsychologistBlock();
   loadStorybook();
   bindNotificationSettingsUI();
   initNotificationScheduler().catch(() => {});
@@ -1692,44 +1505,16 @@ function saveChildrenNames() {
   loadAllData();
 }
 
-function showAttentionModal() {
-  const history = getChildStats().history || [];
-  const alertedItems = history.slice(-20).reverse()
-    .filter(h => h.role !== 'child' && (h.alerted || checkAttentionWords(h.text).length > 0))
-    .map(h => ({
-      text: h.text,
-      words: h.alertWords || checkAttentionWords(h.text),
-      timestamp: h.timestamp,
-      characterName: h.characterName || 'Люцик'
-    }));
-
-  const content = document.getElementById('attentionContent');
-  if (alertedItems.length === 0) {
-    content.innerHTML = '<div class="empty-state">✅ Нет подозрительных сообщений</div>';
-  } else {
-    content.innerHTML = alertedItems.map(item => {
-      const time = new Date(item.timestamp || Date.now()).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      return `
-        <div class="attention-item">
-          <div class="attn-text">${(item.text || '').substring(0, 200)}</div>
-          <div class="attn-meta">${avatarImgHtml('lucik', 16)} ${item.characterName} · ${time} · ${item.words.join(', ')}</div>
-        </div>
-      `;
-    }).join('');
-    initAvatarImages();
-  }
-  document.getElementById('attentionModal').style.display = 'flex';
-}
-
 window.selectChild = selectChild;
 window.saveChildrenNames = saveChildrenNames;
-window.showAttentionModal = showAttentionModal;
 window.generateChildLink = generateChildLink;
 window.generateChildQR = generateChildQR;
 window.reportPsychologist = reportPsychologist;
 window.openPsychologistChat = openPsychologistChat;
 window.sendParentMessage = sendParentMessage;
 window.closeParentChat = closeParentChat;
+
+document.getElementById('getPsychologistHelp')?.addEventListener('click', getPsychologistHelp);
 
 document.getElementById('pinSubmitBtn')?.addEventListener('click', verifyPinSubmit);
 document.getElementById('pinInput')?.addEventListener('keydown', (e) => {
