@@ -285,8 +285,6 @@ export function initDevPanel() {
       <span id="devEnv">${ENV.mode}</span>
       <span class="dev-stat">ИИ: <span id="devAiMs">—</span></span>
       <button type="button" id="devResetBtn">🧹 Сбросить данные</button>
-      <button type="button" id="devPlanBasic">⭐ Базовый</button>
-      <button type="button" id="devPlanFamily">👨‍👩‍👧 Семейный</button>
     `;
     document.body.appendChild(panel);
     document.body.classList.add('has-dev-panel');
@@ -298,9 +296,6 @@ export function initDevPanel() {
         }
     });
 
-    document.getElementById('devPlanBasic')?.addEventListener('click', () => switchPlan('basic'));
-    document.getElementById('devPlanFamily')?.addEventListener('click', () => switchPlan('family'));
-
     // [DEV fetch] логирование отключено в продакшне
     // Если нужно включить — раскомментировать:
     // const origFetch = window.fetch.bind(window);
@@ -308,7 +303,6 @@ export function initDevPanel() {
     //     console.log('[DEV fetch]', args[0], args[1]?.method || 'GET');
     //     return origFetch(...args);
     // };
-    window.switchPlan = switchPlan;
 }
 
 // ========================================

@@ -11,18 +11,11 @@
 // В браузере на проде: window.location = https://geroy-skazki.ru
 //   → API на том же origin: https://geroy-skazki.ru
 //
-// Можно переопределить через ?api=https://custom.example.com
+// API origin cannot be overridden by an untrusted URL parameter.
 // ============================================================
 
 export const API_BASE = (() => {
   if (typeof window === 'undefined') return '';
-
-  // 1. Явное переопределение через ?api=...
-  if (window.location.search) {
-    const params = new URLSearchParams(window.location.search);
-    const override = params.get('api');
-    if (override) return override.replace(/\/$/, '');
-  }
 
   // 2. Capacitor WebView — API на прод-сервере
   const isCapacitor =

@@ -1,5 +1,5 @@
 import { setCors } from '../_middleware/cors.js';
-import { verifyAuth } from '../_middleware/auth.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { findUser, getWeeklyStats } from '../_lib/users.js';
 
 async function sendViaResend({ to, subject, html }) {
@@ -34,10 +34,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Метод не разрешён' });
   }
 
-  const decoded = verifyAuth(req);
-  if (!decoded?.email) {
-    return res.status(401).json({ error: 'Требуется авторизация' });
-  }
+  const decoded = await requireParentPin(req, res);
+  if (!decoded) return;
 
   try {
     const user = await findUser(decoded.email);

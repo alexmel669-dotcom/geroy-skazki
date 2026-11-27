@@ -1,5 +1,5 @@
 import { setCors } from '../_middleware/cors.js';
-import { verifyAuth } from '../_middleware/auth.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { findUser } from '../_lib/users.js';
 
 export default async function handler(req, res) {
@@ -9,10 +9,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const user = verifyAuth(req);
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  const user = await requireParentPin(req, res);
+  if (!user) return;
 
   try {
     const profile = await findUser(user.email);
@@ -24,7 +22,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'No concerns to analyze' });
     }
 
-    const topics = concerns.join(', ');
+    // Передаём только общие темы: старые записи могут содержать слова ребёнка.
+    const themes = [
+      [/страх|боится|тревог/i, 'страхи и чувство безопасности'],
+      [/обид|ссор|друз/i, 'общение и дружба'],
+      [/груст|одинок/i, 'настроение и поддержка'],
+      [/школ|уч[её]б/i, 'учёба и перемены']
+    ];
+    const topics = themes.filter(([pattern]) =>
+      Array.isArray(concerns) && concerns.some(value => typeof value === 'string' && pattern.test(value))
+    ).map(([, label]) => label).join(', ') || 'эмоции и поддержка';
 
     if (!process.env.DEEPSEEK_API_KEY) {
       return res.status(200).json({

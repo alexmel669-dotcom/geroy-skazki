@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { setCors } from '../_middleware/cors.js';
-import { verifyAuth } from '../_middleware/auth.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { findUser } from '../_lib/users.js';
 import { getJwtSecret } from '../_middleware/auth.js';
 
@@ -11,10 +11,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Метод не разрешён' });
   }
 
-  const decoded = verifyAuth(req);
-  if (!decoded?.email || decoded.role === 'child' || decoded.mode === 'child') {
-    return res.status(403).json({ error: 'Только для родителя' });
-  }
+  const decoded = await requireParentPin(req, res);
+  if (!decoded) return;
 
   try {
     const user = await findUser(decoded.email);
@@ -22,7 +20,8 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
 
-    const childIndex = parseInt(req.query?.child ?? req.body?.childIndex ?? '0', 10);
+    const selector = req.query?.child ?? req.body?.childIndex ?? 0;
+    const childIndex = /^\d+$/.test(String(selector)) && !Array.isArray(selector) ? Number(selector) : -1;
     const child = user.children?.[childIndex];
 
     if (!child) {
@@ -32,6 +31,7 @@ export default async function handler(req, res) {
     const childToken = jwt.sign(
       {
         email: decoded.email,
+        sessionGeneration: decoded.sessionGeneration,
         parentEmail: decoded.email,
         childName: child.name,
         childAge: child.age,

@@ -5,6 +5,7 @@
   "bundledWebRuntime": false,
   "server": {
     "androidScheme": "https",
+    "appStartPath": "/app.html",
     "cleartext": false,
     "allowNavigation": [
       "geroy-skazki.ru",

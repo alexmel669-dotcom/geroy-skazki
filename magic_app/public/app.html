@@ -201,6 +201,13 @@
 <script type="module">
   import { initChildModeFromUrl } from './js/child-mode.js';
   initChildModeFromUrl();
+  if (window.Capacitor?.isNativePlatform?.()) {
+    const home = document.getElementById('landingLink');
+    const signedIn = localStorage.getItem('userToken') && localStorage.getItem('guestMode') !== 'true';
+    home.href = signedIn ? 'parent.html' : 'login.html';
+    home.title = signedIn ? 'Родительский кабинет' : 'Войти';
+    home.setAttribute('aria-label', home.title);
+  }
 </script>
 <script type="module" src="js/error-monitor.js"></script>
 <script type="module" src="js/main.js"></script>

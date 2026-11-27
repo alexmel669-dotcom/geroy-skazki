@@ -1,4 +1,5 @@
 import { setCors } from '../_middleware/cors.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { verifyAuth } from '../_middleware/auth.js';
 import {
   getQuery,
@@ -32,9 +33,13 @@ export default async function handler(req, res) {
   if (setCors(req, res)) return;
 
   try {
-    const auth = verifyAuth(req);
+    const auth = await verifyAuth(req);
     if (!auth?.email) {
       return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (auth.role === 'child' || auth.mode === 'child') {
+      return res.status(403).json({ error: 'Только для родителя или психолога' });
     }
 
     if (req.method === 'GET') {
@@ -52,7 +57,6 @@ export default async function handler(req, res) {
       // Список диалогов психолога
       if (!parentEmail) {
         const allowed =
-          authEmail === psychologistEmail ||
           isPsy?.admin ||
           (isPsy && isPsy.email === psychologistEmail);
         if (!allowed) {
@@ -63,7 +67,6 @@ export default async function handler(req, res) {
       }
 
       const allowed =
-        authEmail === psychologistEmail ||
         authEmail === parentEmail ||
         isPsy?.admin ||
         (isPsy && isPsy.email === psychologistEmail);
@@ -71,6 +74,8 @@ export default async function handler(req, res) {
       if (!allowed) {
         return res.status(403).json({ error: 'Access denied' });
       }
+
+      if (!isPsy && !await requireParentPin(req, res)) return;
 
       const messages = asArray(await redis.get(chatKey(psychologistEmail, parentEmail)));
       return res.status(200).json(messages);
@@ -122,6 +127,8 @@ export default async function handler(req, res) {
       } else if (authEmail !== parentEmail) {
         return res.status(403).json({ error: 'Access denied' });
       }
+
+      if (msgRole === 'parent' && !await requireParentPin(req, res)) return;
 
       const msg = {
         from: msgRole === 'psychologist' ? psychologistEmail : parentEmail,

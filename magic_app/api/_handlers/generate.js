@@ -3,7 +3,7 @@ import { setCors } from '../_middleware/cors.js';
 import { checkRateLimit } from '../_middleware/ai-rate-limit.js';
 import { buildGenderPrompt, applyGenderToText, normalizeGender } from '../_lib/gender-ru.js';
 import { getAgeWord, applyGrammarFixes, getCorrectNameForm } from '../_lib/grammar-ru.js';
-import { verifyAuth } from '../_middleware/auth.js';
+import { requireParentPin } from '../_middleware/parent-pin.js';
 import { findUser } from '../_lib/users.js';
 import { Redis } from '@upstash/redis';
 
@@ -347,26 +347,18 @@ export default async function handler(req, res) {
     const charId = character || 'lucik';
     const historyEmpty = !Array.isArray(history) || history.length === 0;
 
-    // Для родительских аватаров — подставляем реальную статистику
-    if ((charId === 'mom' || charId === 'dad') && historyEmpty) {
-      const auth = verifyAuth(req);
-      const email = (req.body.parentEmail || req.body.email || auth?.email || '').toLowerCase();
-      if (email) {
-        const today = new Date().toISOString().slice(0, 10);
-        const dialogsToday = Number(await redis.get(`geroy:dialogs:count:${today}`)) || 0;
-        const totalEvents = (await redis.get('geroy:stats:events')) || 0;
-        const user = await findUser(email);
-        const childrenList = user?.children || [];
-
-        const statsContext = `
-ВАЖНО: Отвечай на основе реальных данных. Не выдумывай.
-Сегодня диалогов: ${dialogsToday}
-Всего событий: ${totalEvents}
-Дети: ${childrenList.map((c) => `${c.name}, ${c.age} лет`).join('; ') || 'нет данных'}
-Если данных нет — скажи честно: "Пока недостаточно данных для статистики".
-`;
-
-        message = statsContext + '\nВопрос родителя: ' + message;
+    // Parent context is always bound to the authenticated family, including
+    // follow-up requests with history. Request body email is never an identity.
+    if (charId === 'mom' || charId === 'dad' || isParent) {
+      const auth = await requireParentPin(req, res);
+      if (!auth) return;
+      const user = await findUser(auth.email.toLowerCase());
+      if (!user) return res.status(401).json({ error: 'Сессия недействительна' });
+      if (historyEmpty) {
+        const childrenList = user.children || [];
+        message = `Дети вашей семьи: ${childrenList.map((c) => `${c.name}, ${c.age} лет`).join('; ') || 'нет данных'}.
+Не выдумывай статистику: подтверждённых данных об активности здесь нет.
+Вопрос родителя: ${message}`;
       }
     }
 
