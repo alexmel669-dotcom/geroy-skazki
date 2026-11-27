@@ -2,12 +2,11 @@
 import { apiFetch } from './api-base.js';
 window.leaderboard = {
   async submitScore(game, score) {
-    const user = JSON.parse(localStorage.getItem('geroy-user') || '{}');
     try {
       await apiFetch('/api/leaderboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game, score, name: user.childName || 'Гость' })
+        body: JSON.stringify({ game, score, name: 'Герой' })
       });
     } catch {
       /* offline */
@@ -20,7 +19,7 @@ window.leaderboard = {
       const scores = await res.json();
       if (!Array.isArray(scores) || !scores.length) return '<p>Пока нет рекордов</p>';
       return scores.slice(0, 5).map((s, i) =>
-        `<div>${['🥇', '🥈', '🥉', '4', '5'][i]} ${s.name}: ${s.score}⭐</div>`
+        `<div>${['🥇', '🥈', '🥉', '4', '5'][i]} Герой: ${Number(s.score) || 0}⭐</div>`
       ).join('');
     } catch {
       return '<p>Не удалось загрузить таблицу</p>';
@@ -43,7 +42,7 @@ async function loadLeaderboard(gameId) {
     const res = await apiFetch(`/api/leaderboard?game=${encodeURIComponent(gameId)}`);
     const scores = await res.json();
     el.innerHTML = (Array.isArray(scores) ? scores : []).slice(0, 10).map((s, i) =>
-      `<div class="leaderboard-row">${['🥇', '🥈', '🥉'][i] || '•'} ${s.name}: ${s.score}⭐</div>`
+      `<div class="leaderboard-row">${['🥇', '🥈', '🥉'][i] || '•'} Герой: ${Number(s.score) || 0}⭐</div>`
     ).join('') || '<p>Нет результатов</p>';
   } catch {
     el.innerHTML = '<p>Не удалось загрузить таблицу</p>';

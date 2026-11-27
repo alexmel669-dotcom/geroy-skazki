@@ -39,7 +39,8 @@ import { startRiddlesGame } from './games/riddles.js';
 import { startQuestGame } from './games/quest.js';
 import { startMazeGame } from './games/maze.js';
 import { startQuizGame } from './games/quiz.js';
-import { startRunnerGame } from './games/runner.js';
+import { challengeSeed } from './games/runner-challenge.js';
+import { startRunnerGame, startQuickRunner } from './games/runner.js';
 import { startDrawAIGame } from './games/draw-ai.js';
 import { startMusicCatGame } from './games/music-cat.js';
 import { startConstellationGame } from './games/constellation.js';
@@ -2171,6 +2172,13 @@ export async function launchFishGameSmart(level = 1) {
   console.log('[fish] Открываем JS-версию (веб)');
   startFishGame(level);
   return false;
+}
+
+export function openLinkedRunnerChallenge() {
+  const seed = challengeSeed(window.location.search);
+  if (seed === null || !canAccessGame('runner') || !isGameAgeAppropriate('runner')) return false;
+  startQuickRunner(seed);
+  return true;
 }
 
 export function showGamesMenu() {

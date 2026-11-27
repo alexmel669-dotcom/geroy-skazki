@@ -3,7 +3,7 @@ import './storybook.js';
 import { showLeaderboard } from './leaderboard.js';
 import { CONFIG, validateConfig, ENV, initAvatarImages } from './config.js';
 import {
-  initCore, getActiveChildName, getActiveChild, updateStatsUI,
+  initCore, openLinkedRunnerChallenge, getActiveChildName, getActiveChild, updateStatsUI,
   selectGuestMode, showChildSelectModal, saveChildData, appState, sendTextMessage,
   showGamesMenu, performFeedLucik, performCleanLucikRoom, feedLucik
 } from './core.js';
@@ -69,7 +69,9 @@ try {
     if (ENV.isDev || ENV.isStaging) initDevPanel();
     initNotificationScheduler().catch(() => {});
     checkPlanExpiryNotification();
-    setTimeout(() => startOnboarding(), 2000);
+    if (!openLinkedRunnerChallenge()) {
+      setTimeout(() => { if (!appState.gameActive) startOnboarding(); }, 2000);
+    }
     console.log('✅ App initialized, child:', getActiveChildName());
   };
 

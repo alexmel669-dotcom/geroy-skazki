@@ -1,9 +1,11 @@
+import { addResultActions, previewRunnerCard } from './runner-card.js';
 // ========================================
 // runner.js — «Люцик и Обратная сторона» v12
 // 5000м · 4 мира · босс 3 фазы · магазин · чекпоинты · голос
 // ========================================
 
 import { appState, showGamesMenu } from '../core.js';
+import { playChallenge } from './runner-challenge.js';
 import { speak } from '../audio.js';
 import { trackEvent } from '../analytics.js';
 import { recordGameResult } from '../game-progress.js';
@@ -798,7 +800,7 @@ function claimDailyBonus() {
 
 function cleanupRunnerUi() {
   document.querySelectorAll(
-    '.game-fullscreen, .game-screen, .runner-result, .runner-share-sheet, .runner-choice-overlay, #choice-overlay, #episode-select, .runner-break-modal, .runner-easter-toast, .runner-ach-toast, .runner-episode-video, .runner-shop-screen, .runner-intro-dialog, .runner-pause-screen, .runner-victory-screen, .runner-phase-intro, #runner-shop, #runner-daily-bonus, #runner-achievements, #runner-ai-dialog, #runner-scene-overlay, #runner-fake-path, #runner-dead-end, #runner-boss-fog'
+    '.game-fullscreen, .game-screen, .runner-result, .runner-choice-overlay, #choice-overlay, #episode-select, .runner-break-modal, .runner-easter-toast, .runner-ach-toast, .runner-episode-video, .runner-shop-screen, .runner-intro-dialog, .runner-pause-screen, .runner-victory-screen, .runner-phase-intro, #runner-shop, #runner-daily-bonus, #runner-achievements, #runner-ai-dialog, #runner-scene-overlay, #runner-fake-path, #runner-dead-end, #runner-boss-fog'
   ).forEach((el) => el.remove());
   document.body.classList.remove('game-active');
 }
@@ -898,6 +900,13 @@ function showEpisodeSelect() {
       startIntroThenRun({ resume: null });
     };
     list.appendChild(playBtn);
+
+    const quick = document.createElement('button');
+    quick.type = 'button';
+    quick.className = 'runner-episode-card';
+    quick.textContent = '⚡ Быстрый забег · 45 секунд · 1000 м';
+    quick.onclick = () => startQuickRunner(crypto.getRandomValues(new Uint32Array(1))[0]);
+    list.appendChild(quick);
 
     if (cp && typeof cp.distance === 'number' && cp.distance > 40) {
       const cont = document.createElement('button');
@@ -1088,8 +1097,26 @@ export function startRunnerGame(_level = 1) {
   showEpisodeSelect();
 }
 
+export function startQuickRunner(seed) {
+  cleanupRunnerUi();
+  appState.gameActive = true;
+  document.body.classList.add('game-active');
+  playChallenge(seed, () => {
+    appState.gameActive = false;
+    document.body.classList.remove('game-active');
+    showEpisodeSelect();
+  });
+}
+
 function launchRunnerEpisode(ep, opts = {}) {
   const resume = opts.resume || null;
+  // Сюжет не детерминирован. Этот seed привязывает к нему один быстрый вызов.
+  const savedSeed = resume?.challengeSeed;
+  const challengeSeed = Number.isInteger(savedSeed) && savedSeed >= 0 && savedSeed <= 0xffffffff
+    ? savedSeed : crypto.getRandomValues(new Uint32Array(1))[0];
+  function cardResult() {
+    return { meters: Math.floor(distance), stars: score, seed: challengeSeed, story: true };
+  }
   const level = ep.id;
   const runCount = nextRunCount();
   let currentEnvironment = envFromDistance(resume?.distance || 0);
@@ -1564,6 +1591,7 @@ function launchRunnerEpisode(ep, opts = {}) {
 
   function persistCheckpoint(atDist) {
     saveCheckpoint({
+      challengeSeed,
       distance: Math.floor(atDist),
       health,
       runStars: score,
@@ -1651,7 +1679,16 @@ function launchRunnerEpisode(ep, opts = {}) {
     });
   }
 
+  function savePublicResult() {
+    const meters = Math.floor(distance);
+    const best = Math.max(Number(localStorage.getItem('runner-best')) || 0, meters);
+    localStorage.setItem('runner-best', String(best));
+    window.leaderboard?.submitScore('runner', meters + score);
+    return best;
+  }
+
   function showVictoryScreen() {
+    const best = savePublicResult();
     if (!completedEpisodes.includes(currentEpisode)) completedEpisodes.push(currentEpisode);
     metaStars += score;
     totalStars = metaStars;
@@ -1671,14 +1708,14 @@ function launchRunnerEpisode(ep, opts = {}) {
     overlayWin.className = 'runner-victory-screen';
     overlayWin.innerHTML = `
       <h1>🏆 Победа!</h1>
-      <p>${playerName || 'Герой'}, ты прошёл Волшебный лес!</p>
+      <p>Герой, ты прошёл Волшебный лес!</p>
+      <p>🏆 Рекорд: ${best} м</p>
       <div class="big-stars">⭐ ${score}</div>
       <p>Страхов побеждено: ${fearsDefeatedRun}</p>
       <p>Пасхалок: ${eggsFoundRun}</p>
       <p>Лучшее комбо: x${Math.max(bestComboRun, combo)}</p>
       <div class="runner-victory-actions">
         <button type="button" class="runner-btn primary" id="runnerVictoryAgain">Играть ещё</button>
-        <button type="button" class="runner-btn share" id="runnerVictoryShare">📤 Поделиться</button>
         <button type="button" class="runner-btn ghost" id="runnerVictoryHub">К хабу</button>
       </div>
     `;
@@ -1688,14 +1725,7 @@ function launchRunnerEpisode(ep, opts = {}) {
       clearCheckpoint();
       startIntroThenRun({ resume: null, skipDialog: !!playerName });
     });
-    overlayWin.querySelector('#runnerVictoryShare')?.addEventListener('click', () => {
-      const text = `Я прошёл Волшебный лес! ⭐ ${score} звёзд, ${fearsDefeatedRun} страхов!`;
-      if (navigator.share) navigator.share({ text, url: 'https://geroy-skazki.ru' }).catch(() => {});
-      else {
-        try { navigator.clipboard?.writeText(text); } catch { /* */ }
-        speak('Скопировано!');
-      }
-    });
+    addResultActions(overlayWin.querySelector('.runner-victory-actions'), cardResult());
     overlayWin.querySelector('#runnerVictoryHub')?.addEventListener('click', () => {
       overlayWin.remove();
       showEpisodeSelect();
@@ -5789,78 +5819,6 @@ function launchRunnerEpisode(ep, opts = {}) {
     });
   }
 
-  // —— photo / share ——
-  function composeShareCanvas(extraLines = []) {
-    const out = document.createElement('canvas');
-    out.width = Math.max(480, canvas.width);
-    out.height = Math.max(320, canvas.height + 70);
-    const octx = out.getContext('2d');
-    octx.fillStyle = '#0a0e27';
-    octx.fillRect(0, 0, out.width, out.height);
-    octx.drawImage(canvas, 0, 50, out.width, canvas.height);
-    // frame
-    octx.strokeStyle = '#00e5ff';
-    octx.lineWidth = 4;
-    octx.strokeRect(6, 6, out.width - 12, out.height - 12);
-    octx.strokeStyle = '#cc0033';
-    octx.lineWidth = 2;
-    octx.strokeRect(12, 12, out.width - 24, out.height - 24);
-    octx.fillStyle = '#00e5ff';
-    octx.font = 'bold 20px Georgia, serif';
-    octx.textAlign = 'center';
-    octx.fillText('🐱 Люцик и Обратная сторона', out.width / 2, 34);
-    octx.font = '14px sans-serif';
-    octx.fillStyle = '#ffd700';
-    const lines = [
-      `${fear.emoji} ${fear.name} · ${Math.floor(distance)}м · ⭐ ${score}`,
-      ...extraLines
-    ];
-    lines.forEach((line, i) => {
-      octx.fillText(line, out.width / 2, out.height - 28 + i * 0);
-    });
-    octx.fillText(lines[0], out.width / 2, out.height - 22);
-    octx.textAlign = 'left';
-    return out;
-  }
-
-  function openShareSheet(dataUrl, title) {
-    const sheet = document.createElement('div');
-    sheet.className = 'runner-share-sheet';
-    sheet.innerHTML = `
-      <div style="text-align:center;">
-        <img src="${dataUrl}" alt="Скриншот">
-        <div class="runner-share-actions">
-          <button type="button" class="runner-btn share" id="shareVk">Поделиться в ВК</button>
-          <a class="runner-btn secondary" id="shareDl" download="lucik-upsidedown.png" href="${dataUrl}" style="text-decoration:none;text-align:center;">💾 Скачать</a>
-          <button type="button" class="runner-btn ghost" id="shareClose">Закрыть</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(sheet);
-    sheet.querySelector('#shareClose').onclick = () => sheet.remove();
-    sheet.querySelector('#shareVk').onclick = () => {
-      const text = encodeURIComponent(title || `Люцик и Обратная сторона — ${Math.floor(distance)}м, ⭐${score}`);
-      const url = encodeURIComponent(window.location.href.split('#')[0]);
-      window.open(`https://vk.com/share.php?url=${url}&title=${text}`, '_blank', 'noopener,width=600,height=400');
-    };
-  }
-
-  function takePhoto() {
-    try {
-      const shot = composeShareCanvas();
-      const dataUrl = shot.toDataURL('image/png');
-      const toast = document.createElement('div');
-      toast.className = 'runner-photo-toast';
-      toast.textContent = '📸 Снимок готов';
-      overlay.appendChild(toast);
-      setTimeout(() => toast.remove(), 1200);
-      openShareSheet(dataUrl, `Люцик против ${fear.name}! ${Math.floor(distance)}м`);
-      trackEvent('runner_photo', { distance: Math.floor(distance), score });
-    } catch (e) {
-      console.warn('photo failed', e);
-    }
-  }
-
   function showResult(didWin) {
     const prevWins = parseInt(localStorage.getItem('runner-wins') || '0', 10) || 0;
     const wins = didWin ? prevWins + 1 : prevWins;
@@ -5874,7 +5832,7 @@ function launchRunnerEpisode(ep, opts = {}) {
 
     const rank = getRunnerRank(wins, closedPortal && didWin, Math.floor(distance));
     const title = didWin
-      ? (closedPortal ? 'Люцик закрыл портал!' : `Люцик прогнал ${fear.name}!`)
+      ? (closedPortal ? 'Люцик закрыл портал!' : 'Герой завершил приключение!')
       : 'Почти получилось!';
     const sub = didWin
       ? (closedPortal ? 'Обратная сторона запечатана. Ты герой.' : 'Сегодня он смелее. А ты?')
@@ -5882,9 +5840,7 @@ function launchRunnerEpisode(ep, opts = {}) {
 
     speak(title);
 
-    const prevBest = parseInt(localStorage.getItem('runner-best') || '0', 10);
-    const newBest = Math.max(prevBest, Math.floor(distance));
-    localStorage.setItem('runner-best', String(newBest));
+    const newBest = savePublicResult();
 
     const result = document.createElement('div');
     result.className = `runner-result${closedPortal && didWin ? ' mindflayer-win' : ''}`;
@@ -5902,7 +5858,6 @@ function launchRunnerEpisode(ep, opts = {}) {
         ${localStorage.getItem('runner-boss-killed') === '1' ? '<p class="stats">🏅 Ачивка: Победитель Босса</p>' : ''}
         <button type="button" class="runner-btn primary" id="restartRunner">🔄 Ещё раз эпизод</button>
         <button type="button" class="runner-btn secondary" id="otherFear">📺 К эпизодам</button>
-        <button type="button" class="runner-btn share" id="shareResult">📤 Поделиться</button>
         <button type="button" class="runner-btn ghost" id="exitRunner">🚪 Выйти</button>
         <p class="clock-ref">⏱ Часы показывают ${clockMinute === 1 ? '3:01' : '3:00'}</p>
       </div>
@@ -5943,36 +5898,7 @@ function launchRunnerEpisode(ep, opts = {}) {
       result.remove();
       if (typeof showGamesMenu === 'function') showGamesMenu();
     };
-    result.querySelector('#shareResult').onclick = () => {
-      const shot = document.createElement('canvas');
-      shot.width = 640;
-      shot.height = 420;
-      const sctx = shot.getContext('2d');
-      const grd = sctx.createLinearGradient(0, 0, 0, 420);
-      grd.addColorStop(0, '#0a0e27');
-      grd.addColorStop(1, didWin ? '#1a3a2a' : '#2d0a1a');
-      sctx.fillStyle = grd;
-      sctx.fillRect(0, 0, 640, 420);
-      sctx.strokeStyle = '#00e5ff';
-      sctx.lineWidth = 4;
-      sctx.strokeRect(10, 10, 620, 400);
-      sctx.fillStyle = '#00e5ff';
-      sctx.font = 'bold 22px Georgia, serif';
-      sctx.textAlign = 'center';
-      sctx.fillText('🐱 Люцик и Обратная сторона', 320, 55);
-      sctx.fillStyle = '#ffd700';
-      sctx.font = 'bold 20px sans-serif';
-      sctx.fillText(title, 320, 120);
-      sctx.fillStyle = '#e8f4ff';
-      sctx.font = '16px sans-serif';
-      sctx.fillText(`${rank.emoji} ${rank.title}`, 320, 160);
-      sctx.fillText(`${Math.floor(distance)}м · ⭐ ${score} · Рекорд ${newBest}м`, 320, 200);
-      sctx.fillStyle = '#cc0033';
-      sctx.fillText(`⏱ ${clockMinute === 1 ? '3:01' : '3:00'}`, 320, 250);
-      openShareSheet(shot.toDataURL('image/png'), title);
-    };
-
-    window.leaderboard?.submitScore('runner', Math.floor(distance) + score);
+    addResultActions(result.querySelector('.runner-result-box'), cardResult());
   }
 
   function finish(didWin) {
@@ -6264,7 +6190,8 @@ function launchRunnerEpisode(ep, opts = {}) {
   document.getElementById('runnerPhoto').onclick = (e) => {
     e.stopPropagation();
     if (phase === PHASE.VIDEO) return;
-    takePhoto();
+    previewRunnerCard(cardResult());
+    trackEvent('runner_photo', { distance: Math.floor(distance), score });
   };
   document.getElementById('runnerClose').onclick = () => {
     persistCheckpoint(distance);
